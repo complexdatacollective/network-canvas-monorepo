@@ -73,3 +73,36 @@ export const AVersionForEachCase: Story = {
     await expect(otherwise).toHaveValue('welcome');
   },
 };
+
+/**
+ * Each field is spaced from the next by its own margin, and by nothing else:
+ * the settings add no space between their fields.
+ */
+export const FieldsSpacedByTheirOwnMargins: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('textbox', { name: CONTENT_LABEL }),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Attribute' }));
+    await userEvent.click(
+      await body.findByRole('option', { name: 'Create dynamic attribute' }),
+    );
+    const dialog = await body.findByRole('dialog', {
+      name: 'Create a dynamic attribute',
+    });
+    const controls = dialog.querySelector('[data-dynamic-attribute-controls]');
+    const [logic, next] = Array.from(controls?.children ?? []);
+    if (logic === undefined || next === undefined) {
+      throw new Error('The settings have fewer than two parts');
+    }
+    const margin = Number.parseFloat(getComputedStyle(logic).marginBottom);
+    await expect(margin).toBeGreaterThan(0);
+    await expect(
+      next.getBoundingClientRect().top - logic.getBoundingClientRect().bottom,
+    ).toBe(margin);
+  },
+};

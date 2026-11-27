@@ -15,6 +15,14 @@ import { cva } from './utils/cva';
  */
 
 /**
+ * The space a block of a page keeps from what is above and below it: none at
+ * the start or the end of its container.
+ */
+export const assetBlockSpacingVariants = cva({
+  base: 'not-first:mt-4 not-last:mb-4',
+});
+
+/**
  * An image or video. Each size is a band the height is held to; without one
  * the file is as tall as it is at the page's full width.
  *

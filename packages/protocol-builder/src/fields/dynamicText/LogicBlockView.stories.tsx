@@ -69,7 +69,9 @@ export const PutInFromTheToolbar: Story = {
     await userEvent.click(editor);
     await userEvent.click(canvas.getByRole('button', { name: 'Logic block' }));
 
-    const settings = await body.findByRole('dialog', { name: 'Logic block' });
+    const settings = await body.findByRole('dialog', {
+      name: 'Logic block settings',
+    });
     await expect(within(settings).getByText('Logic')).toBeVisible();
     await waitFor(async () => {
       await expect(editor).toHaveTextContent('Otherwise');

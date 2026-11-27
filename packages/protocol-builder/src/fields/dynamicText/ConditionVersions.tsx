@@ -93,12 +93,14 @@ export function ConditionVersions({
   const { scope } = environment.conditions;
   const readOnly = !environment.editable;
   return (
-    <div className="flex flex-col gap-6">
+    // Spaced by the margins of the fields in it, as every list of fields is,
+    // with the same space below each version and below the whole.
+    <div className="not-last:mb-8">
       {conditionVersions.map((conditionVersion, index) => (
         <div
           key={conditionVersion.conditionId}
           data-condition-conditionVersion={conditionVersion.conditionId}
-          className="flex flex-col gap-2"
+          className="not-last:mb-8"
         >
           <ConditionRulesControl
             name={`${name}-${conditionVersion.conditionId}`}
@@ -121,7 +123,6 @@ export function ConditionVersions({
               size="sm"
               variant="text"
               icon={<X aria-hidden />}
-              className="self-start"
               onClick={() => {
                 const { [conditionVersion.conditionId]: _removed, ...kept } =
                   conditions;

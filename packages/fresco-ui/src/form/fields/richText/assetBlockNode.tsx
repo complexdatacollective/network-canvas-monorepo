@@ -23,6 +23,7 @@ import {
   isAssetBlockSize,
 } from '@codaco/shared-consts';
 
+import { assetBlockSpacingVariants } from '../../../assetBlockLayout';
 import { cva } from '../../../utils/cva';
 import { useBlockHovered } from './blockFrames';
 
@@ -138,7 +139,7 @@ const assetBlockFrameVariants = cva({
   // Nothing in a block is text to select. A browser that reads words out of
   // a picture (Safari does) would otherwise let them be selected in it, as if
   // the page held them.
-  base: 'relative my-4 rounded-sm select-none',
+  base: 'relative rounded-sm select-none',
   variants: {
     // Part of a selection of text, it is covered in the colour selected text
     // is: the browser draws that over words, and not over a block.
@@ -422,6 +423,9 @@ export const AssetBlockNode = TiptapNode.create({
 
   addNodeView() {
     return ReactNodeViewRenderer(AssetBlockView, {
+      // Spaced as the interview spaces a block, on the element that stands
+      // among the document's other blocks (as a field block's is).
+      className: assetBlockSpacingVariants(),
       stopEvent: ({ event }) =>
         isIn(event, CONTROLS_ATTRIBUTE) ||
         isIn(event, FILE_ATTRIBUTE) ||

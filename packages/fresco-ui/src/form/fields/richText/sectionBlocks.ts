@@ -1,4 +1,5 @@
 import { type Editor, Extension } from '@tiptap/core';
+import { closeHistory } from '@tiptap/pm/history';
 import type {
   Node as ProseMirrorNode,
   NodeType,
@@ -14,6 +15,8 @@ import {
   type Transaction,
 } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
+
+import { blockDragPlugin, endBlockDrag } from './blockDrag';
 
 /**
  * The schema group of the blocks that stand as whole sections of a document
@@ -255,6 +258,57 @@ const moveTarget = (
 };
 
 /**
+ * Moves the block at `position` to `target` (a position between two blocks,
+ * in the document as it is before the move), in `tr`, and selects it there:
+ * the whole block, or the text at `offset` inside it. `bias` says which way
+ * `target` leans when the block is taken out right beside it. Taking the
+ * last block out of a branch leaves it an empty paragraph. Returns where the
+ * block went, or null (with `tr` left unusable) where it cannot go there.
+ */
+const placeBlock = (
+  tr: Transaction,
+  position: number,
+  target: number,
+  bias: -1 | 1,
+  select: 'node' | Readonly<{ offset: number }>,
+): number | null => {
+  const node = tr.doc.nodeAt(position);
+  if (node === null) return null;
+  tr.delete(position, position + node.nodeSize);
+  const placed = tr.mapping.map(target, bias);
+  try {
+    tr.insert(placed, node);
+  } catch {
+    return null;
+  }
+  if (tr.doc.nodeAt(placed)?.type !== node.type) return null;
+  tr.setSelection(
+    select === 'node'
+      ? NodeSelection.create(tr.doc, placed)
+      : TextSelection.create(tr.doc, placed + select.offset),
+  );
+  return placed;
+};
+
+/**
+ * Moves the block at `position` to `target`, a position between two blocks
+ * (in the document or in a logic block's branch), as one edit that is undone
+ * on its own, and selects it there: what a block dropped by its handle does
+ * (see `BlockFrameLayer`). The drag ends with it. Returns whether it moved.
+ */
+export const moveBlockTo = (
+  view: EditorView,
+  position: number,
+  target: number,
+): boolean => {
+  const tr = view.state.tr;
+  const bias = target > position ? 1 : -1;
+  if (placeBlock(tr, position, target, bias, 'node') === null) return false;
+  view.dispatch(closeHistory(endBlockDrag(tr)).scrollIntoView());
+  return true;
+};
+
+/**
  * Moves the selected block (or the block the caret is in) one step up or
  * down, as one edit, keeping what was selected. Mod-Shift-ArrowUp and
  * Mod-Shift-ArrowDown: the keyboard's way of dragging a block by its handle.
@@ -271,24 +325,17 @@ export const moveBlock = (
   if (target === null) return false;
   if (dispatch === undefined) return true;
   const { selection } = state;
-  const wasNode = selection instanceof NodeSelection;
-  const offset = selection.from - position;
   const tr = state.tr;
-  // Taking the last block out of a branch leaves it an empty paragraph.
-  tr.delete(position, position + node.nodeSize);
-  const placed = tr.mapping.map(target, direction === 'up' ? -1 : 1);
-  try {
-    tr.insert(placed, node);
-  } catch {
-    return false;
-  }
-  const at = tr.doc.nodeAt(placed)?.type === node.type ? placed : null;
-  if (at === null) return false;
-  tr.setSelection(
-    wasNode
-      ? NodeSelection.create(tr.doc, at)
-      : TextSelection.create(tr.doc, at + offset),
+  const placed = placeBlock(
+    tr,
+    position,
+    target,
+    direction === 'up' ? -1 : 1,
+    selection instanceof NodeSelection
+      ? 'node'
+      : { offset: selection.from - position },
   );
+  if (placed === null) return false;
   dispatch(tr.scrollIntoView());
   return true;
 };
@@ -308,6 +355,8 @@ export const moveBlock = (
  * - Text typed or pasted over a selected block goes below it.
  * - A click on a section's frame, or on what its view draws that is not
  *   text, selects the whole section.
+ * - While a block is dragged by its handle, the document shows what dropping
+ *   it would do (`blockDragPlugin`).
  */
 export const DocumentBlocks = Extension.create({
   name: 'documentBlocks',
@@ -339,6 +388,7 @@ export const DocumentBlocks = Extension.create({
 
   addProseMirrorPlugins() {
     return [
+      blockDragPlugin(),
       new Plugin({
         key: new PluginKey('documentBlocks'),
         props: {

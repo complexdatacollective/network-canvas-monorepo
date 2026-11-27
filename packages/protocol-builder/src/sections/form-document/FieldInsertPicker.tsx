@@ -1,25 +1,13 @@
-import { ArrowLeft } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { IconButton } from '@codaco/fresco-ui/Button';
 import { Popover, PopoverContent } from '@codaco/fresco-ui/Popover';
-import { dropdownItemVariants } from '@codaco/fresco-ui/styles/controlVariants';
-import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { VariableType } from '@codaco/protocol-validation';
 
 import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
 import VariablePickerList, {
   type VariablePickerGroup,
 } from '../../fields/VariablePickerList.tsx';
-import { VariableKindMark } from '../../fields/VariablePill.tsx';
 import { useSubjectVariableScope } from '../canvas/codebookChoices.ts';
-import {
-  controlsForType,
-  needsCodebookEditorToCreate,
-  TYPE_OPTIONS,
-} from '../collectableTypes.ts';
-import { useCreateVariableEditor } from '../create-variable/useCreateVariableEditor.tsx';
 import type { FieldCodebookWrites } from './fieldCodebookWrites.ts';
 import {
   type FieldBlockHandle,
@@ -29,37 +17,12 @@ import {
   formFieldsGroup,
   roleMapFor,
   useFormDocumentEnvironment,
-  useFormStageEnvironment,
 } from './formDocumentEnvironment.ts';
-import { formDocumentMessages as messages } from './formDocumentMessages.ts';
 import { fieldCollecting, variablesPlacedBy } from './formDocumentValue.ts';
-
-/** What each type of attribute is, as the type step explains it. */
-const TYPE_DESCRIPTIONS = {
-  text: messages.textType,
-  number: messages.numberType,
-  datetime: messages.datetimeType,
-  boolean: messages.booleanType,
-  categorical: messages.categoricalType,
-  ordinal: messages.ordinalType,
-  scalar: messages.scalarType,
-} as const;
-
-/** The types a form can collect, in the order the type step lists them. */
-const TYPE_ORDER = [
-  'text',
-  'number',
-  'datetime',
-  'boolean',
-  'categorical',
-  'ordinal',
-  'scalar',
-] as const;
-
-const COLLECTABLE_TYPES = TYPE_ORDER.flatMap((type) => {
-  const option = TYPE_OPTIONS.find(({ value }) => value === type);
-  return option === undefined ? [] : [{ value: type, label: option.label }];
-});
+import {
+  NewAttributeTypeStep,
+  useNewFieldAttribute,
+} from './NewAttributeTypeStep.tsx';
 
 type FieldInsertPickerProps = Readonly<{
   target: FieldPickerTarget;
@@ -68,48 +31,6 @@ type FieldInsertPickerProps = Readonly<{
   /** The picker is done: an attribute was chosen, or it was dismissed. */
   onClose: (outcome: 'chosen' | 'dismissed') => void;
 }>;
-
-/**
- * Creates an attribute through the codebook's own editor, for a type that a
- * name cannot finish (a list of options, a scale), as soon as it is drawn.
- */
-function EditorCreate({
-  name,
-  type,
-  onDone,
-}: Readonly<{
-  name: string;
-  type: VariableType;
-  onDone: (variableId: string | undefined) => void;
-}>) {
-  const intl = useAppIntl();
-  const { subject } = useFormStageEnvironment();
-  const created = useRef<string | undefined>(undefined);
-  const firstControl = controlsForType(type)[0]?.value;
-  const editorPath = useCreateVariableEditor({
-    subject: subject ?? null,
-    variableTypes: [type],
-    // A form collects the attribute: it is made with the first control its
-    // type offers, as an attribute that a name finishes is.
-    ...(firstControl !== undefined && { seedComponent: firstControl }),
-    title: intl.formatMessage(messages.newAttributeTitle, { name }),
-    onCreated: (variableId) => {
-      created.current = variableId;
-    },
-  });
-  const { createOption } = editorPath;
-  const done = useRef(onDone);
-  useEffect(() => {
-    done.current = onDone;
-  });
-  useEffect(() => {
-    void (async () => {
-      const outcome = await createOption(name);
-      done.current(outcome.status === 'created' ? created.current : undefined);
-    })();
-  }, [createOption, name]);
-  return editorPath.editor;
-}
 
 /**
  * The attribute list of a new field, which stands beside the Field button
@@ -229,14 +150,9 @@ function PickerList({
     /** Whether the chosen field is selected, rather than its question. */
     selectsChosenField: boolean;
   }>) {
-  const intl = useAppIntl();
   const environment = useFormDocumentEnvironment();
   const nameId = useId();
   const [creating, setCreating] = useState<string | undefined>(undefined);
-  const [escalated, setEscalated] = useState<
-    Readonly<{ name: string; type: VariableType }> | undefined
-  >(undefined);
-  const [refusal, setRefusal] = useState<string | undefined>(undefined);
   // Set as a create starts, before the list asks to close.
   const stepping = useRef(false);
 
@@ -271,20 +187,9 @@ function PickerList({
     onClose('dismissed');
   };
 
-  const createAs = async (name: string, type: VariableType) => {
-    setRefusal(undefined);
-    if (needsCodebookEditorToCreate(type)) {
-      setEscalated({ name, type });
-      return;
-    }
-    if (creation === undefined) return;
-    const outcome = await creation.createAttribute(name, type);
-    if (outcome.status === 'refused') {
-      setRefusal(outcome.message);
-      return;
-    }
-    choose(outcome.variableId);
-  };
+  const newAttribute = useNewFieldAttribute(creation?.createAttribute, (id) =>
+    choose(id),
+  );
 
   const startCreate = (name: string): Promise<CreateOptionOutcome> => {
     stepping.current = true;
@@ -292,18 +197,16 @@ function PickerList({
     return Promise.resolve({ status: 'created' });
   };
 
-  const open = escalated === undefined;
+  // While the codebook's own editor creates the attribute, the list is
+  // closed: the editor is a dialog over it.
+  const open = newAttribute.editor === null;
 
-  // The keyboard moves with the list's two steps: to the first type when
-  // the type step opens, and back to the search box when it closes.
+  // The keyboard goes back to the search box as the type step closes (the
+  // step itself takes it as it opens).
   const popup = useRef<HTMLDivElement>(null);
-  const firstType = useRef<HTMLButtonElement>(null);
   const backToSearch = useRef(false);
   useEffect(() => {
-    if (creating !== undefined) {
-      firstType.current?.focus();
-      return;
-    }
+    if (creating !== undefined) return;
     if (backToSearch.current) {
       backToSearch.current = false;
       popup.current?.querySelector<HTMLElement>('input')?.focus();
@@ -360,85 +263,20 @@ function PickerList({
                 }}
               />
             ) : (
-              <div className="flex flex-col gap-2 p-2" data-type-step="">
-                <div className="flex items-start gap-2">
-                  <IconButton
-                    size="sm"
-                    variant="text"
-                    aria-label="Back to the attributes"
-                    icon={
-                      <ArrowLeft aria-hidden className="rtl:-scale-x-100" />
-                    }
-                    onClick={() => {
-                      backToSearch.current = true;
-                      setCreating(undefined);
-                    }}
-                  />
-                  <div>
-                    <p className="font-heading font-bold">
-                      {intl.formatMessage(messages.newAttributeTitle, {
-                        name: (
-                          <span
-                            key="name"
-                            dir="auto"
-                            className="text-match-parent font-mono"
-                          >
-                            {creating}
-                          </span>
-                        ),
-                      })}
-                    </p>
-                    <p className="text-sm text-current/70">
-                      {intl.formatMessage(messages.newAttributeDescription)}
-                    </p>
-                  </div>
-                </div>
-                <ul className="flex flex-col">
-                  {COLLECTABLE_TYPES.map(({ value, label }, index) => (
-                    <li key={value}>
-                      <button
-                        ref={index === 0 ? firstType : undefined}
-                        type="button"
-                        className={cx(
-                          dropdownItemVariants(),
-                          'flex w-full items-start gap-3 text-start',
-                        )}
-                        onClick={() => void createAs(creating, value)}
-                      >
-                        <VariableKindMark kind={value} className="mt-0.5" />
-                        <span className="flex flex-col">
-                          <span className="font-bold">
-                            {intl.formatMessage(label)}
-                          </span>
-                          <span className="text-sm text-current/70">
-                            {intl.formatMessage(TYPE_DESCRIPTIONS[value])}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                {refusal !== undefined && (
-                  <p role="alert" className="text-destructive text-sm">
-                    {refusal}
-                  </p>
-                )}
-              </div>
+              <NewAttributeTypeStep
+                name={creating}
+                refusal={newAttribute.refusal}
+                onBack={() => {
+                  backToSearch.current = true;
+                  setCreating(undefined);
+                }}
+                onChoose={(type) => void newAttribute.createAs(creating, type)}
+              />
             )}
           </div>
         </PopoverContent>
       </Popover>
-      {escalated !== undefined && (
-        <EditorCreate
-          name={escalated.name}
-          type={escalated.type}
-          onDone={(variableId) => {
-            setEscalated(undefined);
-            if (variableId === undefined) return;
-            choose(variableId);
-          }}
-        />
-      )}
+      {newAttribute.editor}
     </>
   );
 }

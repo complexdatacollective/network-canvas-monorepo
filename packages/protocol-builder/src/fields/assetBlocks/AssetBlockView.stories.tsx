@@ -107,18 +107,16 @@ export const SelectedImage: Story = {
         'This is read aloud to participants who use screen reader technology. Leave it blank if the image is decorative.',
       ),
     ).toBeVisible();
-    await expect(settings.getByText('Display size')).toBeVisible();
-    const size = settings.getByRole('group', { name: 'Display size' });
-    await expect(size).toHaveAccessibleDescription(
-      'How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.',
-    );
+    // Its size is set by dragging its corner, and nowhere in its settings;
+    // where it sits across the page is not something Markdown can say.
     await expect(
-      settings.getByRole('group', { name: 'Alignment' }),
-    ).toBeVisible();
-    await userEvent.click(within(size).getByRole('button', { name: 'Large' }));
-    await expect(args.update).toHaveBeenCalledWith({ size: 'large' });
+      settings.queryByRole('group', { name: 'Display size' }),
+    ).toBeNull();
+    await expect(
+      settings.queryByRole('group', { name: 'Alignment' }),
+    ).toBeNull();
     // Delete, marked with a bin.
-    const remove = settings.getByRole('button', { name: 'Delete' });
+    const remove = settings.getByRole('button', { name: 'Delete image' });
     await expect(remove.querySelector('svg')).toBeVisible();
     await userEvent.click(remove);
     await expect(args.remove).toHaveBeenCalled();
@@ -134,7 +132,7 @@ export const NotSelected: Story = {
     ).toBeNull();
     await expect(
       within(canvasElement.ownerDocument.body).queryByRole('button', {
-        name: 'Delete',
+        name: 'Delete image',
       }),
     ).toBeNull();
   },
@@ -177,6 +175,10 @@ const DrawnView = createAssetBlockView({
   useAsset: () => ({ kind: 'image', name: 'square.svg' }),
   Preview: ({ name, className }) => (
     <img src={SQUARE} alt={name} className={className} />
+  ),
+  // A stand-in for the card that shows the file, as tall as a short one.
+  FileField: () => (
+    <div className="bg-surface-1 h-16 rounded p-2">square.svg</div>
   ),
 });
 
@@ -385,8 +387,8 @@ const SIZE_PIXELS = { medium: 384, large: 540 } as const;
 /**
  * A square picture in a frame that its page scrolls in, placed as `layout`
  * says: where its settings fit beside their button is what the stories that
- * use it are about. The settings of a picture are 724 pixels wide and about
- * 360 tall, and stand 10 pixels from their button, which is 40 pixels square,
+ * use it are about. The settings of a picture are 628 pixels wide and about
+ * 390 tall, and stand 10 pixels from their button, which is 40 pixels square,
  * at the picture's end and over its top. Under or over the button, their end
  * is at the end of the picture, where their arrow, which points at the
  * button's middle, keeps them; beside it, their top is 52 pixels above the
@@ -508,7 +510,7 @@ export const SettingsAboveTheButton: Story = {
   tags: ONE_DIRECTION,
   render: placedIn({
     frame: { wide: 1200, tall: 900 },
-    above: 440,
+    above: 480,
     left: 408,
     size: 'medium',
   }),
@@ -642,9 +644,6 @@ const selectBlock = async (canvasElement: HTMLElement, name: string) => {
   return { block, settings: within(settings) };
 };
 
-const pressed = (button: HTMLElement) =>
-  expect(button).toHaveAttribute('aria-pressed', 'true');
-
 // The page is a whole editor rather than a layout in the reading direction:
 // the other stories mirror the block itself.
 const WHOLE_EDITOR = ['!mirror'];
@@ -672,6 +671,9 @@ export const ReplacingThePicture: Story = {
     await expect(file).toHaveAccessibleDescription(
       'The file shown here. Choosing another keeps the description and other settings.',
     );
+    // How tall its size holds the first picture to.
+    const heldTo = block.querySelector('img')?.getBoundingClientRect().height;
+    if (heldTo === undefined) throw new Error('No picture');
     await expect(within(file).getByText('Neighbourhood photo')).toBeVisible();
 
     // Closed with nothing chosen, the browser leaves the block as it was.
@@ -735,8 +737,13 @@ export const ReplacingThePicture: Story = {
     await expect(
       again.getByRole('textbox', { name: 'Description' }),
     ).toHaveValue('The neighbourhood');
-    await pressed(again.getByRole('button', { name: 'Small' }));
-    await pressed(again.getByRole('button', { name: 'Align to the end' }));
+    // So are its size, which holds the new picture to the same height, and
+    // its place, against the end of the line.
+    const picture = block.querySelector('img');
+    if (picture === null) throw new Error('No picture');
+    await expect(picture.getBoundingClientRect().height).toBeCloseTo(heldTo, 0);
+    // Drawn against the right of its box, which is the end of a line here.
+    await expect(getComputedStyle(picture).objectPosition).toMatch(/^100% /);
     // And nothing else was chosen as the browser closed.
     await waitFor(() =>
       expect(
@@ -862,7 +869,7 @@ export const VideoSettings: Story = {
       settings.getByRole('group', { name: 'Video' }),
     ).toBeInTheDocument();
     await expect(
-      settings.getByRole('button', { name: 'Delete' }),
+      settings.getByRole('button', { name: 'Delete video' }),
     ).toBeInTheDocument();
   },
 };

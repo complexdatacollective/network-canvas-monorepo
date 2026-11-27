@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { inlineValuesFor } from '../../../testing/inlineValues';
+import { withMod } from '../../../testing/modKey';
 import { headingVariants } from '../../../typography/Heading';
 import { paragraphVariants } from '../../../typography/Paragraph';
 import { ToolbarButton, toolbarLabelledButtonStyles } from '../RichTextEditor';
@@ -391,5 +392,61 @@ describe('the toolbar of a single-line field', () => {
       'Italic',
       'Insert emoji',
     ]);
+  });
+});
+
+// One setting decides both what the toolbar offers and what the text can
+// hold: a mark without its button cannot be made from the keyboard either.
+describe('the marks a field allows', () => {
+  const boldHello = doc({
+    type: 'paragraph',
+    content: [{ type: 'text', text: 'Hello', marks: [{ type: 'bold' }] }],
+  });
+
+  it('makes nothing bold or italic where the toolbar offers neither', async () => {
+    const field = renderField({
+      singleLine: true,
+      toolbarOptions: { bold: false, italic: false },
+      value: boldHello,
+    });
+    const editor = await field.editor();
+    expect(toolbar().queryByRole('button', { name: 'Bold' })).toBeNull();
+    expect(toolbar().queryByRole('button', { name: 'Italic' })).toBeNull();
+    // A value given with a bold word shows it plain.
+    expect(editor.querySelector('strong')).toBeNull();
+
+    await field.user.click(editor);
+    await field.user.keyboard(' and **this** and *that*');
+    await waitFor(() => expect(editor).toHaveTextContent(/\*\*this\*\*/));
+    await field.user.keyboard(withMod('a'));
+    await field.user.keyboard(withMod('b'));
+    await field.user.keyboard(withMod('i'));
+
+    expect(editor).toHaveTextContent(/\*\*this\*\* and \*that\*/);
+    expect(editor.querySelector('strong, em')).toBeNull();
+  });
+
+  it('offers bold and italic on one line where they are allowed, by button and by key', async () => {
+    const field = renderField({
+      singleLine: true,
+      toolbarOptions: { bold: true, italic: true },
+      value: doc(paragraph('Hello')),
+    });
+    const editor = await field.editor();
+    expect(toolbar().getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+    expect(
+      toolbar().getByRole('button', { name: 'Italic' }),
+    ).toBeInTheDocument();
+
+    await field.user.click(editor);
+    await field.user.keyboard(withMod('a'));
+    await field.user.keyboard(withMod('b'));
+    await waitFor(() =>
+      expect(editor.querySelector('strong')).toHaveTextContent('Hello'),
+    );
+    await field.user.keyboard(withMod('i'));
+    await waitFor(() =>
+      expect(editor.querySelector('em')).toHaveTextContent('Hello'),
+    );
   });
 });

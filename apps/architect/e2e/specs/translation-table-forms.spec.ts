@@ -489,7 +489,7 @@ test.describe('the translation table, for text that differs between languages', 
       .getByRole('button', { name: 'Logic block', exact: true })
       .click();
     const block = page.getByRole('dialog', {
-      name: 'Logic block',
+      name: 'Logic block settings',
       exact: true,
     });
     await expect(block).toBeVisible();

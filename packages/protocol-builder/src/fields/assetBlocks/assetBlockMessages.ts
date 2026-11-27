@@ -1,5 +1,5 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { ASSET_BLOCK_SIZES, type AssetBlockSize } from '@codaco/shared-consts';
+import type { AssetBlockSize } from '@codaco/shared-consts';
 
 // The ids these messages had as the settings of an item in a page's list of
 // blocks, before a page became one text: the words are the same, so their
@@ -39,25 +39,6 @@ export const messages = defineMessages({
     description:
       'Guidance under the description control of a video placed in the text of a page.',
   },
-  sizeLabel: {
-    id: 'protocolBuilder.assetBlock.sizeLabel',
-    defaultMessage: 'Display size',
-    description:
-      'Label of the control, in the settings of an image or video placed in the text of a page, that chooses how tall it is drawn: Full size, Small, Medium or Large.',
-  },
-  sizeHint: {
-    id: 'protocolBuilder.assetBlock.sizeHint',
-    defaultMessage:
-      'How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.',
-    description:
-      'Guidance under the Display size control of an image or video placed in the text of a page. "This" is the image or video. The handle is a small round dot at a bottom corner of the selected image or video.',
-  },
-  alignLabel: {
-    id: 'protocolBuilder.assetBlock.alignLabel',
-    defaultMessage: 'Alignment',
-    description:
-      'Label of the control, in the settings of an image, audio recording or video placed in the text of a page, that chooses where it sits across the page: where a line of text starts, in the middle, or where a line ends.',
-  },
   imageFileLabel: {
     id: 'protocolBuilder.assetBlock.imageFileLabel',
     defaultMessage: 'Image',
@@ -81,7 +62,7 @@ export const messages = defineMessages({
     defaultMessage:
       'The file shown here. Choosing another keeps the description and other settings.',
     description:
-      'Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. "Here" is this place in the text. "The description and other settings" are this image, recording or video\'s own settings in the same panel (its description, display size, alignment and playback); they stay as they are when a different file is chosen.',
+      'Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. "Here" is this place in the text. "The description and other settings" are this image, recording or video\'s own settings (its description, its size and, for a recording, its playback); they stay as they are when a different file is chosen.',
   },
   sizeFull: {
     id: 'protocolBuilder.contentBlock.sizeFull',
@@ -119,11 +100,29 @@ export const messages = defineMessages({
     description:
       'Label of a checkbox in the settings of an audio recording or video placed in the text of a page participants read. When ticked, the recording starts again from the beginning each time it finishes.',
   },
+  removeImage: {
+    id: 'protocolBuilder.assetBlock.removeImage',
+    defaultMessage: 'Delete image',
+    description:
+      'Button at the end of the settings of an image placed in the text of a page. It takes the image out of the text; the file itself stays in the protocol.',
+  },
+  removeAudio: {
+    id: 'protocolBuilder.assetBlock.removeAudio',
+    defaultMessage: 'Delete audio',
+    description:
+      'Button at the end of the settings of an audio recording placed in the text of a page. It takes the recording out of the text; the file itself stays in the protocol.',
+  },
+  removeVideo: {
+    id: 'protocolBuilder.assetBlock.removeVideo',
+    defaultMessage: 'Delete video',
+    description:
+      'Button at the end of the settings of a video placed in the text of a page. It takes the video out of the text; the file itself stays in the protocol.',
+  },
   remove: {
     id: 'protocolBuilder.assetBlock.remove',
     defaultMessage: 'Delete',
     description:
-      'Button in the settings of an image, audio recording or video placed in the text of a page. It takes the image, recording or video out of the text; the file itself stays in the protocol.',
+      'Button at the end of the settings of a block in the text of a page whose file is not in the protocol, or is not something a page can show. It takes the block out of the text.',
   },
 });
 
@@ -142,12 +141,16 @@ export const FILE_LABELS = {
 /** A size a picture can be drawn at: one of a block's, or its own. */
 export type SizeChoice = AssetBlockSize | 'full';
 
-// As they are offered: as the file is, then smallest first.
-export const SIZE_CHOICES = ['full', ...ASSET_BLOCK_SIZES] as const;
-
 export const SIZE_LABELS = {
   full: messages.sizeFull,
   small: messages.sizeSmall,
   medium: messages.sizeMedium,
   large: messages.sizeLarge,
+} as const;
+
+/** The button that deletes a block, named for the kind of file it shows. */
+export const REMOVE_LABELS = {
+  image: messages.removeImage,
+  audio: messages.removeAudio,
+  video: messages.removeVideo,
 } as const;

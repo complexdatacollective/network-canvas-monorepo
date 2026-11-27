@@ -20,10 +20,7 @@ import {
   conditionProblem,
   type ConditionScope,
 } from '../../rules/ConditionRulesControl.tsx';
-import {
-  LocalizedMessageVersions,
-  numberWordingTemplate,
-} from '../LocalizedMessageField.tsx';
+import { LocalizedMessageVersions } from '../LocalizedMessageField.tsx';
 import VariablePickerField, {
   type VariablePickerOption,
 } from '../VariablePickerField.tsx';
@@ -350,12 +347,23 @@ export function DynamicAttributeControls({
       : intl.formatMessage(messages.reference, { language, wording });
   };
 
+  // The attribute whose answer number wording counts, by name.
+  const countedName =
+    draft.option === 'number'
+      ? attributeOptionsFor(environment, 'number').find(
+          (option) => option.value === draft.value,
+        )?.label
+      : undefined;
+
+  // A label beside its version's wording; each version is spaced from the
+  // next by its own margin.
   const rowClass = compact
-    ? 'grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] items-start gap-x-4 gap-y-1'
-    : 'grid grid-cols-[minmax(0,14rem)_minmax(0,1fr)] items-start gap-x-6 gap-y-1';
+    ? 'grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] items-start gap-x-4 not-last:mb-3'
+    : 'grid grid-cols-[minmax(0,14rem)_minmax(0,1fr)] items-start gap-x-6 not-last:mb-3';
 
   return (
-    <div className="flex flex-col gap-6" data-dynamic-attribute-controls={name}>
+    // Each field is spaced by its own margin.
+    <div data-dynamic-attribute-controls={name}>
       <UnconnectedField
         name={`${name}-logic`}
         label={intl.formatMessage(logicMessages.logicLabel)}
@@ -379,18 +387,7 @@ export function DynamicAttributeControls({
         value={draft.option}
         onChange={(next) => {
           if (!isLogicOption(next) || next === draft.option) return;
-          const changed = draftWithOption(draft, next, choices);
-          onChange(
-            next === 'number' &&
-              (changed.wordings[NUMBER_WORDING]?.[locale] ?? '') === ''
-              ? draftWithWording(
-                  changed,
-                  NUMBER_WORDING,
-                  locale,
-                  numberWordingTemplate(locale),
-                )
-              : changed,
-          );
+          onChange(draftWithOption(draft, next, choices));
         }}
       />
 
@@ -431,8 +428,8 @@ export function DynamicAttributeControls({
         />
       )}
 
-      <section aria-labelledby={headingId} className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
+      <section aria-labelledby={headingId}>
+        <div className="mb-3 flex flex-col gap-1">
           <h3 id={headingId} className="text-base font-semibold">
             {wordingHeading}
           </h3>
@@ -494,6 +491,11 @@ export function DynamicAttributeControls({
                     ariaDescribedBy={note === false ? '' : noteId}
                     ariaInvalid={problem !== undefined}
                     numberWording
+                    // The number is the answer to the attribute it counts,
+                    // and is named for it.
+                    {...(countedName !== undefined && {
+                      valueLabels: { count: countedName },
+                    })}
                   />
                   {note}
                 </div>

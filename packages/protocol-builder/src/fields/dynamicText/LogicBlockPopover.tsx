@@ -1,21 +1,17 @@
-import { Trash2 } from 'lucide-react';
-import { useRef } from 'react';
+import { useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
-import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
-import type { RichTextLogicBlockFieldScope } from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTitle,
-} from '@codaco/fresco-ui/Popover';
+  BlockDeleteButton,
+  type RichTextLogicBlockFieldScope,
+} from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 
 import {
@@ -127,7 +123,7 @@ export const logicBlockMessages = defineMessages({
  * versions with content does. Resolves to whether it was deleted.
  * `onAsking` is told while the question is open.
  */
-export const useLogicBlockRemoval = (
+const useLogicBlockRemoval = (
   remove: () => void,
   branchesWithContent: () => readonly string[],
   onAsking?: (asking: boolean) => void,
@@ -154,7 +150,7 @@ export const useLogicBlockRemoval = (
   };
 };
 
-type LogicBlockPopoverProps = Readonly<{
+type LogicBlockSettingsProps = Readonly<{
   state: LogicBlockState;
   update: (
     meta: unknown,
@@ -165,38 +161,46 @@ type LogicBlockPopoverProps = Readonly<{
   branchesWithContent: () => readonly string[];
   /** Where the document's fields are, seen from the block (fresco-ui's). */
   fieldScope: () => RichTextLogicBlockFieldScope;
-  anchor: HTMLElement;
+  /**
+   * Told while a question that the settings ask (a confirmation) is open
+   * over them: they stay open behind it rather than closing as it takes the
+   * keyboard.
+   */
+  onAsking: (asking: boolean) => void;
+  /** Closes the settings, once the block they belong to is deleted. */
   onClose: () => void;
 }>;
 
 /**
- * The settings of a logic block: its logic, the rules of each condition version
- * of an “If” (or the attribute whose answers or number it reads), and a button
- * to delete it. Each change is made at once, as an edit of the text that undo
- * reverses; a change that removes versions with content, and deleting a block
- * with content, ask first.
+ * The settings of a logic block, drawn in the popover attached to the
+ * settings button in its header (`BlockSettingsPopover`): its logic, the
+ * rules of each condition version of an “If” (or the attribute whose answers
+ * or number it reads), and Delete logic block. Each change is made at once,
+ * as an edit of the text that undo reverses; a change that removes versions
+ * with content, and deleting a block with content, ask first.
+ *
+ * A condition version's problem (no rules, say) is shown once its rules have
+ * been changed in these settings, as a form shows a field's problem once the
+ * field has been changed: a block just put in is not met with errors. The
+ * stage's own list of problems names whatever is left when it is saved.
  */
-export function LogicBlockPopover({
+export function LogicBlockSettings({
   state,
   update,
   remove,
   branchesWithContent,
   fieldScope,
-  anchor,
+  onAsking,
   onClose,
-}: LogicBlockPopoverProps) {
+}: LogicBlockSettingsProps) {
   const intl = useAppIntl();
   const { confirm } = useDialog();
-  // The confirmation is a dialog of its own, outside the popover: the
-  // popover stays open behind it rather than closing as the dialog takes the
-  // keyboard.
-  const confirming = useRef(false);
+  // The condition versions whose rules have been changed here.
+  const [touched, setTouched] = useState<ReadonlySet<string>>(new Set());
   const removeBlock = useLogicBlockRemoval(
     remove,
     branchesWithContent,
-    (asking) => {
-      confirming.current = asking;
-    },
+    onAsking,
   );
   const environment = useDynamicTextEnvironment();
   const { choices, editable, locale } = environment;
@@ -249,7 +253,7 @@ export function LogicBlockPopover({
     const kept = new Set(branches.map(({ key }) => key));
     const dropped = branchesWithContent().filter((key) => !kept.has(key));
     if (dropped.length > 0) {
-      confirming.current = true;
+      onAsking(true);
       const confirmed = await confirm({
         title: intl.formatMessage(logicBlockMessages.dropTitle),
         description: intl.formatMessage(logicBlockMessages.dropDescription, {
@@ -262,7 +266,7 @@ export function LogicBlockPopover({
         dataAttributes: FORM_DOCUMENT_POPUP.attributes,
         onConfirm: () => undefined,
       }).finally(() => {
-        confirming.current = false;
+        onAsking(false);
       });
       if (confirmed !== true) return;
     }
@@ -287,6 +291,7 @@ export function LogicBlockPopover({
   const versionConditions = conditionsOf(state.conditionVersions);
   const rowProblems = Object.fromEntries(
     state.conditionVersions.flatMap((conditionVersion) => {
+      if (!touched.has(conditionVersion.conditionId)) return [];
       const problem = conditionProblem(
         versionConditions[conditionVersion.conditionId] ?? { rules: [] },
         environment.conditions.scope,
@@ -310,164 +315,154 @@ export function LogicBlockPopover({
         }))
       : [];
 
+  // The fields are spaced by their own margins, as every list of fields is,
+  // in a block whose margins collapse into each other.
   return (
-    <Popover
-      open
-      onOpenChange={(open) => {
-        if (!open && !confirming.current) onClose();
-      }}
-    >
-      <PopoverContent
-        anchor={anchor}
-        side="bottom"
-        align="start"
-        // No taller than the room in the window, and scrolled within, so
-        // that every setting can be reached in a short window. Its parts
-        // keep their height and are scrolled to.
-        className="flex max-h-(--available-height) w-[min(40rem,90vw)] flex-col gap-4 overflow-y-auto *:shrink-0"
-      >
-        <PopoverTitle className="text-lg font-semibold">
-          {intl.formatMessage(logicBlockMessages.title)}
-        </PopoverTitle>
-        <UnconnectedField
-          name="logic-block-logic"
-          label={intl.formatMessage(logicMessages.logicLabel)}
-          hint={logicOptionDescription(intl, state.option, subject)}
-          component={SelectField}
-          readOnly={readOnly}
-          options={LOGIC_OPTIONS.map((option) => {
-            const unavailable =
-              option === state.option
-                ? undefined
-                : logicOptionUnavailableReason(intl, option, availability);
-            return {
-              value: option,
-              label: logicOptionLabel(intl, option, subject),
-              // What the option does, or why it cannot be chosen here.
-              description:
-                unavailable ?? logicOptionDescription(intl, option, subject),
-              disabled: unavailable !== undefined,
-            };
-          })}
-          value={state.option}
-          onChange={(next) => {
-            if (!isLogicOption(next) || next === state.option) return;
-            const written: Record<string, ConditionDraft> = {};
-            const changed = logicBlockWithOption(
-              state,
-              next,
-              choices,
-              (when) => {
-                const added = newConditionVersion(when);
-                written[added.conditionVersion.conditionId] = added.condition;
-                return added.conditionVersion;
-              },
-            );
-            void apply(changed, written);
-          }}
-        />
-        {(state.option === 'if' || state.option === 'ifNot') && (
-          <FormAnswerScopeProvider value={formScope}>
-            <ConditionVersions
-              name="logic-block"
-              conditionVersions={state.conditionVersions}
-              conditions={versionConditions}
-              problems={rowProblems}
-              onChange={(conditionVersions, conditions) => {
-                const rowsChanged =
-                  conditionVersions.length !== state.conditionVersions.length ||
-                  conditionVersions.some(
-                    (conditionVersion, index) =>
-                      conditionVersion.conditionId !==
-                      state.conditionVersions[index]?.conditionId,
+    <div className="w-[40rem] max-w-full">
+      <UnconnectedField
+        name="logic-block-logic"
+        label={intl.formatMessage(logicMessages.logicLabel)}
+        hint={logicOptionDescription(intl, state.option, subject)}
+        component={SelectField}
+        readOnly={readOnly}
+        options={LOGIC_OPTIONS.map((option) => {
+          const unavailable =
+            option === state.option
+              ? undefined
+              : logicOptionUnavailableReason(intl, option, availability);
+          return {
+            value: option,
+            label: logicOptionLabel(intl, option, subject),
+            // What the option does, or why it cannot be chosen here.
+            description:
+              unavailable ?? logicOptionDescription(intl, option, subject),
+            disabled: unavailable !== undefined,
+          };
+        })}
+        value={state.option}
+        onChange={(next) => {
+          if (!isLogicOption(next) || next === state.option) return;
+          const written: Record<string, ConditionDraft> = {};
+          const changed = logicBlockWithOption(state, next, choices, (when) => {
+            const added = newConditionVersion(when);
+            written[added.conditionVersion.conditionId] = added.condition;
+            return added.conditionVersion;
+          });
+          void apply(changed, written);
+        }}
+      />
+      {(state.option === 'if' || state.option === 'ifNot') && (
+        <FormAnswerScopeProvider value={formScope}>
+          <ConditionVersions
+            name="logic-block"
+            conditionVersions={state.conditionVersions}
+            conditions={versionConditions}
+            problems={rowProblems}
+            onChange={(conditionVersions, conditions) => {
+              setTouched((before) => {
+                const changed = conditionVersions
+                  .map(({ conditionId }) => conditionId)
+                  // A version just added has not been changed yet.
+                  .filter(
+                    (conditionId) =>
+                      Object.hasOwn(versionConditions, conditionId) &&
+                      conditions[conditionId] !==
+                        versionConditions[conditionId],
                   );
-                const written = Object.fromEntries(
-                  conditionVersions.flatMap((conditionVersion) => {
-                    const condition = conditions[conditionVersion.conditionId];
-                    return condition === undefined
-                      ? []
-                      : [[conditionVersion.conditionId, condition]];
-                  }),
+                return changed.every((conditionId) => before.has(conditionId))
+                  ? before
+                  : new Set([...before, ...changed]);
+              });
+              const rowsChanged =
+                conditionVersions.length !== state.conditionVersions.length ||
+                conditionVersions.some(
+                  (conditionVersion, index) =>
+                    conditionVersion.conditionId !==
+                    state.conditionVersions[index]?.conditionId,
                 );
-                if (rowsChanged) {
-                  void apply({ ...state, conditionVersions }, written);
-                } else {
-                  writeConditions(written);
-                }
-              }}
-            />
-          </FormAnswerScopeProvider>
-        )}
-        {(state.option === 'answers' || state.option === 'number') && (
-          <UnconnectedField
-            name="logic-block-attribute"
-            label={intl.formatMessage(logicBlockMessages.attribute)}
-            component={VariablePickerField}
-            {...(formScope === undefined
-              ? { options: attributeOptions }
-              : {
-                  groups: formAnswerGroups(
-                    attributeOptions,
-                    formScope,
-                    intl,
-                    variableOfChoice,
-                  ),
-                })}
-            readOnly={readOnly}
-            value={state.value}
-            onChange={(next) => {
-              if (
-                typeof next === 'string' &&
-                next !== '' &&
-                next !== state.value
-              ) {
-                void apply(logicBlockWithValue(state, next, choices));
+              const written = Object.fromEntries(
+                conditionVersions.flatMap((conditionVersion) => {
+                  const condition = conditions[conditionVersion.conditionId];
+                  return condition === undefined
+                    ? []
+                    : [[conditionVersion.conditionId, condition]];
+                }),
+              );
+              if (rowsChanged) {
+                void apply({ ...state, conditionVersions }, written);
+              } else {
+                writeConditions(written);
               }
             }}
           />
-        )}
-        {state.option === 'answers' && answerOptions.length > 0 && (
-          <UnconnectedField
-            name="logic-block-answers"
-            label={intl.formatMessage(logicBlockMessages.answersWithVersions)}
-            component={CheckboxGroupField}
-            options={answerOptions}
-            readOnly={readOnly}
-            value={[...state.answerKeys]}
-            onChange={(next) => {
-              const ticked = new Set((next ?? []).map(String));
-              void apply({
-                ...state,
-                // In the attribute's order, whatever order they were ticked in.
-                answerKeys: caseKeysOf(choices, state.value).filter((key) =>
-                  ticked.has(key),
+        </FormAnswerScopeProvider>
+      )}
+      {(state.option === 'answers' || state.option === 'number') && (
+        <UnconnectedField
+          name="logic-block-attribute"
+          label={intl.formatMessage(logicBlockMessages.attribute)}
+          component={VariablePickerField}
+          {...(formScope === undefined
+            ? { options: attributeOptions }
+            : {
+                groups: formAnswerGroups(
+                  attributeOptions,
+                  formScope,
+                  intl,
+                  variableOfChoice,
                 ),
-              });
-            }}
-          />
-        )}
-        {environment.isForm && (
-          <Alert variant="info">
-            <AlertDescription>
-              {intl.formatMessage(logicBlockMessages.formAnswersCleared)}
-            </AlertDescription>
-          </Alert>
-        )}
-        {editable && (
-          <Button
-            size="sm"
-            variant="text"
-            color="destructive"
-            icon={<Trash2 aria-hidden />}
-            className="self-start"
+              })}
+          readOnly={readOnly}
+          value={state.value}
+          onChange={(next) => {
+            if (
+              typeof next === 'string' &&
+              next !== '' &&
+              next !== state.value
+            ) {
+              void apply(logicBlockWithValue(state, next, choices));
+            }
+          }}
+        />
+      )}
+      {state.option === 'answers' && answerOptions.length > 0 && (
+        <UnconnectedField
+          name="logic-block-answers"
+          label={intl.formatMessage(logicBlockMessages.answersWithVersions)}
+          component={CheckboxGroupField}
+          options={answerOptions}
+          readOnly={readOnly}
+          value={[...state.answerKeys]}
+          onChange={(next) => {
+            const ticked = new Set((next ?? []).map(String));
+            void apply({
+              ...state,
+              // In the attribute's order, whatever order they were ticked in.
+              answerKeys: caseKeysOf(choices, state.value).filter((key) =>
+                ticked.has(key),
+              ),
+            });
+          }}
+        />
+      )}
+      {environment.isForm && (
+        <Alert variant="info">
+          <AlertDescription>
+            {intl.formatMessage(logicBlockMessages.formAnswersCleared)}
+          </AlertDescription>
+        </Alert>
+      )}
+      {editable && (
+        <div className="flex justify-end">
+          <BlockDeleteButton
             onClick={async () => {
               if (await removeBlock()) onClose();
             }}
           >
             {intl.formatMessage(logicBlockMessages.remove)}
-          </Button>
-        )}
-      </PopoverContent>
-    </Popover>
+          </BlockDeleteButton>
+        </div>
+      )}
+    </div>
   );
 }

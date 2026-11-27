@@ -556,12 +556,39 @@ describe('the number wording of a dynamic attribute', () => {
     );
   });
 
-  it('offers nothing to put in but its number', async () => {
-    const { popover } = await openSettings();
-    await within(popover).findAllByRole('textbox', { name: /^When it is/ });
-    expect(
-      within(popover).queryByRole('button', { name: 'Attribute' }),
-    ).toBeNull();
+  it('starts each version empty, and offers the number, named for the attribute that it counts, to put in', async () => {
+    const { user, held, popover } = await openSettings();
+    const boxes = await within(popover).findAllByRole('textbox', {
+      name: /^When it is/,
+    });
+    // Nothing is put in for the researcher: no version shows the number
+    // until it is put in.
+    for (const box of boxes) {
+      expect(box.querySelector('[data-inline-value]')).toBeNull();
+    }
+
+    const [one] = boxes;
+    if (one === undefined) throw new Error('No box for 1');
+    await user.click(one);
+    await user.click(
+      within(popover).getByRole('button', { name: 'Attribute' }),
+    );
+    const menu = await screen.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
+    await user.click(within(menu).getByRole('option', { name: /^age/ }));
+    await waitFor(() =>
+      expect(one.querySelector('[data-inline-value]')).toHaveTextContent('age'),
+    );
+    // Only the version that it was put in shows the number.
+    await waitFor(() =>
+      expect(held.current.dynamicAttributes[YEARS]).toMatchObject({
+        wording: {
+          en: '{count, plural, one {# year} other {# years}}',
+          es: '{count, plural, one {#} many {} other {}}',
+        },
+      }),
+    );
   });
 });
 
@@ -600,7 +627,9 @@ describe('a logic block', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Logic block settings' }),
     );
-    const popover = await screen.findByRole('dialog', { name: 'Logic block' });
+    const popover = await screen.findByRole('dialog', {
+      name: 'Logic block settings',
+    });
     await user.click(within(popover).getByRole('checkbox', { name: 'Happy' }));
 
     const confirm = await screen.findByRole('dialog', {
@@ -615,22 +644,30 @@ describe('a logic block', () => {
     expect(held.current.message).toContain('Thanks.');
     // The settings stay open behind the question, and after it.
     expect(
-      screen.getByRole('dialog', { name: 'Logic block' }),
+      screen.getByRole('dialog', { name: 'Logic block settings' }),
     ).toBeInTheDocument();
     expect(
       within(popover).getByRole('checkbox', { name: 'Happy' }),
     ).not.toBeChecked();
 
-    // The block's own button, beside its settings.
+    // Deleting the block is the last of its settings, as every block's is.
     await user.keyboard('{Escape}');
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: 'Logic block' }),
+        screen.queryByRole('dialog', { name: 'Logic block settings' }),
       ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Delete logic block' }),
+    ).toBeNull();
+    await user.click(
+      screen.getByRole('button', { name: 'Logic block settings' }),
     );
     // It still contains content, so deleting it asks first.
     await user.click(
-      await screen.findByRole('button', { name: 'Delete logic block' }),
+      within(
+        await screen.findByRole('dialog', { name: 'Logic block settings' }),
+      ).getByRole('button', { name: 'Delete logic block' }),
     );
     const cancelled = await screen.findByRole('dialog', {
       name: 'Delete logic block?',
@@ -670,7 +707,12 @@ describe('a logic block', () => {
     });
     await screen.findByRole('textbox');
     await user.click(
-      await screen.findByRole('button', { name: 'Delete logic block' }),
+      await screen.findByRole('button', { name: 'Logic block settings' }),
+    );
+    await user.click(
+      within(
+        await screen.findByRole('dialog', { name: 'Logic block settings' }),
+      ).getByRole('button', { name: 'Delete logic block' }),
     );
     await waitFor(() => expect(held.current.message).not.toContain(MOOD));
     expect(
@@ -685,7 +727,7 @@ describe('a logic block', () => {
     await user.click(screen.getByRole('button', { name: 'Logic block' }));
 
     expect(
-      await screen.findByRole('dialog', { name: 'Logic block' }),
+      await screen.findByRole('dialog', { name: 'Logic block settings' }),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(held.current.message).toContain(`{${MOOD}, select,`),

@@ -32,6 +32,7 @@ import {
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { asLocalizedString } from '../localization/localizedText.ts';
 import {
+  countContent,
   countTokenId,
   documentToMessageNodes,
   inlineContent,
@@ -577,21 +578,27 @@ type LocalizedMessageVersionsProps = Readonly<{
   className?: string;
   /**
    * For the number wording of a dynamic attribute (`{count, plural, …}`): a
-   * language without wording yet starts from a version for each of its
-   * plural forms, each showing the number, so that each can be written
-   * (nothing is stored until one is), and the toolbar offers nothing to put
-   * in, since the wording shows no value but its number.
+   * language without wording yet starts from an empty version for each of
+   * its plural forms, so that each can be written (nothing is stored until
+   * one is), and the Attribute menu offers the number, which a version shows
+   * only where it is put in.
    */
   numberWording?: boolean;
+  /**
+   * Names of placeholders, by argument, in place of the names that Network
+   * Canvas gives them: the number of number wording named for the attribute
+   * it counts, say.
+   */
+  valueLabels?: Readonly<Record<string, string>>;
 }>;
 
 /**
- * A plural message on `count` with a version for each of `locale`'s plural
- * forms, each showing only the number: where number wording starts.
+ * A plural message on `count` with an empty version for each of `locale`'s
+ * plural forms: where number wording starts.
  */
-export const numberWordingTemplate = (locale: LocaleTag): string =>
+const numberWordingTemplate = (locale: LocaleTag): string =>
   `{count, plural, ${pluralCategoriesOf(locale)
-    .map((category) => `${category} {#}`)
+    .map((category) => `${category} {}`)
     .join(' ')}}`;
 
 /**
@@ -620,6 +627,7 @@ export function LocalizedMessageVersions({
   autoFocus = false,
   className,
   numberWording = false,
+  valueLabels,
 }: LocalizedMessageVersionsProps) {
   // What the editor opens: the stored translation, or where number wording
   // starts.
@@ -627,7 +635,14 @@ export function LocalizedMessageVersions({
     numberWording && message === '' ? numberWordingTemplate(locale) : message;
   const intl = useAppIntl();
   const labelLanguage = useInterfaceLanguage();
-  const argumentLabels = useMessageArgumentLabels();
+  const ownLabels = useMessageArgumentLabels();
+  const argumentLabels =
+    valueLabels === undefined
+      ? ownLabels
+      : {
+          ...ownLabels,
+          placeholderLabels: { ...ownLabels.placeholderLabels, ...valueLabels },
+        };
   const { valueLabel, labels } = messageNaming(
     declaration,
     locale,
@@ -652,10 +667,21 @@ export function LocalizedMessageVersions({
 
   // What the Attribute menu offers: each placeholder, as a value the
   // interview fills in, and each choice and number as wording with a
-  // version for each of its cases or plural forms.
+  // version for each of its cases or plural forms. Number wording is that
+  // plural's versions, so its number is offered as a value, to put in a
+  // version.
   const entries: SuppliedWordingEntry[] = Object.entries(declaration).map(
     ([argument, declared]): SuppliedWordingEntry => {
       const label = valueLabel(argument);
+      if (numberWording && declared.kind === 'plural') {
+        return {
+          value: `value:${argument}`,
+          label,
+          group: 'interview',
+          required: missingIn(argument),
+          content: countContent(argument),
+        };
+      }
       if (declared.kind === 'text') {
         return {
           value: `value:${argument}`,
@@ -770,15 +796,11 @@ export function LocalizedMessageVersions({
       // A message that is one plural or one choice is those versions and
       // nothing else, so they are listed rather than folded to a pill.
       versions
-      // Number wording shows no value but its number, which each version
-      // already starts with.
-      {...(!numberWording && {
-        // English, as every name in the toolbar is.
-        insertTools: {
-          label: 'Insert an attribute',
-          render: renderInsertTools,
-        },
-      })}
+      // English, as every name in the toolbar is.
+      insertTools={{
+        label: 'Insert an attribute',
+        render: renderInsertTools,
+      }}
       value={
         opened.content ?? { type: 'doc', content: [{ type: 'paragraph' }] }
       }

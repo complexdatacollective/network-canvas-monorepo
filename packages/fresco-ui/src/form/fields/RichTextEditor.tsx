@@ -71,6 +71,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import { useEnclosingHeadingLevel } from '../../typography/EnclosingHeadingLevel';
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
+import { listVariants } from '../../typography/UnorderedList';
 import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { textEntryDirection } from '../textEntryDirection';
@@ -121,6 +122,7 @@ import {
   type RichTextFieldBlockText,
 } from './richText/fieldBlockNode';
 import { documentInSchema } from './richText/fitToSchema';
+import { GapCaret } from './richText/gapCaret';
 import {
   createInlineValueNode,
   INLINE_VALUE_NODE,
@@ -285,6 +287,10 @@ export {
   blockBoxProps,
   BlockTab,
 } from './richText/blockFrames';
+export {
+  BlockDeleteButton,
+  BlockSettingsButton,
+} from './richText/blockButtons';
 
 // The toolbar's buttons for putting in a file, one for each kind of file.
 const ASSET_BLOCK_BUTTONS = [
@@ -384,6 +390,13 @@ type ExtensionOptions = {
    * looks, and states its place below the enclosing heading as `aria-level`.
    */
   enclosingHeadingDepth: number;
+  /**
+   * Whether the text can be bold, and italic: the schema has the mark, so its
+   * keyboard shortcut and typing shortcut work, only where the toolbar
+   * offers its button (`ToolbarOptions.bold`, `ToolbarOptions.italic`).
+   */
+  enableBold: boolean;
+  enableItalic: boolean;
   enableBulletList: boolean;
   enableOrderedList: boolean;
   enableLinks: boolean;
@@ -692,6 +705,8 @@ const ReadSelectionBeforeKeys = Extension.create({
 function createCustomExtensions({
   headingLevels,
   enclosingHeadingDepth,
+  enableBold,
+  enableItalic,
   enableBulletList,
   enableOrderedList,
   enableLinks,
@@ -743,11 +758,16 @@ function createCustomExtensions({
     },
   });
 
+  // Spaced as the interview spaces a list (`listVariants`), with the room
+  // for the markers inside the list, so that its frame takes them in.
   const CustomBulletList = BulletList.extend({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
       return [
         'ul',
-        { ...HTMLAttributes, class: 'ms-8 list-disc [&>li]:not-last:mb-2' },
+        {
+          ...HTMLAttributes,
+          class: listVariants({ kind: 'bullet', indent: 'padding' }),
+        },
         0,
       ];
     },
@@ -757,7 +777,10 @@ function createCustomExtensions({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
       return [
         'ol',
-        { ...HTMLAttributes, class: 'ms-8 list-decimal [&>li]:not-last:mb-2' },
+        {
+          ...HTMLAttributes,
+          class: listVariants({ kind: 'ordered', indent: 'padding' }),
+        },
         0,
       ];
     },
@@ -766,6 +789,13 @@ function createCustomExtensions({
   const extensions: AnyExtension[] = [
     StarterKit.configure({
       blockquote: false,
+      // Drawn as an empty line with a text caret instead (see `GapCaret`).
+      gapcursor: false,
+      // A mark the toolbar does not offer is not in the schema at all, so no
+      // keyboard shortcut (Mod-B, Mod-I) or typing shortcut (`**`, `*`) can
+      // make one, and a value or a paste that holds one loses it.
+      ...(!enableBold && { bold: false as const }),
+      ...(!enableItalic && { italic: false as const }),
       // Replaced below, so the schema's top node holds one paragraph rather
       // than any run of blocks.
       ...(singleLine ? { document: false as const } : {}),
@@ -807,6 +837,7 @@ function createCustomExtensions({
     }),
     CustomParagraph,
     ReadSelectionBeforeKeys,
+    GapCaret,
   ];
 
   // Blocks have frames and handles (see `BlockFrameLayer`) in a document
@@ -1004,6 +1035,12 @@ const editorContentVariants = cva({
   defaultVariants: { blockFrames: false },
 });
 
+/**
+ * What the text can hold and the toolbar offers. Each option is one setting
+ * for both: `bold: false` takes away the Bold button AND bold itself, so
+ * Mod-B, typing `**`, and a pasted or given bold word make nothing bold.
+ * The same goes for italic, links, headings, lists and rules.
+ */
 type ToolbarOptions = {
   bold?: boolean;
   italic?: boolean;
@@ -1533,6 +1570,8 @@ export default function RichTextEditorField({
       createCustomExtensions({
         headingLevels,
         enclosingHeadingDepth,
+        enableBold: options.bold,
+        enableItalic: options.italic,
         enableBulletList: options.lists.bullet,
         enableOrderedList: options.lists.ordered,
         enableLinks: options.links,
@@ -1560,6 +1599,8 @@ export default function RichTextEditorField({
       sources,
       headingLevels,
       enclosingHeadingDepth,
+      options.bold,
+      options.italic,
       options.lists.bullet,
       options.lists.ordered,
       options.links,
@@ -1588,6 +1629,10 @@ export default function RichTextEditorField({
             headingLevels: [],
             // A version holds no headings, so none needs re-levelling.
             enclosingHeadingDepth: 0,
+            // The field's toolbar acts on the version being written, with
+            // the same buttons.
+            enableBold: options.bold,
+            enableItalic: options.italic,
             enableBulletList: false,
             enableOrderedList: false,
             enableLinks: options.links,
@@ -1606,6 +1651,8 @@ export default function RichTextEditorField({
         : [],
     [
       intl.locale,
+      options.bold,
+      options.italic,
       options.links,
       offersInlineValues,
       sources,

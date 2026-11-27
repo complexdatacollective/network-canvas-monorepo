@@ -332,7 +332,7 @@ function LogicBlockView({
       data-selected={selected || undefined}
       // A box of its own, with the smaller corners of a boxed block. Its
       // frame and handle are drawn over the page (see `BlockFrameLayer`).
-      className="border-info/40 relative my-4 rounded-sm border-2 first:mt-0 last:mb-0"
+      className="border-info/40 relative rounded-sm border-2"
     >
       {/*
         Clips what the consumer draws (a header's background, say) to the
@@ -528,7 +528,13 @@ export const createLogicBlockNodes = (
     },
 
     addNodeView() {
-      return ReactNodeViewRenderer(LogicBlockView);
+      // Space below it unless it is the last block, as a paragraph has. On
+      // the element that stands among the document's other blocks (as a
+      // field block's is). The interview draws no block: what it shows is
+      // spaced by its own blocks.
+      return ReactNodeViewRenderer(LogicBlockView, {
+        className: 'not-last:mb-[1em]',
+      });
     },
   });
 

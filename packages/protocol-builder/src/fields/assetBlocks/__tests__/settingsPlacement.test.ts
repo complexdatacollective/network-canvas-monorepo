@@ -7,6 +7,7 @@ import {
   KEEP_OUT_CLEARANCE,
   PLAYER_CONTROLS_HEIGHT,
   SETTINGS_OFFSET,
+  settingsKeptOn,
   settingsPlacement,
 } from '../settingsPlacement.ts';
 
@@ -302,5 +303,33 @@ describe('a block’s settings and the parts of the block they never cover', () 
       }
     }
     expect(misses.slice(0, 5)).toEqual([]);
+  });
+});
+
+describe('a block’s settings as they change height', () => {
+  it('stay on their side, grow away from the button and scroll within, rather than moving', () => {
+    const button = buttonAt(400);
+    const tall: Size = { wide: 360, tall: 2000 };
+    for (const side of ['bottom', 'end', 'start'] as const) {
+      const kept = settingsKeptOn(side, button, tall, ROOM, [], 'ltr', 300);
+      expect(kept.side).toBe(side);
+      expect(kept.scrolls).toBe(true);
+      // Beside the button, the room starts at their top, which stays put.
+      expect(kept.room.top).toBe(side === 'bottom' ? ROOM.top : 300);
+      expect(kept.room.bottom).toBe(ROOM.bottom);
+    }
+    expect(settingsKeptOn('top', button, tall, ROOM)).toMatchObject({
+      side: 'top',
+      scrolls: true,
+      room: ROOM,
+    });
+  });
+
+  it('stop short of what they never cover below them', () => {
+    const button = buttonAt(200);
+    const corner: Box = { top: 600, bottom: 620, left: 860, right: 880 };
+    const kept = settingsKeptOn('bottom', button, SETTINGS, ROOM, [corner]);
+    expect(kept.room.bottom).toBe(corner.top - KEEP_OUT_CLEARANCE);
+    expect(kept.scrolls).toBe(true);
   });
 });

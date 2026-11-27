@@ -97,10 +97,10 @@ export const createAssetBlockView = ({
     const boxRef = useRef<HTMLDivElement>(null);
     const fileRef = useRef<HTMLDivElement>(null);
     const drawn = useDrawnFile(boxRef);
-    // The alignment icons point where the file will sit, which is a matter of
-    // the text's direction and not the interface's: a page written in Arabic
-    // is edited from an English interface, and the other way about. Read at
-    // the block, since the settings stand over the page and not in the text.
+    // The direction of the text, which the block's description is typed in,
+    // and not the interface's: a page written in Arabic is edited from an
+    // English interface, and the other way about. Read at the block, since
+    // the settings stand over the page and not in the text.
     const appDirection = useAppDirection();
     const [direction, setDirection] = useState(appDirection);
     // And the text's language, which the block's description is written in,

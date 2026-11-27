@@ -37,6 +37,7 @@ import {
 
 import { headingVariants } from '../../../typography/Heading';
 import { cx } from '../../../utils/cva';
+import { fieldSpacingVariants } from '../../Field/BaseField';
 import { useBlockHovered } from './blockFrames';
 import { INLINE_VALUE_NODE } from './inlineValueNode';
 import { oneLineContentOf } from './oneLine';
@@ -279,9 +280,10 @@ function FieldBlockView({
 // A field has no border or padding of its own: it is drawn as the interview
 // draws it, and only its frame marks it out (see `BlockFrameLayer`). One
 // whose attribute is not chosen yet has a dashed outline where its frame
-// would be, which takes no room.
+// would be, which takes no room. Its spacing is on the element the editor
+// draws round the view (see `addNodeView`).
 const FIELD_BLOCK_CLASSES =
-  'relative my-6 rounded-sm outline-offset-4 first:mt-0 last:mb-0 data-indeterminate:outline-2 data-indeterminate:outline-current/30 data-indeterminate:outline-dashed';
+  'relative rounded-sm outline-offset-4 data-indeterminate:outline-2 data-indeterminate:outline-current/30 data-indeterminate:outline-dashed';
 
 // The label looks as the interview's field label does, the hint as its hint.
 // An empty one shows its placeholder (`data-placeholder`, set below).
@@ -717,7 +719,13 @@ export const createFieldBlockNodes = (
     },
 
     addNodeView() {
-      return ReactNodeViewRenderer(FieldBlockView);
+      // Spaced as the interview spaces a field. On the element the editor
+      // draws round the view, which stands among the document's other
+      // blocks: on the view itself, "unless it is the last" would always
+      // find it the last, as the only thing in that element.
+      return ReactNodeViewRenderer(FieldBlockView, {
+        className: fieldSpacingVariants(),
+      });
     },
   });
 

@@ -1,9 +1,9 @@
-import { Plus, Settings2, Split, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Split } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Button, IconButton } from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
 import type {
   RichTextLogicBlocks,
   RichTextLogicBlockViewProps,
@@ -15,6 +15,7 @@ import {
   logicBlockMetaOf,
   conditionVersionMetaOf,
 } from '../../localization/messageDocument.ts';
+import { BlockSettingsPopover } from '../BlockSettingsPopover.tsx';
 import { VariablePill } from '../VariablePill.tsx';
 import { useDynamicTextEnvironment } from './editorEnvironment.ts';
 import {
@@ -25,8 +26,7 @@ import {
 } from './logicBlockModel.ts';
 import {
   logicBlockMessages,
-  LogicBlockPopover,
-  useLogicBlockRemoval,
+  LogicBlockSettings,
 } from './LogicBlockPopover.tsx';
 import { logicOptionLabel } from './logicOptions.ts';
 import { logicVersionLabel } from './versionLabels.ts';
@@ -54,8 +54,9 @@ const messages = defineMessages({
 
 /**
  * A logic block in researcher text: its heading (what decides which branch
- * is shown), its branches, and its settings, which open from the heading
- * and as the block is put in.
+ * is shown), its branches, and its settings, which open from the settings
+ * button in the heading (the same button, attached to its settings in the
+ * same way, as every other block's) and as the block is put in.
  */
 function LogicBlockView({
   meta,
@@ -64,8 +65,6 @@ function LogicBlockView({
   editable,
   update,
   remove,
-  select,
-  element,
   fieldScope,
   branchesWithContent,
 }: RichTextLogicBlockViewProps) {
@@ -73,11 +72,19 @@ function LogicBlockView({
   const environment = useDynamicTextEnvironment();
   const { pendingLogicBlock, setPendingLogicBlock } = environment;
   const { name: languageName } = useLanguageNaming();
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
+  // Counts the openings of the settings, so that each starts afresh.
+  const [openings, setOpenings] = useState(0);
+  // Set while the settings ask a question over themselves.
+  const asking = useRef(false);
   const state = logicBlockStateOf(meta, branches);
 
-  const openSettings = () => setAnchor(element());
-  const removeBlock = useLogicBlockRemoval(remove, branchesWithContent);
+  const setSettingsOpen = (next: boolean) => {
+    if (!next && asking.current) return;
+    if (next && !open) setOpenings((count) => count + 1);
+    setOpen(next);
+  };
+  const openSettings = () => setSettingsOpen(true);
   const pill =
     (state.option === 'answers' || state.option === 'number') &&
     state.value !== undefined &&
@@ -107,9 +114,8 @@ function LogicBlockView({
       // is drawn. A new function on each render, so React calls it again
       // after the toolbar names the block.
       ref={(node) => {
-        // The toolbar names the block by the element the editor drew it in.
-        // Refs are set from the inside out, so the frame (`element`) is not
-        // set yet as this one is: the block is found from this element.
+        // The toolbar names the block by the element the editor drew it in,
+        // which contains this one.
         if (
           node === null ||
           pendingLogicBlock === null ||
@@ -118,7 +124,7 @@ function LogicBlockView({
           return;
         }
         setPendingLogicBlock(null);
-        setAnchor(node.closest<HTMLElement>('[data-logic-block-view]') ?? node);
+        openSettings();
       }}
       className="flex flex-col"
       data-logic-block={state.option}
@@ -138,26 +144,27 @@ function LogicBlockView({
           </span>
           {pill}
         </span>
-        <IconButton
-          size="sm"
-          variant="text"
-          aria-label="Logic block settings"
-          icon={<Settings2 aria-hidden />}
-          onClick={() => {
-            select();
-            openSettings();
-          }}
-        />
-        {editable && (
-          <IconButton
-            size="sm"
-            variant="text"
-            color="destructive"
-            aria-label="Delete logic block"
-            icon={<Trash2 aria-hidden />}
-            onClick={() => void removeBlock()}
+        <BlockSettingsPopover
+          name="Logic block settings"
+          open={open}
+          onOpenChange={setSettingsOpen}
+          // Selecting the block would move focus into the text, which
+          // closes the settings: they open over the block as it is.
+          select={() => undefined}
+        >
+          <LogicBlockSettings
+            key={openings}
+            state={state}
+            update={update}
+            remove={remove}
+            branchesWithContent={branchesWithContent}
+            fieldScope={fieldScope}
+            onAsking={(next) => {
+              asking.current = next;
+            }}
+            onClose={() => setSettingsOpen(false)}
           />
-        )}
+        </BlockSettingsPopover>
       </div>
       {content}
       {editable && missingAnswers.length > 0 && (
@@ -187,17 +194,6 @@ function LogicBlockView({
             })}
           </Button>
         </div>
-      )}
-      {anchor !== null && (
-        <LogicBlockPopover
-          state={state}
-          update={update}
-          remove={remove}
-          branchesWithContent={branchesWithContent}
-          fieldScope={fieldScope}
-          anchor={anchor}
-          onClose={() => setAnchor(null)}
-        />
       )}
     </div>
   );

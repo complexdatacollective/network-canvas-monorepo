@@ -22,7 +22,6 @@ import ResourceBrowserDialog from '../resources/components/ResourceBrowserDialog
 import ResourceCard from '../resources/components/ResourceCard.tsx';
 import ResourceFailureNotice from '../resources/components/ResourceFailureNotice.tsx';
 import {
-  RESOURCE_KIND_ICONS,
   RESOURCE_PICKER_COPY,
   type ResourcePickerKind,
 } from '../resources/components/resourceKinds.ts';
@@ -156,19 +155,6 @@ export type AssetPickerFieldProps = CreateFormFieldProps<
      */
     canvasBackgroundPreview?: boolean;
     /**
-     * How the resource is shown. `card` (the default): a card with a picture
-     * over its details, a button under it to change it, and, for a file
-     * imported since the stage was opened, a button on the card to discard
-     * it. `line`: the resource's name, marked with its kind, and a button to
-     * change it, on one line. For a field among dense settings beside the
-     * resource itself, such as those of an image placed in a text, where the
-     * picture is drawn just above and the card would only make them longer.
-     * A line offers no discard: such settings have their own way of taking
-     * the file away (deleting the image), and two destructive buttons side by
-     * side would leave the researcher to work out which one keeps the file.
-     */
-    layout?: 'card' | 'line';
-    /**
      * Told when the resource browser opens and closes. For a field drawn in
      * a popup, which would otherwise stand over the browser it opened.
      */
@@ -196,7 +182,6 @@ export default function AssetPickerField({
   kind,
   canUseExisting = false,
   canvasBackgroundPreview = false,
-  layout = 'card',
   onBrowserOpenChange,
   disabled = false,
   readOnly = false,
@@ -247,8 +232,6 @@ export default function AssetPickerField({
   const { inspection, busy, failure, retry } =
     useResourceInspection(selectedId);
   const descriptor: ResourceDescriptor | undefined = inspection?.descriptor;
-  const KindIcon =
-    descriptor === undefined ? undefined : RESOURCE_KIND_ICONS[descriptor.kind];
   const locked = disabled || readOnly;
   /**
    * Whether another resource may be chosen right now.
@@ -334,18 +317,13 @@ export default function AssetPickerField({
 
   const showPicker = !usesInterviewNetwork || askedForResource;
 
-  // The one way to choose another resource: under the card, or at the end
-  // of the line, quieter there among the settings around it.
+  // The one way to choose another resource, under the card.
   const browseButton = (
     <Button
       type="button"
-      {...(layout === 'line'
-        ? { size: 'sm', className: 'flex-none' }
-        : {
-            color: 'primary',
-            className: 'self-start',
-            icon: <Plus aria-hidden="true" />,
-          })}
+      color="primary"
+      className="self-start"
+      icon={<Plus aria-hidden="true" />}
       disabled={!canBrowse}
       onClick={() => setBrowserOpen(true)}
     >
@@ -423,52 +401,17 @@ export default function AssetPickerField({
       {showPicker && (
         <div
           className={cx(
-            layout === 'line'
-              ? 'flex w-full min-w-0 flex-col gap-2'
-              : [
-                  pickerChromeVariants({
-                    state: getInputState({
-                      disabled,
-                      readOnly,
-                      'aria-invalid': ariaInvalid,
-                    }),
-                  }),
-                  'mt-3 flex w-full min-w-0 flex-col items-start overflow-visible whitespace-normal',
-                ],
+            pickerChromeVariants({
+              state: getInputState({
+                disabled,
+                readOnly,
+                'aria-invalid': ariaInvalid,
+              }),
+            }),
+            'mt-3 flex w-full min-w-0 flex-col items-start overflow-visible whitespace-normal',
           )}
         >
-          {layout === 'line' && (
-            <div className="flex w-full min-w-0 items-center gap-3">
-              {descriptor === undefined ? (
-                <Paragraph
-                  margin="none"
-                  emphasis="muted"
-                  className="min-w-0 flex-1"
-                >
-                  {selectedId === undefined
-                    ? intl.formatMessage(messages.noSelection)
-                    : null}
-                </Paragraph>
-              ) : (
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  {KindIcon !== undefined && (
-                    <KindIcon aria-hidden className="size-4 flex-none" />
-                  )}
-                  {/* A name the researcher or their files gave: read in its
-                      own direction, on the interface's side. */}
-                  <span
-                    dir="auto"
-                    className="text-match-parent min-w-0 truncate font-semibold"
-                  >
-                    {Redacted.value(descriptor.name)}
-                  </span>
-                </span>
-              )}
-              {browseButton}
-            </div>
-          )}
-
-          {layout === 'card' && selectedId === undefined && (
+          {selectedId === undefined && (
             <Paragraph margin="none" emphasis="muted">
               {intl.formatMessage(messages.noSelection)}
             </Paragraph>
@@ -505,36 +448,34 @@ export default function AssetPickerField({
               </div>
             )}
 
-          {layout === 'card' &&
-            inspection !== undefined &&
-            descriptor !== undefined && (
-              /*
+          {inspection !== undefined && descriptor !== undefined && (
+            /*
                 Nothing on the card manages the resource: saving a copy and
                 deleting one are the resource library's own actions. The
                 exception is a file imported since this stage was opened,
                 which is not in the protocol yet and which this card is the
                 only place to undo.
               */
-              <ResourceCard
-                inspection={inspection}
-                previewShape={canvasBackgroundPreview ? 'canvas' : 'thumbnail'}
-                {...(descriptor.status === 'staged'
-                  ? {
-                      actions: (
-                        <Button
-                          type="button"
-                          size="sm"
-                          color="destructive"
-                          disabled={locked || action.busy}
-                          onClick={handleDiscard}
-                        >
-                          {intl.formatMessage(messages.discard)}
-                        </Button>
-                      ),
-                    }
-                  : {})}
-              />
-            )}
+            <ResourceCard
+              inspection={inspection}
+              previewShape={canvasBackgroundPreview ? 'canvas' : 'thumbnail'}
+              {...(descriptor.status === 'staged'
+                ? {
+                    actions: (
+                      <Button
+                        type="button"
+                        size="sm"
+                        color="destructive"
+                        disabled={locked || action.busy}
+                        onClick={handleDiscard}
+                      >
+                        {intl.formatMessage(messages.discard)}
+                      </Button>
+                    ),
+                  }
+                : {})}
+            />
+          )}
 
           {refusal !== undefined && (
             <div className="flex flex-col items-start gap-2">
@@ -567,7 +508,7 @@ export default function AssetPickerField({
             />
           )}
 
-          {layout === 'card' && browseButton}
+          {browseButton}
         </div>
       )}
 

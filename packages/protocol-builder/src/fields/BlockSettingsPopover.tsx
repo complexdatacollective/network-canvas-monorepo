@@ -1,4 +1,3 @@
-import { Settings2 } from 'lucide-react';
 import {
   type ReactNode,
   type RefObject,
@@ -8,9 +7,8 @@ import {
   useState,
 } from 'react';
 
-import { IconButton } from '@codaco/fresco-ui/Button';
 import {
-  blockActionProps,
+  BlockSettingsButton,
   firstSettingsControlIn,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { surfaceSpacingVariants } from '@codaco/fresco-ui/layout/Surface';
@@ -69,6 +67,18 @@ const isInSettings = (
   return (
     (popup?.contains(target) ?? false) || (button?.contains(target) ?? false)
   );
+};
+
+// Whether `target` is in a dialog other than the settings whose panel is
+// `panel`: one shown over them.
+const isInDialogOver = (
+  panel: HTMLElement | null,
+  target: EventTarget | null,
+): boolean => {
+  if (!(target instanceof Element)) return false;
+  const dialog = target.closest('[role="dialog"], [role="alertdialog"]');
+  const popup = panel?.closest('[role="dialog"]') ?? panel;
+  return dialog !== null && dialog !== popup;
 };
 
 type BlockSettingsPopoverProps = Readonly<{
@@ -156,6 +166,16 @@ export function BlockSettingsPopover({
         ) {
           return;
         }
+        // Nor is a press in a dialog that a setting opened over them (a
+        // question to confirm, the rule editor): while one is open, nothing
+        // else on the page can be pressed.
+        if (
+          !next &&
+          details.reason === 'outside-press' &&
+          isInDialogOver(panel, details.event.target)
+        ) {
+          return;
+        }
         // Escape closes only the popup that focus is in: a list that a
         // setting opened over the page closes, and the settings stay.
         if (
@@ -172,15 +192,9 @@ export function BlockSettingsPopover({
       <PopoverTrigger
         ref={buttonRef}
         nativeButton
-        render={
-          <IconButton
-            size="sm"
-            variant="text"
-            aria-label={name}
-            icon={<Settings2 aria-hidden />}
-          />
-        }
-        {...blockActionProps}
+        // The one settings button of every block: in the selected colour
+        // while its settings are open, and pressed by Enter on the block.
+        render={<BlockSettingsButton name={name} />}
       />
       <span
         ref={coveredRef}

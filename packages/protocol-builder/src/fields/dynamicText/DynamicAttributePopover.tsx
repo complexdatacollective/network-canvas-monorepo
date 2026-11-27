@@ -108,11 +108,11 @@ export function DynamicAttributePopover({
         side="bottom"
         align="start"
         // No taller than the room in the window, and scrolled within, so
-        // that every setting can be reached in a short window. Its parts
-        // keep their height and are scrolled to.
-        className="flex max-h-(--available-height) w-[min(40rem,90vw)] flex-col gap-4 overflow-y-auto *:shrink-0"
+        // that every setting can be reached in a short window. Its fields
+        // are spaced by their own margins.
+        className="max-h-(--available-height) w-[min(40rem,90vw)] overflow-y-auto"
       >
-        <PopoverTitle className="text-lg font-semibold">
+        <PopoverTitle className="mb-4 text-lg font-semibold">
           {intl.formatMessage(messages.title)}
         </PopoverTitle>
         {draft === undefined ? (
@@ -157,7 +157,7 @@ export function DynamicAttributePopover({
             variant="text"
             color="destructive"
             icon={<Trash2 aria-hidden />}
-            className="self-start"
+            className="mt-6"
             onClick={onRemove}
           >
             {intl.formatMessage(messages.remove)}

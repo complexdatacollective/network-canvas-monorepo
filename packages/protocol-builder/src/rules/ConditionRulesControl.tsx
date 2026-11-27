@@ -183,7 +183,8 @@ export function ConditionRulesControl({
     [about, allowEgoRules],
   );
   return (
-    <div className="flex flex-col gap-4">
+    // Each field is spaced by its own margin.
+    <div>
       {aboutChoices.length > 1 && (
         <UnconnectedField
           name={`${name}-about`}

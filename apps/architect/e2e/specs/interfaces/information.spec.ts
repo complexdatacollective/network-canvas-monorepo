@@ -90,16 +90,13 @@ test('places an image in the text from the toolbar, with its settings', async ({
   await expect(resourceBrowser).toBeHidden();
 
   // The image just placed is selected; its settings open from the button in
-  // its tab. An image has a size and a description, and no playback. With
-  // no description yet, it is named for its file.
+  // its tab. An image has a description, and no playback; it is sized by
+  // dragging its corner, so a new one has no size. With no description yet,
+  // it is named for its file.
   const blocks = new AssetBlocks(architectPage);
   await expect(blocks.image('photo.svg')).toBeVisible();
   const settings = await blocks.openSettings(blocks.block('photo.svg'));
   await settings.getByLabel('Description', { exact: true }).fill('A photo');
-  await settings
-    .getByRole('group', { name: 'Display size' })
-    .getByText('Medium', { exact: true })
-    .click();
   await expect(settings.getByLabel('Start playing automatically')).toHaveCount(
     0,
   );
@@ -110,7 +107,7 @@ test('places an image in the text from the toolbar, with its settings', async ({
     (pageText(saved) ?? '').includes('asset:photo-asset'),
   );
   expect(pageText(stage)).toBe(
-    '# Welcome\n\nLook at this.\n\n![A photo](asset:photo-asset?size=medium)',
+    '# Welcome\n\nLook at this.\n\n![A photo](asset:photo-asset)',
   );
 });
 
@@ -128,7 +125,9 @@ test('deletes a placed image from the text, keeping its file among the resources
 
   // Clicking a block selects it; its settings open from its tab.
   const settings = await blocks.openSettings(blocks.block('A photo'));
-  await settings.getByRole('button', { name: 'Delete', exact: true }).click();
+  await settings
+    .getByRole('button', { name: 'Delete image', exact: true })
+    .click();
   await expect(blocks.image('A photo')).toHaveCount(0);
 
   await new StageEditor(architectPage).save();
@@ -254,10 +253,8 @@ test('resizes an image by dragging its corner, a size at a time', async ({
   await expect(pill('Small')).toBeVisible();
   await architectPage.mouse.up();
 
-  // Let go, the settings come back with the new size chosen.
-  await expect(
-    settings.getByRole('button', { name: 'Small', exact: true, pressed: true }),
-  ).toBeVisible();
+  // Let go, the settings come back.
+  await expect(settings).toBeVisible();
 
   await blocks.saveFromText('Bye.');
   const stage = await readStageJson(architectPage, 0, (saved) =>
@@ -371,22 +368,12 @@ test('replaces the file of a placed image, keeping its settings', async ({
   await architectPage.keyboard.press('Enter');
   await expect(settings).toBeVisible();
 
-  // The block now shows the other file, under the same description, size and
-  // alignment.
+  // The block now shows the other file, under the same description; its size
+  // and alignment are kept in the saved text below.
   await expect(file.getByText('garden.svg', { exact: true })).toBeVisible();
   await expect(settings.getByLabel('Description', { exact: true })).toHaveValue(
     'A photo',
   );
-  await expect(
-    settings.getByRole('button', { name: 'Small', exact: true, pressed: true }),
-  ).toBeVisible();
-  await expect(
-    settings.getByRole('button', {
-      name: 'Align to the end',
-      exact: true,
-      pressed: true,
-    }),
-  ).toBeVisible();
 
   await blocks.saveFromText('Bye.');
   const stage = await readStageJson(architectPage, 0, (saved) =>
@@ -466,7 +453,10 @@ test('reaches and uses Delete in a video’s settings in a short window', async 
   if (box === null) throw new Error('Nothing is drawn');
   expect(box.y).toBeGreaterThanOrEqual(bars.top);
   expect(box.y + box.height).toBeLessThanOrEqual(bars.bottom);
-  const remove = settings.getByRole('button', { name: 'Delete', exact: true });
+  const remove = settings.getByRole('button', {
+    name: 'Delete video',
+    exact: true,
+  });
   // Delete is out of sight, and the edge it is hidden behind fades, so that
   // there is evidently more.
   const hidden = await remove.evaluate(
@@ -642,11 +632,9 @@ for (const [where, top] of [
     // Seen whole where they are, without scrolling the page or the settings.
     for (const part of [
       settings.getByLabel('Description', { exact: true }),
-      settings.getByRole('group', { name: 'Display size' }),
-      settings.getByRole('group', { name: 'Alignment' }),
       settings.getByRole('group', { name: 'Image', exact: true }),
       settings.getByRole('button', { name: 'Change the image', exact: true }),
-      settings.getByRole('button', { name: 'Delete', exact: true }),
+      settings.getByRole('button', { name: 'Delete image', exact: true }),
     ]) {
       await expect(part).toBeInViewport({ ratio: 1 });
     }

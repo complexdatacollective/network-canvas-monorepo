@@ -243,7 +243,17 @@ export const settingsPlacement = (
   for (const side of SIDES) {
     const box = standingOn(side, button, settings, room, direction);
     if (box !== null && !keepOut.some((part) => comesNear(box, part))) {
-      return { side, room, scrolls: false };
+      // Beside the button, the room starts where they do, so that the
+      // popover, which moves them along the button's side to keep them in
+      // the room, keeps their top there as they grow (`settingsKeptOn`).
+      return {
+        side,
+        room:
+          side === 'bottom' || side === 'top'
+            ? room
+            : { ...room, top: box.top },
+        scrolls: false,
+      };
     }
   }
   const top = button.bottom + SETTINGS_OFFSET;
@@ -269,6 +279,73 @@ export const settingsPlacement = (
   const roomAbove = button.top - SETTINGS_OFFSET - room.top;
   if (roomAbove > bottom - top) return { side: 'top', room, scrolls: true };
   return { side: 'bottom', room: { ...room, bottom }, scrolls: true };
+};
+
+/**
+ * Where a block's settings stand once they are open and have changed size (a
+ * section in them opened or closed): on the side they opened on, with the
+ * edge that faces the button where it was. They grow away from the button,
+ * and are cut short and scroll within where the room on that side ends, or
+ * where something in `keepOut` below them begins (`KEEP_OUT_CLEARANCE` short
+ * of it). Moving them to another side, or cutting them short to fit the room
+ * of another, would move the control the researcher has just used out from
+ * under the pointer.
+ *
+ * Beside the button, their top stays at `standingTop`, where they stand now:
+ * the room they keep inside starts there, so that the popover, which moves
+ * settings along the side of the button to keep them in the room, cuts them
+ * short instead of moving them up.
+ */
+export const settingsKeptOn = (
+  side: SettingsSide,
+  button: Box,
+  settings: Readonly<{ wide: number; tall: number }>,
+  room: Box,
+  keepOut: readonly Box[] = [],
+  direction: 'ltr' | 'rtl' = 'ltr',
+  standingTop?: number,
+): SettingsPlacement => {
+  if (side === 'top') {
+    const roomAbove = button.top - SETTINGS_OFFSET - room.top;
+    return { side, room, scrolls: settings.tall > roomAbove };
+  }
+  const wide = Math.min(settings.wide, room.right - room.left);
+  const across = (button.left + button.right) / 2;
+  let left: number;
+  let top: number;
+  if (side === 'bottom') {
+    const end =
+      direction === 'rtl'
+        ? linedUpWith(button.left, across, -1) + wide
+        : linedUpWith(button.right, across, 1);
+    left = clamp(end - wide, room.left, room.right - wide);
+    top = button.bottom + SETTINGS_OFFSET;
+  } else {
+    const onTheRight = (side === 'end') === (direction === 'ltr');
+    left = onTheRight
+      ? button.right + SETTINGS_OFFSET
+      : button.left - SETTINGS_OFFSET - wide;
+    top = Math.max(
+      standingTop ??
+        linedUpWith(button.top, (button.top + button.bottom) / 2, -1),
+      room.top,
+    );
+  }
+  // Whatever of `keepOut` they would come near across, below their top.
+  const below = keepOut
+    .filter(
+      (part) =>
+        part.bottom > top &&
+        part.left < left + wide + SETTINGS_OFFSET &&
+        part.right > left - SETTINGS_OFFSET,
+    )
+    .map((part) => part.top - KEEP_OUT_CLEARANCE);
+  const bottom = Math.min(room.bottom, ...below);
+  return {
+    side,
+    room: { ...room, ...(side !== 'bottom' && { top }), bottom },
+    scrolls: settings.tall > bottom - top,
+  };
 };
 
 /**
@@ -346,9 +423,11 @@ type SettingsPlacementSource = Readonly<{
 }>;
 
 /**
- * Where a block's settings stand beside its settings button
- * (`settingsPlacement`), kept up while they are open as the page scrolls,
- * the window changes size and the settings change height.
+ * Where a block's settings stand beside its settings button: chosen
+ * (`settingsPlacement`) as they open, and again as the page scrolls or the
+ * window changes size; kept on the side they stand on while they change
+ * height (`settingsKeptOn`), so that opening a section in them does not move
+ * them. Scrolling inside the settings is not the page scrolling.
  */
 export function useSettingsPlacement({
   open,
@@ -372,23 +451,41 @@ export function useSettingsPlacement({
   useLayoutEffect(() => {
     if (!open || panel === null) return undefined;
     let frame: number | undefined;
+    // The side they stand on, once chosen; and whether the page has moved
+    // under them since (a scroll, a change of the window's size), so that it
+    // is chosen again.
+    let standing: SettingsSide | undefined;
+    let moved = true;
     const measure = () => {
       frame = undefined;
       const button = buttonRef.current;
       if (button === null) return;
       const shown = shownBy(scroller);
       const covered = clearanceOf(coveredAt(probeRef.current));
-      const { side, room, scrolls } = settingsPlacement(
-        button.getBoundingClientRect(),
-        popupSizeAround(panel),
-        {
-          ...shown,
-          top: shown.top + covered.top,
-          bottom: shown.bottom - covered.bottom,
-        },
-        latestKeepOut.current?.() ?? [],
-        direction,
-      );
+      const at = button.getBoundingClientRect();
+      const size = popupSizeAround(panel);
+      const roomShown = {
+        ...shown,
+        top: shown.top + covered.top,
+        bottom: shown.bottom - covered.bottom,
+      };
+      const keptOut = latestKeepOut.current?.() ?? [];
+      const { side, room, scrolls } =
+        moved || standing === undefined
+          ? settingsPlacement(at, size, roomShown, keptOut, direction)
+          : settingsKeptOn(
+              standing,
+              at,
+              size,
+              roomShown,
+              keptOut,
+              direction,
+              (
+                panel.closest('[role="dialog"]') ?? panel
+              ).getBoundingClientRect().top,
+            );
+      moved = false;
+      standing = side;
       const next: SettingsLayout = {
         side: physicalSide(side, direction),
         align: side === 'top' || side === 'bottom' ? 'end' : 'start',
@@ -405,24 +502,36 @@ export function useSettingsPlacement({
     const schedule = () => {
       frame ??= requestAnimationFrame(measure);
     };
+    const pageMoved = () => {
+      moved = true;
+      schedule();
+    };
+    // Scrolling inside the settings (as a control in them takes focus) is
+    // not the page moving under them.
+    const scrolled = (event: Event) => {
+      const popup = panel.closest('[role="dialog"]') ?? panel;
+      if (event.target instanceof Node && popup.contains(event.target)) return;
+      pageMoved();
+    };
     measure();
-    window.addEventListener('scroll', schedule, {
+    window.addEventListener('scroll', scrolled, {
       capture: true,
       passive: true,
     });
-    window.addEventListener('resize', schedule);
-    const observer =
+    window.addEventListener('resize', pageMoved);
+    const observers =
       typeof ResizeObserver === 'undefined'
-        ? undefined
-        : new ResizeObserver(schedule);
-    for (const child of panel.children) observer?.observe(child);
-    if (buttonRef.current !== null) observer?.observe(buttonRef.current);
-    if (scroller !== undefined) observer?.observe(scroller);
+        ? []
+        : [new ResizeObserver(schedule), new ResizeObserver(pageMoved)];
+    const [settingsObserver, pageObserver] = observers;
+    for (const child of panel.children) settingsObserver?.observe(child);
+    if (buttonRef.current !== null) pageObserver?.observe(buttonRef.current);
+    if (scroller !== undefined) pageObserver?.observe(scroller);
     return () => {
       if (frame !== undefined) cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', schedule, { capture: true });
-      window.removeEventListener('resize', schedule);
-      observer?.disconnect();
+      window.removeEventListener('scroll', scrolled, { capture: true });
+      window.removeEventListener('resize', pageMoved);
+      for (const observer of observers) observer.disconnect();
     };
   }, [open, buttonRef, panel, scroller, probeRef, direction]);
   return layout;

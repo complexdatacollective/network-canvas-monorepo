@@ -3,7 +3,6 @@ import type { JSONContent } from '@tiptap/react';
 import {
   Braces,
   Image as ImageIcon,
-  Settings2,
   Split,
   TextCursorInput,
 } from 'lucide-react';
@@ -16,8 +15,9 @@ import { withMod } from '../../testing/modKey';
 import { cx } from '../../utils/cva';
 import RichTextEditorField, {
   assetBlockFileProps,
-  blockActionProps,
   blockBoxProps,
+  BlockDeleteButton,
+  BlockSettingsButton,
   BlockTab,
   type RichTextAssetBlockViewProps,
   type RichTextFieldBlocks,
@@ -85,19 +85,10 @@ function StoryFieldView({
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger
               nativeButton
-              render={
-                <button
-                  type="button"
-                  aria-label="Field settings"
-                  className="focusable flex size-7 items-center justify-center rounded-full"
-                >
-                  <Settings2 aria-hidden className="size-4" />
-                </button>
-              }
-              {...blockActionProps}
+              render={<BlockSettingsButton name="Field settings" />}
             />
             <PopoverContent align="end" aria-label="Field settings">
-              <button type="button">Delete field</button>
+              <BlockDeleteButton>Delete field</BlockDeleteButton>
             </PopoverContent>
           </Popover>
         </BlockTab>
@@ -168,14 +159,7 @@ function StoryAssetView({
       <span className="sr-only">{attributes.assetId}</span>
       {(hovered || (selected && active)) && (
         <BlockTab selected={selected && active}>
-          <button
-            type="button"
-            aria-label="Image settings"
-            className="focusable flex size-7 items-center justify-center rounded-full"
-            {...blockActionProps}
-          >
-            <Settings2 aria-hidden className="size-4" />
-          </button>
+          <BlockSettingsButton name="Image settings" />
         </BlockTab>
       )}
     </div>
@@ -853,7 +837,10 @@ const visibleHandle = (editor: Element): HTMLElement => {
   return handle;
 };
 
-/** The handle of `section`, with the pointer over it (see `pointAt`). */
+/**
+ * The handle of `section`, with the pointer over it (see `pointAt`): beside
+ * it, level with it. The block under the pointer has no frame.
+ */
 const handleOf = async (
   editor: Element,
   section: Element,
@@ -862,18 +849,15 @@ const handleOf = async (
   pointAt(section, where);
   return waitFor(() => {
     const handle = visibleHandle(editor);
-    const frame = editor
-      .closest('[data-block-frames-host]')
-      ?.querySelector('[data-block-frame="hovered"]');
-    if (frame === null || frame === undefined) throw new Error('No frame');
-    // The frame is round `section`: 4px or more outside it, on every side.
-    const drawn = frame.getBoundingClientRect();
+    const grip = handle.getBoundingClientRect();
     const box = section.getBoundingClientRect();
-    expect(drawn.left).toBeLessThan(box.left);
-    expect(drawn.right).toBeGreaterThan(box.right);
-    expect(drawn.top).toBeLessThan(box.top);
-    expect(drawn.bottom).toBeGreaterThan(box.bottom);
-    expect(drawn.top).toBeGreaterThan(box.top - 13);
+    expect(grip.top).toBeGreaterThanOrEqual(box.top - grip.height / 2);
+    expect(grip.bottom).toBeLessThanOrEqual(box.bottom + grip.height / 2);
+    expect(
+      editor
+        .closest('[data-block-frames-host]')
+        ?.querySelector('[data-block-frame="hovered"]'),
+    ).toBeFalsy();
     return handle;
   });
 };
@@ -901,9 +885,60 @@ const unreachedPointsOf = (element: HTMLElement): string[] => {
   });
 };
 
+/** Sends a pointer event at (`x`, `y`) of the window, as a mouse does. */
+const pointer = (
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  on: EventTarget,
+  x: number,
+  y: number,
+) =>
+  on.dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      button: 0,
+      buttons: type === 'pointerup' ? 0 : 1,
+    }),
+  );
+
 /**
- * Drags `section` by its handle, from whatever the pointer reaches at the
- * handle's middle, and drops it at the start of `target`'s text.
+ * Picks `section` up by its handle, from whatever the pointer reaches at the
+ * handle's middle, and moves the pointer in steps to (`x`, `y`). Returns
+ * what lets it go there.
+ */
+const pickUpByHandle = async (
+  editor: Element,
+  section: Element,
+  to: Readonly<{ x: number; y: number }>,
+  where: 'middle' | 'top' = 'middle',
+) => {
+  const from = (await handleOf(editor, section, where)).getBoundingClientRect();
+  const x = from.left + from.width / 2;
+  const y = from.top + from.height / 2;
+  const grabbed = section.ownerDocument.elementFromPoint(x, y);
+  if (grabbed === null) throw new Error('Nothing under the handle');
+  const page = section.ownerDocument;
+  pointer('pointerdown', grabbed, x, y);
+  const steps = 12;
+  for (let step = 1; step <= steps; step += 1) {
+    pointer(
+      'pointermove',
+      page,
+      x + ((to.x - x) * step) / steps,
+      y + ((to.y - y) * step) / steps,
+    );
+  }
+  return () => pointer('pointerup', page, to.x, to.y);
+};
+
+/**
+ * Drags `section` by its handle and drops it just inside the top of
+ * `target`'s text: before `target`.
  */
 const dragByHandle = async (
   editor: Element,
@@ -911,29 +946,14 @@ const dragByHandle = async (
   target: Element,
   where: 'middle' | 'top' = 'middle',
 ) => {
-  const from = (await handleOf(editor, section, where)).getBoundingClientRect();
-  const grabbed = section.ownerDocument.elementFromPoint(
-    from.left + from.width / 2,
-    from.top + from.height / 2,
-  );
-  if (grabbed === null) throw new Error('Nothing under the handle');
   const to = target.getBoundingClientRect();
-  const dataTransfer = new DataTransfer();
-  const at = (x: number, y: number) => ({
-    bubbles: true,
-    cancelable: true,
-    dataTransfer,
-    clientX: x,
-    clientY: y,
-  });
-  const start = at(from.left + from.width / 2, from.top + from.height / 2);
-  const end = at(to.left + 2, to.top + to.height / 2);
-  // A drag starts with the button going down on the handle.
-  grabbed.dispatchEvent(new MouseEvent('mousedown', { ...start, button: 0 }));
-  grabbed.dispatchEvent(new DragEvent('dragstart', start));
-  target.dispatchEvent(new DragEvent('dragover', end));
-  target.dispatchEvent(new DragEvent('drop', end));
-  grabbed.dispatchEvent(new DragEvent('dragend', end));
+  const drop = await pickUpByHandle(
+    editor,
+    section,
+    { x: to.left + 2, y: to.top + 2 },
+    where,
+  );
+  drop();
 };
 
 /**
@@ -943,6 +963,8 @@ const dragByHandle = async (
  * branch, and out again.
  */
 export const DragSectionBlock: Story = {
+  // Not centred: the editor stays where it is as the drag changes its height.
+  parameters: { layout: 'padded' },
   render: () => <FormEditor initial={aboutYou} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -1293,8 +1315,8 @@ const everyBlock: JSONContent = {
   ],
 };
 
-/** The frames drawn over an editor: the one for the hovered or the selected block. */
-const frameOf = (editor: Element, which: 'hovered' | 'selected') =>
+/** The frame drawn over an editor: the one for the selected block. */
+const frameOf = (editor: Element, which: 'selected') =>
   editor
     .closest('[data-block-frames-host]')
     ?.querySelector(`[data-block-frame="${which}"]`) ?? null;
@@ -1342,10 +1364,11 @@ export const BlockFramesAtRest: Story = {
 };
 
 /**
- * The pointer over any block draws a frame round it, outside it, and its
- * handle in the gutter before it, 40px before its start; a field and a file
- * also show their tab (the field's attribute and settings button). Nothing in
- * the document moves. The frame stays while the researcher types.
+ * The pointer over any block shows its handle in the gutter before it, 40px
+ * before its start, and draws no frame round it; a field and a file also
+ * show their tab (the field's attribute and settings button), and the
+ * attribute keeps clear of the tab's rounded end. Nothing in the document
+ * moves.
  */
 export const BlockFramesOnHover: Story = {
   render: () => <FormEditor initial={everyBlock} />,
@@ -1355,12 +1378,17 @@ export const BlockFramesOnHover: Story = {
     await editor.ownerDocument.fonts.ready;
     const atRest = blockBoxes(editor);
     const blocks = blocksOf(editor);
+    const host = editor.closest('[data-block-frames-host]');
     for (const [name, block] of Object.entries(blocks)) {
       const handle = await handleOf(
         editor,
         block,
         name === 'logic' ? 'top' : 'middle',
       );
+      await expect(
+        host?.querySelector('[data-block-frame]'),
+        `${name} has no frame`,
+      ).toBeNull();
       const box = block.getBoundingClientRect();
       const grip = handle.getBoundingClientRect();
       await expect(Math.round(box.left - grip.left), name).toBe(40);
@@ -1376,35 +1404,28 @@ export const BlockFramesOnHover: Story = {
       }
       await expect(blockBoxes(editor), `${name} moved nothing`).toEqual(atRest);
     }
-    // The field's attribute shows only while the field has its frame.
+    // The field's attribute shows only while the pointer is over the field,
+    // and keeps 8px or more from the start of its tab's border.
     pointAt(blocks.field);
+    const attribute = await canvas.findByTestId('field-attribute');
+    await expect(attribute).toHaveTextContent('first_name');
+    const tab = attribute.closest('[data-block-tab]');
+    if (tab === null) throw new Error('No tab');
     await expect(
-      await canvas.findByTestId('field-attribute'),
-    ).toHaveTextContent('first_name');
+      attribute.getBoundingClientRect().left - tab.getBoundingClientRect().left,
+    ).toBeGreaterThanOrEqual(8);
     pointAt(blocks.paragraph);
     await waitFor(() =>
       expect(canvas.queryByTestId('field-attribute')).toBeNull(),
     );
-    // Typing in the hovered paragraph keeps its frame, round the longer text.
-    // The caret is put there without a click, which would move the pointer.
-    editor.focus();
-    caretIn(blocks.paragraph, 'end');
-    pointAt(blocks.paragraph);
-    await waitFor(() => expect(frameOf(editor, 'hovered')).not.toBeNull());
-    await userEvent.keyboard(' Bring a pen and some paper with you as well.');
-    await waitFor(() => {
-      const frame = frameOf(editor, 'hovered');
-      expect(frame).not.toBeNull();
-      const drawn = frame?.getBoundingClientRect();
-      const box = blocks.paragraph.getBoundingClientRect();
-      expect(drawn?.height).toBeCloseTo(box.height + 8, 0);
-    });
   },
 };
 
 /**
- * Escape in a block's text selects the block, which shows a frame in the
- * primary colour; it keeps it while another block is under the pointer.
+ * Escape in a block's text selects the block. A selected paragraph or
+ * heading shows no frame (the selection marks it); a selected block of any
+ * other kind shows one in the primary colour, round the whole of it: round
+ * a list's markers too, whose handle stands where every other block's does.
  * Mod-Shift-ArrowDown and Mod-Shift-ArrowUp move the selected block.
  */
 export const SelectAndMoveABlock: Story = {
@@ -1412,24 +1433,40 @@ export const SelectAndMoveABlock: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const editor = await canvas.findByRole('textbox', { name: 'Form' });
-    const { paragraph: para, heading } = blocksOf(editor);
+    const { paragraph: para, heading, list } = blocksOf(editor);
     await userEvent.click(para);
     caretIn(para, 'end');
-    // A caret in a paragraph is not a selection of it.
+    press(editor, 'Escape', 27);
+    // Selected (its handle shows beside it), with no frame.
+    const paragraphHandle = await handleOf(editor, para);
     await expect(frameOf(editor, 'selected')).toBeNull();
+
+    // A list: its frame takes in its markers, and its handle is in line
+    // with the paragraph's.
+    const item = list.querySelector('li p');
+    if (item === null) throw new Error('No list item');
+    const paragraphGrip = paragraphHandle.getBoundingClientRect().left;
+    await userEvent.click(item);
+    caretIn(item, 'end');
     press(editor, 'Escape', 27);
     await waitFor(() => {
       const frame = frameOf(editor, 'selected');
       expect(frame).not.toBeNull();
       const drawn = frame?.getBoundingClientRect();
-      const box = para.getBoundingClientRect();
-      expect(drawn?.top).toBeCloseTo(box.top - 4, 0);
-      expect(drawn?.left).toBeCloseTo(box.left - 4, 0);
+      const text = para.getBoundingClientRect();
+      // The markers stand in the 32px before the items' text; the frame is
+      // 4px outside the list, which starts where the paragraph does.
+      expect(drawn?.left).toBeCloseTo(text.left - 4, 0);
+      expect(item.getBoundingClientRect().left - (drawn?.left ?? 0)).toBe(36);
     });
-    pointAt(heading);
-    await waitFor(() => expect(frameOf(editor, 'hovered')).not.toBeNull());
-    await expect(frameOf(editor, 'selected')).not.toBeNull();
+    const listGrip = (await handleOf(editor, list)).getBoundingClientRect();
+    await expect(listGrip.left).toBeCloseTo(paragraphGrip, 0);
 
+    // Back to the paragraph, to move it.
+    await userEvent.click(para);
+    caretIn(para, 'end');
+    press(editor, 'Escape', 27);
+    pointAt(heading);
     await userEvent.keyboard(withMod('{Shift>}{ArrowDown}{/Shift}'));
     await waitFor(() =>
       expect(blockTypes(documentIn(canvasElement))).toEqual([
@@ -1536,5 +1573,167 @@ export const BlockFramesRightToLeft: Story = {
     if (tab === null) throw new Error('No tab');
     const drawn = tab.getBoundingClientRect();
     await expect(drawn.left - box.left).toBeLessThan(box.width / 2);
+  },
+};
+
+/**
+ * Arrowing off a selected block where no text follows it (here, ArrowLeft
+ * from the file, after the logic block) puts an ordinary text caret on an
+ * empty line there, laid out as the paragraph that typing then makes: the
+ * blocks below do not move again as the first letter is typed.
+ */
+export const ArrowOffABlock: Story = {
+  parameters: { layout: 'padded' },
+  render: () => <FormEditor initial={everyBlock} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    const { file } = blocksOf(editor);
+    await userEvent.click(file);
+    await waitFor(() => expect(frameOf(editor, 'selected')).not.toBeNull());
+
+    await userEvent.keyboard('{ArrowLeft}');
+    const line = await waitFor(() => {
+      const found = editor.querySelector('[data-gap-caret]');
+      if (!(found instanceof HTMLElement)) throw new Error('No caret line');
+      return found;
+    });
+    // No horizontal gap cursor.
+    await expect(editor.querySelector('.ProseMirror-gapcursor')).toBeNull();
+    const drawn = line.getBoundingClientRect();
+    const caret = getComputedStyle(line, '::after');
+    // A vertical caret as tall as the line, at the start of the line.
+    await expect(drawn.height).toBeGreaterThan(16);
+    await expect(caret.width).toBe('1px');
+    await expect(Number.parseFloat(caret.height)).toBeCloseTo(drawn.height, 0);
+    const fileTop = file.getBoundingClientRect().top;
+
+    await userEvent.keyboard('Hi');
+    const typed = await waitFor(() => {
+      const found = Array.from(editor.querySelectorAll(':scope > p')).find(
+        (each) => each.textContent === 'Hi',
+      );
+      if (found === undefined) throw new Error('Nothing typed');
+      return found;
+    });
+    await expect(blockTypes(documentIn(canvasElement)).slice(5, 8)).toEqual([
+      'logicBlock',
+      'paragraph',
+      'assetBlock',
+    ]);
+    await expect(editor.querySelector('[data-gap-caret]')).toBeNull();
+    await expect(typed.getBoundingClientRect().top).toBeCloseTo(drawn.top, 0);
+    await expect(file.getBoundingClientRect().top).toBeCloseTo(fileTop, 0);
+  },
+};
+
+/**
+ * Dragging a block by its handle, straight down: a copy of the block alone
+ * follows the pointer, and the document shows at once where it would go, the
+ * blocks around making room, while what it holds stays as it was. Letting go
+ * moves it there; one Undo puts it back.
+ */
+export const DragShowsWhereTheBlockGoes: Story = {
+  // Not centred: the editor stays where it is as the drag changes its height.
+  parameters: { layout: 'padded' },
+  render: () => <FormEditor initial={everyBlock} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    const host = editor.closest('[data-block-frames-host]');
+    const { field, file } = blocksOf(editor);
+    const before = blockTypes(documentIn(canvasElement));
+    const fileTop = file.getBoundingClientRect().top;
+    const handle = (await handleOf(editor, field)).getBoundingClientRect();
+    const fileBox = file.getBoundingClientRect();
+
+    // Straight down from the handle, to the lower half of the file.
+    const drop = await pickUpByHandle(editor, field, {
+      x: handle.left + handle.width / 2,
+      y: fileBox.top + fileBox.height * 0.75,
+    });
+
+    // The copy under the pointer is the field alone: no tab, no frame, none
+    // of the text around it.
+    const preview = host?.querySelector('[data-block-drag-preview]');
+    if (!(preview instanceof HTMLElement)) throw new Error('No preview');
+    await expect(preview).toHaveTextContent('What is your first name?');
+    await expect(preview.textContent).not.toContain('Thank you');
+    await expect(preview.querySelector('[data-block-tab]')).toBeNull();
+    await expect(host?.querySelector('[data-block-frame]')).toBeNull();
+    await expect(host?.querySelector('[data-block-handle]')).toBeNull();
+    // Where it would go: after the file, which moved up into its place.
+    const shown = await waitFor(() => {
+      const found = editor.querySelector('[data-block-drop-preview]');
+      if (!(found instanceof HTMLElement)) throw new Error('Not shown');
+      return found;
+    });
+    await expect(shown.getBoundingClientRect().top).toBeGreaterThan(
+      file.getBoundingClientRect().bottom,
+    );
+    await expect(file.getBoundingClientRect().top).toBeLessThan(fileTop - 50);
+    await expect(blockTypes(documentIn(canvasElement))).toEqual(before);
+
+    drop();
+    await waitFor(() =>
+      expect(blockTypes(documentIn(canvasElement))).toEqual([
+        'heading',
+        'paragraph',
+        'bulletList',
+        'horizontalRule',
+        'logicBlock',
+        'assetBlock',
+        'fieldBlock',
+        'paragraph',
+      ]),
+    );
+    await expect(host?.querySelector('[data-block-drag-preview]')).toBeNull();
+    await expect(editor.querySelector('[data-block-drop-preview]')).toBeNull();
+
+    await userEvent.keyboard(withMod('z'));
+    await waitFor(() =>
+      expect(blockTypes(documentIn(canvasElement))).toEqual(before),
+    );
+  },
+};
+
+/**
+ * Blocks are spaced as the interview spaces the same form: a field 32px
+ * above what follows it, a paragraph and a list 1em, a file 16px each side,
+ * and nothing after the last block.
+ */
+export const SpacedAsTheInterview: Story = {
+  render: () => <FormEditor initial={everyBlock} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    const below = (element: Element) => getComputedStyle(element).marginBottom;
+    const block = (selector: string) => {
+      const found = editor.querySelector(`:scope > ${selector}`);
+      if (found === null) throw new Error(`No ${selector}`);
+      return found;
+    };
+    await expect(below(block('.node-fieldBlock'))).toBe('32px');
+    await expect(below(block('p'))).toBe('16px');
+    await expect(below(block('ul'))).toBe('16px');
+    await expect(below(block('.node-logicBlock'))).toBe('16px');
+    await expect(below(block('.node-assetBlock'))).toBe('16px');
+    await expect(getComputedStyle(block('.node-assetBlock')).marginTop).toBe(
+      '16px',
+    );
+    // A list's items have no space between them.
+    const items = editor.querySelectorAll(':scope > ul > li');
+    await expect(items.length).toBe(2);
+    await expect(
+      Math.round(
+        (items[1]?.getBoundingClientRect().top ?? 0) -
+          (items[0]?.getBoundingClientRect().bottom ?? 0),
+      ),
+    ).toBe(0);
+    await expect(below(block('p:last-child'))).toBe('0px');
+    // Space taken by the field's margin is between it and the logic block.
+    const field = block('.node-fieldBlock').getBoundingClientRect();
+    const logic = block('.node-logicBlock').getBoundingClientRect();
+    await expect(Math.round(logic.top - field.bottom)).toBe(32);
   },
 };

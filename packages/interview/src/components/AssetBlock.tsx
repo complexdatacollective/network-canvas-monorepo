@@ -7,6 +7,7 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import {
   assetBlockAudioRowVariants,
   assetBlockMediaVariants,
+  assetBlockSpacingVariants,
 } from '@codaco/fresco-ui/assetBlockLayout';
 import type { MarkdownBlockImages } from '@codaco/fresco-ui/RenderMarkdown';
 import Spinner from '@codaco/fresco-ui/Spinner';
@@ -193,7 +194,7 @@ function Block({
   return (
     <div
       data-asset-block=""
-      className={cx('not-first:mt-4 not-last:mb-4', className)}
+      className={cx(assetBlockSpacingVariants(), className)}
     >
       {children}
     </div>

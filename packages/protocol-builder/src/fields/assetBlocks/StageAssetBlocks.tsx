@@ -21,25 +21,15 @@ import { useProtocolContext } from '../../state/protocolContext.ts';
 import AssetPickerField from '../AssetPickerField.tsx';
 import { takeChosenResource } from '../chosenResource.ts';
 import { ResourceRefusal } from '../ResourceRefusal.tsx';
-import type { AssetBlockFileField } from './AssetBlockSettings.tsx';
 import { createAssetBlockView, type KnownAsset } from './AssetBlockView.tsx';
 
 const useStageAsset = (assetId: string): KnownAsset | undefined =>
   assetBlockFile(useProtocolContext().assets, assetId);
 
-/**
- * The resource picker, as the settings of a block in a stage editor offer it:
- * on one line, without a second drawing of the file, which the block draws
- * just above, and without a discard of its own, since the settings delete the
- * block.
- */
-const StageAssetBlockFileField: AssetBlockFileField = (props) => (
-  <AssetPickerField {...props} layout="line" />
-);
-
 /** A block in a stage editor, drawn from the resources of the open edit. */
 const StageAssetBlockView = createAssetBlockView({
-  FileField: StageAssetBlockFileField,
+  // The resource picker that every stage setting chooses a file with.
+  FileField: AssetPickerField,
   useAsset: useStageAsset,
   Preview: ({ assetId, kind, name, className }) => (
     <ResourcePreview

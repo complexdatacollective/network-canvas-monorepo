@@ -1,9 +1,10 @@
 import { act } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { startBlockDrag } from '../richText/blockFrames';
+import { showBlockDrag } from '../richText/blockDrag';
+import { moveBlockTo } from '../richText/sectionBlocks';
 import {
   branch,
   doc,
@@ -330,7 +331,7 @@ describe('moving any block from the keyboard', () => {
 });
 
 describe('dragging a block by its handle', () => {
-  it('selects the block and carries the whole of it, to be moved where it is dropped', async () => {
+  it('shows where the block would go without changing the document', async () => {
     const view = renderSections({
       value: doc(
         paragraph(text('One')),
@@ -339,39 +340,81 @@ describe('dragging a block by its handle', () => {
       ),
     });
     const editor = await view.editor();
-    const data = new Map<string, string>();
-    const dataTransfer = {
-      clearData: () => data.clear(),
-      setData: (type: string, value: string) => data.set(type, value),
-      setDragImage: vi.fn(),
-      effectAllowed: 'none',
-    };
-    const image = document.createElement('div');
+    const before = json(editor);
+    const changes = view.onChange.mock.calls.length;
 
+    // The field (at 5) would go after "Two" (which ends at the end of the
+    // document).
     act(() => {
-      startBlockDrag(
-        editor.view,
-        5,
-        { dataTransfer } as unknown as DragEvent,
-        image,
-      );
+      showBlockDrag(editor.view, {
+        from: 5,
+        to: editor.state.doc.content.size,
+      });
     });
 
-    // The field is the selection, and what is dragged.
-    const { selection } = editor.state;
-    expect(selection).toBeInstanceOf(NodeSelection);
-    expect(selection.from).toBe(5);
+    const dragged = editor.view.dom.querySelector('[data-block-dragged]');
+    expect(dragged).not.toBeNull();
+    expect(dragged?.getAttribute('style')).toContain('display: none');
+    const preview = editor.view.dom.querySelector('[data-block-drop-preview]');
+    expect(preview).not.toBeNull();
+    // The copy stands after the last paragraph, and is nothing to reach.
+    expect(editor.view.dom.lastElementChild).toBe(preview);
+    expect(preview?.getAttribute('aria-hidden')).toBe('true');
+    expect(preview?.querySelector('[id]')).toBeNull();
+    expect(json(editor)).toEqual(before);
+    expect(view.onChange.mock.calls.length).toBe(changes);
+
+    act(() => showBlockDrag(editor.view, null));
+    expect(editor.view.dom.querySelector('[data-block-dragged]')).toBeNull();
+    expect(
+      editor.view.dom.querySelector('[data-block-drop-preview]'),
+    ).toBeNull();
+  });
+
+  it('moves the block where it is dropped as one edit, into a branch too', async () => {
+    const view = renderSections({
+      value: doc(
+        paragraph(text('One')),
+        field('f1', 'age', 'How old?'),
+        logic(IF, branch('if', paragraph(text('Inside')))),
+        paragraph(text('Two')),
+      ),
+    });
+    const editor = await view.editor();
+    const before = json(editor);
+    const fieldAt = 5;
+    const fieldSize = editor.state.doc.nodeAt(fieldAt)?.nodeSize ?? 0;
+    const logicAt = fieldAt + fieldSize;
+    // The start of the branch: inside the logic block, inside the branch.
+    const branchStart = logicAt + 2;
+
+    act(() => {
+      showBlockDrag(editor.view, { from: fieldAt, to: branchStart });
+      expect(moveBlockTo(editor.view, fieldAt, branchStart)).toBe(true);
+    });
+
+    expect(json(editor)).toEqual(
+      doc(
+        paragraph(text('One')),
+        logic(
+          IF,
+          branch(
+            'if',
+            field('f1', 'age', 'How old?'),
+            paragraph(text('Inside')),
+          ),
+        ),
+        paragraph(text('Two')),
+      ),
+    );
     expect(selectedFieldId(editor)).toBe('f1');
-    const dragging = editor.view.dragging;
-    expect(dragging?.move).toBe(true);
-    expect(dragging?.slice.content.childCount).toBe(1);
-    expect(dragging?.slice.content.firstChild?.attrs.fieldId).toBe('f1');
-    // And what another page is given for it: the block, not the text
-    // around it.
-    expect(data.get('text/html')).toContain('data-field-block');
-    expect(data.get('text/plain')).toContain('How old?');
-    expect(data.get('text/plain')).not.toContain('One');
-    expect(dataTransfer.effectAllowed).toBe('copyMove');
-    expect(dataTransfer.setDragImage).toHaveBeenCalledWith(image, 0, 0);
+    // The drag is over: nothing is hidden or shown any more.
+    expect(editor.view.dom.querySelector('[data-block-dragged]')).toBeNull();
+
+    // One Undo puts it back.
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(json(editor)).toEqual(before);
   });
 });

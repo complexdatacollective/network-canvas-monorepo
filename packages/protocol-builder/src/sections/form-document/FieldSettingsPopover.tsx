@@ -1,10 +1,11 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { type ReactNode, type RefObject, useMemo, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import { BlockDeleteButton } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { formFieldPlacement, type Variable } from '@codaco/protocol-validation';
@@ -16,13 +17,16 @@ import {
   variableRoleKey,
 } from '../../codebook/variableRoles.ts';
 import { BlockSettingsPopover } from '../../fields/BlockSettingsPopover.tsx';
-import VariablePickerField from '../../fields/VariablePickerField.tsx';
+import VariablePickerField, {
+  type CreateOptionOutcome,
+} from '../../fields/VariablePickerField.tsx';
 import {
   VariablePill,
   variablePillKindOf,
 } from '../../fields/VariablePill.tsx';
 import { useLanguageNaming } from '../../localization/LanguageNaming.tsx';
 import { resolveTranslation } from '../../localization/localizedText.ts';
+import { useSubjectVariableScope } from '../canvas/codebookChoices.ts';
 import { controlsForType, isOptionType } from '../collectableTypes.ts';
 import { controlOf, isRecord } from './fieldDefinition.ts';
 import { FieldOptionsDialog } from './FieldOptionsDialog.tsx';
@@ -34,6 +38,10 @@ import {
 } from './formDocumentEnvironment.ts';
 import { formDocumentMessages as messages } from './formDocumentMessages.ts';
 import { fieldCollecting, variablesPlacedBy } from './formDocumentValue.ts';
+import {
+  NewAttributeTypeStep,
+  useNewFieldAttribute,
+} from './NewAttributeTypeStep.tsx';
 
 type FieldSettingsPopoverProps = Readonly<{
   attributes: Readonly<{
@@ -112,6 +120,26 @@ export function FieldSettingsPopover({
   const [controlRefusal, setControlRefusal] = useState<string | undefined>();
   const [optionsOpen, setOptionsOpen] = useState(false);
   const otherStages = useOtherStagesUsing(variableId);
+  const nameScope = useSubjectVariableScope(stage.subject);
+  // The name of the attribute being created, while its type is chosen.
+  const [creating, setCreating] = useState<string | undefined>(undefined);
+  const newAttribute = useNewFieldAttribute(
+    stage.writes.createAttribute,
+    (created) => {
+      setCreating(undefined);
+      update({ variable: created });
+    },
+  );
+
+  /**
+   * The picker's create row, as the list of a new field takes it: the name
+   * is kept, and the settings ask for the type of the new attribute in place
+   * of everything else (`NewAttributeTypeStep`).
+   */
+  const startCreate = (name: string): Promise<CreateOptionOutcome> => {
+    setCreating(name);
+    return Promise.resolve({ status: 'created' });
+  };
 
   const roleMap = useMemo(
     () => roleMapFor(stage.protocolContext, stage.rules.answeredFor),
@@ -220,19 +248,32 @@ export function FieldSettingsPopover({
         open={open}
         onOpenChange={onOpenChange}
         select={selectKeepingFocus}
-        hidden={optionsOpen}
+        hidden={optionsOpen || newAttribute.editor !== null}
         {...(panelRef !== undefined && { panelRef })}
         popupProps={{ 'data-field-settings': fieldId }}
       >
-        <div className="flex w-[36rem] max-w-full flex-col gap-4">
-          <div>
+        {creating !== undefined ? (
+          <div className="w-[36rem] max-w-full">
+            <NewAttributeTypeStep
+              name={creating}
+              refusal={newAttribute.refusal}
+              onBack={() => setCreating(undefined)}
+              onChoose={(type) => void newAttribute.createAs(creating, type)}
+            />
+          </div>
+        ) : (
+          // The fields are spaced by their own margins, as every list of
+          // fields is, in a block whose margins collapse into each other;
+          // what is not a field keeps the same space below it.
+          <div className="w-[36rem] max-w-full">
             <UnconnectedField
               name={`${fieldId}-attribute`}
               component={VariablePickerField}
               label={intl.formatMessage(messages.attributeLabel)}
               hint={intl.formatMessage(messages.attributeHint)}
               options={attributeGroup.options}
-              unavailableDisplay="inPlace"
+              onCreateOption={startCreate}
+              {...(nameScope !== undefined && { nameScope })}
               value={variableId}
               onChange={(next) => {
                 if (typeof next !== 'string' || next === variableId) {
@@ -248,13 +289,11 @@ export function FieldSettingsPopover({
                 );
               }}
             />
-          </div>
-          {component === undefined ? (
-            <p className="text-destructive text-sm">
-              {intl.formatMessage(messages.noInputControl)}
-            </p>
-          ) : (
-            <div>
+            {component === undefined ? (
+              <p className="text-destructive mb-8 text-sm">
+                {intl.formatMessage(messages.noInputControl)}
+              </p>
+            ) : (
               <UnconnectedField
                 name={`${fieldId}-control`}
                 component={SelectField}
@@ -281,61 +320,59 @@ export function FieldSettingsPopover({
                   })();
                 }}
               />
-            </div>
-          )}
-          {(isOptionType(variable.type) ||
-            variable.type === 'boolean' ||
-            hasSettings) && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-heading text-base font-bold">
+            )}
+            {(isOptionType(variable.type) ||
+              variable.type === 'boolean' ||
+              hasSettings) && (
+              <div className="mb-8 flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-heading text-base font-bold">
+                      {intl.formatMessage(
+                        hasOptions
+                          ? messages.optionsLabel
+                          : messages.controlSettingsLabel,
+                      )}
+                    </h3>
+                    {optionLabels.length > 0 && (
+                      <p className="text-sm text-current/70">
+                        {intl.formatMessage(messages.optionsHint)}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="text"
+                    icon={<Pencil aria-hidden />}
+                    onClick={() => setOptionsOpen(true)}
+                  >
                     {intl.formatMessage(
                       hasOptions
-                        ? messages.optionsLabel
-                        : messages.controlSettingsLabel,
+                        ? messages.editOptions
+                        : messages.editControlSettings,
                     )}
-                  </h3>
-                  {optionLabels.length > 0 && (
-                    <p className="text-sm text-current/70">
-                      {intl.formatMessage(messages.optionsHint)}
-                    </p>
-                  )}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="text"
-                  icon={<Pencil aria-hidden />}
-                  onClick={() => setOptionsOpen(true)}
-                >
-                  {intl.formatMessage(
-                    hasOptions
-                      ? messages.editOptions
-                      : messages.editControlSettings,
-                  )}
-                </Button>
+                {optionLabels.length > 0 && (
+                  <ul className="flex flex-wrap gap-2">
+                    {optionLabels.map((label, index) => (
+                      <li
+                        // Labels can repeat while they are being written.
+                        // oxlint-disable-next-line react/no-array-index-key
+                        key={`${index}:${label}`}
+                        className="bg-surface-1 rounded-full px-3 py-1 text-sm"
+                      >
+                        {label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              {optionLabels.length > 0 && (
-                <ul className="flex flex-wrap gap-2">
-                  {optionLabels.map((label, index) => (
-                    <li
-                      // Labels can repeat while they are being written.
-                      // oxlint-disable-next-line react/no-array-index-key
-                      key={`${index}:${label}`}
-                      className="bg-surface-1 rounded-full px-3 py-1 text-sm"
-                    >
-                      {label}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-          <CodebookVariableValidationSection
-            subject={stage.subject}
-            variableId={variableId}
-          />
-          <div>
+            )}
+            <CodebookVariableValidationSection
+              subject={stage.subject}
+              variableId={variableId}
+            />
             <UnconnectedField
               name={`${fieldId}-validation-hints`}
               component={ToggleField}
@@ -346,30 +383,27 @@ export function FieldSettingsPopover({
                 update({ showValidationHints: next === true })
               }
             />
+            <Alert variant="info">
+              <AlertDescription>{note}</AlertDescription>
+            </Alert>
+            <div className="flex justify-end">
+              <BlockDeleteButton
+                onClick={remove}
+                // The last of the settings: Tab goes back to the field rather
+                // than on to the page behind them.
+                onKeyDown={(event) => {
+                  if (event.key !== 'Tab' || event.shiftKey) return;
+                  event.preventDefault();
+                  select();
+                }}
+              >
+                {intl.formatMessage(messages.deleteField)}
+              </BlockDeleteButton>
+            </div>
           </div>
-          <Alert variant="info">
-            <AlertDescription>{note}</AlertDescription>
-          </Alert>
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              size="sm"
-              color="destructive"
-              icon={<Trash2 aria-hidden />}
-              onClick={remove}
-              // The last of the settings: Tab goes back to the field rather
-              // than on to the page behind them.
-              onKeyDown={(event) => {
-                if (event.key !== 'Tab' || event.shiftKey) return;
-                event.preventDefault();
-                select();
-              }}
-            >
-              {intl.formatMessage(messages.deleteField)}
-            </Button>
-          </div>
-        </div>
+        )}
       </BlockSettingsPopover>
+      {newAttribute.editor}
       {optionsOpen && component !== undefined && (
         <FieldOptionsDialog
           variableId={variableId}

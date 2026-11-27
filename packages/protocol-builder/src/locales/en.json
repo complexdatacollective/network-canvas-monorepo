@@ -191,10 +191,6 @@
     "defaultMessage": "Required",
     "description": "Shown under one cell of a row in an editable list when the researcher has left it empty. Terse because it sits inside a row of a table-like list rather than under a full-width field."
   },
-  "protocolBuilder.assetBlock.alignLabel": {
-    "defaultMessage": "Alignment",
-    "description": "Label of the control, in the settings of an image, audio recording or video placed in the text of a page, that chooses where it sits across the page: where a line of text starts, in the middle, or where a line ends."
-  },
   "protocolBuilder.assetBlock.audioFileLabel": {
     "defaultMessage": "Audio",
     "description": "Label of the control, in the settings of an audio recording placed in the text of a page, that shows which audio file it is and lets another be chosen in its place."
@@ -205,7 +201,7 @@
   },
   "protocolBuilder.assetBlock.fileHint": {
     "defaultMessage": "The file shown here. Choosing another keeps the description and other settings.",
-    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text. \"The description and other settings\" are this image, recording or video's own settings in the same panel (its description, display size, alignment and playback); they stay as they are when a different file is chosen."
+    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text. \"The description and other settings\" are this image, recording or video's own settings (its description, its size and, for a recording, its playback); they stay as they are when a different file is chosen."
   },
   "protocolBuilder.assetBlock.imageFileLabel": {
     "defaultMessage": "Image",
@@ -217,15 +213,19 @@
   },
   "protocolBuilder.assetBlock.remove": {
     "defaultMessage": "Delete",
-    "description": "Button in the settings of an image, audio recording or video placed in the text of a page. It takes the image, recording or video out of the text; the file itself stays in the protocol."
+    "description": "Button at the end of the settings of a block in the text of a page whose file is not in the protocol, or is not something a page can show. It takes the block out of the text."
   },
-  "protocolBuilder.assetBlock.sizeHint": {
-    "defaultMessage": "How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.",
-    "description": "Guidance under the Display size control of an image or video placed in the text of a page. \"This\" is the image or video. The handle is a small round dot at a bottom corner of the selected image or video."
+  "protocolBuilder.assetBlock.removeAudio": {
+    "defaultMessage": "Delete audio",
+    "description": "Button at the end of the settings of an audio recording placed in the text of a page. It takes the recording out of the text; the file itself stays in the protocol."
   },
-  "protocolBuilder.assetBlock.sizeLabel": {
-    "defaultMessage": "Display size",
-    "description": "Label of the control, in the settings of an image or video placed in the text of a page, that chooses how tall it is drawn: Full size, Small, Medium or Large."
+  "protocolBuilder.assetBlock.removeImage": {
+    "defaultMessage": "Delete image",
+    "description": "Button at the end of the settings of an image placed in the text of a page. It takes the image out of the text; the file itself stays in the protocol."
+  },
+  "protocolBuilder.assetBlock.removeVideo": {
+    "defaultMessage": "Delete video",
+    "description": "Button at the end of the settings of a video placed in the text of a page. It takes the video out of the text; the file itself stays in the protocol."
   },
   "protocolBuilder.assetBlock.videoFileLabel": {
     "defaultMessage": "Video",

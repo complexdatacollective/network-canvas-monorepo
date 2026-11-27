@@ -43,14 +43,40 @@ const openSettings = async (canvasElement: HTMLElement) => {
   await userEvent.click(
     await canvas.findByRole('button', { name: 'Logic block settings' }),
   );
-  const settings = await body.findByRole('dialog', { name: 'Logic block' });
+  const settings = await body.findByRole('dialog', {
+    name: 'Logic block settings',
+  });
   return { editor, settings: within(settings) };
 };
 
-/** The settings show the block's logic and the rules of its “If”. */
+/**
+ * The settings show the block's logic and the rules of its “If”. They open
+ * from the settings button in the block's header as every block's settings
+ * open from its button: attached to it, on one side of it, with the button
+ * drawn as pressed while they are open.
+ */
 export const ItsLogicAndRules: Story = {
   play: async ({ canvasElement }) => {
     const { settings } = await openSettings(canvasElement);
+    const button = within(canvasElement).getByRole('button', {
+      name: 'Logic block settings',
+    });
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    const popup = settings.getByText('Rules').closest('[role="dialog"]');
+    if (!(popup instanceof HTMLElement)) throw new Error('No settings.');
+    await waitFor(() => {
+      const at = button.getBoundingClientRect();
+      const shown = popup.getBoundingClientRect();
+      const side = popup.getAttribute('data-side');
+      const beside = {
+        bottom: shown.top >= at.bottom,
+        top: shown.bottom <= at.top,
+        right: shown.left >= at.right,
+        left: shown.right <= at.left,
+      };
+      expect(side !== null && side in beside).toBe(true);
+      expect(beside[side as keyof typeof beside]).toBe(true);
+    });
     await expect(settings.getByText('Logic')).toBeVisible();
     await expect(settings.getByText('Rules')).toBeVisible();
     await expect(
@@ -143,5 +169,57 @@ export const TheRuleDialogOverTheSettings: Story = {
     ] as const) {
       await expect(rule.contains(drawnAt(document, x, y))).toBe(true);
     }
+  },
+};
+
+/**
+ * A version's problem is shown once its rules have been changed in the
+ * settings, as a form shows a field's problem once it has been changed: a
+ * new “Else if” has no rules, and is not met with an error, and the “If”
+ * whose only rule is deleted says that it needs one.
+ */
+export const ProblemsOnceTheRulesAreChanged: Story = {
+  play: async ({ canvasElement }) => {
+    const { settings } = await openSettings(canvasElement);
+    const noRules = 'Add at least one rule.';
+    await expect(settings.queryByText(noRules)).toBeNull();
+
+    await userEvent.click(
+      settings.getByRole('button', { name: 'Add else if' }),
+    );
+    await expect(
+      await settings.findByText('Rules for “Else if” 1'),
+    ).toBeVisible();
+    await expect(settings.queryByText(noRules)).toBeNull();
+
+    await userEvent.click(
+      settings.getByRole('button', { name: /^Delete rule:/ }),
+    );
+    // Asked first; the settings stay open behind the question.
+    await userEvent.click(
+      within(
+        await within(canvasElement.ownerDocument.body).findByRole('dialog', {
+          name: 'Are you sure?',
+        }),
+      ).getByRole('button', { name: 'Delete' }),
+    );
+    await expect(await settings.findByText(noRules)).toBeVisible();
+    // Only the “If”, whose rules were changed.
+    await expect(settings.getAllByText(noRules)).toHaveLength(1);
+    // The question has gone, and the settings can be used again. The rule
+    // that had focus has gone too, so the researcher carries on from the
+    // first rule's button (Base UI takes the settings' controls out of the
+    // tab order while focus is outside them).
+    await waitFor(() =>
+      expect(
+        within(canvasElement.ownerDocument.body).queryByRole('dialog', {
+          name: 'Are you sure?',
+        }),
+      ).toBeNull(),
+    );
+    await userEvent.click(
+      settings.getAllByRole('button', { name: 'Add new rule' })[0] ??
+        settings.getByRole('button', { name: 'Add else if' }),
+    );
   },
 };

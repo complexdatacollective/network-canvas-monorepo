@@ -108,7 +108,7 @@ const openBlockSettings = async (
   await harness.user.click(
     within(editor).getByRole('button', { name: 'Logic block settings' }),
   );
-  return screen.findByRole('dialog', { name: 'Logic block' });
+  return screen.findByRole('dialog', { name: 'Logic block settings' });
 };
 
 type Listed = Readonly<{

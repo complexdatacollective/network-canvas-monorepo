@@ -392,10 +392,12 @@ export const MoveFieldIntoLogicBranch: Story = {
     // A logic block after the first field.
     await caretInQuestion(editor, RELATIONSHIP_FIELD);
     await userEvent.click(canvas.getByRole('button', { name: 'Logic block' }));
-    await body.findByRole('dialog', { name: 'Logic block' });
+    await body.findByRole('dialog', { name: 'Logic block settings' });
     await userEvent.keyboard('{Escape}');
     await waitFor(() =>
-      expect(body.queryByRole('dialog', { name: 'Logic block' })).toBeNull(),
+      expect(
+        body.queryByRole('dialog', { name: 'Logic block settings' }),
+      ).toBeNull(),
     );
 
     // The first field moves down into the logic block's first branch.

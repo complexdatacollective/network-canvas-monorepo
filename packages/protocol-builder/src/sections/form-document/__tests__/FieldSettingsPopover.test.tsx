@@ -6,6 +6,9 @@ import { fieldBlockMarkdown } from '@codaco/protocol-validation';
 import {
   attributeField,
   chooseAttributeById,
+  closeAttributePicker,
+  inventAttribute,
+  openAttributePicker,
 } from '../../../testing/attributePicker.ts';
 import {
   fixtureTypeId,
@@ -263,6 +266,63 @@ describe('the settings of a field', () => {
       ...FIELDS[1],
       variable: NAME,
     });
+  });
+});
+
+describe('the attribute picker in the settings of a field', () => {
+  const pickerIn = async () =>
+    attributeField(
+      'Attribute',
+      await screen.findByRole('dialog', { name: 'Field settings' }),
+    );
+
+  // As every attribute picker does (`VariablePickerField`): an attribute that
+  // cannot be chosen is listed under "Not available here", and says why only
+  // once it is chosen.
+  it('shows why an attribute cannot be chosen only once it is chosen', async () => {
+    const { harness, editor } = await openForm();
+    await openFieldSettings(harness, editor, AGE_FIELD);
+    const popup = await openAttributePicker(harness.user, await pickerIn());
+    // The other field of this form collects relationship_to_ego.
+    const row = popup.querySelector<HTMLElement>(
+      `[role="option"][data-attribute-id="${RELATIONSHIP}"]`,
+    );
+    expect(row).not.toBeNull();
+    expect(row).toHaveAttribute('data-unavailable');
+    expect(row?.closest('[role="group"]')).toHaveTextContent(
+      'Not available here',
+    );
+    const reason = 'Another field on this stage already uses this attribute.';
+    expect(row).not.toHaveTextContent(reason);
+
+    if (row !== null) await harness.user.click(row);
+    await waitFor(() => expect(row).toHaveTextContent(reason));
+    await closeAttributePicker(harness.user);
+  });
+
+  it('creates a new attribute from a name typed in its search box, then its type', async () => {
+    const { harness, editor } = await openForm();
+    await openFieldSettings(harness, editor, AGE_FIELD);
+
+    await inventAttribute(harness.user, await pickerIn(), 'years_known');
+    // The settings ask for the type of the new attribute.
+    const settings = await fieldSettings();
+    await settings.findByText(/New attribute:/);
+    await harness.user.click(settings.getByRole('button', { name: /^Number/ }));
+
+    // Back to the settings, with the field collecting the new attribute.
+    await waitFor(() =>
+      expect(blockFor(editor, AGE_FIELD)).toHaveTextContent('years_known'),
+    );
+    expect(
+      (await fieldSettings()).getByRole('combobox', { name: 'Input control' }),
+    ).toBeInTheDocument();
+    const saved = await harness.submit();
+    const variable = savedForm(saved)?.fields.find(
+      (field) => field.id === AGE_FIELD,
+    )?.variable;
+    expect(variable).not.toBe(AGE);
+    expect(typeof variable).toBe('string');
   });
 });
 

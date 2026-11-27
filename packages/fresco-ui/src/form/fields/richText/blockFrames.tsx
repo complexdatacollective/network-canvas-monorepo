@@ -8,10 +8,11 @@ import { GripVertical } from 'lucide-react';
 import {
   createContext,
   type CSSProperties,
-  type DragEvent as ReactDragEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -19,7 +20,8 @@ import {
 } from 'react';
 
 import { cx } from '../../../utils/cva';
-import { holdsSections, selectedBlockOf } from './sectionBlocks';
+import { blockDragOf, copyOfBlock, showBlockDrag } from './blockDrag';
+import { holdsSections, moveBlockTo, selectedBlockOf } from './sectionBlocks';
 
 /**
  * Block frames: what the editor draws round the block under the pointer and
@@ -195,10 +197,13 @@ export const blockBoxProps = (boxed: boolean) =>
  * The tab of a block with settings: on the top edge of its frame, at the
  * block's end, outside the block, so that it covers the block above rather
  * than its own. It holds what the block's consumer puts in it (a field's
- * attribute, the settings button). The first button in it is what Tab from
- * the selected block moves to, and what Enter on the selected block presses
- * (`data-block-action`). Drawn by the block's view while its frame shows,
- * inside the element the frame is drawn round.
+ * attribute, the settings button, `BlockSettingsButton`). The first button
+ * in it is what Tab from the selected block moves to, and what Enter on the
+ * selected block presses (`data-block-action`). Drawn by the block's view
+ * while its frame shows, inside the element the frame is drawn round.
+ *
+ * What starts the tab other than a block's own round button (a field's
+ * attribute) keeps clear of its rounded end.
  */
 export function BlockTab({
   selected,
@@ -209,7 +214,8 @@ export function BlockTab({
       contentEditable={false}
       data-block-tab=""
       className={cx(
-        'bg-input elevation-low pointer-events-auto absolute inset-e-3.5 -top-9.5 z-20 flex items-center gap-1 rounded-full border-2 p-0.5 select-none',
+        'bg-input elevation-low pointer-events-auto absolute inset-e-3.5 bottom-[calc(100%+2px)] z-20 flex items-center gap-1 rounded-full border-2 p-0.5 select-none',
+        '[&>:first-child:not([data-block-button])]:ms-1.5',
         selected ? 'border-primary' : 'border-current/30',
       )}
     >
@@ -220,33 +226,6 @@ export function BlockTab({
 
 /** Spread on the button of a block's tab that Enter on the selected block presses. */
 export const blockActionProps = { 'data-block-action': '' } as const;
-
-/**
- * Starts dragging the block at `position` from something outside the text
- * (its handle): the block becomes the selection, and the editor's own drop
- * moves it where it is dropped (or copies it, with the copy modifier).
- */
-export const startBlockDrag = (
-  view: EditorView,
-  position: number,
-  event: DragEvent,
-  image: Element | null,
-) => {
-  const { dataTransfer } = event;
-  if (dataTransfer === null) return;
-  view.dispatch(
-    view.state.tr.setSelection(NodeSelection.create(view.state.doc, position)),
-  );
-  const { dom, text, slice } = view.serializeForClipboard(
-    view.state.selection.content(),
-  );
-  dataTransfer.clearData();
-  dataTransfer.setData('text/html', dom.innerHTML);
-  dataTransfer.setData('text/plain', text);
-  dataTransfer.effectAllowed = 'copyMove';
-  if (image !== null) dataTransfer.setDragImage(image, 0, 0);
-  view.dragging = { slice, move: true };
-};
 
 /**
  * How far outside a picture or a video its frame is drawn, in pixels, and
@@ -317,18 +296,26 @@ const firstLineOf = (
 
 type Placed = Readonly<{ left: number; top: number }>;
 
+/** What the frames are placed from: the inside of the editor's border. */
+const originOf = (container: HTMLElement): Placed => {
+  const outer = container.getBoundingClientRect();
+  return {
+    left: outer.left + container.clientLeft,
+    top: outer.top + container.clientTop,
+  };
+};
+
 type DrawnFrame = Placed &
   Readonly<{ width: number; height: number; boxed: boolean }>;
 
 type DrawnHandle = Placed & Readonly<{ position: number }>;
 
 type Drawing = Readonly<{
-  hovered: DrawnFrame | null;
   selected: DrawnFrame | null;
   handle: DrawnHandle | null;
 }>;
 
-const NOTHING: Drawing = { hovered: null, selected: null, handle: null };
+const NOTHING: Drawing = { selected: null, handle: null };
 
 const frameOf = (block: DrawnBlock, origin: Placed): DrawnFrame => {
   const box = boxOf(block);
@@ -382,7 +369,6 @@ const sameFrame = (one: DrawnFrame | null, other: DrawnFrame | null) =>
     one.boxed === other.boxed);
 
 const sameDrawing = (one: Drawing, other: Drawing) =>
-  sameFrame(one.hovered, other.hovered) &&
   sameFrame(one.selected, other.selected) &&
   one.handle?.left === other.handle?.left &&
   one.handle?.top === other.handle?.top &&
@@ -395,18 +381,160 @@ const frameStyle = (frame: DrawnFrame): CSSProperties => ({
   height: frame.height,
 });
 
+/**
+ * A block as it was drawn when a drag began, placed from the editor's
+ * corner: where a block being dragged can go is worked out from where every
+ * block was then, not from the page as the drag changes it, so that what it
+ * would do depends only on where the pointer is.
+ */
+type MeasuredBlock = Readonly<{
+  pos: number;
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  /** A logic block's branches, each a place blocks can go. */
+  branches: readonly MeasuredBranch[];
+}>;
+
+type MeasuredBranch = Readonly<{
+  top: number;
+  bottom: number;
+  /** The position at the end of the branch's blocks. */
+  end: number;
+  blocks: readonly MeasuredBlock[];
+}>;
+
+const measureBlocks = (
+  view: EditorView,
+  container: ProseMirrorNode,
+  start: number,
+  origin: Placed,
+): MeasuredBlock[] =>
+  drawnChildren(view, container, start).map((block) => {
+    const box = block.dom.getBoundingClientRect();
+    const branches: MeasuredBranch[] = [];
+    if (holdsBranches(block.node)) {
+      block.node.forEach((branch, offset) => {
+        const branchPos = block.pos + 1 + offset;
+        const branchDom = view.nodeDOM(branchPos);
+        if (!(branchDom instanceof HTMLElement)) return;
+        const shown = (
+          branchDom.querySelector('[data-node-view-content]') ?? branchDom
+        ).getBoundingClientRect();
+        branches.push({
+          top: shown.top - origin.top,
+          bottom: shown.bottom - origin.top,
+          end: branchPos + branch.nodeSize - 1,
+          blocks: measureBlocks(view, branch, branchPos + 1, origin),
+        });
+      });
+    }
+    return {
+      pos: block.pos,
+      top: box.top - origin.top,
+      bottom: box.bottom - origin.top,
+      left: box.left - origin.left,
+      right: box.right - origin.left,
+      branches,
+    };
+  });
+
+/**
+ * Where the block at `dragged` goes if it is dropped at (`x`, `y`): before
+ * the first block (other than itself) whose middle is below the point, or
+ * at `end`. A point inside a logic block, level with one of its branches,
+ * is a place in that branch; the gutter beside a logic block is not, so a
+ * block dragged straight up or down by its handle goes past it whole.
+ */
+const dropTargetIn = (
+  blocks: readonly MeasuredBlock[],
+  end: number,
+  dragged: number,
+  x: number,
+  y: number,
+): number => {
+  for (const block of blocks) {
+    if (block.pos === dragged || block.branches.length === 0) continue;
+    if (x < block.left || x > block.right) continue;
+    if (y < block.top || y > block.bottom) continue;
+    const branch = block.branches.find(
+      (each) => y >= each.top && y <= each.bottom,
+    );
+    if (branch !== undefined) {
+      return dropTargetIn(branch.blocks, branch.end, dragged, x, y);
+    }
+  }
+  const before = blocks.find(
+    (block) => block.pos !== dragged && y < (block.top + block.bottom) / 2,
+  );
+  return before?.pos ?? end;
+};
+
+/** How near the edge of what scrolls the editor a drag scrolls it. */
+const AUTO_SCROLL_EDGE = 48;
+
+/** What scrolls `element` into view: its nearest scrolling ancestor. */
+const scrollerOf = (element: Element): Element => {
+  for (
+    let parent = element.parentElement;
+    parent !== null;
+    parent = parent.parentElement
+  ) {
+    const { overflowY } = getComputedStyle(parent);
+    if (
+      (overflowY === 'auto' || overflowY === 'scroll') &&
+      parent.scrollHeight > parent.clientHeight
+    ) {
+      return parent;
+    }
+  }
+  return element.ownerDocument.scrollingElement ?? element.ownerDocument.body;
+};
+
+/** A block being dragged by its handle, from the pointer going down on it. */
+type HandleDrag = {
+  readonly pointerId: number;
+  readonly startX: number;
+  readonly startY: number;
+  readonly position: number;
+  /** Set once the pointer has moved far enough for this to be a drag. */
+  started: null | {
+    readonly size: number;
+    readonly blocks: readonly MeasuredBlock[];
+    readonly preview: HTMLElement;
+    /** Where the copy is placed from: the corner of what it is fixed to. */
+    readonly previewOrigin: Placed;
+    readonly grab: Placed;
+    readonly scroller: Element;
+    to: number | null;
+    x: number;
+    y: number;
+    scrolling: number | undefined;
+  };
+};
+
+/** How far the pointer moves on a handle before it drags the block. */
+const DRAG_THRESHOLD = 5;
+
 const FRAME_CLASSES =
   'pointer-events-none absolute z-10 border-2 data-boxed:rounded-[calc(var(--radius-sm)+4px)] not-data-boxed:rounded-sm';
 
 /**
- * The frames and the drag handle of an editor's blocks, drawn over the
+ * The frame and the drag handle of an editor's blocks, drawn over the
  * editor, which it must be placed in (as its last child, in an element that
- * is `relative`). The frame of the block under the pointer is in the text's
- * colour, the frame of the selected block in the primary colour (while
- * focus is in the editor), and the handle stands in the gutter at the start
- * of the block under the pointer, or of the selected one. They appear and
- * go at once. Clicking the handle selects its block; dragging it moves the
- * block, as the editor moves anything dropped in it. The keyboard's way is
+ * is `relative`). The selected block has a frame in the primary colour
+ * (while focus is in the editor), unless it is a paragraph or a heading;
+ * the block under the pointer has none. The handle stands in the gutter at
+ * the start of the block under the pointer, or of the selected one. They
+ * appear and go at once. Clicking the handle selects its block.
+ *
+ * Dragging the handle, in any direction, picks the block up: a copy of the
+ * block alone follows the pointer, and the document shows at once what
+ * dropping it would do (`blockDragPlugin`), the blocks around making room
+ * for it. Letting go moves it there, as one edit; Escape, or letting go where
+ * it would not move, leaves it where it was. Near the top or bottom of what
+ * scrolls the editor, the drag scrolls it. The keyboard's way is
  * Mod-Shift-ArrowUp and Mod-Shift-ArrowDown on the selected block, so the
  * handle is hidden from assistive technology and out of the Tab order.
  */
@@ -426,6 +554,7 @@ export function BlockFrameLayer({
     (x: number, y: number, target: EventTarget | null) => {
       if (editor.isDestroyed) return;
       const { view } = editor;
+      if (blockDragOf(view.state) !== null) return;
       const element = target instanceof Element ? target : null;
       // The handle belongs to the block it stands beside.
       if (element?.closest('[data-block-handle]')) return;
@@ -460,12 +589,12 @@ export function BlockFrameLayer({
       return;
     }
     const { view } = editor;
-    // What the frames are placed from: the inside of the editor's border.
-    const outer = container.getBoundingClientRect();
-    const origin = {
-      left: outer.left + container.clientLeft,
-      top: outer.top + container.clientTop,
-    };
+    // A block being dragged shows where it would go, and nothing else.
+    if (blockDragOf(view.state) !== null) {
+      setDrawing(NOTHING);
+      return;
+    }
+    const origin = originOf(container);
     const blocks = drawnBlocks(view);
     let hoveredDom = store.hovered();
     if (hoveredDom !== null && !hoveredDom.isConnected) {
@@ -487,11 +616,12 @@ export function BlockFrameLayer({
         : blocks.find((block) => block.pos === chosen.pos);
     const forHandle = hovered ?? selected;
     const next: Drawing = {
-      hovered:
-        hovered === undefined || hovered === selected
+      // A paragraph or a heading is text, which the caret and the
+      // selection already mark: only a block of another kind has a frame.
+      selected:
+        selected === undefined || selected.node.isTextblock
           ? null
-          : frameOf(hovered, origin),
-      selected: selected === undefined ? null : frameOf(selected, origin),
+          : frameOf(selected, origin),
       handle:
         forHandle === undefined ? null : handleOf(view, forHandle, origin),
     };
@@ -581,18 +711,210 @@ export function BlockFrameLayer({
     );
     view.focus();
   };
-  const dragHandled = (event: ReactDragEvent<HTMLDivElement>) => {
-    if (handle === null || editor.isDestroyed) return;
+  // The drag of the handle the pointer went down on, while it lasts, and
+  // what ends it (without a drop).
+  const handleDrag = useRef<HandleDrag | null>(null);
+  const cancelDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => cancelDrag.current?.(), []);
+
+  // Picks the block up, once the pointer has moved far enough.
+  const pickUp = (drag: HandleDrag): boolean => {
+    const own = layer.current;
+    const container = own?.parentElement;
+    if (own === null || container === null || container === undefined) {
+      return false;
+    }
+    if (editor.isDestroyed) return false;
     const { view } = editor;
-    const block = drawnBlocks(view).find(
-      (each) => each.pos === handle.position,
+    const node = view.state.doc.nodeAt(drag.position);
+    const dom = view.nodeDOM(drag.position);
+    if (node === null || !(dom instanceof HTMLElement)) return false;
+    const origin = originOf(container);
+    // Measured as it is drawn before the drag changes anything.
+    const blocks = measureBlocks(view, view.state.doc, 0, origin);
+    const box = boxOf({ pos: drag.position, node, dom });
+    const drawn = box.getBoundingClientRect();
+    // The block alone: none of what is drawn over it or around it.
+    const preview = copyOfBlock(box);
+    preview.setAttribute('data-block-drag-preview', '');
+    preview.classList.add('bg-input', 'elevation-high', 'rounded-sm');
+    // Fixed, so that the editor's own edges do not cut it off, and placed
+    // from the pointer's coordinates, which are physical. Stated on the
+    // element, over whatever placing the block's own classes give it.
+    Object.assign(preview.style, {
+      position: 'fixed',
+      left: '0',
+      top: '0',
+      margin: '0',
+      zIndex: '30',
+      pointerEvents: 'none',
+      opacity: '0.9',
+    });
+    preview.style.width = `${drawn.width}px`;
+    own.append(preview);
+    // At 0, 0 of what it is fixed to: the window, unless something round
+    // the editor is transformed.
+    const placedAt = preview.getBoundingClientRect();
+    drag.started = {
+      size: node.nodeSize,
+      blocks,
+      preview,
+      previewOrigin: { left: placedAt.left, top: placedAt.top },
+      // Where on the block the pointer holds it, kept as it moves.
+      grab: {
+        left: Math.min(Math.max(drag.startX - drawn.left, 0), drawn.width),
+        top: Math.min(Math.max(drag.startY - drawn.top, 0), drawn.height),
+      },
+      scroller: scrollerOf(container),
+      to: null,
+      x: drag.startX,
+      y: drag.startY,
+      scrolling: undefined,
+    };
+    store.setHovered(null);
+    view.dispatch(
+      view.state.tr.setSelection(
+        NodeSelection.create(view.state.doc, drag.position),
+      ),
     );
-    startBlockDrag(
-      view,
-      handle.position,
-      event.nativeEvent,
-      block === undefined ? null : boxOf(block),
+    showBlockDrag(view, { from: drag.position, to: null });
+    view.focus();
+    return true;
+  };
+
+  // The pointer is at (`x`, `y`): the copy follows it, and the document
+  // shows what dropping the block there would do.
+  const dragTo = (drag: HandleDrag, x: number, y: number) => {
+    const { started } = drag;
+    const container = layer.current?.parentElement;
+    if (started === null || container === null || container === undefined) {
+      return;
+    }
+    if (editor.isDestroyed) return;
+    started.x = x;
+    started.y = y;
+    const origin = originOf(container);
+    const { previewOrigin, grab } = started;
+    started.preview.style.translate = `${x - previewOrigin.left - grab.left}px ${y - previewOrigin.top - grab.top}px`;
+    const { view } = editor;
+    const to = dropTargetIn(
+      started.blocks,
+      view.state.doc.content.size,
+      drag.position,
+      x - origin.left,
+      y - origin.top,
     );
+    const moves = to !== drag.position && to !== drag.position + started.size;
+    const next = moves ? to : null;
+    if (next === started.to) return;
+    started.to = next;
+    showBlockDrag(view, { from: drag.position, to: next });
+  };
+
+  // Near the top or bottom of what scrolls the editor, scrolls it, faster
+  // the nearer, for as long as the pointer stays there.
+  const scrollNear = (drag: HandleDrag) => {
+    const { started } = drag;
+    if (started === null || started.scrolling !== undefined) return;
+    const step = () => {
+      started.scrolling = undefined;
+      if (handleDrag.current !== drag) return;
+      const { scroller, y } = started;
+      const page = scroller === scroller.ownerDocument.scrollingElement;
+      const edges = page
+        ? { top: 0, bottom: window.innerHeight }
+        : scroller.getBoundingClientRect();
+      const above = edges.top + AUTO_SCROLL_EDGE - y;
+      const below = y - (edges.bottom - AUTO_SCROLL_EDGE);
+      const by =
+        above > 0
+          ? -Math.min(above, AUTO_SCROLL_EDGE) / 3
+          : below > 0
+            ? Math.min(below, AUTO_SCROLL_EDGE) / 3
+            : 0;
+      if (by === 0) return;
+      const before = scroller.scrollTop;
+      scroller.scrollTop += by;
+      if (scroller.scrollTop === before) return;
+      dragTo(drag, started.x, started.y);
+      started.scrolling = requestAnimationFrame(step);
+    };
+    started.scrolling = requestAnimationFrame(step);
+  };
+
+  // The drag is over: dropped (`drop`), or given up.
+  const putDown = (drag: HandleDrag, drop: boolean) => {
+    const { started } = drag;
+    if (started === null) return;
+    if (started.scrolling !== undefined) {
+      cancelAnimationFrame(started.scrolling);
+    }
+    started.preview.remove();
+    if (editor.isDestroyed) return;
+    const { view } = editor;
+    const moved =
+      drop &&
+      started.to !== null &&
+      moveBlockTo(view, drag.position, started.to);
+    if (!moved) showBlockDrag(view, null);
+    view.focus();
+  };
+
+  const pressHandle = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || handle === null || editor.isDestroyed) return;
+    // Keeps the focus in the text, and starts no selection of the page.
+    event.preventDefault();
+    cancelDrag.current?.();
+    const drag: HandleDrag = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      position: handle.position,
+      started: null,
+    };
+    handleDrag.current = drag;
+    const onMove = (moved: PointerEvent) => {
+      if (moved.pointerId !== drag.pointerId) return;
+      if (drag.started === null) {
+        const distance = Math.hypot(
+          moved.clientX - drag.startX,
+          moved.clientY - drag.startY,
+        );
+        if (distance < DRAG_THRESHOLD) return;
+        if (!pickUp(drag)) {
+          finish(false);
+          return;
+        }
+      }
+      moved.preventDefault();
+      dragTo(drag, moved.clientX, moved.clientY);
+      scrollNear(drag);
+    };
+    const onUp = (released: PointerEvent) => {
+      if (released.pointerId === drag.pointerId) finish(true);
+    };
+    const onCancel = () => finish(false);
+    const onKey = (pressed: KeyboardEvent) => {
+      if (pressed.key !== 'Escape' || drag.started === null) return;
+      pressed.preventDefault();
+      pressed.stopPropagation();
+      finish(false);
+    };
+    const finish = (drop: boolean) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      window.removeEventListener('keydown', onKey, true);
+      if (handleDrag.current === drag) handleDrag.current = null;
+      if (cancelDrag.current === cancel) cancelDrag.current = null;
+      putDown(drag, drop);
+    };
+    const cancel = () => finish(false);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    window.addEventListener('keydown', onKey, true);
+    cancelDrag.current = cancel;
   };
 
   return (
@@ -603,14 +925,6 @@ export function BlockFrameLayer({
       // Placed from measured coordinates, which are physical.
       className="pointer-events-none absolute inset-0"
     >
-      {drawing.hovered !== null && (
-        <div
-          data-block-frame="hovered"
-          data-boxed={drawing.hovered.boxed || undefined}
-          className={cx(FRAME_CLASSES, 'border-current/30')}
-          style={frameStyle(drawing.hovered)}
-        />
-      )}
       {drawing.selected !== null && (
         <div
           data-block-frame="selected"
@@ -625,20 +939,9 @@ export function BlockFrameLayer({
         // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
         <div
           data-block-handle=""
-          draggable
           onClick={selectHandled}
-          onDragStart={dragHandled}
-          onDragEnd={() => {
-            if (editor.isDestroyed) return;
-            const { view } = editor;
-            const { dragging } = view;
-            // As the editor's own drag does: a drop that it handled has
-            // cleared it already.
-            setTimeout(() => {
-              if (view.dragging === dragging) view.dragging = null;
-            }, 50);
-          }}
-          className="pointer-events-auto absolute z-20 flex h-8.5 w-6.5 cursor-grab items-center justify-center rounded-xs bg-current/8 text-current/70 hover:bg-current/15 active:cursor-grabbing"
+          onPointerDown={pressHandle}
+          className="pointer-events-auto absolute z-20 flex h-8.5 w-6.5 cursor-grab touch-none items-center justify-center rounded-xs bg-current/8 text-current/70 hover:bg-current/15 active:cursor-grabbing"
           style={{ left: handle.left, top: handle.top }}
         >
           <GripVertical aria-hidden className="pointer-events-none size-4.5" />
