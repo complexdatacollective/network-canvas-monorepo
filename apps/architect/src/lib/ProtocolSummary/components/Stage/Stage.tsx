@@ -25,6 +25,7 @@ import LayoutName from '../LayoutName';
 import MiniTable from '../MiniTable';
 import type { FilterType } from '../Rules';
 import SummaryContext from '../SummaryContext';
+import SummaryPage from '../SummaryPage';
 import {
   DefaultLanguageText,
   SummaryDynamicValuesContext,
@@ -298,11 +299,7 @@ const StageContent = ({
         }
       : null;
   return (
-    <div
-      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
-      className="page-break-marker flex break-before-page flex-col gap-6"
-      id={`stage-${id}`}
-    >
+    <SummaryPage id={`stage-${id}`}>
       <div className="flex items-center">
         <div className="me-5 flex-1">
           <div
@@ -486,7 +483,7 @@ const StageContent = ({
         />
       )}
       <InterviewScript interviewScript={interviewScript ?? null} />
-    </div>
+    </SummaryPage>
   );
 };
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>

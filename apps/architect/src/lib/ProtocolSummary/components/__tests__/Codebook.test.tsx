@@ -2,6 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { testId } from '@codaco/protocol-builder/testing/testId';
+import {
+  asEntityAttributeReference,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
+import { templateTypeId } from '~/templates/__tests__/templateCodebookIds';
 import { developmentProtocol } from '~/templates/development-protocol';
 
 import Codebook from '../Codebook';
@@ -16,12 +22,18 @@ const layoutId = (name: string) => {
   return entry[0];
 };
 
-const renderSummary = (children: React.ReactNode) =>
+const PERSON = templateTypeId(developmentProtocol, 'node', 'person');
+const VENUE = templateTypeId(developmentProtocol, 'node', 'venue');
+
+const renderSummary = (
+  children: React.ReactNode,
+  protocol: CurrentProtocol = developmentProtocol,
+) =>
   render(
     <SummaryContext.Provider
       value={{
-        protocol: developmentProtocol,
-        protocolName: developmentProtocol.name ?? '',
+        protocol,
+        protocolName: protocol.name ?? '',
         index: [],
       }}
     >
@@ -72,5 +84,72 @@ describe('the layouts in the printable codebook', () => {
     expect(
       screen.getByRole('link', { name: 'closenessLayout' }),
     ).toHaveAttribute('href', `#layout-${layoutId('closenessLayout')}`);
+  });
+
+  it('lists the layouts of a node type on its page', () => {
+    const { container } = renderSummary(<Codebook />);
+
+    const person = container.querySelector(`#entity-${PERSON}`);
+    if (!(person instanceof HTMLElement)) {
+      throw new Error('The person node type is not printed.');
+    }
+    const layouts = rowValue(person, 'Layouts');
+    expect(layouts).toHaveTextContent('closenessLayout');
+    expect(
+      within(layouts).getByRole('link', { name: 'closenessLayout' }),
+    ).toHaveAttribute('href', `#layout-${layoutId('closenessLayout')}`);
+  });
+
+  it('prints no layouts row for a node type that no stage places', () => {
+    const protocol = structuredClone(developmentProtocol);
+    protocol.stages = protocol.stages.filter(
+      (stage) =>
+        !(stage.type === 'Sociogram' || stage.type === 'NetworkComposer') ||
+        !stage.subject.types.includes(VENUE),
+    );
+    const { container } = renderSummary(<Codebook />, protocol);
+
+    const venue = container.querySelector(`#entity-${VENUE}`);
+    if (!(venue instanceof HTMLElement)) {
+      throw new Error('The venue node type is not printed.');
+    }
+    expect(within(venue).queryByText('Layouts')).not.toBeInTheDocument();
+  });
+
+  it('prints the stages whose rules name a layout', () => {
+    const protocol = structuredClone(developmentProtocol);
+    const sociogram = protocol.stages.find(
+      (stage) => stage.type === 'Sociogram',
+    );
+    if (sociogram?.type !== 'Sociogram') {
+      throw new Error('The protocol has no Sociogram.');
+    }
+    sociogram.filter = {
+      join: 'OR',
+      rules: [
+        {
+          type: 'node',
+          id: testId('placed-rule'),
+          options: {
+            type: PERSON,
+            attribute: asEntityAttributeReference(layoutId('manualLayout')),
+            operator: 'EXISTS',
+          },
+        },
+      ],
+    };
+    const { container } = renderSummary(<Codebook />, protocol);
+
+    const named = container.querySelector(
+      `#layout-${layoutId('manualLayout')}`,
+    );
+    if (!(named instanceof HTMLElement)) {
+      throw new Error('manualLayout is not printed.');
+    }
+    const row = rowValue(named, 'Named in rules on');
+    expect(
+      within(row).getByRole('link', { name: 'Sociogram' }),
+    ).toHaveAttribute('href', `#stage-${sociogram.id}`);
+    expect(named).not.toHaveTextContent('Not in use');
   });
 });

@@ -9,6 +9,7 @@ import DualLink from './DualLink';
 import EntityBadge from './EntityBadge';
 import MiniTable from './MiniTable';
 import SummaryContext from './SummaryContext';
+import SummaryPage from './SummaryPage';
 import { DefaultLanguageText } from './SummaryText';
 
 const messages = defineMessages({
@@ -16,37 +17,37 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.layouts.layouts',
     defaultMessage: 'Layouts',
     description:
-      'Heading of the page of the printable protocol summary in Architect that lists the layouts of the codebook. A layout is a named set of node positions that participants create on a Sociogram or a Network Composer.',
+      'Heading of the page of the printable protocol summary in Architect that lists the layouts of the codebook. A layout is a named set of node positions that participants create on a Sociogram or a Network Composer. Read by the researcher and by anyone they share the printed summary with.',
   },
   setBy: {
     id: 'architect.protocolSummary.layouts.setBy',
     defaultMessage: 'Placed on',
     description:
-      'Row label in the table for one layout in the printable protocol summary. The row lists the stages on which participants or the automatic layout place nodes in the layout.',
+      'Row label in the table for one layout in the printable protocol summary of Architect. The row lists the stages on which participants or the automatic layout place nodes in the layout. Read by the researcher and by anyone they share the printed summary with.',
   },
   readBy: {
     id: 'architect.protocolSummary.layouts.readBy',
     defaultMessage: 'Shown on',
     description:
-      'Row label in the table for one layout in the printable protocol summary. The row lists the stages that show the node positions stored in the layout, such as a Narrative.',
+      'Row label in the table for one layout in the printable protocol summary of Architect. The row lists the stages that show the node positions stored in the layout, such as a Narrative. Read by the researcher and by anyone they share the printed summary with.',
   },
   nodeTypes: {
     id: 'architect.protocolSummary.layouts.nodeTypes',
     defaultMessage: 'Node types',
     description:
-      'Row label in the table for one layout in the printable protocol summary. The row lists the node types that have positions in the layout.',
+      'Row label in the table for one layout in the printable protocol summary of Architect. The row lists the node types that have positions in the layout. Read by the researcher and by anyone they share the printed summary with.',
   },
   namedByRules: {
     id: 'architect.protocolSummary.layouts.namedByRules',
     defaultMessage: 'Named in rules on',
     description:
-      'Row label in the table for one layout in the printable protocol summary. The row lists the stages with a rule (a filter, skip logic or a condition) that checks whether a node has a position in the layout.',
+      'Row label in the table for one layout in the printable protocol summary of Architect. The row lists the stages with a rule (a filter, skip logic or a condition) that checks whether a node has a position in the layout. Read by the researcher and by anyone they share the printed summary with.',
   },
   notInUse: {
     id: 'architect.protocolSummary.layouts.notInUse',
     defaultMessage: 'Not in use',
     description:
-      'Text in the table for one layout in the printable protocol summary, shown when no stage and no rule uses the layout.',
+      'Text in the table for one layout in the printable protocol summary of Architect, shown when no stage and no rule uses the layout. Read by the researcher and by anyone they share the printed summary with.',
   },
 });
 
@@ -78,11 +79,7 @@ const Layouts = () => {
     });
 
   return (
-    <div
-      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
-      className="page-break-marker flex break-before-page flex-col gap-6"
-      id="layouts"
-    >
+    <SummaryPage id="layouts">
       <Heading level="h1">{intl.formatMessage(messages.layouts)}</Heading>
       {layouts.map((layout) => {
         const rows = [
@@ -118,7 +115,7 @@ const Layouts = () => {
           </div>
         );
       })}
-    </div>
+    </SummaryPage>
   );
 };
 

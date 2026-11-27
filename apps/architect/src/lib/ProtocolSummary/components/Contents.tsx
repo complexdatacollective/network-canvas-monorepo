@@ -58,7 +58,7 @@ const messages = defineMessages({
     id: 'architect.protocolSummary.contents.layouts',
     defaultMessage: 'Layouts',
     description:
-      'Sub-heading in the table of contents of the printable protocol summary in Architect, above the list of the layouts of the codebook. A layout is a named set of node positions. Shown only when the protocol has layouts.',
+      'Sub-heading in the table of contents of the printable protocol summary in Architect, above the list of the layouts of the codebook. A layout is a named set of node positions. Shown only when the protocol has layouts. Read by the researcher and by anyone they share the printed summary with.',
   },
   interfaceText: {
     id: 'architect.protocolSummary.contents.interfaceText',

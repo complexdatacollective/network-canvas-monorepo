@@ -18,7 +18,8 @@ const FIXED_CLOCK = new Date('2026-01-01T12:00:00Z');
 /**
  * The printed document's own page structure. `SummaryPage.tsx` stamps
  * `page-break-marker` on every element that begins a printed page — the cover,
- * the contents, each stage, each codebook entity, the resource library, and the interview text —
+ * the contents, each stage, each codebook entity, the layouts, the resource
+ * library, and the interview text —
  * so this is the document telling us where its sections are, not a selector
  * guessing.
  */
@@ -186,14 +187,18 @@ test(
       (protocol.codebook.ego ? 1 : 0) +
       Object.keys(protocol.codebook.node ?? {}).length +
       Object.keys(protocol.codebook.edge ?? {}).length;
-    // cover + contents + one per stage + one per codebook entity + resources
-    // + the interview's shared text, which the summary lists as the
-    // interview shows it, so every protocol has it
-    const expectedSections = 2 + protocol.stages.length + entityCount + 1 + 1;
+    // The codebook's layouts share one page, printed only when it has any.
+    const layoutPages =
+      Object.keys(protocol.codebook.layouts ?? {}).length > 0 ? 1 : 0;
+    // cover + contents + one per stage + one per codebook entity + the
+    // layouts + resources + the interview's shared text, which the summary
+    // lists as the interview shows it, so every protocol has it
+    const expectedSections =
+      2 + protocol.stages.length + entityCount + layoutPages + 1 + 1;
     await expect(sections).toHaveCount(expectedSections);
 
     // Each section names its own baseline: an `id` where the document has one
-    // (`stage-…`, `ego`, `entity-…`), otherwise its heading.
+    // (`stage-…`, `ego`, `entity-…`, `layouts`), otherwise its heading.
     const names = await sections.evaluateAll((elements) =>
       elements.map(
         (element) =>

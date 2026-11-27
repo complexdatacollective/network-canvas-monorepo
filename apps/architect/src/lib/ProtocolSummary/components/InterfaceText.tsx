@@ -17,6 +17,7 @@ import {
 import MiniTable from './MiniTable';
 import SectionFrame from './Stage/SectionFrame';
 import SummaryContext from './SummaryContext';
+import SummaryPage from './SummaryPage';
 import { SummaryMarkdown, SummaryMessage, SummaryText } from './SummaryText';
 
 const messages = defineMessages({
@@ -101,11 +102,7 @@ const InterfaceText = () => {
   };
 
   return (
-    <div
-      id={INTERFACE_TEXT_ANCHOR}
-      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
-      className="page-break-marker flex break-before-page flex-col gap-6"
-    >
+    <SummaryPage id={INTERFACE_TEXT_ANCHOR}>
       <Heading level="h1">{intl.formatMessage(messages.title)}</Heading>
       {[...groups].map(([group, groupEntries]) => (
         <SectionFrame
@@ -141,7 +138,7 @@ const InterfaceText = () => {
           />
         </SectionFrame>
       ))}
-    </div>
+    </SummaryPage>
   );
 };
 

@@ -8,6 +8,7 @@ import { formatAssetType } from '~/components/Assets/assetMetadataMessages';
 
 import Asset from './Asset';
 import SummaryContext from './SummaryContext';
+import SummaryPage from './SummaryPage';
 const messages = defineMessages({
   resourceLibrary: {
     id: 'architect.protocolSummary.assetManifest.resourceLibrary',
@@ -35,8 +36,7 @@ const AssetManifest = () => {
     return null;
   }
   return (
-    // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
-    <div className="page-break-marker flex break-before-page flex-col gap-6 [&_h2]:capitalize">
+    <SummaryPage className="[&_h2]:capitalize">
       <Heading level="h1">
         {intl.formatMessage(messages.resourceLibrary)}
       </Heading>
@@ -49,7 +49,7 @@ const AssetManifest = () => {
             ))}
           </div>
         ))}
-    </div>
+    </SummaryPage>
   );
 };
 export default AssetManifest;
