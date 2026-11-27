@@ -3,6 +3,10 @@
  *   - @page targets the printed paper itself, not a DOM element
  *   - .summary-view (on <html>) and .summary-view body target elements that
  *     live outside React (index.html), so no className can attach to them
+ *   - the screen-only scroll margin on every in-page link target of the
+ *     summary (stages, node and edge types, layouts, resources), which a
+ *     link reaches through the browser's own jump; without it the sticky
+ *     navigation bar covers the target's heading
  *   - the screen-only .page-break-marker "paper card" framing is a screen-
  *     gated multi-property rule applied to several elements; expressing it
  *     as repeated [@media_screen]: utilities on every marker would be far
@@ -46,6 +50,10 @@
 }
 
 @media screen {
+  .protocol-summary-surface [id] {
+    scroll-margin-top: calc(var(--architect-nav-height) + 1rem);
+  }
+
   .summary-view body {
     overflow: visible;
     height: auto;
