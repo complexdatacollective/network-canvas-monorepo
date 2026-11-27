@@ -1082,6 +1082,68 @@ describe('the gender identity options, which this stage manages', () => {
     ]);
   });
 
+  // The stage-managed options dialog is the only place an existing attribute
+  // is renamed from a stage, so the codebook's layouts have to reach it there.
+  it('says at the name field that a renamed attribute takes the name of a layout, and writes nothing', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    harness.receiveCodebookUpdate({
+      layouts: { [testVariableId('seating layout')]: { name: 'seating' } },
+    });
+    const before = harness.protocolSections()[FAMILY_MEMBER_SECTION];
+    const dialog = within(await openGenderOptions(harness));
+
+    const name = dialog.getByRole('textbox', { name: /attribute name/i });
+    await harness.user.clear(name);
+    await harness.user.type(name, 'seating');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    expect(
+      await dialog.findByTestId('variable-name-field-error'),
+    ).toHaveTextContent('The codebook already has a layout called "seating"');
+    expect(harness.protocolSections()[FAMILY_MEMBER_SECTION]).toEqual(before);
+  });
+
+  it('refuses an option value whose column is a position column of a layout, and writes nothing', async () => {
+    const harness = openFixture();
+    await harness.opened();
+    harness.receiveCodebookUpdate({
+      layouts: {
+        [testVariableId('identity layout')]: { name: 'genderIdentity_ing' },
+      },
+    });
+    const before = harness.protocolSections()[FAMILY_MEMBER_SECTION];
+    const dialog = within(await openGenderOptions(harness));
+
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Create new option' }),
+    );
+    await writeInto(
+      harness,
+      dialog.getByRole('textbox', { name: 'Option 7 label' }),
+      'Other',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Option 7 value' }),
+      'ing_x',
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    const refusal =
+      'Option “ing_x” of “genderIdentity” would be exported to a column called “genderIdentity_ing_x”, but the export already has a column called “genderIdentity_ing_x” for the positions in the layout “genderIdentity_ing”. Change the option value or the attribute name.';
+    // Shown on the options themselves, not only in the dialog's summary.
+    await waitFor(() =>
+      expect(
+        dialog.getByRole('group', { name: /Choice values/ }),
+      ).toHaveAccessibleDescription(refusal),
+    );
+    expect(harness.protocolSections()[FAMILY_MEMBER_SECTION]).toEqual(before);
+  });
+
   // The stage's own text may choose its wording by the person's gender
   // identity. A version written for an option removed here names an option
   // the attribute no longer has, which the stage's check refuses, so it goes
