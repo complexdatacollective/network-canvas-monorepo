@@ -22,6 +22,7 @@ import type { CodebookLink } from './codebookLinks';
 import EgoType from './EgoType';
 import EntityType from './EntityType';
 import ExternalEntity from './ExternalEntity';
+import Layouts from './Layouts';
 import { useCodebookData } from './useCodebookData';
 import { useCodebookEditors } from './useCodebookEditors';
 const messages = defineMessages({
@@ -291,6 +292,8 @@ const Codebook = ({ link, onLinkClosed }: CodebookProps) => {
           </div>
         )}
       </div>
+
+      <Layouts search={search} unusedOnly={unusedOnly} />
 
       {processedNetworkAssets.length > 0 && (
         <div className="mb-14">

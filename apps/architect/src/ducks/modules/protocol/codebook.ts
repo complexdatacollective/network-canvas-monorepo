@@ -45,6 +45,13 @@ const errorMessages = defineMessages({
     description:
       'Actionable codebook write or deletion refusal. Any name or id is preserved authored data.',
   },
+  layoutInUse: {
+    id: 'architect.codebook.error.layoutInUse',
+    defaultMessage:
+      'This layout is in use and cannot be deleted. Remove it from the stages and rules listed with it first.',
+    description:
+      'Error shown in the confirmation dialog on the Codebook page of Architect, read by the researcher, when they try to delete a layout (a set of node positions on a Sociogram) that a stage or a rule (a filter, skip logic or a condition) still uses. The stages and rules are listed with the layout on the same page.',
+  },
 });
 import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
 import { find, get, has, omit, size } from 'es-toolkit/compat';
@@ -71,6 +78,7 @@ import {
   getVariablesForSubject,
 } from '~/selectors/codebook';
 import { getIsUsed } from '~/selectors/codebook/isUsed';
+import { getLayoutEntries } from '~/selectors/codebook/layouts';
 import { getEdgeIndex, getNodeIndex, utils } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
 import prune from '~/utils/prune';
@@ -397,6 +405,21 @@ export const deleteTypeAsync = createAppAsyncThunk(
 
     const payload: DeleteTypePayload = { entity, type };
     dispatch(codebookSlice.actions.deleteType(payload));
+  },
+);
+
+export const deleteLayoutAsync = createAppAsyncThunk(
+  'codebook/deleteLayoutAsync',
+  async ({ layoutId }: { layoutId: string }, { dispatch, getState }) => {
+    // Rejects for the same reason as `deleteTypeAsync`: the row's Delete
+    // control is a render-time snapshot of whether anything names the layout.
+    const entry = getLayoutEntries(getState()).find(
+      (layout) => layout.id === layoutId,
+    );
+    if (entry?.inUse) {
+      throw new Error(createMessageError(errorMessages.layoutInUse));
+    }
+    dispatch(codebookSlice.actions.deleteLayout({ layoutId }));
   },
 );
 

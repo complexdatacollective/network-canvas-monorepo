@@ -20,6 +20,7 @@ import {
 import type { RootState } from '~/ducks/store';
 import { getAllVariablesByUUID, getType } from '~/selectors/codebook';
 import { getIsUsed } from '~/selectors/codebook/isUsed';
+import { getLayoutEntries } from '~/selectors/codebook/layouts';
 import {
   getEntityTypeUsageHitsById,
   getVariableUsageHits,
@@ -291,6 +292,65 @@ export const makeGetEntityWithUsage = <
           usage,
         };
       };
+    },
+  );
+
+export type LayoutWithUsage = {
+  id: string;
+  name: string;
+  setBy: UsageMeta[];
+  readBy: UsageMeta[];
+  namedByRules: UsageMeta[];
+  nodeTypes: { id: string; name: string }[];
+  inUse: boolean;
+};
+
+/**
+ * Creates a selector for the codebook's layouts, each with the stages that
+ * set it, read it or name it in a rule, described as "Used In" rows are.
+ */
+export const makeGetLayoutsWithUsage = (intl: IntlShape = defaultIntl) =>
+  createSelector(
+    [
+      getLayoutEntries,
+      getProtocol,
+      getStageMetaByIndex,
+      getVariableMetaByIndex,
+      getTypeMetaByIndex,
+    ],
+    (
+      layouts,
+      protocol,
+      stageMetaByIndex,
+      variableMetaByIndex,
+      typeMetaByIndex,
+    ): LayoutWithUsage[] => {
+      const stageIndex = new Map<string, number>(
+        (protocol?.stages ?? []).map((stage, index) => [stage.id, index]),
+      );
+      const describe = (stageIds: string[]) =>
+        getUsageAsStageMeta(
+          stageMetaByIndex,
+          variableMetaByIndex,
+          stageIds.flatMap((stageId) => {
+            const index = stageIndex.get(stageId);
+            return index === undefined ? [] : [{ path: ['stages', index] }];
+          }),
+          typeMetaByIndex,
+          intl,
+        );
+      return layouts.map((layout) => ({
+        id: layout.id,
+        name: layout.name,
+        setBy: describe(layout.setBy),
+        readBy: describe(layout.readBy),
+        namedByRules: describe(layout.namedByRules),
+        nodeTypes: layout.nodeTypes.map((id) => ({
+          id,
+          name: typeMetaByIndex[id] ?? id,
+        })),
+        inUse: layout.inUse,
+      }));
     },
   );
 

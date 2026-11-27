@@ -1,6 +1,6 @@
-import { createElement, useCallback } from 'react';
+import { createElement, useCallback, useMemo } from 'react';
 import { compose } from 'react-recompose';
-import { connect } from 'react-redux';
+import { connect, useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -11,17 +11,20 @@ import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type {
-  ColorReference,
-  NodeDefinition,
-  NodeShapeReference,
+import {
+  type ColorReference,
+  getLayoutsOfNodeType,
+  type NodeDefinition,
+  type NodeShapeReference,
 } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteTypeAsync } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
+import { getProtocol } from '~/selectors/protocol';
 
+import { layoutAnchorId } from './codebookLinks';
 import EntityIcon from './EntityIcon';
 import { filterEntityType } from './filterEntityType';
 import { getEntityProperties } from './helpers';
@@ -95,6 +98,12 @@ const messages = defineMessages({
     defaultMessage: 'Delete entity',
     description:
       'Label and tooltip of the button on a node type or edge type section of the Codebook page that deletes the type. Delete is a verb; entity means the node type or edge type.',
+  },
+  layouts: {
+    id: 'architect.codebook.entityType.layouts',
+    defaultMessage: 'Layouts that have positions for this type:',
+    description:
+      'Label before the list of layouts on a node type section of the Codebook page of Architect. A layout is a named set of node positions; a stage gives nodes of this type positions in each listed layout. Each layout links to its entry further down the page.',
   },
   addAttribute: {
     id: 'architect.codebook.entityType.addAttribute',
@@ -230,6 +239,17 @@ const EntityType = ({
       },
     });
   }, [confirm, dispatch, entity, inUse, name, openDialog, type]);
+  const protocol = useSelector(getProtocol);
+  const layouts = useMemo(
+    () =>
+      protocol && entity === 'node'
+        ? getLayoutsOfNodeType(protocol, type).map((id) => ({
+            id,
+            layoutName: protocol.codebook.layouts?.[id]?.name ?? id,
+          }))
+        : [],
+    [entity, protocol, type],
+  );
   if (!visible) {
     return null;
   }
@@ -280,6 +300,27 @@ const EntityType = ({
               <span>{intl.formatMessage(messages.usedIn)}</span>
               {stages}
             </div>
+          )}
+          {layouts.length > 0 && (
+            <dl className="mt-2 flex flex-wrap items-center gap-1">
+              <dt>{intl.formatMessage(messages.layouts)}</dt>
+              <dd>
+                <ul className="flex flex-wrap items-center gap-1">
+                  {layouts.map(({ id, layoutName }) => (
+                    <li key={id}>
+                      <a
+                        href={`#${layoutAnchorId(id)}`}
+                        aria-label={layoutName}
+                      >
+                        <Badge className="wrap-break-word [--badge-color:var(--surface-3)]">
+                          <bdi>{layoutName}</bdi>
+                        </Badge>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </dl>
           )}
         </div>
         <Button onClick={handleEdit} color="primary" disabled={readOnly}>

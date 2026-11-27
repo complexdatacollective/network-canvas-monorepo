@@ -24,3 +24,6 @@ export const readCodebookLink = (
   }
   return undefined;
 };
+
+/** The DOM id of a layout's entry on the Codebook page, for in-page links. */
+export const layoutAnchorId = (layoutId: string) => `layout-${layoutId}`;

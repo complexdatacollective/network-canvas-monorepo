@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../__tests__/finishStage.ts';
-import { withTestCodebookIds, withTestIds } from '../../__tests__/testIds.ts';
+import {
+  testId,
+  withTestCodebookIds,
+  withTestIds,
+} from '../../__tests__/testIds.ts';
 import { completeProtocol } from '../../schemas/9/__tests__/complete-localized-protocol.ts';
 import { ProtocolSchemaV9 } from '../../schemas/9/schema.ts';
 import { getStageNodeTypes } from '../../schemas/9/stage-capabilities.ts';
@@ -302,7 +306,7 @@ describe('layout usage', () => {
           stage,
           {
             ...sociogram,
-            id: 'later-sociogram',
+            id: testId('later-sociogram'),
             subject: { entity: 'node', types: [colleague] },
             layout: colleagueMap,
           },
