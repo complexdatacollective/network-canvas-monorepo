@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { assembleProtocolSections } from '../protocol-document.ts';
-import { sectionShapeIssues } from '../section-validation.ts';
 import {
+  assertSectionValid,
+  SectionValidationFailedError,
+  sectionShapeIssues,
+} from '../section-validation.ts';
+import {
+  isCodebookSectionId,
   parseSectionId,
   sectionId,
   type SectionRef,
@@ -74,5 +79,39 @@ describe('codebook layout sections', () => {
         type: 'layout',
       }),
     ).toEqual([expect.objectContaining({ path: [] })]);
+  });
+
+  it('counts a layout section as part of the codebook', () => {
+    expect(
+      isCodebookSectionId(sectionId({ kind: 'codebookLayout', layoutId })),
+    ).toBe(true);
+  });
+
+  it('assembles no layouts record when the draft has no layout sections', () => {
+    const protocol = assembleProtocolSections({
+      settings: { name: 'Study' },
+      stageOrder: { stages: [] },
+    });
+    expect(protocol.codebook).not.toHaveProperty('layouts');
+  });
+
+  it('accepts a valid layout section when committing it', () => {
+    expect(() =>
+      assertSectionValid(sectionId({ kind: 'codebookLayout', layoutId }), {
+        name: 'sociogram',
+      }),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ['an id that is not a UUID', 'sociogram', { name: 'sociogram' }],
+    ['a document that is not a layout', layoutId, { name: 1 }],
+  ])('refuses to commit a layout section with %s', (_, id, doc) => {
+    expect(() =>
+      assertSectionValid(
+        sectionId({ kind: 'codebookLayout', layoutId: id }),
+        doc,
+      ),
+    ).toThrow(SectionValidationFailedError);
   });
 });

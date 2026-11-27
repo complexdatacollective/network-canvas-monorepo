@@ -10,6 +10,7 @@ import {
   type ProtocolLocalization,
 } from '../localization/localizedText.ts';
 import { isStageType } from '../stage-types.ts';
+import { sectionsFromProtocol } from './host/sectionsFromProtocol.ts';
 
 /**
  * The protocol every stage editor is tested against.
@@ -153,48 +154,7 @@ export const fixtureStageId = (handle: FixtureStageId): string =>
  * testing a shape no host has.
  */
 export function fixtureProtocolSections(): Record<string, SectionDoc> {
-  const sections: Record<string, SectionDoc> = {};
-  const { codebook, stages: _stages, assetManifest, ...settings } = FIXTURE;
-
-  sections[sectionId({ kind: 'settings' })] = settings;
-  sections[sectionId({ kind: 'stageOrder' })] = { stages: fixtureStageIds() };
-  sections[sectionId({ kind: 'assets' })] = isRecord(assetManifest)
-    ? assetManifest
-    : {};
-
-  for (const stage of fixtureStages()) {
-    if (typeof stage.id !== 'string') continue;
-    sections[sectionId({ kind: 'stage', stageId: stage.id })] = stage;
-  }
-
-  if (isRecord(codebook)) {
-    for (const [typeId, definition] of Object.entries(
-      isRecord(codebook.node) ? codebook.node : {},
-    )) {
-      if (isRecord(definition)) {
-        sections[sectionId({ kind: 'codebookNode', typeId })] = definition;
-      }
-    }
-    for (const [typeId, definition] of Object.entries(
-      isRecord(codebook.edge) ? codebook.edge : {},
-    )) {
-      if (isRecord(definition)) {
-        sections[sectionId({ kind: 'codebookEdge', typeId })] = definition;
-      }
-    }
-    if (isRecord(codebook.ego)) {
-      sections[sectionId({ kind: 'codebookEgo' })] = codebook.ego;
-    }
-    for (const [layoutId, definition] of Object.entries(
-      isRecord(codebook.layouts) ? codebook.layouts : {},
-    )) {
-      if (isRecord(definition)) {
-        sections[sectionId({ kind: 'codebookLayout', layoutId })] = definition;
-      }
-    }
-  }
-
-  return sections;
+  return sectionsFromProtocol(FIXTURE);
 }
 
 const fixtureCodebook = (): Record<string, unknown> =>

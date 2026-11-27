@@ -294,6 +294,19 @@ describe('codebookWithStaged', () => {
       ).layouts,
     ).toEqual(codebook.layouts);
   });
+
+  it('adds no layouts to a codebook that has none and stages none', () => {
+    expect(
+      codebookWithStaged(
+        { node: { [testTypeId('person')]: person() } },
+        { [PERSON]: { base: person(), edited: person({ required: true }) } },
+      ),
+    ).not.toHaveProperty('layouts');
+  });
+
+  it('keeps an empty layouts record that the codebook has', () => {
+    expect(codebookWithStaged({ layouts: {} }, {}).layouts).toEqual({});
+  });
 });
 
 describe('protocolSections', () => {
