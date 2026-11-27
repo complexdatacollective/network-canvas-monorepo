@@ -120,7 +120,7 @@ export const sociogramPromptMessages = defineMessages({
     id: 'protocolBuilder.networkCanvas.taskLabel',
     defaultMessage: 'Task type',
     description:
-      'Label of the control that chooses one of the three tasks a sociogram prompt can set: positioning nodes, highlighting nodes, or connecting nodes.',
+      "Label of the control that chooses one of the three tasks a sociogram prompt can set: positioning nodes, highlighting nodes, or connecting nodes. It appears in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskRequired: {
     id: 'protocolBuilder.networkCanvas.taskRequired',
@@ -132,53 +132,53 @@ export const sociogramPromptMessages = defineMessages({
     id: 'protocolBuilder.networkCanvas.taskLayoutLabel',
     defaultMessage: 'Position nodes',
     description:
-      'Name of the sociogram task in which the participant places nodes on the canvas and moves them. The sentence under it is taskLayoutDescription.',
+      "Name of the sociogram task in which the participant places nodes on the canvas and moves them. The sentence under it is taskLayoutDescription. It is an option of the task control in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskLayoutDescription: {
     id: 'protocolBuilder.networkCanvas.taskLayoutDescription',
     defaultMessage:
       'Participants drag nodes onto the canvas and move them. Positions are stored in the layout of this stage.',
     description:
-      'Says what the participant does in the positioning task. A layout is a named set of node positions in the codebook; the stage chooses one.',
+      "Says what the participant does in the positioning task. A layout is a named set of node positions in the codebook; the stage chooses one. It is the sentence under the Position nodes option of the task control in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskHighlightLabel: {
     id: 'protocolBuilder.networkCanvas.taskHighlightLabel',
     defaultMessage: 'Highlight nodes',
     description:
-      'Name of the sociogram task in which tapping a node turns a true-or-false attribute on and off. The sentence under it is taskHighlightDescription.',
+      "Name of the sociogram task in which tapping a node turns a true-or-false attribute on and off. The sentence under it is taskHighlightDescription. It is an option of the task control in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskHighlightDescription: {
     id: 'protocolBuilder.networkCanvas.taskHighlightDescription',
     defaultMessage:
       'Participants tap a node to set a Boolean attribute to true or false.',
     description:
-      'Says what the participant does in the highlighting task. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it.',
+      "Says what the participant does in the highlighting task. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it. It is the sentence under the Highlight nodes option of the task control in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskConnectLabel: {
     id: 'protocolBuilder.networkCanvas.taskConnectLabel',
     defaultMessage: 'Connect nodes',
     description:
-      'Name of the sociogram task in which the participant taps two nodes to create an edge between them. The sentence under it is taskConnectDescription.',
+      "Name of the sociogram task in which the participant taps two nodes to create an edge between them. The sentence under it is taskConnectDescription. It is an option of the task control in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskConnectDescription: {
     id: 'protocolBuilder.networkCanvas.taskConnectDescription',
     defaultMessage:
       'Participants tap two nodes to create or remove an edge between them.',
     description:
-      'Says what the participant does in the connecting task. An edge is a connection between two nodes.',
+      "Says what the participant does in the connecting task. An edge is a connection between two nodes. It is the sentence under the Connect nodes option of the task control in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   firstUseTitle: {
     id: 'protocolBuilder.networkCanvas.firstUseTitle',
     defaultMessage: 'Nodes are not placed before this task',
     description:
-      'Title of the warning in the prompts section of a sociogram stage. It is shown when this stage is the first in the interview to use its layout, and its first prompt is not a positioning task.',
+      "Title of the warning in the prompts section of a sociogram stage. It is shown when this stage is the first in the interview to use its layout, and its first prompt is not a positioning task. It appears in Architect's stage editor, and the researcher reads it.",
   },
   firstUseDescription: {
     id: 'protocolBuilder.networkCanvas.firstUseDescription',
     defaultMessage:
       'No earlier stage places nodes in this layout, and the first prompt of this stage is not a positioning task. Nodes that are not placed cannot be highlighted or connected. Make the first prompt a positioning task, or choose Automatic mode under Node layout.',
     description:
-      'Text of the warning in the prompts section of a sociogram stage. A layout is a named set of node positions. A positioning task is the prompt task in which participants place nodes. Automatic mode is a choice in the Node layout section of the same stage, which places nodes without the participant.',
+      "Text of the warning in the prompts section of a sociogram stage. A layout is a named set of node positions. A positioning task is the prompt task in which participants place nodes. Automatic mode is a choice in the Node layout section of the same stage, which places nodes without the participant. It appears in the prompts section of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   promptCreateEdgeLabel: {
     id: 'protocolBuilder.networkCanvas.promptCreateEdgeLabel',

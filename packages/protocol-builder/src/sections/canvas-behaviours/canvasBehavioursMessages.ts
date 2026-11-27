@@ -55,8 +55,8 @@ export const canvasBehavioursMessages = defineMessages({
   layoutModeAutomaticDescription: {
     id: 'protocolBuilder.networkCanvas.layoutModeAutomaticDescription',
     defaultMessage:
-      'Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.',
+      'Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation. During a positioning task, they can also move nodes while the simulation is paused.',
     description:
-      'Says what the participant sees in automatic layout mode. A stage is one step of an interview; the simulation runs on the canvas while the participant watches.',
+      "Says what the participant sees in automatic layout mode. A stage is one step of an interview; the simulation runs on the canvas while the participant watches. A positioning task is the Sociogram prompt task in which participants place and move nodes; in other tasks nodes cannot be moved. It appears under the Automatic mode card in the Node layout section of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
 });
