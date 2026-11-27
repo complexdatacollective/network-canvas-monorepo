@@ -9,18 +9,23 @@ import {
   createProtocolObjectId,
   isProtocolObjectId,
   type LocalizedString,
+  type Stage,
 } from '@codaco/protocol-validation';
 
 import { availableOnly } from '../../../../codebook/attributeAvailability.ts';
 import LayoutPickerField from '../../../../fields/LayoutPickerField.tsx';
 import { LocalizedInputField } from '../../../../fields/LocalizedStringField.tsx';
 import { FilterRuleSetField } from '../../../../fields/RuleSetField.tsx';
+import UnreachableLayoutAlert, {
+  useUnreachableLayoutTypes,
+} from '../../../../fields/UnreachableLayoutAlert.tsx';
 import VariablePickerField from '../../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
   RowPreviewProps,
   RowValues,
 } from '../../../../form/rowDialog.tsx';
+import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
 import {
   asLocalizedString,
   localizedFromText,
@@ -50,7 +55,10 @@ import {
   useStableIdList,
 } from '../../../../sections/canvas/rowValues.ts';
 import { useLostReferences } from '../../../../sections/canvas/useLostReferences.ts';
-import { useStageSubject } from '../../../../sections/useStageSubject.ts';
+import {
+  useStageNodeTypes,
+  useStageSubject,
+} from '../../../../sections/useStageSubject.ts';
 import { narrativePresetMessages as messages } from './narrativePresetMessages.ts';
 
 const LABEL_FIELD = 'label';
@@ -263,6 +271,43 @@ function LegendLabelField({
 }
 
 /**
+ * Warns when the preset's layout has no positions for some of the stage's
+ * node types. Judged on the preset as it is being edited: the stage is
+ * replaced, for the check, by one that reads only this preset's layout.
+ */
+function PresetLayoutAdvisory({ presetId }: Readonly<{ presetId: unknown }>) {
+  const { identity } = useStageEditorForm();
+  const nodeTypes = useStageNodeTypes();
+  const layout = asText(useFormValue([LAYOUT_FIELD] as const)[LAYOUT_FIELD]);
+  const draft = useMemo((): Stage | undefined => {
+    const [first, ...rest] = nodeTypes;
+    if (
+      layout === undefined ||
+      first === undefined ||
+      !isProtocolObjectId(identity.id) ||
+      !isProtocolObjectId(presetId)
+    ) {
+      return undefined;
+    }
+    return {
+      id: identity.id,
+      type: 'Narrative',
+      label: {},
+      subject: { entity: 'node', types: [first, ...rest] },
+      background: { concentricCircles: 0 },
+      presets: [{ id: presetId, label: {}, layout }],
+    };
+  }, [identity.id, layout, nodeTypes, presetId]);
+  const unreachable = useUnreachableLayoutTypes(
+    draft,
+    isProtocolObjectId(presetId) ? presetId : undefined,
+  );
+  return layout === undefined ? null : (
+    <UnreachableLayoutAlert layoutId={layout} nodeTypes={unreachable} />
+  );
+}
+
+/**
  * One saved way of looking at the network.
  *
  * A preset is a whole picture the researcher switches to while the participant
@@ -431,6 +476,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
           initialValue={committedLayout}
           required={intl.formatMessage(messages.presetLayoutRequired)}
         />
+        <PresetLayoutAdvisory presetId={item.id} />
       </Section>
 
       <Section

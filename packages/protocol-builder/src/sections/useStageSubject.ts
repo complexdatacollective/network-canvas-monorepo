@@ -33,7 +33,7 @@ const NO_NODE_TYPES: readonly string[] = [];
  * The node types this stage is currently configured against, read from the
  * live draft. Empty while none is chosen.
  */
-function useStageNodeTypes(): readonly string[] {
+export function useStageNodeTypes(): readonly string[] {
   const value = useStageValue('subject');
   return useMemo(() => draftSubjectNodeTypes(value) ?? NO_NODE_TYPES, [value]);
 }
