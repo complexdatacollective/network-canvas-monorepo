@@ -1,7 +1,7 @@
 ---
 title: Classement ordinal
 navOrder: 12
-translatedFrom: 9b3b23d719076789acd18fc9f83eb9c37a014a70
+translatedFrom: bd5893b37ae4e305c92e6e451e67f90fe9055832
 ---
 
 <InterfaceSummary type="OrdinalBin">
@@ -28,7 +28,7 @@ Une étape « Classement ordinal » peut comporter plusieurs [consignes](/fr/d
 
 ### Personnaliser la formulation intégrée {#customize-built-in-wording}
 
-Lorsque **Exiger le placement de chaque nœud** est activé dans la section **Placement des nœuds** de l’étape, les personnes participantes ne peuvent pas continuer tant que chaque nœud n’est pas dans une case. L’avis qu’elles voient lorsqu’elles essaient se trouve sous **Nœuds non placés**, dans la section **Personnaliser la formulation intégrée** de l’éditeur d’étape. Network Canvas fournit une formulation de départ, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez la modifier et la traduire comme n’importe quel autre texte (voir [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). L’avis peut afficher le nom du type de nœud de l’étape, inséré sous forme de pastille à l’aide du bouton de texte dynamique (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte) du champ.
+Lorsque **Exiger le placement de chaque nœud** est activé dans la section **Placement des nœuds** de l’étape, les personnes participantes ne peuvent pas continuer tant que chaque nœud n’est pas dans une case. L’avis qu’elles voient lorsqu’elles essaient se trouve sous **Nœuds non placés**, dans la section **Personnaliser la formulation intégrée** de l’éditeur d’étape. Network Canvas fournit une formulation de départ, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez la modifier et la traduire comme n’importe quel autre texte (voir [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). L’avis peut afficher le nom du type de nœud de l’étape, inséré sous forme de pastille à l’aide du bouton **Attribut** de la barre d’outils du champ, ou en saisissant `{`.
 
 </AppOnly>
 

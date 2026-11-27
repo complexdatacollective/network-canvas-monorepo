@@ -1,15 +1,15 @@
-import { useMemo, useRef } from 'react';
 import { z } from 'zod/mini';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
-  type RichTextEditorToken,
-  type RichTextInsertMenu,
-  type RichTextInsertMenuItem,
+  type RichTextInlineValues,
+  type RichTextInsertState,
+  type RichTextVersionPlace,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
+import { useInterfaceLanguage } from '@codaco/fresco-ui/interfaceLanguage';
 import {
   dynamicValueNamesIn,
   findMessageArgumentProblem,
@@ -21,10 +21,11 @@ import {
   type MessageVariant,
   messageStructure,
   messageVariants,
+  missingPlacementsOf,
   type MissingPlacement,
   pluralCountExamples,
+  pluralValueExamples,
   printMessageStructure,
-  missingPlacementsOf,
 } from '@codaco/protocol-validation';
 
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
@@ -32,38 +33,47 @@ import { asLocalizedString } from '../localization/localizedText.ts';
 import {
   countTokenId,
   documentToMessageNodes,
+  inlineContent,
+  isBlankStructure,
   isSwitchMeta,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
   openMessageDocument,
 } from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
+import { PLAIN_TEXT_TOOLBAR } from '../localization/textShape.ts';
+import { useMessageDocument } from '../localization/useMessageDocument.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
+import { attributeGroupMessages } from './attributeGroups.ts';
 import {
-  inlineContent,
-  isBlankMessage,
-  MessageNodesSummary,
-  numberSwitchLabels,
-  pluralCategories,
-} from './DynamicTextField.tsx';
+  ATTRIBUTE_MENU_LABEL,
+  AttributeMenuButton,
+  useAttributeMenuState,
+} from './dynamicText/AttributeMenuButton.tsx';
+import { MessageNodesSummary } from './dynamicText/DynamicMessageSummary.tsx';
+import { numberSwitchLabels } from './dynamicText/versionLabels.ts';
 import {
   type MessageArgumentLabels,
   messageArgumentLabels,
   useMessageArgumentLabels,
 } from './messageArgumentLabels.ts';
+import VariablePickerList, {
+  type VariablePickerGroup,
+} from './VariablePickerList.tsx';
+import { type VariablePillProps, variablePillSpec } from './VariablePill.tsx';
 
 const messages = defineMessages({
-  insertMenu: {
-    id: 'protocolBuilder.localizedMessage.insertMenu',
-    defaultMessage: 'Inject piped text from this stage',
+  required: {
+    id: 'protocolBuilder.localizedMessage.required',
+    defaultMessage: 'Required in this wording',
     description:
-      'Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text a participant reads whose wording Network Canvas supplies, such as a label on the Family Pedigree. “Piped text” is survey-software vocabulary for text filled in while the interview runs: the menu offers what this text can show or change with, such as a family member’s name, the number of parents still to add, or whether the text is about the participant.',
+      'Note under an entry in the Attribute menu of wording that Network Canvas supplies, such as the name of the person, when the version of the wording being written must include it and does not include it yet.',
   },
-  byCase: {
-    id: 'protocolBuilder.localizedMessage.byCase',
-    defaultMessage: 'Different wording for each case',
+  requiredMissing: {
+    id: 'protocolBuilder.localizedMessage.requiredMissing',
+    defaultMessage: 'This wording is missing something it requires',
     description:
-      'Second line of an entry in the insert-a-value menu of a text a participant reads. The entry names something the text can change with, such as “Participant or someone else” or “Relation”; choosing it inserts a piece of text with one version for each of its cases, such as one about the participant and one about someone else.',
+      'Read by a screen reader as the description of the Attribute button of the toolbar, above wording that Network Canvas supplies, while the version of the wording being written lacks something it must include, such as the name of the person. The button shows a dot for sighted users.',
   },
   pluralVersion: {
     id: 'protocolBuilder.localizedMessage.pluralVersion',
@@ -73,34 +83,44 @@ const messages = defineMessages({
   },
   versionsBlank: {
     id: 'protocolBuilder.localizedMessage.versionsBlank',
-    defaultMessage: 'Write something in every version of this text.',
+    defaultMessage: 'Write something in every version of this wording.',
     description:
       'Refusal shown under a text with a piece written in several versions (one about the participant, one about someone else, and so on) when one of those versions is empty, in any of the protocol’s languages.',
   },
   placementMissing: {
     id: 'protocolBuilder.localizedMessage.placementMissing',
-    defaultMessage: 'This text must include the attribute “{placeholder}”.',
+    defaultMessage: 'This wording must include the attribute “{placeholder}”.',
     description:
       'Refusal shown to a researcher under a text in a protocol that leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”.',
   },
   placementMissingIn: {
     id: 'protocolBuilder.localizedMessage.placementMissingIn',
     defaultMessage:
-      'This text must include the attribute “{placeholder}” in the “{version}” scenario.',
+      'This wording must include the attribute “{placeholder}” in the “{version}” scenario.',
     description:
       'Refusal shown to a researcher under a text in a protocol that is worded differently for different scenarios (for example, one wording about the participant and another about someone else), when the wording for one scenario leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”; version is the label of the scenario, such as “About someone else”.',
   },
   unreadable: {
     id: 'protocolBuilder.localizedMessage.unreadable',
     defaultMessage:
-      'This text uses something it cannot show. Write it again here.',
+      'This wording uses something that it cannot show. Write it again here.',
     description:
       'Refusal shown under a text written in several versions when a translation imported from elsewhere uses a placeholder or a choice this text does not offer.',
   },
 });
 
-/** How many examples a plural version's label gives of the numbers it is for. */
+/**
+ * How many examples a plural version's label gives of the numbers it is for.
+ */
 const EXAMPLE_COUNT = 3;
+
+/** The plural categories a number switch has versions for, `other` last. */
+const pluralCategories = (locale: LocaleTag): string[] => {
+  const categories = [...pluralValueExamples(locale).keys()].filter(
+    (category) => category !== 'other',
+  );
+  return [...categories, 'other'];
+};
 
 /** Whether some version of a switch in `nodes`, at any depth, shows nothing. */
 const hasBlankVersion = (nodes: readonly MessageNode[]): boolean =>
@@ -109,7 +129,7 @@ const hasBlankVersion = (nodes: readonly MessageNode[]): boolean =>
       node.kind === 'switch' &&
       node.versions.some(
         (version) =>
-          isBlankMessage(version.nodes) || hasBlankVersion(version.nodes),
+          isBlankStructure(version.nodes) || hasBlankVersion(version.nodes),
       ),
   );
 
@@ -227,23 +247,6 @@ export function localizedMessageProblemText(
   return undefined;
 }
 
-/**
- * Why `message` cannot be saved, in words, or undefined when it can (or when
- * there is nothing to judge).
- */
-export function useLocalizedMessageProblem(
-  message: string | undefined,
-  declaration: MessageArguments,
-  locale: LocaleTag,
-): string | undefined {
-  const intl = useAppIntl();
-  if (message === undefined) return undefined;
-  const problem = localizedMessageProblem(message, declaration, locale);
-  return problem === undefined
-    ? undefined
-    : problemText(problem, message, declaration, locale, intl);
-}
-
 type VersionGroup = Readonly<{
   key: string;
   /** What the group's select cases mean, or empty without a select. */
@@ -345,6 +348,108 @@ function messageVersions(
   };
 }
 
+/** The argument a value's pill stands for: itself, or the number it counts. */
+const argumentOf = (valueId: string) =>
+  valueId.startsWith(countTokenId('')) ? valueId.slice(1) : valueId;
+
+/**
+ * The pill of a placeholder of wording that Network Canvas supplies, named in
+ * the interface's words and so read in the interface's language.
+ */
+const placeholderPill = (
+  name: string,
+  language: Pick<VariablePillProps, 'lang' | 'dir'>,
+): VariablePillProps => ({
+  name,
+  kind: 'placeholder',
+  ...language,
+});
+
+/** Something the Attribute menu of supplied wording puts in the text. */
+type SuppliedWordingEntry = Readonly<{
+  value: string;
+  label: string;
+  /** A placeholder is a value; a choice or a number is wording. */
+  group: 'interview' | 'dynamic';
+  content: readonly RichTextContent[];
+  /**
+   * Whether the version that the caret is in, given the versions around it
+   * (see `RichTextVersionPlace`), must include this and does not yet.
+   */
+  required?: (place: readonly RichTextVersionPlace[]) => boolean;
+}>;
+
+/**
+ * The Attribute menu of wording supplied by Network Canvas, as in any other
+ * text: each placeholder under "Interview attributes", and each choice and
+ * number that the wording can change with under "Dynamic attributes", which
+ * puts in a version for each of its cases or plural forms.
+ */
+function SuppliedWordingMenu({
+  insert,
+  entries,
+  language,
+}: Readonly<{
+  insert: RichTextInsertState;
+  entries: readonly SuppliedWordingEntry[];
+  language: Pick<VariablePillProps, 'lang' | 'dir'>;
+}>) {
+  const intl = useAppIntl();
+  const state = useAttributeMenuState(insert);
+  // Judged where the text goes: the version that the menu was opened in by
+  // typing, or the one that the toolbar acts on.
+  const required = new Set(
+    entries.flatMap((entry) =>
+      entry.required?.(insert.versionPlace) === true ? [entry.value] : [],
+    ),
+  );
+  const marker = intl.formatMessage(messages.required);
+  const groups: VariablePickerGroup[] = (['interview', 'dynamic'] as const)
+    .map((group) => ({
+      id: group,
+      label: intl.formatMessage(attributeGroupMessages[group]),
+      options: entries
+        .filter((entry) => entry.group === group)
+        .map(({ value, label }) => ({
+          value,
+          label,
+          ...(required.has(value) && { marker }),
+        })),
+    }))
+    .filter((group) => group.options.length > 0);
+  const pillOf = (value: string): VariablePillProps => {
+    const entry = entries.find((each) => each.value === value);
+    const name = entry?.label ?? value;
+    return entry?.group === 'dynamic'
+      ? { name, kind: 'dynamic', ...language }
+      : placeholderPill(name, language);
+  };
+  return (
+    <AttributeMenuButton
+      insert={insert}
+      state={state}
+      {...(required.size > 0 && {
+        missing: intl.formatMessage(messages.requiredMissing),
+      })}
+    >
+      <VariablePickerList
+        aria-label={ATTRIBUTE_MENU_LABEL}
+        groups={groups}
+        optionPill={(option) => pillOf(option.value)}
+        onSelect={(value) => {
+          const entry = entries.find((each) => each.value === value);
+          if (entry === undefined) return;
+          state.setMenuOpen(false);
+          insert.commands.insertContent(entry.content);
+        }}
+        onOpenChange={(next) => {
+          if (!next) state.close();
+        }}
+      />
+    </AttributeMenuButton>
+  );
+}
+
 const named = (label: string | undefined, argument: string) =>
   label === undefined || label.trim() === '' ? argument : label;
 
@@ -400,6 +505,7 @@ export function LocalizedMessageVersionsSummary({
   locale: LocaleTag;
 }>) {
   const intl = useAppIntl();
+  const labelLanguage = useInterfaceLanguage();
   const argumentLabels = useMessageArgumentLabels();
   const structure = messageStructure(message);
   if (!('nodes' in structure)) return <>{message}</>;
@@ -414,14 +520,18 @@ export function LocalizedMessageVersionsSummary({
       nodes={structure.nodes}
       markdown={false}
       multiline={false}
-      valueLabel={valueLabel}
-      switchSummary={labels.switchSummary}
+      valuePill={(argument) =>
+        placeholderPill(valueLabel(argument), labelLanguage)
+      }
+      switchPill={(node) =>
+        placeholderPill(valueLabel(node.argument), labelLanguage)
+      }
       versionLabel={labels.versionLabel}
     />
   );
 }
 
-export type LocalizedMessageVersionsProps = Readonly<{
+type LocalizedMessageVersionsProps = Readonly<{
   id: string;
   name: string;
   /** One translation, as the protocol stores it, or empty. */
@@ -442,14 +552,15 @@ export type LocalizedMessageVersionsProps = Readonly<{
 }>;
 
 /**
- * One translation of a localized message, edited as piped text is: one line
+ * One translation of a localized message, edited as other text is: one line
  * of text, its placeholders as pills, and a piece of text with a version for
  * each case (or for each kind of number) only where the text has one, folded
  * to a pill until it is opened, and able to hold another inside a version.
  * Where the whole message is one such piece, its versions are listed open.
- * The insert menu (the toolbar button, or typing `{`) offers what the setting
- * declares: each placeholder, each select argument as wording for each of its
- * cases, and each number as wording that fits it, showing the number.
+ * The Attribute menu (the toolbar button, or typing `{`) offers what the
+ * setting declares: each placeholder, each select argument as wording for
+ * each of its cases, and each number as wording that fits it, showing the
+ * number.
  */
 export function LocalizedMessageVersions({
   id,
@@ -467,8 +578,9 @@ export function LocalizedMessageVersions({
   className,
 }: LocalizedMessageVersionsProps) {
   const intl = useAppIntl();
+  const labelLanguage = useInterfaceLanguage();
   const argumentLabels = useMessageArgumentLabels();
-  const { valueLabel, labels, numbers } = messageNaming(
+  const { valueLabel, labels } = messageNaming(
     declaration,
     locale,
     intl,
@@ -476,10 +588,10 @@ export function LocalizedMessageVersions({
   );
 
   const missing = missingPlacementsOf(message, declaration, locale);
-  // Whether the version being edited requires `argument` and does not show
-  // it: some version of the message for the cases the caret is in.
+  // Whether the version being written requires `argument` and does not show
+  // it: some version of the message for the cases that the caret is in.
   const missingIn =
-    (argument: string): RichTextInsertMenuItem['required'] =>
+    (argument: string): SuppliedWordingEntry['required'] =>
     (place) =>
       missing.some(
         (each) =>
@@ -490,135 +602,103 @@ export function LocalizedMessageVersions({
           ),
       );
 
-  const items: RichTextInsertMenuItem[] = Object.entries(declaration).map(
-    ([argument, declared]): RichTextInsertMenuItem => {
+  // What the Attribute menu offers: each placeholder, as a value the
+  // interview fills in, and each choice and number as wording with a
+  // version for each of its cases or plural forms.
+  const entries: SuppliedWordingEntry[] = Object.entries(declaration).map(
+    ([argument, declared]): SuppliedWordingEntry => {
       const label = valueLabel(argument);
       if (declared.kind === 'text') {
         return {
-          id: `value:${argument}`,
+          value: `value:${argument}`,
           label,
+          group: 'interview',
           required: missingIn(argument),
           content: inlineContent(
             [{ kind: 'argument', name: argument }],
             FORMAT,
-            labels,
+            { versions: labels },
           ),
         };
       }
-      if (declared.kind === 'plural') {
-        return {
-          id: `number:${argument}`,
-          label,
-          required: missingIn(argument),
-          description: numbers.menuDescription(),
-          content: inlineContent(
-            [
-              {
-                kind: 'switch',
-                argument,
-                type: 'plural',
-                versions: pluralCategories(locale).map((key) => ({
-                  key,
-                  nodes: [{ kind: 'count' }],
-                })),
-              },
-            ],
-            FORMAT,
-            labels,
-          ),
-        };
-      }
+      const versions =
+        declared.kind === 'plural'
+          ? pluralCategories(locale).map((key) => ({
+              key,
+              nodes: [{ kind: 'count' } as const],
+            }))
+          : [...new Set([...declared.cases, 'other'])].map((key) => ({
+              key,
+              nodes: [],
+            }));
       return {
-        id: `cases:${argument}`,
+        value: `${declared.kind}:${argument}`,
         label,
-        description: intl.formatMessage(messages.byCase),
+        group: 'dynamic',
+        // A number can be required; a choice never is.
+        required: missingIn(argument),
         content: inlineContent(
           [
             {
               kind: 'switch',
               argument,
-              type: 'select',
-              versions: [...new Set([...declared.cases, 'other'])].map(
-                (key) => ({ key, nodes: [] }),
-              ),
+              type: declared.kind === 'plural' ? 'plural' : 'select',
+              versions,
             },
           ],
           FORMAT,
-          labels,
+          { versions: labels },
         ),
       };
     },
   );
-  const insertMenu: RichTextInsertMenu = {
-    label: intl.formatMessage(messages.insertMenu),
-    items,
-    trigger: '{',
-  };
+
+  const renderInsertTools = (insert: RichTextInsertState) => (
+    <SuppliedWordingMenu
+      insert={insert}
+      entries={entries}
+      language={labelLanguage}
+    />
+  );
 
   // Each placeholder, and each number where its plural shows it. A name the
   // text uses that the setting does not declare, as an imported translation
   // can, keeps a pill under its own name, so an edit never drops its words.
-  const tokens: RichTextEditorToken[] = [
+  const shownArguments = [
     ...new Set([...Object.keys(declaration), ...dynamicValueNamesIn(message)]),
-  ].flatMap((argument): RichTextEditorToken[] => {
-    const kind = declaration[argument]?.kind;
-    const label = valueLabel(argument);
-    return [
-      ...(kind === 'select' || kind === 'plural'
-        ? []
-        : [{ id: argument, label, text: `{${argument}}`, inToolbar: false }]),
-      ...(kind === 'select' || kind === 'text'
-        ? []
-        : [{ id: countTokenId(argument), label, inToolbar: false }]),
-    ];
-  });
+  ];
+  const inlineValues: RichTextInlineValues = {
+    spec: (valueId) =>
+      variablePillSpec({
+        ...placeholderPill(valueLabel(argumentOf(valueId)), labelLanguage),
+        size: 'inline',
+      }),
+    text: (valueId) => valueLabel(argumentOf(valueId)),
+    version: `${intl.locale}:${labelLanguage.dir ?? ''}:${locale}:${JSON.stringify(
+      shownArguments.map(valueLabel),
+    )}`,
+    written: shownArguments
+      .filter((argument) => declaration[argument]?.kind === 'text')
+      .map((argument) => ({ id: argument, text: `{${argument}}` })),
+  };
 
   // What the document's pills and version labels say, so a change of
   // interface language relabels a document already open.
   const labelsKey = `${intl.locale}:${locale}`;
 
-  const parsed = useMemo(
-    () => openMessageDocument(name, message, FORMAT, labels),
-    // The labels follow the languages (`labelsKey`) and the declaration; the
-    // message decides the document.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [name, message, declaration, labelsKey],
-  );
-
-  // As `DynamicMessageEditor` does: the editor gets its own last document
-  // back while that document still writes the stored message, so a round
-  // trip never rewrites what the researcher is typing.
-  const lastEmitted = useRef<{
-    message: string;
-    content: RichTextContent;
-    labelsKey: string;
-  } | null>(null);
-  const content =
-    lastEmitted.current?.message === message &&
-    lastEmitted.current.labelsKey === labelsKey
-      ? lastEmitted.current.content
-      : parsed;
-
-  const handleChange = (next: unknown) => {
-    if (typeof next !== 'object' || next === null) return;
-    const document = next as RichTextContent;
-    let nodes: MessageNode[];
-    try {
-      nodes = documentToMessageNodes(document, FORMAT);
-    } catch {
-      return;
-    }
-    const nextMessage = isBlankMessage(nodes)
-      ? undefined
-      : printMessageStructure(nodes);
-    lastEmitted.current = {
-      message: nextMessage ?? '',
-      content: document,
-      labelsKey,
-    };
-    if ((nextMessage ?? '') === message) return;
-    onMessageChange(nextMessage);
-  };
+  const opened = useMessageDocument({
+    text: message,
+    // The labels follow the languages and the declaration; the message
+    // decides the document.
+    openKey: `${name}:${labelsKey}:${JSON.stringify(declaration)}`,
+    open: (text) =>
+      openMessageDocument(name, text, FORMAT, { versions: labels }),
+    write: (document) => {
+      const nodes = documentToMessageNodes(document, FORMAT);
+      return isBlankStructure(nodes) ? undefined : printMessageStructure(nodes);
+    },
+    onWrite: onMessageChange,
+  });
 
   return (
     <RichTextEditorField
@@ -634,29 +714,26 @@ export function LocalizedMessageVersions({
       // Every keystroke, so that a host can mark the text changed, and judge
       // it, as it is written.
       changeMode="input"
-      toolbarOptions={{
-        bold: false,
-        italic: false,
-        links: false,
-        headings: false,
-        lists: false,
-        thematicBreak: false,
-        history: true,
-      }}
-      tokens={tokens}
-      versions
+      toolbarOptions={PLAIN_TEXT_TOOLBAR}
+      inlineValues={inlineValues}
       // A message that is one plural or one choice is those versions and
       // nothing else, so they are listed rather than folded to a pill.
-      openWholeMessageVersions
-      insertMenu={insertMenu}
-      value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
-      onChange={handleChange}
+      versions
+      // English, as every name in the toolbar is.
+      insertTools={{
+        label: 'Insert an attribute',
+        render: renderInsertTools,
+      }}
+      value={
+        opened.content ?? { type: 'doc', content: [{ type: 'paragraph' }] }
+      }
+      onChange={opened.onDocumentChange}
       className={className}
     />
   );
 }
 
-export type LocalizedMessageFieldProps = CreateFormFieldProps<
+type LocalizedMessageFieldProps = CreateFormFieldProps<
   LocalizedString,
   'div',
   {
@@ -670,7 +747,7 @@ export type LocalizedMessageFieldProps = CreateFormFieldProps<
 
 /**
  * Participant-facing text that changes with what it is about: a localized
- * message (see `localizedMessage`), edited in the editing language as piped
+ * message (see `localizedMessage`), edited in the editing language as other
  * text is (see `LocalizedMessageVersions`).
  *
  * The text has a version for each case of something it changes with, such
@@ -692,7 +769,7 @@ export default function LocalizedMessageField({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
 }: LocalizedMessageFieldProps) {
-  const { localization, locale } = useEditingLanguage();
+  const { editingLocale } = useEditingLanguage();
 
   return (
     <LocalizedStringField value={value} onChange={onChange}>
@@ -705,7 +782,7 @@ export default function LocalizedMessageField({
           readOnly={readOnly === true || translation.readOnly}
           disabled={disabled}
           declaration={declaration}
-          locale={locale ?? localization?.defaultLocale ?? 'en'}
+          locale={editingLocale}
           ariaLabelledBy={ariaLabelledBy}
           ariaDescribedBy={ariaDescribedBy}
           ariaInvalid={ariaInvalid}

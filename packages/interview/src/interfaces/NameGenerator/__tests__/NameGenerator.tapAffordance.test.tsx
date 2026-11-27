@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Form } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import type { NcNode } from '@codaco/shared-consts';
 
 import { testTypeId } from '../../../__tests__/testIds';
@@ -106,7 +107,7 @@ describe('NameGenerator main list tap affordance', () => {
     const props = renderStage(
       stage({
         type: 'NameGenerator',
-        form: { title: { en: 'Edit' }, fields: [] } as unknown as Form,
+        form: { title: { en: 'Edit' }, ...formOf([]) } as unknown as Form,
       }),
     );
 

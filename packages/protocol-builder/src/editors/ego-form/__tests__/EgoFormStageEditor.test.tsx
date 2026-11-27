@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -6,9 +6,9 @@ import {
   fixtureStageId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
+  fieldTabTexts,
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
@@ -63,12 +63,12 @@ describe('the editor for a form about the participant', () => {
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
       'Ego Form',
     );
-    // A rich-text editor rather than an input: it shows its text.
-    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
-      'Introduction',
-    );
+    // One document: the heading, the text and the fields, in order.
+    const form = await screen.findByRole('textbox', { name: 'Form content' });
+    expect(form).toHaveTextContent('Introduction');
+    expect(form).toHaveTextContent('There are a few questions about you');
     expect(
-      await screen.findByText('What is your name?', { exact: false }),
+      await within(form).findByText('What is your name?', { exact: false }),
     ).toBeInTheDocument();
     // An ego form has no subject to choose: the schema fixes it as the
     // interview's ego, so there is no type picker on this stage at all.
@@ -85,7 +85,10 @@ describe('the editor for a form about the participant', () => {
     // name, which is proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Ego Form/);
-    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe('');
+    expect(
+      (await screen.findByRole('textbox', { name: 'Form content' }))
+        .textContent,
+    ).toBe('');
   });
 
   /**
@@ -97,22 +100,31 @@ describe('the editor for a form about the participant', () => {
    */
   it('follows an attribute deleted elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
-    expect(
-      await screen.findByText(
-        exactlyText('Text attribute using Text Input input control'),
-      ),
-    ).toBeInTheDocument();
+    const form = within(
+      await screen.findByRole('textbox', { name: 'Form content' }),
+    );
+    expect(await form.findByText('What is your name?')).toBeInTheDocument();
+    expect(form.queryByText('Deleted attribute')).toBeNull();
 
     harness.receiveCodebookUpdate({ ego: { variables: {} } });
 
-    expect(
-      await screen.findByText('This attribute is no longer in the codebook.'),
-    ).toBeInTheDocument();
+    // Shown in the field's tab, with its settings button.
+    await waitFor(async () =>
+      expect(await fieldTabTexts(harness)).toContainEqual(
+        expect.stringContaining('Deleted attribute'),
+      ),
+    );
     // Their deletion is theirs. The field the researcher authored is still on
     // the stage, still pointing where they pointed it: an editor that quietly
     // dropped it would be saving somebody else's edit as this one.
     expectStageUntouched(harness);
-    await harness.roundTrip({ unowned: [] });
+    // Nor does a save keep a field that collects nothing: it is refused until
+    // the researcher chooses another attribute for the field.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('Choose an attribute for this field.'),
+    ).toBeInTheDocument();
+    expectStageUntouched(harness);
   });
 
   /**

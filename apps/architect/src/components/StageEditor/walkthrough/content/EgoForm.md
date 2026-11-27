@@ -36,7 +36,7 @@
 
 <!-- scene: ego-form-intro -->
 
-The Ego Form collects data about the participant via a configurable [form](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms). An introduction above the form explains what the form is for.
+The Ego Form collects data about the participant via a configurable [form](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms). A heading and some text at the top of the form can explain what the questions are for.
 
 Read the full [Ego Form documentation](https://documentation.networkcanvas.com/design-protocols/interface-documentation/ego-form).
 
@@ -48,24 +48,16 @@ Use this stage to ask the participant a few questions about themselves.
 
 > Avoid: Overloading the form with too many fields or text-heavy questions, which make it burdensome to complete.
 
-## Introduce the form
-
-<!-- section: introduction -->
-<!-- field: introductionPanel.title -->
-<!-- scene: ego-form-introduction -->
-
-The introduction sits above the form, so the participant knows what the questions are for before they start. The **Title** is required and is shown as the introduction's heading. The **Introduction text** below the title is optional.
-
 ## Build the form
 
 <!-- section: form-fields -->
 <!-- scene: ego-form-intro -->
 
-The form contains questions the participant answers about themselves. Each field records one attribute, and the fields appear in the order listed here.
+The form contains questions the participant answers about themselves. Each field records one attribute of the participant.
 
-For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
+Start the form with a heading and a short introduction, so the participant knows what the questions are for before they start. To make a line a heading, choose a heading in the toolbar's list of text styles.
 
-Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
+<!-- include: form-document -->
 
 <!-- include: skip-logic -->
 

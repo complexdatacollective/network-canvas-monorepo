@@ -6,6 +6,11 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
+import {
+  ANOTHER_FIELD,
+  dynamicPill,
+  useAttributeGroups,
+} from '../testing/attributePickerGroups.ts';
 import type { VariableNameScope } from './variableNameRules.ts';
 import VariablePickerField, {
   type CreateOptionOutcome,
@@ -447,4 +452,88 @@ export const ChoosingShowsTheChange: Story = {
 /** Try every interaction, including creating an attribute. */
 export const Playground: Story = {
   args: { create: 'created' },
+};
+
+function GroupedHarness() {
+  const [value, setValue] = useState<string | undefined>(undefined);
+  const [created, setCreated] = useState(0);
+  const groups = useAttributeGroups(() => setCreated((count) => count + 1));
+  return (
+    <div className="mx-auto flex min-h-[48rem] w-full max-w-2xl flex-col gap-4 p-8">
+      <UnconnectedField
+        name="attribute"
+        label={FIELD_LABEL}
+        component={VariablePickerField}
+        groups={groups}
+        optionPill={dynamicPill}
+        value={value}
+        onChange={setValue}
+      />
+      <output data-testid="dynamic-created">{created}</output>
+    </div>
+  );
+}
+
+/**
+ * Attributes under headings, in the order that every attribute list uses.
+ * One that cannot be used here stays in its group, dimmed, with the reason
+ * always shown beneath it; a group can end in an action row, such as "Create
+ * dynamic attribute".
+ */
+export const Groups: Story = {
+  render: () => <GroupedHarness />,
+  play: async ({ canvasElement }) => {
+    await openPopup(canvasElement);
+    const listbox = await screen.findByRole('listbox');
+
+    // The headings, in order.
+    const headings = [
+      ...listbox.querySelectorAll('[data-attribute-group]'),
+    ].map((group) => group.getAttribute('data-attribute-group'));
+    await expect(headings).toEqual(['node', 'ego', 'dynamic', 'interview']);
+    await expect(within(listbox).getByText('Node attributes')).toBeVisible();
+
+    // An attribute that cannot be used stays in its own group, with its
+    // reason shown and read as its description, before anything is chosen.
+    const firstName = within(listbox).getByRole('option', {
+      name: 'first_name',
+    });
+    await expect(firstName.closest('[data-attribute-group]')).toHaveAttribute(
+      'data-attribute-group',
+      'ego',
+    );
+    await expect(firstName).toHaveAttribute('aria-disabled', 'true');
+    await expect(within(firstName).getByText(ANOTHER_FIELD)).toBeVisible();
+    await expect(firstName).toHaveAccessibleDescription(
+      expect.stringContaining(ANOTHER_FIELD),
+    );
+    // No "Not available here" heading: nothing was moved out of its group.
+    await expect(screen.queryByText('Not available here')).toBeNull();
+
+    // Choosing it selects nothing.
+    firstName.scrollIntoView({ block: 'nearest' });
+    await userEvent.click(firstName);
+    await expect(await trigger(canvasElement)).toHaveTextContent(
+      'Select an attribute',
+    );
+
+    // A dynamic attribute's row shows its values.
+    const pronoun = within(listbox).getByRole('option', {
+      name: 'their / her / his',
+    });
+    await expect(
+      pronoun.querySelector('data[data-attribute-type="dynamic"]'),
+    ).not.toBeNull();
+
+    // The action row does its own thing and closes the list.
+    const action = within(listbox).getByRole('option', {
+      name: 'Create dynamic attribute',
+    });
+    action.scrollIntoView({ block: 'nearest' });
+    await userEvent.click(action);
+    await waitFor(() =>
+      expect(screen.getByTestId('dynamic-created')).toHaveTextContent('1'),
+    );
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+  },
 };

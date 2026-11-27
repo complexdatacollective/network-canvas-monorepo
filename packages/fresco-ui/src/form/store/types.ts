@@ -94,6 +94,14 @@ export type ValidationContext = {
    */
   formValueAliases?: Readonly<Record<string, string>>;
   /**
+   * The codebook variables that this form asks, including those whose field
+   * is not on screen now. A comparison with one of them reads only the
+   * form's own value for it: while its field is not mounted (a question that
+   * the form's logic hides) it has no answer, and the entity's stored value
+   * is never read in its place.
+   */
+  formVariables?: readonly string[];
+  /**
    * Map a codebook variable ID to the participant-facing text that introduces
    * it on this screen — the prompt or label the researcher authored. The
    * variable-comparison validators name their target with it.

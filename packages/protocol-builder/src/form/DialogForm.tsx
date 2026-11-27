@@ -226,7 +226,7 @@ const DialogFormSubmissionBlockContext = createContext<
  * nothing in this package does — has to report the problem itself, because
  * nothing else will.
  */
-export function useDialogFormSubmissionBlock(reason: string): boolean {
+function useDialogFormSubmissionBlock(reason: string): boolean {
   const block = useContext(DialogFormSubmissionBlockContext);
   useEffect(() => block?.(reason), [block, reason]);
   return block !== undefined;

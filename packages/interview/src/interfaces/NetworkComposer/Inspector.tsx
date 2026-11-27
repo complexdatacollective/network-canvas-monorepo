@@ -195,7 +195,7 @@ function AttributeFormInner({
     [attributes],
   );
 
-  const { fieldComponents, coerceValues, passphraseNeeded } = useProtocolForm({
+  const { formContent, coerceValues, passphraseNeeded } = useProtocolForm({
     fields: form.fields ?? [],
     initialValues,
     subject,
@@ -335,11 +335,11 @@ function AttributeFormInner({
                 fieldState?.([variable])?.value,
               ),
           );
-        const patchResult = formValuesToAttributePatch(
-          coerceValues(values),
-          savable,
-          { keepWhenUnanswered: unavailable ?? NO_UNAVAILABLE },
-        );
+        const patchResult = formValuesToAttributePatch(coerceValues(values), {
+          fields: savable,
+          shown: new Set(savable),
+          keepWhenUnanswered: unavailable ?? NO_UNAVAILABLE,
+        });
         if (!patchResult.success) {
           failure = formMessages.submitFailed;
           return null;
@@ -488,7 +488,7 @@ function AttributeFormInner({
     <div data-testid="inspector-panel" className="flex min-h-0 flex-1 flex-col">
       <ScrollArea className="min-h-0 flex-1" viewportClassName="p-4">
         <FormWithoutProvider onSubmit={noopSubmit}>
-          <div>{fieldComponents}</div>
+          <div>{formContent}</div>
         </FormWithoutProvider>
       </ScrollArea>
       <AutoPersist onSettled={saveIfValid} pendingSaveRef={pendingSaveRef} />

@@ -1,4 +1,4 @@
-import type { RichTextInsertMenuItem } from './InsertMenu';
+import type { RichTextEmojiMenuItem } from './EmojiMenuList';
 
 /**
  * How many characters of an emoji's name, typed after a colon, open the
@@ -75,7 +75,7 @@ export const suggestEmoji = (
  */
 export const emojiMenuItems = (
   emoji: readonly EmojiSuggestion[],
-): RichTextInsertMenuItem[] =>
+): RichTextEmojiMenuItem[] =>
   emoji.map((each) => ({
     id: each.emoji,
     label: `${each.emoji} :${each.names[0] ?? ''}:`,

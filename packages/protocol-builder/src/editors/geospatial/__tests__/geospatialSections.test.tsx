@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { LocalizedString } from '@codaco/protocol-validation';
+import { fieldBlockMarkdown } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
@@ -107,6 +108,43 @@ const asCollaborator = (
     harness.host.store.applyAsCollaborator(section, rewrite({ ...current }));
   });
 };
+
+type AddedField = Readonly<{
+  id: string;
+  variable: string;
+  prompt: Readonly<Record<string, string>>;
+}>;
+
+/**
+ * A form stage with `added` placed at the end of its document, in the form's
+ * default language, and in its register of fields.
+ */
+const withFormFields =
+  (...added: readonly AddedField[]) =>
+  (stage: Record<string, unknown>): Record<string, unknown> => {
+    const form =
+      typeof stage.form === 'object' && stage.form !== null
+        ? (stage.form as Record<string, unknown>)
+        : {};
+    const fields = Array.isArray(form.fields) ? form.fields : [];
+    const content =
+      typeof form.content === 'object' && form.content !== null
+        ? (form.content as Record<string, string>)
+        : {};
+    const blocks = added.map(({ id }) => fieldBlockMarkdown(id)).join('\n\n');
+    const english = content['en-US'];
+    return {
+      ...stage,
+      form: {
+        ...form,
+        content: {
+          ...content,
+          'en-US': english === undefined ? blocks : `${english}\n\n${blocks}`,
+        },
+        fields: [...fields, ...added],
+      },
+    };
+  };
 
 /**
  * One more attribute this stage's prompts could record a place in, called
@@ -622,23 +660,15 @@ describe('the places a geospatial stage asks about', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
-    asCollaborator(harness, ALTER_FORM, (stage) => ({
-      ...stage,
-      form: {
-        fields: [
-          ...(Array.isArray(
-            (stage.form as Record<string, unknown> | undefined)?.fields,
-          )
-            ? ((stage.form as Record<string, unknown>).fields as unknown[])
-            : []),
-          {
-            id: testId('field-added-1'),
-            variable: WORKPLACE,
-            prompt: { 'en-US': 'Where do they work?' },
-          },
-        ],
-      },
-    }));
+    asCollaborator(
+      harness,
+      ALTER_FORM,
+      withFormFields({
+        id: testId('field-added-1'),
+        variable: WORKPLACE,
+        prompt: { 'en-US': 'Where do they work?' },
+      }),
+    );
 
     const after = await openPrompt(harness, 'Create new prompt');
     const picker = attributeField('Location attribute');
@@ -682,23 +712,15 @@ describe('the places a geospatial stage asks about', () => {
     // picker takes the attribute off its own list as the revision arrives,
     // which is what has to be waited for: the pick stays in the field, and
     // that is precisely the row the gate exists to refuse.
-    asCollaborator(harness, ALTER_FORM, (stage) => ({
-      ...stage,
-      form: {
-        fields: [
-          ...(Array.isArray(
-            (stage.form as Record<string, unknown> | undefined)?.fields,
-          )
-            ? ((stage.form as Record<string, unknown>).fields as unknown[])
-            : []),
-          {
-            id: testId('field-added-1'),
-            variable: WORKPLACE,
-            prompt: { 'en-US': 'Where do they work?' },
-          },
-        ],
-      },
-    }));
+    asCollaborator(
+      harness,
+      ALTER_FORM,
+      withFormFields({
+        id: testId('field-added-1'),
+        variable: WORKPLACE,
+        prompt: { 'en-US': 'Where do they work?' },
+      }),
+    );
     // The picker saying so is how this test knows the revision has arrived;
     // the pick itself stays in the field, which is the row the gate refuses.
     expect(
@@ -740,28 +762,22 @@ describe('the places a geospatial stage asks about', () => {
     // is how this test knows the revision arrived, and the prompt's own
     // attribute — kept in the list because the field holds it — is the one
     // the gate must let past.
-    asCollaborator(harness, ALTER_FORM, (stage) => ({
-      ...stage,
-      form: {
-        fields: [
-          ...(Array.isArray(
-            (stage.form as Record<string, unknown> | undefined)?.fields,
-          )
-            ? ((stage.form as Record<string, unknown>).fields as unknown[])
-            : []),
-          {
-            id: testId('field-added-1'),
-            variable: WORKPLACE,
-            prompt: { 'en-US': 'Where do they work?' },
-          },
-          {
-            id: testId('field-added-2'),
-            variable: LOCATION,
-            prompt: { 'en-US': 'Where do they live?' },
-          },
-        ],
-      },
-    }));
+    asCollaborator(
+      harness,
+      ALTER_FORM,
+      withFormFields(
+        {
+          id: testId('field-added-1'),
+          variable: WORKPLACE,
+          prompt: { 'en-US': 'Where do they work?' },
+        },
+        {
+          id: testId('field-added-2'),
+          variable: LOCATION,
+          prompt: { 'en-US': 'Where do they live?' },
+        },
+      ),
+    );
     expect(await offeredAttributes(harness.user, picker)).toEqual([LOCATION]);
 
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));

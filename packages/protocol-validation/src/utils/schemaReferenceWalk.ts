@@ -1,15 +1,21 @@
 import { z } from 'zod';
 
 import { assetBlocksInMessage } from '../localization/assetBlock.ts';
+import { logicReads } from '../localization/logic.ts';
 import {
   type AssetReferenceDescriptor,
   getAssetReferenceDescriptor,
 } from '../schemas/9/asset-reference.ts';
 import type { StageSubject } from '../schemas/9/common/index.ts';
 import {
+  isDynamicValueNameReference,
+  readDynamicAttributeLogic,
+} from '../schemas/9/dynamic-attributes.ts';
+import {
   type DynamicValueRole,
   dynamicValueReferencesIn,
   optionIdFromCaseKey,
+  parseDynamicValueName,
 } from '../schemas/9/dynamic-values.ts';
 import {
   getEntityAttributeReferenceDescriptor,
@@ -59,6 +65,12 @@ export type EntityAttributeReferenceHit = {
    * can name several attributes, so two hits may share a path.
    */
   inMessage?: Readonly<{ name: string; optionIds: readonly string[] }>;
+  /**
+   * Set with `inMessage` when the field at `path` is the name itself, rather
+   * than text that contains it: what a dynamic attribute's logic reads (see
+   * `dynamicValueNameReference`).
+   */
+  asName?: true;
 };
 
 export type EntityTypeReferenceHit = {
@@ -173,6 +185,7 @@ const hasReference = (schema: z.ZodType): boolean => {
     getAssetReferenceDescriptor(node) !== undefined ||
     holdsAssetBlocks(node) ||
     dynamicValueSiteOf(node) !== undefined ||
+    isDynamicValueNameReference(node) ||
     getStageReferenceSite(node) !== undefined ||
     getProtocolObjectKind(node) !== undefined;
   if (!result) {
@@ -335,6 +348,7 @@ type StringPlan = {
   type: EntityTypeReferenceDescriptor | undefined;
   asset: AssetReferenceDescriptor | undefined;
   stageSite: string | undefined;
+  dynamicValueName: boolean;
 };
 
 type ObjectPlan = {
@@ -429,6 +443,7 @@ const buildPlan = (schema: z.ZodType): WalkPlan => {
       type: getEntityTypeReferenceDescriptor(node),
       asset: getAssetReferenceDescriptor(node),
       stageSite: getStageReferenceSite(node),
+      dynamicValueName: isDynamicValueNameReference(node),
     };
   }
   const assetBlocks = holdsAssetBlocks(node);
@@ -531,6 +546,7 @@ const walkString = (
     if (assetDescriptor.ignoreValues?.includes(value)) return [];
     return [{ kind: 'asset', path, assetId: value }];
   }
+  if (plan.dynamicValueName) return dynamicNameHits(value, path, ctx);
   if (plan.stageSite !== undefined) {
     return [{ kind: 'stage', path, stageId: value, site: plan.stageSite }];
   }
@@ -575,6 +591,44 @@ const dynamicTextHits = (
       ];
     },
   );
+
+/**
+ * The attribute a dynamic attribute's logic reads, named by the field at
+ * `path` (see `dynamicValueNameReference`), with the options that the
+ * definition's answers give a version for (`logicReads`, read leniently).
+ * A use of the attribute, as a name in text is.
+ */
+const dynamicNameHits = (
+  name: string,
+  path: (string | number)[],
+  ctx: WalkContext,
+): ReferenceHit[] => {
+  const parsed = parseDynamicValueName(name);
+  if (parsed?.kind !== 'attribute') return [];
+  const logic = readDynamicAttributeLogic(ctx.parent);
+  const caseKeys =
+    logic === undefined
+      ? []
+      : (logicReads(logic).values.find((value) => value.name === name)
+          ?.caseKeys ?? []);
+  const optionIds = caseKeys.flatMap((key) => {
+    const optionId = optionIdFromCaseKey(key);
+    return optionId === undefined ? [] : [optionId];
+  });
+  return [
+    {
+      kind: 'attribute',
+      path,
+      variableId: parsed.variableId,
+      subject:
+        resolveSubject('owningVariable', path, ctx) ??
+        dynamicValueSubject(parsed.role, ctx.stageSubject),
+      existence: 'unchecked',
+      inMessage: { name, optionIds },
+      asName: true,
+    },
+  ];
+};
 
 const walkText = (
   plan: TextPlan,

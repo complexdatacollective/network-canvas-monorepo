@@ -6,6 +6,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../__tests__/englishForms.ts';
 import { generateNetwork } from '../../generateNetwork.ts';
 import { valueKey } from '../constraints/uniqueRegistry.ts';
 
@@ -176,7 +177,12 @@ function bandsForSeed(
   shape: Shape = SWEPT,
 ): VariableValue[] {
   const { codebook, stages } = binAndFormProtocol(binType, order, shape);
-  const { network } = generateNetwork({ seed, codebook, stages });
+  const { network } = generateNetwork({
+    ...ENGLISH_FORMS,
+    seed,
+    codebook,
+    stages,
+  });
   return network.nodes.map((node) =>
     requiredAttribute(node[entityAttributesProperty], 'band'),
   );
@@ -255,7 +261,12 @@ describe('a unique variable a binning stage and a form both write', () => {
         'binThenMorePeopleThenForm',
         echoed,
       );
-      const { network } = generateNetwork({ seed, codebook, stages });
+      const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
+        seed,
+        codebook,
+        stages,
+      });
       const echoes: VariableValue[] = network.nodes.map((node) =>
         requiredAttribute(node[entityAttributesProperty], 'bandEcho'),
       );

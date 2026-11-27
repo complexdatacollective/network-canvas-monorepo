@@ -22,8 +22,9 @@ import { VARIABLE_TYPE_OPTIONS } from '../codebook/variableTypeLabels.ts';
  * the schema teaches a control to render cannot go unoffered here.
  *
  * Its own module because two families read it and neither owns it: the shared
- * `FormFieldsSection` decides what its picker offers, and a network composer's
- * field editor decides the same thing about a differently-shaped row.
+ * form section (`FormDocumentSection`) decides what its attribute list offers,
+ * and a network composer's field editor decides the same thing about a
+ * differently-shaped row.
  *
  * The label is the descriptor the codebook editor names that type by rather
  * than the schema's token, so a type reaches a reader in their own language

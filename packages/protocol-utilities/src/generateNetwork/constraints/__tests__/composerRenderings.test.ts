@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   asEntityAttributeReference,
   type ComponentType,
+  fieldBlockMarkdown,
   type LocalizedString,
   type Stage,
   type StructuralCodebook,
@@ -12,6 +13,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../../__tests__/englishForms.ts';
 import { testId } from '../../../__tests__/testId.ts';
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { describeValue } from '../describeValue.ts';
@@ -154,6 +156,9 @@ function alterFormStage(
     label: { 'en-US': 'Edit person' },
     subject: { entity: 'node', type: 'person' },
     form: {
+      content: {
+        'en-US': fieldBlockMarkdown(testId('ordinary-form/field-1')),
+      },
       fields: [
         {
           id: testId('ordinary-form/field-1'),
@@ -185,6 +190,7 @@ describe('NetworkComposer field renderings', () => {
   // handed to that stage's own form.
   it('draws a node attribute inside the window the composer field validates', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({}),
       stages: [
         composerStage({
@@ -247,6 +253,7 @@ describe('NetworkComposer field renderings', () => {
     };
 
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({}),
       stages: [reachable, unreachable],
       seed: 7,
@@ -264,6 +271,7 @@ describe('NetworkComposer field renderings', () => {
   // against the stage subject.
   it('draws an edge attribute inside the window its edge form validates', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({}),
       stages: [
         composerStage({
@@ -297,6 +305,7 @@ describe('NetworkComposer field renderings', () => {
   it('counts a unique value space against the composer window', () => {
     const generate = () =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: codebookWith({ nodeValidation: { unique: true } }),
         stages: [
           composerStage({
@@ -332,6 +341,7 @@ describe('NetworkComposer field renderings', () => {
   // relative picker's own default window.
   it('falls back to the codebook parameters through the composer control', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({
         nodeParameters: { type: 'full', min: '1990-01-01', max: '1990-12-31' },
       }),
@@ -359,6 +369,7 @@ describe('NetworkComposer field renderings', () => {
   // the value has to satisfy.
   it('keeps the codebook window where the composer renders no date control', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({
         nodeParameters: { type: 'year', min: '1990', max: '1990' },
       }),
@@ -377,6 +388,7 @@ describe('NetworkComposer field renderings', () => {
   it('refuses disjoint ordinary-form and composer date windows', () => {
     const generate = () =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: codebookWith({
           nodeParameters: {
             type: 'full',
@@ -429,6 +441,7 @@ describe('NetworkComposer field renderings', () => {
       },
     };
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({
         nodeParameters: {
           type: 'full',
@@ -467,6 +480,7 @@ describe('NetworkComposer field renderings', () => {
 
     for (let seed = 0; seed < 20; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: codebookWith({
           booleanOptions: [{ label: { 'en-US': 'Yes' }, value: true }],
         }),
@@ -492,6 +506,7 @@ describe('NetworkComposer field renderings', () => {
   it('refuses two composer stages that render one variable differently', () => {
     const generate = () =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: codebookWith({}),
         stages: [
           composerStage({
@@ -544,6 +559,7 @@ describe('NetworkComposer field renderings', () => {
     };
 
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({}),
       stages: [
         composerStage({ id: 'composer-1', nodeFields: [field] }),
@@ -560,6 +576,7 @@ describe('NetworkComposer field renderings', () => {
 
   it('intersects overlapping composer date windows at the same resolution', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({}),
       stages: [
         composerStage({
@@ -603,6 +620,7 @@ describe('NetworkComposer field renderings', () => {
 
   it('draws only the values offered by a Boolean choice control', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: codebookWith({
         booleanOptions: [{ label: { 'en-US': 'Yes' }, value: true }],
       }),
@@ -623,6 +641,7 @@ describe('NetworkComposer field renderings', () => {
 
     for (let seed = 0; seed < 20; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: codebookWith({
           booleanOptions: [{ label: { 'en-US': 'Yes' }, value: true }],
         }),
@@ -643,6 +662,7 @@ describe('NetworkComposer field renderings', () => {
   it('counts Boolean choices when checking unique feasibility', () => {
     const generate = () =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: codebookWith({
           booleanOptions: [{ label: { 'en-US': 'Yes' }, value: true }],
           booleanValidation: { unique: true },

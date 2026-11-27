@@ -48,14 +48,21 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     editor: nameGeneratorStageEditor,
     sections: [
       'Node setup',
-      'Form configuration',
+      'Form',
       'Prompt collection',
       'Side panels',
       'Nomination limits',
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['conditions', 'form', 'label', 'prompts', 'subject'],
+    ownedKeys: [
+      'conditions',
+      'dynamicAttributes',
+      'form',
+      'label',
+      'prompts',
+      'subject',
+    ],
   },
   {
     interfaceName: 'FamilyPedigree',
@@ -79,6 +86,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     opensWording: true,
     ownedKeys: [
       'conditions',
+      'dynamicAttributes',
       'edgeConfiguration',
       'framing',
       'label',

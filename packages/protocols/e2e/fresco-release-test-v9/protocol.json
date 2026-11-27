@@ -370,13 +370,11 @@
         "en": "About you",
         "es": "Sobre ti"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About you",
-          "es": "Sobre ti"
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About you\n\n![](field:064c0dfc-10e5-541f-9b70-b9119ade6af4)\n\n![](field:5f97e59f-07d3-5078-85da-184308ed8000)",
+          "es": "# Sobre ti\n\n![](field:064c0dfc-10e5-541f-9b70-b9119ade6af4)\n\n![](field:5f97e59f-07d3-5078-85da-184308ed8000)"
+        },
         "fields": [
           {
             "id": "064c0dfc-10e5-541f-9b70-b9119ade6af4",
@@ -436,9 +434,23 @@
         "en": "Greeting",
         "es": "Saludo"
       },
+      "conditions": {
+        "8bcce2f0-6cd2-5936-a081-b841a5797ea3": {
+          "rules": [
+            {
+              "id": "261499d0-f71a-58e6-b34e-7eb6ebc3f854",
+              "type": "ego",
+              "options": {
+                "attribute": "da7d8d07-b30e-5f7b-80fb-7ee2cd9c6ad0",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
       "content": {
-        "en": "# {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {Hello} other {Hello, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}}}\n\nThank you{ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {.} other {, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}.}} Next, tell us about the people you know.",
-        "es": "# {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {Hola} other {Hola, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}}}\n\nGracias{ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {.} other {, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}.}} Ahora, háblanos de las personas que conoces."
+        "en": "{condition_8bcce2f0_6cd2_5936_a081_b841a5797ea3, select, true {# Hello, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}\n\nThank you, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}. Next, tell us about the people you know.} other {# Hello\n\nThank you. Next, tell us about the people you know.}}",
+        "es": "{condition_8bcce2f0_6cd2_5936_a081_b841a5797ea3, select, true {# Hola, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}\n\nGracias, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}. Ahora, háblanos de las personas que conoces.} other {# Hola\n\nGracias. Ahora, háblanos de las personas que conoces.}}"
       }
     },
     {
@@ -479,6 +491,10 @@
         "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
       },
       "form": {
+        "content": {
+          "en": "![](field:498b3f9b-7894-5b47-93af-b5f7a0f7e4ee)",
+          "es": "![](field:498b3f9b-7894-5b47-93af-b5f7a0f7e4ee)"
+        },
         "fields": [
           {
             "id": "498b3f9b-7894-5b47-93af-b5f7a0f7e4ee",

@@ -1695,6 +1695,14 @@
     "defaultMessage": "Another option of this attribute has the same label in {language}. Give each option a label participants can tell apart.",
     "description": "Shown in a cell of the translation table holding the label of one of an attribute’s answer options (including the two answers of a yes-or-no attribute), when participants reading the cell’s language would see the same label for another option of the same attribute, either because it is written the same or because one of them has no translation and shows another language’s text instead. language is the cell’s language."
   },
+  "architect.localization.translationTable.fieldLeftOut": {
+    "defaultMessage": "{count, plural, one {The form no longer contains the field that collects {attributes} in any language. Put the field back, or remove it in the stage editor.} other {The form no longer contains the fields that collect {attributes} in any language. Put the fields back, or remove them in the stage editor.}}",
+    "description": "Shown in a cell of the translation table that contains the text of a form, when a field was taken out of the text and no other language’s text of the form contains it. A field can be removed from a form only in the stage editor. attributes is a list of the names of the attributes that those fields collect. count is how many fields there are."
+  },
+  "architect.localization.translationTable.formFieldTextsInRows": {
+    "defaultMessage": "The question and hint of each field are translated in their own rows.",
+    "description": "Shown below the text of a form in the translation table. The text of the form is translated in this cell, and the fields of the form are shown in it, but the question and hint of each field have their own rows in the table."
+  },
   "architect.localization.translationTable.groupHeading": {
     "defaultMessage": "<muted>{place}</muted> · <title>{name}</title>",
     "description": "Heading of a group of rows in the translation table, naming the codebook entry that holds their localized strings. place is the kind of entry, such as “Node type”; name is its name, which links to it. Keep the tags around the same parts."
@@ -1751,6 +1759,10 @@
     "defaultMessage": "Not translated yet. Participants see it in {language}, unless their browser also lists a language that has a translation.",
     "description": "Screen-reader description of an empty cell of the translation table. Participants see the wording in another language their web browser lists, when it has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages."
   },
+  "architect.localization.translationTable.notUsed": {
+    "defaultMessage": "Not used in {language}",
+    "description": "Shown in a cell of the translation table in place of a translation, when the localized string is not used in that language: the question or hint of a field that the form in that language does not include, or the wording of a dynamic attribute that no text in that language shows. The cell cannot be edited. language is the name of the language."
+  },
   "architect.localization.translationTable.onlyTranslation": {
     "defaultMessage": "This is the only translation, and it is in {language}. Add a translation in another language before clearing it.",
     "description": "Shown in a cell of the translation table when its translation is emptied but is the only translation the localized string has, which cannot be removed. language is the language of the cell."
@@ -1792,7 +1804,7 @@
     "description": "Heading of the first column of the translation table, which names each localized string by where it is in the protocol."
   },
   "architect.localization.translationTable.textNotUsable": {
-    "defaultMessage": "The protocol cannot hold this text as it is written. Details: {details}",
+    "defaultMessage": "This translation breaks a rule of the protocol, so it cannot be saved as it is written. Details: {details}",
     "description": "Shown in a cell of the translation table when its text breaks one of the protocol’s rules that Architect has no explanation of its own for. details is the technical description of the problem, in English, kept for support."
   },
   "architect.localization.translationTable.textRemoved": {
@@ -1802,6 +1814,14 @@
   "architect.localization.translationTable.unlessBrowserLists": {
     "defaultMessage": "* Unless the participant’s browser also lists another language that has a translation.",
     "description": "Note under the translation table, explaining the asterisk on the tag that says which language participants see where a translation is missing. Begins with the same asterisk."
+  },
+  "architect.localization.translationTable.versionNeedsWording": {
+    "defaultMessage": "Participants who read {language} see this dynamic attribute, so this version needs wording in {language}.",
+    "description": "Shown in an empty cell of the translation table that contains the wording of one version of a dynamic attribute (words that change with the answers given in the interview), when a translation in the cell’s language shows the dynamic attribute and neither the cell’s language nor the language it falls back to has wording for this version. language is the cell’s language."
+  },
+  "architect.localization.translationTable.versionWithoutWording": {
+    "defaultMessage": "A dynamic attribute in this translation has no wording in {language} for some of its versions. Select the dynamic attribute to write the missing wording.",
+    "description": "Shown in a cell of the translation table when its translation shows a dynamic attribute (words that change with the answers given in the interview) that was created in the table and has no wording in the cell’s language for some of its versions, nor in the language that the cell’s language falls back to. language is the cell’s language."
   },
   "architect.localization.translationTableDialog.title": {
     "defaultMessage": "Translation table",
@@ -3093,7 +3113,19 @@
   },
   "architect.protocolSummary.stage.form.form": {
     "defaultMessage": "Form",
-    "description": "Section heading in the printable protocol summary, above the table of the fields of a stage's form."
+    "description": "Section heading in the printable protocol summary, above the text of a stage's form, which places each of the form's fields."
+  },
+  "architect.protocolSummary.stage.form.hint": {
+    "defaultMessage": "Hint",
+    "description": "Label in the printable protocol summary, in the details of a field placed in the text of a form. Beside it is the hint shown below the question."
+  },
+  "architect.protocolSummary.stage.form.inputControl": {
+    "defaultMessage": "Input control",
+    "description": "Label in the printable protocol summary, in the details of a field placed in the text of a form. Beside it is the kind of control that participants answer with, such as a text box or a set of buttons."
+  },
+  "architect.protocolSummary.stage.form.question": {
+    "defaultMessage": "Question",
+    "description": "Label in the printable protocol summary, in the details of a field placed in the text of a form. Beside it is the question that the field asks participants."
   },
   "architect.protocolSummary.stage.form.title": {
     "defaultMessage": "Title: {value1}",
@@ -3102,10 +3134,6 @@
   "architect.protocolSummary.stage.interviewScript.interviewerScript": {
     "defaultMessage": "Interviewer Script",
     "description": "Section heading in the printable protocol summary, above the notes that the researcher wrote for the interviewer to read aloud or follow on this stage."
-  },
-  "architect.protocolSummary.stage.introductionPanel.introductionPanel": {
-    "defaultMessage": "Introduction Panel",
-    "description": "Section heading in the printable protocol summary, above the title and text of a stage's introduction panel shown to participants."
   },
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": {
     "defaultMessage": "GeoJSON Data Source",
@@ -3158,18 +3186,6 @@
   "architect.protocolSummary.stage.pageContent.playsWhenStartedRepeating": {
     "defaultMessage": "Started by the participant, then repeats",
     "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: the participant starts it, and it then starts again each time it ends."
-  },
-  "architect.protocolSummary.stage.pageContent.position": {
-    "defaultMessage": "Position",
-    "description": "Label in the printable protocol summary, in the details of an image, audio recording or video placed in the text of an Information stage. Beside it is where the file sits across the page: at the side a line of text starts, in the middle, or at the side a line ends."
-  },
-  "architect.protocolSummary.stage.pageContent.positionEnd": {
-    "defaultMessage": "Where a line of text ends",
-    "description": "Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text ends (the right in English, the left in Arabic)."
-  },
-  "architect.protocolSummary.stage.pageContent.positionStart": {
-    "defaultMessage": "Where a line of text starts",
-    "description": "Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text starts (the left in English, the right in Arabic)."
   },
   "architect.protocolSummary.stage.pageContent.sizeLarge": {
     "defaultMessage": "Large",

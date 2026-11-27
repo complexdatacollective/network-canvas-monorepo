@@ -9,6 +9,7 @@ import {
   dynamicValueNameFor,
   getLocaleMetadata,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -299,16 +300,16 @@ describe('dynamic values in a stage’s text', () => {
         id: 'about-you',
         type: 'EgoForm',
         label: { en: 'About you' },
-        introductionPanel: { title: { en: 'About you' } },
-        form: {
-          fields: [
+        form: formOf(
+          [
             {
               id: 'field-1',
               variable: NAME,
               prompt: { en: 'What is your name?' },
             },
           ],
-        },
+          { before: '# About you' },
+        ),
       },
       information,
       finishStage,
@@ -442,9 +443,8 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        introductionPanel: { title: { en: 'About you' } },
-        form: {
-          fields: [
+        form: formOf(
+          [
             {
               id: testId('field-1'),
               variable: NAME,
@@ -458,7 +458,8 @@ describe('dynamic values in a stage’s text', () => {
               },
             },
           ],
-        },
+          { before: '# About you' },
+        ),
       },
       finishStage,
     ] as InterviewPayload['protocol']['stages'];
@@ -498,9 +499,8 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        introductionPanel: { title: { en: 'About you' } },
-        form: {
-          fields: [
+        form: formOf(
+          [
             {
               id: testId('field-1'),
               variable: AGE,
@@ -509,7 +509,8 @@ describe('dynamic values in a stage’s text', () => {
               },
             },
           ],
-        },
+          { before: '# About you' },
+        ),
       },
       finishStage,
     ] as InterviewPayload['protocol']['stages'];
@@ -536,9 +537,8 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        introductionPanel: { title: { en: 'About you' } },
-        form: {
-          fields: [
+        form: formOf(
+          [
             {
               id: testId('field-1'),
               variable: NAME,
@@ -557,7 +557,8 @@ describe('dynamic values in a stage’s text', () => {
               prompt: { en: 'Guess an age' },
             },
           ],
-        },
+          { before: '# About you' },
+        ),
       },
       finishStage,
     ] as InterviewPayload['protocol']['stages'];

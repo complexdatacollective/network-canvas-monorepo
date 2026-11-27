@@ -45,7 +45,7 @@ describe('protocol text in a review’s Now and After boxes', () => {
     ['a bracketed address', 'Before\n\n![Map](<asset:map>)\n\nAfter'],
     [
       'a bracketed address with settings',
-      '![Map](<asset:map?size=small&align=end>)',
+      '![Map](<asset:map?size=small&loop=false>)',
     ],
     ['angle brackets beside a block', 'a < b ![Map](<asset:map>) c > d'],
     ['a line opening with an angle bracket', '> 5 years'],

@@ -6,6 +6,7 @@ import {
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
+  dynamicAttributeValueNames,
   dynamicValueNamesIn,
   getLocaleMetadata,
   parseDynamicValueName,
@@ -101,38 +102,71 @@ export function mapInterviewForViewer(
 
 /**
  * The ego attributes the finished screen of the finish stage the interview
- * ended on shows in its text, and no others. The completed state shows that
- * text whenever the interview is opened, and without them a value the
- * participant read when they finished would read as missing. These are
- * answers the protocol chose to show on that screen; every other answer stays
- * on the server, including one only the closing screen before the Finish
- * button shows, which the completed state never renders. A finish stage
- * recorded before finish stages were tracked is not known, so every finish
- * stage's finished screen counts.
+ * ended on shows in its text, or chooses what it shows by, and no others:
+ * each value the text shows, each that its logic blocks read (directly, or
+ * through the rules of a condition), and each that a dynamic attribute it
+ * shows reads, by its logic or in the wording of its versions. The completed state shows that text whenever the interview is
+ * opened, and without them a value the participant read when they finished
+ * would read as missing, and a logic block would show another version. These
+ * are answers the protocol chose to use on that screen; every other answer
+ * stays on the server, including one only the closing screen before the
+ * Finish button uses, which the completed state never renders. A finish
+ * stage recorded before finish stages were tracked is not known, so every
+ * finish stage's finished screen counts.
+ *
+ * The completed state's network is otherwise empty, and that is enough for
+ * its logic to choose as it did when the participant finished: a condition
+ * of a finish stage can read only the participant's attributes. A rule about
+ * the network is about a node or an edge on screen, and validation refuses
+ * one on a finish stage, which shows neither.
  */
 function finishTextEgoAttributes(
   payload: InterviewPayload,
 ): NcNetwork['ego']['attributes'] {
   const { finishStageId, network } = payload.session;
   const kept: NcNetwork['ego']['attributes'] = {};
+  const keep = (variableId: string) => {
+    // Attribute ids come from the protocol and may name a member every
+    // object inherits, so only an own value counts.
+    const value = Object.hasOwn(network.ego.attributes, variableId)
+      ? network.ego.attributes[variableId]
+      : undefined;
+    if (value !== undefined) kept[variableId] = value;
+  };
   for (const stage of payload.protocol.stages) {
     if (stage.type !== 'FinishSession') continue;
     if (finishStageId !== null && stage.id !== finishStageId) continue;
+    const conditions = stage.conditions ?? {};
+    const dynamicAttributes = stage.dynamicAttributes ?? {};
     // Every language's version, since the browser picks the language.
-    const shown = new Set(
-      Object.values(stage.finishedContent).flatMap((message) =>
-        dynamicValueNamesIn(message),
-      ),
+    const names = Object.values(stage.finishedContent).flatMap((message) =>
+      dynamicValueNamesIn(message),
     );
-    for (const name of shown) {
+    const read = new Set<string>();
+    while (names.length > 0) {
+      const name = names.pop();
+      if (name === undefined || read.has(name)) continue;
+      read.add(name);
       const parsed = parseDynamicValueName(name);
-      if (parsed?.kind !== 'attribute' || parsed.role !== 'ego') continue;
-      // Attribute ids come from the protocol and may name a member every
-      // object inherits, so only an own value counts.
-      const value = Object.hasOwn(network.ego.attributes, parsed.variableId)
-        ? network.ego.attributes[parsed.variableId]
-        : undefined;
-      if (value !== undefined) kept[parsed.variableId] = value;
+      if (parsed?.kind === 'attribute' && parsed.role === 'ego') {
+        keep(parsed.variableId);
+      } else if (
+        parsed?.kind === 'condition' &&
+        Object.hasOwn(conditions, parsed.conditionId)
+      ) {
+        for (const rule of conditions[parsed.conditionId]?.rules ?? []) {
+          if (rule.type === 'ego' && 'attribute' in rule.options) {
+            keep(rule.options.attribute);
+          }
+        }
+      } else if (
+        parsed?.kind === 'dynamicAttribute' &&
+        Object.hasOwn(dynamicAttributes, parsed.id)
+      ) {
+        // What its logic reads, and what the wording of its versions shows,
+        // other dynamic attributes included, which are read in turn.
+        names.push(...dynamicAttributeValueNames(dynamicAttributes[parsed.id]));
+      }
     }
   }
   return kept;

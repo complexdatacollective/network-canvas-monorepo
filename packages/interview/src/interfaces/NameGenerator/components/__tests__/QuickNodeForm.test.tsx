@@ -276,7 +276,9 @@ describe('QuickNodeForm honours codebook validation', () => {
     fireEvent.submit(input.closest('form')!);
 
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
-    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: '' });
+    // An empty entry is no answer, so the node is added without one rather
+    // than with empty text.
+    expect(addNode).toHaveBeenCalledWith({});
   });
 
   it('accepts an empty entry when the codebook has no validation rules', async () => {
@@ -288,7 +290,7 @@ describe('QuickNodeForm honours codebook validation', () => {
     fireEvent.submit(input.closest('form')!);
 
     await waitFor(() => expect(addNode).toHaveBeenCalledTimes(1));
-    expect(addNode).toHaveBeenCalledWith({ [TARGET_VARIABLE]: '' });
+    expect(addNode).toHaveBeenCalledWith({});
   });
 
   it('clears a successful value when adding the node updates the live validation context before submission finishes', async () => {

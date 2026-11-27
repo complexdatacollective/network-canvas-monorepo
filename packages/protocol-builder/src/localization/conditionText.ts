@@ -5,7 +5,6 @@ import {
   type ConditionRole,
   type DynamicValueSiteContext,
   type LocaleTag,
-  parseDynamicValueName,
 } from '@codaco/protocol-validation';
 
 import { isRuleDraft, type RuleDraft } from '../rules/rule.ts';
@@ -139,21 +138,3 @@ export const conditionSentence = (
     type: condition.join === 'OR' ? 'disjunction' : 'conjunction',
   });
 };
-
-/**
- * The id of the condition a value name in text stands for
- * (`condition_<id>`), or undefined when it stands for something else.
- */
-export const conditionIdOfName = (name: string): string | undefined => {
-  const parsed = parseDynamicValueName(name);
-  return parsed?.kind === 'condition' ? parsed.conditionId : undefined;
-};
-
-/** The ids of the conditions `names` stand for. */
-export const conditionIdsNamedBy = (names: Iterable<string>): Set<string> =>
-  new Set(
-    [...names].flatMap((name) => {
-      const conditionId = conditionIdOfName(name);
-      return conditionId === undefined ? [] : [conditionId];
-    }),
-  );

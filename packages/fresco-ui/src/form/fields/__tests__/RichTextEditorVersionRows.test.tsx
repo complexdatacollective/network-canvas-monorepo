@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { Editor, JSONContent } from '@tiptap/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { inlineValuesFor } from '../../../testing/inlineValues';
 import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
 import RichTextEditorField, { hasVersionRowBeside } from '../RichTextEditor';
 
@@ -81,7 +82,7 @@ const buildChoice = (
         content: version.content.flatMap((item, position): JSONContent[] => {
           if (item === 'text') return [{ type: 'text', text: 'Add ' }];
           if (item === 'value')
-            return [{ type: 'token', attrs: { id: 'name' } }];
+            return [{ type: 'inlineValue', attrs: { id: 'name' } }];
           const childId = `${label}-${position + 1}`;
           // A choice that is the whole of its version is listed open (when
           // the version is on show); one among other items is a pill until
@@ -191,8 +192,7 @@ const fieldFor = (json: JSONContent) => (
       aria-label={FIELD_NAME}
       singleLine
       versions
-      openWholeMessageVersions
-      tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+      inlineValues={inlineValuesFor({ name: 'Name' })}
       changeMode="input"
       value={json}
       onChange={() => undefined}

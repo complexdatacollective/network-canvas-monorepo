@@ -99,7 +99,45 @@ export const FormFieldArraySchema = z
   .array(FormFieldSchema)
   .superRefine(uniqueFormFieldVariables);
 
-export const FormSchema = z.strictObject({
+/**
+ * The text of a form: one markdown document per language, which places the
+ * form's fields among its paragraphs (`![](field:<id>)`, see `fieldBlock.ts`)
+ * and may choose what it shows with logic blocks. A language's document may
+ * place different fields from another language's. It must place at least
+ * one (`findFormDocumentProblems`).
+ */
+export const formContent = () =>
+  localizedString(
+    nonBlankText(),
+    {
+      format: 'markdown',
+      lines: 'multiple',
+      assetBlocks: true,
+      fieldBlocks: true,
+    },
+    { dynamicValues: 'formField' },
+  );
+
+/**
+ * The form's fields: one entry for each field that a language's document
+ * places, with the attribute it writes and its question and hint in each
+ * language that places it.
+ */
+const formFields = () =>
+  z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables);
+
+// Ego Form, Alter Form, Alter Edge Form, and the Family Pedigree's person
+// form, which show no heading of their own.
+export const TitlelessFormSchema = z.strictObject({
+  content: formContent(),
+  fields: formFields(),
+});
+
+export type TitlelessForm = z.infer<typeof TitlelessFormSchema>;
+
+// The Name Generator's form, shown in a dialog whose heading is the form's
+// one-line title.
+export const FormSchema = TitlelessFormSchema.extend({
   title: localizedString(
     nonBlankText(),
     { format: 'plain', lines: 'single' },
@@ -107,15 +145,6 @@ export const FormSchema = z.strictObject({
       dynamicValues: 'stageText',
     },
   ),
-  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
 });
 
 export type Form = z.infer<typeof FormSchema>;
-
-// EgoForm/AlterForm/AlterEdgeForm never render form.title, so those stages use
-// this title-less variant to keep authored protocols honest.
-export const TitlelessFormSchema = z.strictObject({
-  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
-});
-
-export type TitlelessForm = z.infer<typeof TitlelessFormSchema>;

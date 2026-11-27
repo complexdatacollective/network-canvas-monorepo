@@ -19,7 +19,6 @@ import {
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
 import { testVariableId } from '../../testing/testId.ts';
-import IntroductionSection from '../introduction/IntroductionSection.tsx';
 import { pageContent } from '../page-content/pageContent.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
 import SortOrderRows from '../prompts/SortOrderRows.tsx';
@@ -103,21 +102,6 @@ describe('the shared stage sections, read in Spanish', () => {
       title: 'Contenido',
       state: 'Finished',
     });
-  });
-
-  it('names the introduction section and its two fields', () => {
-    renderStageEditor({
-      stageId: 'ego-form-1',
-      locale: 'es',
-      sections: <IntroductionSection />,
-    });
-
-    expect(screen.getByRole('textbox', { name: 'Título' })).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Presenta la tarea antes de que quienes participan completen sus formularios.',
-      ),
-    ).toBeInTheDocument();
   });
 
   it('names the subject section per entity', () => {

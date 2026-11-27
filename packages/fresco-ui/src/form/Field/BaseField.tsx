@@ -8,7 +8,7 @@ import {
   presentationalTextProps,
   presentationalTextValue,
 } from '../../PresentationalText';
-import { cx } from '../../utils/cva';
+import { cva, cx } from '../../utils/cva';
 import FieldErrors from '../FieldErrors';
 import { FieldLabel } from '../FieldLabel';
 import Hint from '../Hint';
@@ -55,6 +55,13 @@ type BaseFieldProps = {
 };
 
 /**
+ * The space below a field, unless it is the last thing in its container: how
+ * the interview spaces a form's fields, and how the rich text editor spaces a
+ * form's field blocks, so that a form is laid out the same in both.
+ */
+export const fieldSpacingVariants = cva({ base: 'not-last:mb-8' });
+
+/**
  * BaseField provides the shared markup/layout for form fields.
  * Used internally by Field (connected) and UnconnectedField (standalone).
  */
@@ -77,7 +84,11 @@ export function BaseField({
   return (
     <div
       {...containerProps}
-      className={cx('group/field w-full grow not-last:mb-8', 'flex flex-col')}
+      className={cx(
+        'group/field w-full grow',
+        fieldSpacingVariants(),
+        'flex flex-col',
+      )}
     >
       {/*
         Only `inline` fields query this element (see the `@min-md:`

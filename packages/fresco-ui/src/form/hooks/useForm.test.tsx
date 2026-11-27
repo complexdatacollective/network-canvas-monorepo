@@ -11,6 +11,7 @@ import Field from '../Field/Field';
 import FieldNamespace from '../FieldNamespace';
 import InputField from '../fields/InputField';
 import { FormFeedbackListener } from '../FormFeedbackListener';
+import type { FormStore } from '../store/formStore';
 import FormStoreProvider from '../store/formStoreProvider';
 import type { FormSubmissionResult, FormSubmitHandler } from '../store/types';
 import { focusFirstError } from '../utils/focusFirstError';
@@ -616,5 +617,50 @@ describe('useForm while a submission is in flight', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('useForm registration', () => {
+  it('registers handlers that call the ones the form is rendered with now, not the ones it mounted with', async () => {
+    let store: FormStore | undefined;
+    function Harness({
+      onSubmit,
+      onSubmitInvalid,
+    }: {
+      onSubmit: FormSubmitHandler;
+      onSubmitInvalid: () => void;
+    }) {
+      useForm({ onSubmit, onSubmitInvalid });
+      store = useFormStore((state) => state);
+      return null;
+    }
+    const mounted = vi.fn(async () => ({ success: true }) as const);
+    const current = vi.fn(async () => ({ success: true }) as const);
+    const mountedInvalid = vi.fn();
+    const currentInvalid = vi.fn();
+
+    const view = render(
+      <FormStoreProvider>
+        <Harness onSubmit={mounted} onSubmitInvalid={mountedInvalid} />
+      </FormStoreProvider>,
+    );
+    view.rerender(
+      <FormStoreProvider>
+        <Harness onSubmit={current} onSubmitInvalid={currentInvalid} />
+      </FormStoreProvider>,
+    );
+    if (store === undefined) throw new Error('The form store was not read');
+    const { submitHandler, submitInvalidHandler, submitForm } = store;
+
+    await act(async () => {
+      await submitHandler?.({});
+      await submitForm();
+    });
+    submitInvalidHandler?.({ formErrors: [], fieldErrors: {} });
+
+    expect(current).toHaveBeenCalledTimes(2);
+    expect(mounted).not.toHaveBeenCalled();
+    expect(currentInvalid).toHaveBeenCalledOnce();
+    expect(mountedInvalid).not.toHaveBeenCalled();
   });
 });

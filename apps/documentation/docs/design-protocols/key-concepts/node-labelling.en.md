@@ -38,32 +38,31 @@ Switching **Dynamic label** off again removes the label you wrote, and the node 
 
 ### Writing the Label
 
-The label is a single line of text. You can type ordinary text and emoji, and insert two kinds of element from the field's toolbar.
+The label is a single line of text. You can type ordinary text and emoji, and insert two kinds of element with the **Attribute** button in the field's toolbar, or by typing `{`.
 
-**Values, with the syringe button.** A value is a placeholder: on each node, the label shows that node's own value in its place. You can insert any attribute of the node type, or the **Default label**, which is the label the node would have had without a dynamic label. For example, a label of the default label followed by the node's age shows "Alice 34" on one node and "Bo 27" on another.
+**Attributes.** An attribute is shown as a pill: on each node, the label shows that node's own value in its place. You can insert any attribute of the node type, or the **Default label**, which is the label the node would have had without a dynamic label. For example, a label made up of the default label followed by the node's age shows "Alice 34" on one node and "Bo 27" on another. An attribute may have no value for some nodes, and a missing value shows nothing. See [When information is missing](/en/design-protocols/key-concepts/piped-text#when-information-is-missing).
 
-An attribute may have no value for some nodes. When you insert one, select it in the label to write two versions of the text around it: one for when the value is known and one for when it is not. See [When information is missing](/en/design-protocols/key-concepts/piped-text#when-information-is-missing).
+**Dynamic attributes.** A dynamic attribute is a word or phrase that reads differently on different nodes. Choose **Create dynamic attribute** under **Dynamic attributes** in the list, choose its **Logic**, and write each version:
 
-**Logic, with the logic button.** Logic inserts a group of alternative wordings, of which each node shows one:
+- **If … else** shows one version when rules that you set are met, and another otherwise. **If not … else** is the reverse.
+- **Different wording for each answer** shows one version for each answer to a categorical, ordinal or Boolean attribute.
+- **Wording for singular or plural numbers** shows a version for each number form, such as "1 child" and "3 children".
 
-- **If … else** shows one wording when rules that you set are met, and another otherwise. **If not … else** is the reverse.
-- **Different wording for each answer** shows one wording for each answer to a categorical, ordinal or boolean attribute.
-
-Select a group in the label to open it and write the text for each of its cases. A case can be left empty, to show nothing, and it can contain values and further logic.
+A dynamic attribute belongs to the label, so it can be used more than once in the label, and a change to it applies everywhere that it is used in the label. Select its pill to change it. Its versions are plain words. A version can be left empty, and then nothing is shown in place of the pill. See [Dynamic attributes](/en/design-protocols/key-concepts/piped-text#dynamic-attributes).
 
 ### Rules
 
-An **If** tests rules about the node that the label is on. Choose **Edit rules** on its row to set them. A rule can test:
+An **If** tests rules about the node that the label is on. Set them under **Rules for “If”** in the dynamic attribute's settings. A rule can test:
 
 - an attribute of the node, such as whether its age is at least 18;
 - whether the node has an edge of a given type, or an attribute of one of its edges;
 - the number of edges that the node has, of one type or of any type. The number can be compared with a number that you give (exactly, more than, at most, and so on), or with the other nodes of the same type: **Is the highest among nodes of its type** and **Is the lowest among nodes of its type**. Nodes that tie for the highest, or for the lowest, all match. No node matches when every node of the type has the same number of edges.
 
-When an **If** has more than one rule, you choose whether all of them or any of them must be met.
+When an **If** has more than one rule, you choose under **Match** whether all of them or any of them must be met.
 
-**Add else if** adds a further case with rules of its own, which is tested when the cases above it do not apply. The last case, **Otherwise**, is shown when none of the others applies.
+**Add else if** adds a further version with rules of its own, which is tested when the versions above it do not apply. The last version, **Otherwise**, is shown when none of the others applies.
 
-For example, to mark the best-connected person on a sociogram, write the default label followed by an **If** whose rule is that the number of "knows" edges is the highest among nodes of its type, and put a star emoji in that case. As the participant draws edges, the star moves to whichever node has the most.
+For example, to mark the best-connected person on a sociogram, write the default label followed by a dynamic attribute with **If … else**, whose rule is that the number of "knows" edges is the highest among nodes of its type. Make its first version a star emoji, and leave **Otherwise** empty. As the participant draws edges, the star moves to whichever node has the most.
 
 ### How Participants See a Dynamic Label
 
@@ -73,7 +72,7 @@ A dynamic label changes only what is displayed. It is not stored with the node a
 
 ### Translating a Dynamic Label
 
-In a protocol with more than one language, a dynamic label is translated like any other text that shows values, in the [translation table](/en/design-protocols/tutorials/translating-your-protocol#the-translation-table). Its values and logic are kept in each translation, and the text of each case is translated.
+In a protocol with more than one language, a dynamic label is translated in the [translation table](/en/design-protocols/tutorials/translating-your-protocol#the-translation-table), like any other translatable string that shows values. The logic of its dynamic attributes is the same in every language, and only the wording of each version is translated.
 
 ### Protocols That Used a Node Label Worker
 

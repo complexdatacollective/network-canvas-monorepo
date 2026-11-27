@@ -15,24 +15,22 @@ type AssetManifest = Readonly<Record<string, Readonly<{ type: string }>>>;
 
 const PLACEMENT_PROBLEMS = {
   notInParagraph:
-    'A file shown in this text is written inside a heading, a link, a quotation or formatted words, where it cannot be shown. Write it in a paragraph or a list item.',
+    'A file in this document is written inside a heading, a link, a quotation or formatted words, where it cannot be shown. Write it in a paragraph or a list item.',
   byReference:
-    'A file shown in this text is named through a reference, which cannot be shown. Write its address in the image itself.',
-  inVersion:
-    'A file shown in this text is written inside one version of a choice between versions, where it cannot be shown. Write it outside the choice.',
+    'A file in this document is named through a reference, which cannot be shown. Write its address in the image itself.',
   holdsValue:
-    'A file shown in this text has a value in its description or its address, where one cannot be shown.',
+    'A file in this document has a value in its description or its address, where one cannot be shown.',
 } as const;
 
 const describeProblem = (problem: AssetBlockWritingProblem): string => {
   if (problem.kind === 'noAsset') {
-    return 'A file shown in this text does not name an asset.';
+    return 'A file in this document does not name an asset.';
   }
   if (problem.kind === 'unknownSetting') {
-    return `A file shown in this text has a setting "${problem.setting}", which is not one a file can have.`;
+    return `A file in this document has a setting "${problem.setting}", which is not one a file can have.`;
   }
   if (problem.kind === 'invalidValue') {
-    return `A file shown in this text has "${problem.value}" for its setting "${problem.setting}", which that setting cannot be.`;
+    return `A file in this document has "${problem.value}" for its setting "${problem.setting}", which that setting cannot be.`;
   }
   return PLACEMENT_PROBLEMS[problem.kind];
 };
@@ -73,7 +71,7 @@ export const findAssetBlockProblems = (
                 return [
                   ...found,
                   {
-                    message: `This text shows the file "${block.assetId}", which is not an asset in the manifest.`,
+                    message: `This document shows the file "${block.assetId}", which is not an asset in the manifest.`,
                     path,
                   },
                 ];
@@ -82,7 +80,7 @@ export const findAssetBlockProblems = (
                 return [
                   ...found,
                   {
-                    message: `This text shows the file "${block.assetId}", which must be an 'image', 'audio' or 'video' asset, but is of type "${asset.type}".`,
+                    message: `This document shows the file "${block.assetId}", which must be an 'image', 'audio' or 'video' asset, but is of type "${asset.type}".`,
                     path,
                   },
                 ];

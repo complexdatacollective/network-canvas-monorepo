@@ -36,8 +36,9 @@ import {
   removeLocale,
   setDefaultLocale,
   setFallbackLocale,
-  setLocalizedStrings,
+  type OwnerTextDefinitions,
   setTranslation,
+  setTranslations,
 } from './protocol/localeOperations';
 import { withoutVersionsForRemovedOptions } from './protocol/removedOptionVersions';
 import stages from './protocol/stages';
@@ -140,6 +141,8 @@ const activeProtocolSlice = createSlice({
         ),
       ),
     // Several texts in one step, so one undo takes back the whole set.
+    // The translation table's save: the texts, and the conditions and
+    // dynamic attributes that its text declares (see `setTranslations`).
     setProtocolLocalizedStrings: (
       state,
       action: PayloadAction<{
@@ -147,10 +150,14 @@ const activeProtocolSlice = createSlice({
           path: readonly (string | number)[];
           value: LocalizedString;
         }>[];
+        definitions?: readonly OwnerTextDefinitions[];
       }>,
     ) =>
       applyLocaleOperation(state, (protocol) =>
-        setLocalizedStrings(protocol, action.payload.updates),
+        setTranslations(protocol, {
+          definitions: action.payload.definitions ?? [],
+          updates: action.payload.updates,
+        }),
       ),
     // Turning the experiment on keeps every other experiment as it is.
     enableProtocolReview: (state) => {

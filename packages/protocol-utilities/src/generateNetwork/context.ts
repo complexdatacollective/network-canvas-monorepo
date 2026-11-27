@@ -1,4 +1,8 @@
-import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import type {
+  LocalizationDeclaration,
+  Stage,
+  StructuralCodebook,
+} from '@codaco/protocol-validation';
 import type { VariableValue, NcEdge, NcNode } from '@codaco/shared-consts';
 
 import type { ValueGenerator } from '../ValueGenerator.ts';
@@ -26,6 +30,16 @@ export type GenerationContext = {
   /** Pre-parsed roster rows keyed by stage id (see `generateNetwork`). */
   externalData: Record<string, NcNode[]> | undefined;
   respectSkipLogicAndFiltering: boolean;
+  /**
+   * The language whose forms the participant reads (see `generateNetwork`'s
+   * `formLanguage`).
+   */
+  formLanguage: string;
+  /**
+   * The protocol's languages, which say what language a form falls back to
+   * (see `generateNetwork`'s `localization`).
+   */
+  formLocalization: LocalizationDeclaration;
   /** Values already issued for `unique` variables, keyed by entity scope. */
   uniqueRegistry: UniqueRegistry;
   /**

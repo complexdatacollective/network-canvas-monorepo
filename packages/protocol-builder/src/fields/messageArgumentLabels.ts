@@ -637,7 +637,7 @@ const messages = defineMessages({
 
 /**
  * The headings over a text's version for the participant and for anyone else
- * in their family, which piped text's "Participant or someone else" value uses too.
+ * in their family, which the "Participant or someone else" value of stage text uses too.
  */
 export const participantVersionMessages = {
   aboutParticipant: messages.aboutParticipant,

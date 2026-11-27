@@ -1,28 +1,22 @@
-import { configureStore } from '@reduxjs/toolkit';
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
-import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { rootReducer } from '~/ducks/modules/root';
 import { getTranslationGroups } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 
-import TranslationTable from '../TranslationTable';
 import { FIRST_NAME } from './dynamicValuesProtocol';
 import { largeTranslationProtocol } from './largeTranslationProtocol';
+import { renderTranslationTable } from './renderTranslationTable';
 
 const drewCell = vi.hoisted(() => vi.fn());
 
@@ -46,23 +40,7 @@ const ONLY_ENGLISH =
 
 const renderTable = (
   protocol: CurrentProtocol = largeTranslationProtocol(STAGES),
-) => {
-  const store = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  store.dispatch(setActiveProtocol(protocol));
-  const onSaved = vi.fn();
-  render(
-    <Provider store={store}>
-      <FormStoreProvider>
-        <TranslationTable onSaved={onSaved} onCancel={vi.fn()} />
-      </FormStoreProvider>
-    </Provider>,
-  );
-  return { store, onSaved, user: userEvent.setup() };
-};
+) => renderTranslationTable(protocol);
 
 /**
  * A ResizeObserver that tells nothing until a test says a row has a height, as
@@ -382,7 +360,7 @@ describe('TranslationTable with a large protocol', () => {
           ? {
               ...stage,
               content: {
-                en: `Hello{${FIRST_NAME}, select, missing {} other {, {${FIRST_NAME}}}}`,
+                en: `Hello, {${FIRST_NAME}}`,
               },
             }
           : stage,
@@ -394,11 +372,7 @@ describe('TranslationTable with a large protocol', () => {
       await user.click(screen.getByRole('button', { name }));
       const editor = await screen.findByRole('textbox', { name });
       await waitFor(() => expect(editor).toHaveFocus());
-      await user.click(
-        screen.getByRole('button', {
-          name: 'Inject piped text from interview metadata or a network attribute',
-        }),
-      );
+      await user.click(screen.getByRole('button', { name: 'Attribute' }));
       const [option] = await screen.findAllByRole('option', {
         name: /first_name/,
       });

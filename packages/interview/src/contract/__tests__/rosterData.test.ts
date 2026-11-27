@@ -8,6 +8,7 @@ import {
   type Panel,
   type Stage,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -96,7 +97,7 @@ function nameGeneratorStage(
     id: testId(id),
     label: { en: 'Name Generator' },
     type: 'NameGenerator',
-    form: { title: { en: 'Add people' }, fields: [nameField] },
+    form: { title: { en: 'Add people' }, ...formOf([nameField]) },
     subject: { entity: 'node', type: subjectType },
     panels,
     prompts: [{ id: testId(`${id}-p1`), text: { en: 'Add people' } }],

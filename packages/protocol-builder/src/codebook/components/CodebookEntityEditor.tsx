@@ -31,11 +31,15 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
 import {
   type Codebook,
+  DynamicAttributeSchema,
   EdgeColorSequence,
+  findDynamicAttributeProblems,
   findSiteMessageProblem,
+  type LocaleTag,
   NodeColorSequence,
   nodeLabelValueContext,
   type NodeShapeReference,
+  withoutUnusedTextDefinitions,
 } from '@codaco/protocol-validation';
 import {
   CodebookNameSchema,
@@ -51,7 +55,10 @@ import type { NodeLabelDraft } from '../../fields/NodeLabelField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
 import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
-import { withoutUnusedConditions } from '../../localization/useDynamicValueSite.ts';
+import type { DynamicAttributeOwner } from '../../localization/dynamicAttributeNames.ts';
+import { namedDynamicAttributeProblem } from '../../localization/dynamicAttributeProblems.ts';
+import type { ProtocolLocalization } from '../../localization/localizedText.ts';
+import { useEditingLanguage } from '../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import {
   ResourceClientProvider,
@@ -277,9 +284,9 @@ const codebookEntityMessages = defineMessages({
   dynamicLabelHint: {
     id: 'protocolBuilder.codebookEntity.dynamicLabelHint',
     defaultMessage:
-      'Define the label that nodes of this type should use. Use the syringe button to insert a dynamic attribute. Use the logic button to insert a group that conditionally renders different text. See our <docs>documentation article</docs> for more information.',
+      'Define the label that nodes of this type should use. To show one of the node’s attributes, choose it from the Attribute menu in the toolbar. To show wording that changes, such as a different word for each answer, choose “Create dynamic attribute” from the same menu. See our <docs>documentation article</docs> for more information.',
     description:
-      'Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button, drawn as a syringe, that opens the menu of values that can be inserted; a dynamic attribute is one of the node’s attributes, shown in the label as whatever value each node holds. The logic button is the toolbar button beside it; the group it inserts is a set of alternative wordings, of which the one whose rules are met is shown. The docs tag wraps the link text for the documentation article about node labels.',
+      'Hint under the Label field in the Dynamic label section of the node type editor. The Attribute menu is the list that the Attribute button in the toolbar opens; “Attribute” and “Create dynamic attribute” must match the translations of that button and of that entry in the list. An attribute is shown in the label as the value that each node has. A dynamic attribute is a word or phrase that reads differently in different cases, such as a different word for each answer to an attribute. The docs tag wraps the link text for the documentation article about node labels.',
   },
   dynamicLabelTextRequired: {
     id: 'protocolBuilder.codebookEntity.dynamicLabelTextRequired',
@@ -297,9 +304,9 @@ const codebookEntityMessages = defineMessages({
   dynamicLabelRulesRequired: {
     id: 'protocolBuilder.codebookEntity.dynamicLabelRulesRequired',
     defaultMessage:
-      'Every “If” in the label needs at least one rule. Open it and choose “Edit rules”, or remove it.',
+      'Every “If” in the label needs at least one rule. Select the dynamic attribute in the label, then add a rule to the “If” or remove the “If”.',
     description:
-      'Validation error on the Dynamic label section of the node type editor when an “If” in the label text has no rules. “Edit rules” is the name of the button on each row of an “If”.',
+      'Validation error on the Dynamic label section of the node type editor when an “If” of a dynamic attribute in the label has no rules. A dynamic attribute is a word in the label that reads differently in different cases; selecting it opens its settings, where each “If” has its rules.',
   },
   failureTitle: {
     id: 'protocolBuilder.codebookEntity.failureTitle',
@@ -460,23 +467,19 @@ const replaceShapeMapping = (
 const DYNAMIC_LABEL = 'dynamicLabel';
 
 /**
- * `draft` as a save writes it: its own label without the conditions that no
- * translation of the label names any more. They stay in the draft while it
- * is edited, so an "If" cut from the label and pasted back, or brought back
- * by an undo, keeps its rules. A condition the stored label already had
- * unnamed is left alone (see `withoutUnusedConditions`).
+ * `draft` as a save writes it: its own label without the dynamic attributes
+ * and the conditions that no translation of the label uses any more
+ * (`withoutUnusedTextDefinitions`). They stay in the draft while it is
+ * edited, so a dynamic attribute cut from the label and pasted back, or
+ * brought back by an undo, keeps its logic.
  */
-const withoutUnusedLabelConditions = (
+const withoutUnusedLabelDefinitions = (
   draft: CodebookEntityDraft,
-  stored: SectionDoc | undefined,
+  localization: ProtocolLocalization | undefined,
 ): CodebookEntityDraft => {
   const label = draft[DYNAMIC_LABEL];
   if (!isRecord(label)) return draft;
-  const storedLabel = stored?.[DYNAMIC_LABEL];
-  const kept = withoutUnusedConditions(
-    label,
-    isRecord(storedLabel) ? storedLabel : {},
-  );
+  const kept = withoutUnusedTextDefinitions(label, localization);
   return kept === label ? draft : { ...draft, [DYNAMIC_LABEL]: kept };
 };
 
@@ -516,11 +519,15 @@ const dynamicLabelIssue = (
     }
   }
 
-  // The protocol's own check, against what a label of this type can show.
+  // The protocol's own check, against what a label of this type can show:
+  // its attributes, and its own dynamic attributes.
   const context = nodeLabelValueContext({
     codebook,
     nodeType: nodeType ?? '',
     conditions,
+    dynamicAttributes: isRecord(label.dynamicAttributes)
+      ? label.dynamicAttributes
+      : {},
   });
   return translations.some(
     ([locale, message]) =>
@@ -528,6 +535,87 @@ const dynamicLabelIssue = (
   )
     ? createMessageError(codebookEntityMessages.dynamicLabelProblem)
     : undefined;
+};
+
+/** The key that a node type being created is checked under. */
+const NEW_NODE_TYPE = '';
+
+/**
+ * What is wrong with the dynamic attributes of a node type's own label, as
+ * the protocol's checks find it, named by the dynamic attribute and the
+ * version that each problem is about: the definitions that the schema
+ * refuses, and those whose rules, attribute or answers do not exist or whose
+ * versions have no wording in a language whose label shows them. The first
+ * problem, where there is one.
+ *
+ * Takes a formatter, unlike `validateFields`, because a version is named as
+ * its settings label it: the sentence is encoded, but the label of the
+ * version is read in the language of `intl`.
+ */
+const dynamicLabelAttributeIssue = (
+  label: Record<string, unknown>,
+  {
+    codebook,
+    nodeType,
+    localization,
+    locale,
+  }: NodeLabelEditing &
+    Readonly<{
+      localization: ProtocolLocalization | undefined;
+      locale: LocaleTag | undefined;
+    }>,
+  intl: IntlShape,
+): string | undefined => {
+  const definitions = isRecord(label.dynamicAttributes)
+    ? label.dynamicAttributes
+    : {};
+  if (Object.keys(definitions).length === 0) return undefined;
+  const type = nodeType ?? NEW_NODE_TYPE;
+  const nodeTypes: Record<string, unknown> = { ...codebook.node };
+  const stored = nodeTypes[type];
+  const definition = {
+    ...(isRecord(stored) ? stored : {}),
+    dynamicLabel: label,
+  };
+  nodeTypes[type] = definition;
+  const owner: DynamicAttributeOwner = {
+    kind: 'nodeLabel',
+    place: definition,
+    codebook,
+    localization,
+    locale,
+  };
+  const named = (at: readonly PropertyKey[], problem: string) =>
+    namedDynamicAttributeProblem(intl, owner, at, problem);
+
+  for (const [id, raw] of Object.entries(definitions)) {
+    const parsed = DynamicAttributeSchema.safeParse(raw);
+    const [issue] = parsed.success ? [] : parsed.error.issues;
+    if (issue !== undefined) return named([id, ...issue.path], issue.message);
+  }
+
+  const labelPath = ['codebook', 'node', type, 'dynamicLabel'];
+  const text = isRecord(label.text) ? label.text : {};
+  const [problem] = findDynamicAttributeProblems(
+    {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stored codebook with this type's label replaced by the draft's; only its node types are read
+      codebook: { ...codebook, node: nodeTypes } as Codebook,
+      stages: [],
+      ...(localization !== undefined && { localization }),
+    },
+    [
+      {
+        path: [...labelPath, 'text'],
+        value: Object.fromEntries(
+          Object.entries(text).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        ),
+      },
+    ],
+  );
+  if (problem === undefined) return undefined;
+  return named(problem.path.slice(labelPath.length + 1), problem.message);
 };
 
 /**
@@ -1013,6 +1101,7 @@ function EntityEditor({
   ...modeProps
 }: CodebookEntityEditorProps) {
   const intl = useAppIntl();
+  const { localization, locale: editingLocale } = useEditingLanguage();
   const nodeLabel: NodeLabelEditing | undefined =
     codebook === undefined || subject.entity !== 'node'
       ? undefined
@@ -1074,16 +1163,28 @@ function EntityEditor({
     // browser's own navigation, which is not what propagates here.
     event.stopPropagation();
     if (readOnly || busy || !dirty) return;
-    const submitted = withoutUnusedLabelConditions(
-      draft,
-      modeProps.mode === 'update' ? modeProps.authoritativeDocument : undefined,
-    );
-    const nextErrors = validateFields(
+    const submitted = withoutUnusedLabelDefinitions(draft, localization);
+    const fieldErrors = validateFields(
       subject,
       submitted,
       existingEntityNames,
       nodeLabel,
     );
+    const label = submitted[DYNAMIC_LABEL];
+    // More precise than the label's own refusal, which a definition that the
+    // schema refuses also causes: it names the dynamic attribute.
+    const labelAttributeIssue =
+      nodeLabel === undefined || !isRecord(label)
+        ? undefined
+        : dynamicLabelAttributeIssue(
+            label,
+            { ...nodeLabel, localization, locale: editingLocale },
+            intl,
+          );
+    const nextErrors: EntityFieldErrors =
+      labelAttributeIssue === undefined
+        ? fieldErrors
+        : { ...fieldErrors, dynamicLabel: labelAttributeIssue };
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;

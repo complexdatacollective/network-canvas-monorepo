@@ -169,7 +169,7 @@ describe('the migration-required dialog', () => {
 });
 
 describe('the validation-error dialog', () => {
-  const problem = 'Stage “Friends”, prompt 1: Text cannot be blank.';
+  const problem = 'Stage “Friends”, prompt 1: This wording cannot be blank.';
 
   it('names each problem an upgrade refused, already shown, and how to correct it', async () => {
     const dialog = await openWith(false, {

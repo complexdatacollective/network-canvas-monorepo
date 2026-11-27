@@ -750,11 +750,12 @@ describe('a node type’s Dynamic label', () => {
     expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('dynamicLabel');
   });
 
-  it('drops a condition that no translation of the label names when it is saved', async () => {
+  it('drops a dynamic attribute, and the condition it tests, that no translation of the label names when it is saved', async () => {
     const CLOSE = testId('condition/close');
-    const CLOSE_NAME = dynamicValueNameFor({
-      kind: 'condition',
-      conditionId: CLOSE,
+    const CLOSENESS = testId('dynamic/closeness');
+    const CLOSENESS_NAME = dynamicValueNameFor({
+      kind: 'dynamicAttribute',
+      id: CLOSENESS,
     });
     const user = userEvent.setup();
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
@@ -762,7 +763,16 @@ describe('a node type’s Dynamic label', () => {
       {
         ...NODE_DOCUMENT,
         dynamicLabel: {
-          text: { en: `{${CLOSE_NAME}, select, true {Close} other {Friend}}` },
+          text: { en: `{${CLOSENESS_NAME}}` },
+          dynamicAttributes: {
+            [CLOSENESS]: {
+              logic: 'conditions',
+              cases: [
+                { condition: CLOSE, when: 'met', wording: { en: 'Close' } },
+              ],
+              otherwise: { en: 'Friend' },
+            },
+          },
           conditions: {
             [CLOSE]: {
               about: 'node',
@@ -784,7 +794,7 @@ describe('a node type’s Dynamic label', () => {
       onSubmit,
     );
 
-    // The "If" is replaced in the label's only translation.
+    // The pill is replaced in the label's only translation.
     const label = await screen.findByRole('textbox', { name: /^Label/ });
     await user.click(label);
     await user.keyboard('{Control>}a{/Control}');
@@ -795,6 +805,126 @@ describe('a node type’s Dynamic label', () => {
     expect(onSubmit.mock.calls[0]?.[0].dynamicLabel).toEqual({
       text: { en: 'Friend' },
     });
+  });
+
+  /** A label that shows a dynamic attribute: "Close" or, otherwise, `otherwise`. */
+  const labelWithClosenessAttribute = (
+    otherwise: Readonly<Record<string, string>>,
+  ): SectionDoc => {
+    const CLOSE = testId('condition/close');
+    const CLOSENESS = testId('dynamic/closeness');
+    return {
+      ...NODE_DOCUMENT,
+      dynamicLabel: {
+        text: {
+          en: `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: CLOSENESS })}}`,
+        },
+        dynamicAttributes: {
+          [CLOSENESS]: {
+            logic: 'conditions',
+            cases: [
+              { condition: CLOSE, when: 'met', wording: { en: 'Close' } },
+            ],
+            otherwise,
+          },
+        },
+        conditions: {
+          [CLOSE]: {
+            about: 'node',
+            rules: [
+              {
+                id: testId('rule/close'),
+                type: 'node',
+                options: {
+                  type: PERSON_ADULT,
+                  attribute: AGE,
+                  operator: 'EXISTS',
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
+  };
+
+  it('saves a label that keeps its dynamic attribute when another property changes', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    const document = labelWithClosenessAttribute({ en: 'Friend' });
+    renderWithCodebook(document, onSubmit);
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'Contact');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0].dynamicLabel).toEqual(
+      document.dynamicLabel,
+    );
+  });
+
+  it('refuses a label whose dynamic attribute has a version that the schema refuses, naming the dynamic attribute and the version', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(
+      labelWithClosenessAttribute({ en: 'you {sic, select, a {b} other {c}}' }),
+      onSubmit,
+    );
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'Contact');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(
+      await screen.findByText(
+        /^Dynamic attribute “Close.*”, version “Otherwise”: This wording chooses between versions inside a sentence/,
+      ),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('refuses a label whose dynamic attribute has no wording in a language whose label shows it, and none to fall back to', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    // Wording in French only, while the English label shows it too.
+    const document = labelWithClosenessAttribute({ fr: 'Ami' });
+    const label = document.dynamicLabel as Record<string, unknown>;
+    const text = label.text as Record<string, string>;
+    renderUnwrapped(
+      <CodebookEditorHost>
+        <ProtocolLocalizationProvider
+          localization={{ defaultLocale: 'en', locales: ['en', 'fr'] }}
+        >
+          <NodeLabelFieldProvider value={NodeLabelField}>
+            <CodebookEntityEditor
+              mode="update"
+              sessionKey="label-in-french"
+              subject={NODE_SUBJECT}
+              initialDraft={{
+                ...document,
+                dynamicLabel: { ...label, text: { ...text, fr: text.en } },
+              }}
+              authoritativeDocument={document}
+              existingEntityNames={[]}
+              codebook={CODEBOOK}
+              onSubmit={onSubmit}
+            />
+          </NodeLabelFieldProvider>
+        </ProtocolLocalizationProvider>
+      </CodebookEditorHost>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    expect(
+      await screen.findByText(
+        'Dynamic attribute “Close / Ami”, version “Otherwise”: Write this version in English.',
+      ),
+    ).toBeInTheDocument();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('keeps the label through switching it off and on again in one edit', async () => {

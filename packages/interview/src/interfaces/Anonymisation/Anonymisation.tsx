@@ -28,12 +28,12 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import EncryptionBackground from '../../components/EncryptedBackground';
+import { ContentDocument } from '../../content/ContentDocument';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useCelebrate } from '../../hooks/useCelebrate';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import type { StageProps } from '../../types';
 import { interfaceMessages } from '../messages';
 import PassphraseCheckStatus from './PassphraseCheckStatus';
@@ -168,7 +168,7 @@ function AnonymisationInner(props: AnonymisationProps) {
               delay: 0.2,
             }}
           >
-            <LocalizedMarkdown
+            <ContentDocument
               value={explanationText}
               allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
             />

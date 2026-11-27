@@ -12,6 +12,7 @@ import {
   ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 
@@ -97,9 +98,9 @@ describe('getLocalizationCoverage()', () => {
     // supplies in all three languages.
     expect(coverage.total).toBe(25);
     expect(coverage.locales).toEqual([
-      { locale: 'en', isDefault: true, translated: 25, missing: 0 },
-      { locale: 'fr', isDefault: false, translated: 24, missing: 1 },
-      { locale: 'de', isDefault: false, translated: 23, missing: 2 },
+      { locale: 'en', isDefault: true, total: 25, translated: 25, missing: 0 },
+      { locale: 'fr', isDefault: false, total: 25, translated: 24, missing: 1 },
+      { locale: 'de', isDefault: false, total: 25, translated: 23, missing: 2 },
     ]);
   });
 
@@ -135,7 +136,9 @@ describe('getTranslationGroups()', () => {
         rows: [
           {
             path: ['stages', 0, 'label'],
+            expectedLocales: ['en', 'fr', 'de'],
             field: ['label'],
+            place: { kind: 'text', owner: ['stages', 0] },
             format: 'plain',
             lines: 'single',
             value: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
@@ -144,7 +147,9 @@ describe('getTranslationGroups()', () => {
           },
           {
             path: ['stages', 0, 'content'],
+            expectedLocales: ['en', 'fr', 'de'],
             field: ['content'],
+            place: { kind: 'text', owner: ['stages', 0] },
             format: 'markdown',
             lines: 'multiple',
             assetBlocks: true,
@@ -171,7 +176,10 @@ describe('getTranslationGroups()', () => {
               0,
               'label',
             ],
+            expectedLocales: ['en', 'fr', 'de'],
             field: ['variables', CLOSENESS, 'options', 0, 'label'],
+            // An option's label has no owner whose logic it can use.
+            place: { kind: 'text', owner: undefined },
             format: 'markdown',
             lines: 'single',
             value: { en: 'Close' },
@@ -208,7 +216,9 @@ describe('getTranslationGroups()', () => {
 
     expect(content).toEqual({
       path: ['stages', 1, 'content'],
+      expectedLocales: ['en', 'fr', 'de'],
       field: ['content'],
+      place: { kind: 'text', owner: ['stages', 1] },
       format: 'markdown',
       lines: 'multiple',
       // The one text of an Information stage can show files as blocks.
@@ -243,12 +253,8 @@ describe('getTranslationGroups()', () => {
             id: INTRO_STAGE_ID,
             type: 'EgoForm',
             label: { en: 'About you' },
-            introductionPanel: {
-              title: { en: 'About you' },
-              text: { en: 'A few questions.' },
-            },
-            form: {
-              fields: [
+            form: formOf(
+              [
                 {
                   id: testId('field/age'),
                   variable: asEntityAttributeReference(AGE),
@@ -256,7 +262,8 @@ describe('getTranslationGroups()', () => {
                   hint: { en: 'In whole years.' },
                 },
               ],
-            },
+              { before: '# About you\n\nA few questions.' },
+            ),
           },
         ],
       };

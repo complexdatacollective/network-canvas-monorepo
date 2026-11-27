@@ -1,18 +1,19 @@
 import {
-  dynamicValueReferencesIn,
+  type ConnectivityIndex,
+  conditionHolds,
+  conditionReadsNetwork,
+} from '@codaco/network-query';
+import {
+  dynamicValueNamesIn,
   type NodeLabel,
+  parseDynamicValueName,
+  valueNamesReadThrough,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
-
-import {
-  conditionHolds,
-  conditionReadsNetwork,
-} from '../dynamicValues/conditions';
-import type { ConnectivityIndex } from './connectivity';
 
 /** One of a label's conditions, asked of one node. */
 type NodeFact = Readonly<{
@@ -43,10 +44,15 @@ export const nodeLabelPlanFor = (label: NodeLabel): NodeLabelPlan => {
   const seen = new Set<string>();
   const conditions = label.conditions ?? {};
   // The conditions the label's text chooses its wording by, in any of its
-  // languages.
-  const parsedNames = Object.values(label.text).flatMap((message) =>
-    dynamicValueReferencesIn(message).map(({ parsed }) => parsed),
-  );
+  // languages, directly or through a dynamic attribute it shows: its logic,
+  // and the wording of its versions, which may show other dynamic
+  // attributes in turn.
+  const parsedNames = valueNamesReadThrough(
+    Object.values(label.text).flatMap((message) =>
+      dynamicValueNamesIn(message),
+    ),
+    label.dynamicAttributes ?? {},
+  ).map(parseDynamicValueName);
   for (const parsed of parsedNames) {
     if (parsed?.kind !== 'condition' || seen.has(parsed.conditionId)) continue;
     const { conditionId } = parsed;

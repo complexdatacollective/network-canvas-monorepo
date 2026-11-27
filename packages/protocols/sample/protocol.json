@@ -645,15 +645,10 @@
         "en": "Consent Form"
       },
       "type": "EgoForm",
-      "introductionPanel": {
-        "title": {
-          "en": "Sample Consent Form"
-        },
-        "text": {
-          "en": "**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n"
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Sample Consent Form\n\n**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n![](field:ac012bec-9c52-59de-a63c-7fa4f96071df)"
+        },
         "fields": [
           {
             "id": "ac012bec-9c52-59de-a63c-7fa4f96071df",
@@ -691,15 +686,10 @@
           "stageId": "d3e0747e-bcf7-563e-a7fc-5dbf4f67b959"
         }
       },
-      "introductionPanel": {
-        "title": {
-          "en": "Conventional Ego Data Collection Example"
-        },
-        "text": {
-          "en": "This screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n"
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Conventional Ego Data Collection Example\n\nThis screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n\n![](field:36c00fb6-9255-5a80-9125-1d04dad32060)\n\n![](field:04514cfb-be8a-54a4-b307-814e41c7beac)\n\n![](field:fa0224f3-b245-5604-a7fe-739ea1b4ff82)\n\n![](field:51e436bd-9850-5e2b-a024-d7bafdc1ec43)\n\n![](field:de09e022-2c1d-57a5-bba5-42985bba073c)\n\n![](field:5afaf01d-98ab-52f2-95ec-e10121109038)\n\n![](field:4e2e4b34-5eef-589d-9510-d5d955ce64d5)\n\n![](field:40bcd272-5772-5933-9880-3f71eb84bfa0)\n\n![](field:02e8e4dd-6ae5-51ee-8757-9415af34b92a)"
+        },
         "fields": [
           {
             "id": "36c00fb6-9255-5a80-9125-1d04dad32060",
@@ -862,6 +852,9 @@
       "form": {
         "title": {
           "en": "Add a Clinic or Health Care Provider"
+        },
+        "content": {
+          "en": "![](field:4934f76b-45c3-543c-9120-d09fa75fd176)\n\n![](field:7bc291c8-a9a4-5b81-9054-ee5ccdda7f66)\n\n![](field:8e6bea75-1646-5352-a0db-3b8d5ead71d9)"
         },
         "fields": [
           {
@@ -1036,6 +1029,9 @@
         "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
       },
       "form": {
+        "content": {
+          "en": "![](field:cc872b1a-a9b6-5198-9657-57dd05232e5e)\n\n![](field:5adfd451-c357-595f-b406-4900d5f3d30b)"
+        },
         "fields": [
           {
             "id": "cc872b1a-a9b6-5198-9657-57dd05232e5e",

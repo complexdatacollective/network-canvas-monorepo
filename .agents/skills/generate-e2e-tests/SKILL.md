@@ -40,8 +40,16 @@ From the extracted JSON, build a **stage map** — for each stage (by index), ex
 - `type` — stage type (e.g., `NameGeneratorQuickAdd`, `EgoForm`, `Sociogram`)
 - `label` — display label
 - `subject` — `{ entity, type }` pointing to codebook entry (null for Information/Anonymisation)
-- `introductionPanel` — title and text (if present)
-- `form.fields[]` — array of `{ variable }` referencing codebook variables
+- `form.content` — the form's text in each language (a schema 9 form is a document): headings and
+  paragraphs, with each question placed as a field block `![](field:<field id>)` in the order in
+  which the participant sees it. A field inside a logic block (a `select` standing alone in the
+  text, such as `{condition_<id>, select, true {…} other {…}}`) is shown only when that version is
+  chosen, and its answer is cleared when the form is submitted while it is hidden. Languages may
+  place different fields.
+- `form.fields[]` — array of `{ id, variable, prompt, hint? }`; `id` is the id in the field block
+  and `variable` references a codebook variable
+- `dynamicAttributes` and `conditions` — the stage's dynamic attributes and the rules that its
+  logic blocks and dynamic attributes read
 - `prompts[]` — array of prompt objects (with `createEdge`, `variable`, `highlight`, etc.)
 - `panels[]` — side panel configuration
 - `behaviours` — `maxNodes`, `minNodes`, `freeDraw`, etc.

@@ -384,7 +384,7 @@ function ResourcesMenu({
           sideOffset={14}
           align="center"
           collisionPadding={16}
-          className="z-50 outline-none"
+          className="z-3000 outline-none"
         >
           <NavigationMenu.Popup className="bg-surface h-(--popup-height) w-(--popup-width) origin-top rounded-[1.75rem] p-3 shadow-2xl ring-1 ring-black/5 transition-[opacity,transform,scale] duration-200 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
             <NavigationMenu.Viewport className="relative" />
@@ -536,7 +536,7 @@ function SoftwareMenu({
           sideOffset={14}
           align="center"
           collisionPadding={16}
-          className="z-50 outline-none"
+          className="z-3000 outline-none"
         >
           <NavigationMenu.Popup className="bg-surface h-(--popup-height) max-h-[calc(100vh-7rem)] w-(--popup-width) origin-top overflow-y-auto rounded p-5 shadow-2xl ring-1 ring-black/5 transition-[opacity,transform,scale] duration-200 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
             <NavigationMenu.Viewport className="relative" />

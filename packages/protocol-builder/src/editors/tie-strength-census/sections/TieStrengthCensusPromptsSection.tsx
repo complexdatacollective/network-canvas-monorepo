@@ -93,9 +93,9 @@ export const tieStrengthPromptMessages = defineMessages({
   promptTextHint: {
     id: 'protocolBuilder.censusPrompts.tieStrengthPromptTextHint',
     defaultMessage:
-      'Refer clearly to the two nodes shown, and phrase the prompt so that every point of the scale, and the decline response, is a sensible answer. To show the two nodes’ labels in the prompt, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.',
+      'Refer clearly to the two nodes shown, and phrase the prompt so that every point of the scale, and the decline response, is a sensible answer. To show the two nodes’ labels in the prompt, choose “First node: label” and “Second node: label” from the Attribute menu in the toolbar.',
     description:
-      'Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what answers it has to suit: the points of the scale set by the response attribute, and the decline response the participant uses to say the two nodes are not connected. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations.',
+      'Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what answers it has to suit: the points of the scale set by the response attribute, and the decline response the participant uses to say the two nodes are not connected. A node is one entity in the network, which may not be a person. The two quoted names are entries in the list that the Attribute button in the toolbar opens, and must match those entries’ own translations. “Attribute” is that button’s label, and must match its own translation.',
   },
   edgeLabel: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeLabel',

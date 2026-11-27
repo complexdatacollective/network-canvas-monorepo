@@ -17,6 +17,9 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 import {
   dynamicValueNameFor,
   type FramingSetting,
+  printContentDocument,
+  readContentDocument,
+  TRUE_CASE,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -111,6 +114,19 @@ type InterviewOptions = {
   sisters?: boolean;
   /** The age question must be answered. */
   required?: boolean;
+  /** The form asks its questions only of the participant (a logic block). */
+  onlyOfParticipant?: boolean;
+  /**
+   * The form asks its questions only of someone with a label (a logic block
+   * on the node's label), which everyone on the canvas has.
+   */
+  onlyWhileLabelled?: boolean;
+  /**
+   * The protocol is also in French, whose form alone asks whether someone
+   * smokes; the English form asks the age question only of a smoker (a
+   * logic block). The mother's answer, that she smokes, is stored.
+   */
+  smokingAskedOnlyInFrench?: boolean;
 };
 
 // The question is worded the same in either language: what a German
@@ -135,10 +151,16 @@ async function interview({
   encryptedNameIsSavedLabel = false,
   sisters = false,
   required = false,
+  onlyOfParticipant = false,
+  onlyWhileLabelled = false,
+  smokingAskedOnlyInFrench = false,
 }: InterviewOptions = {}) {
   const language = locale ?? 'en-US';
   const si = new SyntheticInterview(1);
   if (locale) si.setLocalization({ defaultLocale: locale, locales: [locale] });
+  if (smokingAskedOnlyInFrench) {
+    si.setLocalization({ defaultLocale: language, locales: [language, 'fr'] });
+  }
   const relatives = si.addNodeType({ name: TYPE_LABEL });
   const stage = si.addStage('FamilyPedigree', {
     subject: { entity: 'node', type: relatives.id },
@@ -166,6 +188,20 @@ async function interview({
       prompt: { [language]: 'Occupation' },
     });
   }
+  const smokes = smokingAskedOnlyInFrench
+    ? relatives.addVariable({
+        name: 'smokes',
+        type: 'boolean',
+        component: 'Boolean',
+      }).id
+    : undefined;
+  if (smokes) {
+    stage.addFormField({
+      component: 'Boolean',
+      variable: smokes,
+      prompt: { fr: 'Fume ?' },
+    });
+  }
   const sex = (value: 'female' | 'male' | null) =>
     value === null ? {} : { [stage.sexAssignedAtBirth]: [value] };
   si.addManualNode(stage.id, stage.personType, 'ego', {
@@ -177,6 +213,7 @@ async function interview({
     ...sex(mumSex),
     ...(mumSavedLabel === undefined ? {} : { [stage.name]: mumSavedLabel }),
     ...(occupation === undefined ? {} : { [occupation]: mumOccupation }),
+    ...(smokes === undefined ? {} : { [smokes]: true }),
   });
   si.addManualNode(stage.id, stage.personType, 'dad', {
     [stage.ego]: false,
@@ -213,6 +250,90 @@ async function interview({
       ? { stageMetadata: { 0: metadata } as never }
       : {}),
   });
+
+  if (onlyOfParticipant) {
+    const pedigree = payload.protocol.stages[0];
+    if (pedigree?.type !== 'FamilyPedigree' || pedigree.form === undefined) {
+      throw new Error('No person form');
+    }
+    pedigree.form.content = Object.fromEntries(
+      Object.entries(pedigree.form.content).map(([tag, text]) => [
+        tag,
+        printContentDocument([
+          {
+            kind: 'logic',
+            logic: {
+              kind: 'participant',
+              participant: readContentDocument(text).nodes,
+              otherwise: [],
+            },
+          },
+        ]),
+      ]),
+    );
+  }
+
+  if (onlyWhileLabelled) {
+    const pedigree = payload.protocol.stages[0];
+    if (pedigree?.type !== 'FamilyPedigree' || pedigree.form === undefined) {
+      throw new Error('No person form');
+    }
+    pedigree.form.content = Object.fromEntries(
+      Object.entries(pedigree.form.content).map(([tag, text]) => [
+        tag,
+        printContentDocument([
+          {
+            kind: 'logic',
+            logic: {
+              kind: 'answers',
+              value: dynamicValueNameFor({ kind: 'label', role: 'node' }),
+              missing: [],
+              versions: [],
+              other: readContentDocument(text).nodes,
+            },
+          },
+        ]),
+      ]),
+    );
+  }
+
+  if (smokes !== undefined) {
+    const pedigree = payload.protocol.stages[0];
+    if (pedigree?.type !== 'FamilyPedigree' || pedigree.form === undefined) {
+      throw new Error('No person form');
+    }
+    const smoking = pedigree.form.fields.find(
+      (field) => field.variable === smokes,
+    );
+    const age = pedigree.form.fields.find((field) => field !== smoking);
+    if (smoking === undefined || age === undefined) {
+      throw new Error('No smoking and age questions');
+    }
+    const ageField = { kind: 'field', fieldId: age.id } as const;
+    pedigree.form.content = {
+      [language]: printContentDocument([
+        {
+          kind: 'logic',
+          logic: {
+            kind: 'answers',
+            value: dynamicValueNameFor({
+              kind: 'attribute',
+              role: 'node',
+              variableId: smokes,
+            }),
+            missing: [],
+            versions: [{ caseKey: TRUE_CASE, content: [ageField] }],
+            other: [],
+          },
+        },
+      ]),
+      fr: printContentDocument([
+        { kind: 'field', fieldId: smoking.id },
+        ageField,
+      ]),
+    };
+    age.prompt = { ...age.prompt, fr: 'Quel âge ?' };
+  }
 
   if (mumEncryptedName !== undefined) {
     // Saved encrypted on an earlier visit protected with the passphrase.
@@ -465,6 +586,75 @@ describe('the node label in a Family Pedigree panel’s questions', () => {
 
     await waitFor(() => expect(questionValue()).toBe('Mother'));
     expect(within(panel()).queryByText(/Some details are missing/)).toBeNull();
+  });
+
+  it('asks the participant a question that logic shows only to the participant', async () => {
+    await interview({ onlyOfParticipant: true });
+    await openPanelOf('ego');
+    expect(
+      within(panel()).getByRole('spinbutton', { name: /^How old is/ }),
+    ).toBeVisible();
+  });
+
+  it('asks a relative no question that logic shows only to the participant', async () => {
+    await interview({ onlyOfParticipant: true });
+    await openPanelOf('mum');
+    await waitFor(() => expect(nameBox()).toBeVisible());
+    expect(
+      within(panel()).queryByRole('spinbutton', { name: /^How old is/ }),
+    ).toBeNull();
+  });
+
+  it('counts a required question that logic shows only to the participant as missing for them alone', async () => {
+    await interview({ required: true, onlyOfParticipant: true });
+    const hasMissingDetails = (id: string) =>
+      document.querySelector(
+        `[data-person-id="${id}"] [data-missing-details-badge]`,
+      ) !== null;
+
+    // Nobody has answered it: the participant is asked it, and their
+    // relatives are not.
+    await waitFor(() => expect(hasMissingDetails('ego')).toBe(true));
+    expect(hasMissingDetails('mum')).toBe(false);
+    expect(hasMissingDetails('dad')).toBe(false);
+  });
+
+  // Logic reads the label of the person a form describes as present, as the
+  // person form does: everyone on the canvas has a label.
+  it('counts a required question that logic shows only to someone with a label as missing for everyone', async () => {
+    await interview({ required: true, onlyWhileLabelled: true });
+    const hasMissingDetails = (id: string) =>
+      document.querySelector(
+        `[data-person-id="${id}"] [data-missing-details-badge]`,
+      ) !== null;
+
+    await waitFor(() => expect(hasMissingDetails('ego')).toBe(true));
+    expect(hasMissingDetails('mum')).toBe(true);
+    expect(hasMissingDetails('dad')).toBe(true);
+
+    await openPanelOf('mum');
+    expect(
+      within(panel()).getByRole('spinbutton', { name: QUESTION_START }),
+    ).toBeVisible();
+  });
+
+  // The English form does not ask whether someone smokes, so the stored
+  // answer is one of the person's attributes, which the form's logic reads,
+  // not one of its answers: the canvas counts what the person form asks.
+  it('counts a required question that a stored answer to another language’s question shows as missing', async () => {
+    await interview({ required: true, smokingAskedOnlyInFrench: true });
+    const hasMissingDetails = (id: string) =>
+      document.querySelector(
+        `[data-person-id="${id}"] [data-missing-details-badge]`,
+      ) !== null;
+
+    await waitFor(() => expect(hasMissingDetails('mum')).toBe(true));
+    expect(hasMissingDetails('dad')).toBe(false);
+
+    await openPanelOf('mum');
+    expect(
+      within(panel()).getByRole('spinbutton', { name: /^How old is/ }),
+    ).toBeVisible();
   });
 
   it('calls a relative by their encrypted name once it is decrypted', async () => {

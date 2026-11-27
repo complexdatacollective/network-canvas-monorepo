@@ -232,20 +232,25 @@ const expectNoInventControl = (where: string): void => {
  * composer's node-attribute form, the pedigree's family-member form — and the
  * two rule-builder ones are the creation-free sites tested in their own right
  * below.
+ *
+ * A form's fields have no picker on the page: the attribute list opens only
+ * when the researcher adds a field to the form's document, and the create row
+ * is inside that list (`sections/form-document/FieldInsertPicker.tsx`, tested
+ * in its own right). So the form stages count only their other pickers.
  */
 const PICKERS_REACHED: Readonly<Record<string, number>> = {
-  [fixtureStageId('alter-edge-form-1')]: 1,
-  [fixtureStageId('alter-form-1')]: 2,
+  [fixtureStageId('alter-edge-form-1')]: 0,
+  [fixtureStageId('alter-form-1')]: 0,
   [fixtureStageId('anonymisation-1')]: 0,
   [fixtureStageId('categorical-bin-1')]: 1,
   [fixtureStageId('dyad-census-1')]: 0,
-  [fixtureStageId('ego-form-1')]: 1,
+  [fixtureStageId('ego-form-1')]: 0,
   [fixtureStageId('family-pedigree-1')]: 8,
   [fixtureStageId('finish')]: 0,
   [fixtureStageId('geospatial-1')]: 1,
   [fixtureStageId('information-1')]: 0,
   [fixtureStageId('language-chooser-1')]: 0,
-  [fixtureStageId('name-generator-1')]: 1,
+  [fixtureStageId('name-generator-1')]: 0,
   [fixtureStageId('name-generator-quick-add-1')]: 1,
   [fixtureStageId('name-generator-roster-1')]: 0,
   [fixtureStageId('narrative-1')]: 2,

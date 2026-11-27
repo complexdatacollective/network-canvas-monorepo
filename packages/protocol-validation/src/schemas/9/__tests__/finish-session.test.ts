@@ -595,7 +595,7 @@ describe('closing text missing in the default language', () => {
       objectId: testId('end'),
       path: ['stages', 0, setting, 'ja'],
       message:
-        "Network Canvas has no built-in wording in the protocol's default language (ja), so this text must be written in it, or a language Network Canvas has wording in made the default.",
+        "Network Canvas has no built-in wording in the protocol's default language (ja), so write this wording in that language, or make a language that Network Canvas has wording in the default.",
     });
     const found = result.error?.issues ?? [];
     // The interface text has no Japanese wording either: each entry is
@@ -736,7 +736,7 @@ describe('closing text missing in the default language', () => {
       expect(result.error?.issues).toContainEqual(
         expect.objectContaining({
           path: ['stages', 0, field, 'fr'],
-          message: 'Text cannot be blank.',
+          message: 'This wording cannot be blank.',
         }),
       );
     },
@@ -769,7 +769,7 @@ describe('closing text missing in the default language', () => {
       issues([{ ...information('intro'), content: {} }, finish()]),
     ).toContainEqual({
       path: ['stages', 0, 'content'],
-      message: 'Text must have at least one translation.',
+      message: 'This wording must have at least one translation.',
     });
   });
 });

@@ -1,95 +1,54 @@
-import { type Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
-import { createAttribute } from './variables.js';
-
-// AlterForm/AlterEdgeForm/EgoForm's `form.fields` array is authored by
-// `@codaco/protocol-builder`'s `FormFieldsSection`
-// (`sections/form-fields/FormFieldsSection.tsx`). The section is titled "Form
-// fields" and its add button names what it adds — "Create new form field" —
-// so a stage showing two lists at once (a name generator shows this one and
-// its prompts) keeps them apart.
+// A stage's form is a rich text document (`@codaco/protocol-builder`'s
+// `FormDocumentSection`, "Form"): text, with each field as a block in it.
+// The toolbar's "Field" button puts a field in at the caret and opens the
+// attribute picker ("Attribute of the new field") beside it; the new field's
+// question is then typed into the block. Selecting a block (Escape from its
+// text) shows its tab, with the attribute and a "Field settings" button;
+// pressing Enter on the selected block presses that button, which opens its
+// settings: the attribute, its input control, validation and "Delete field".
 //
-// Takes the enclosing section `Locator` (`editor.section('Form configuration')`)
-// rather than the Page, and scopes the OPEN click to it, so the helper stays
-// honest about which list it is driving. The dialog it opens is a page-level
-// portal, so everything after that is reached through `section.page()` and
-// scoped by the dialog's own accessible name instead.
-export async function openFormFieldDialog(section: Locator): Promise<Locator> {
-  const page = section.page();
-  await section
-    .getByRole('button', { name: 'Create new form field', exact: true })
-    .click();
-  // A brand-new row's dialog is titled "Create form field"; the same dialog
-  // reads "Edit form field" for a row that already exists (`rowDialog.tsx`'s
-  // `addTitle`/`editTitle`). Naming it here is what makes the fields below
-  // unambiguous without a second scope.
-  return page.getByRole('dialog', { name: 'Create form field' });
+// The helpers take the enclosing section `Locator`
+// (`editor.section('Form')`) and reach page-level popovers through
+// `section.page()`, scoped by their own accessible names.
+
+/** The document's own text box. */
+export function formContent(section: Locator): Locator {
+  return section.getByRole('textbox', { name: 'Form content', exact: true });
+}
+
+/** The document's field blocks, in order. */
+export function fieldBlocks(section: Locator): Locator {
+  return section.locator('[data-field-block-view]');
+}
+
+/** The field block whose question is `question`. */
+export function fieldBlock(section: Locator, question: string): Locator {
+  return fieldBlocks(section).filter({
+    has: section.page().locator('[data-field-label]', { hasText: question }),
+  });
 }
 
 /**
- * The half of the field dialog that shows the question as the participant will
- * meet it.
- *
- * A named region (`FieldPreviewPane`), beside the named form the settings are
- * in — so a test reading the preview and a test filling in the settings cannot
- * reach each other's controls, which matters because the two render the same
- * roles: a question box on the left and the box that answers it on the right.
+ * The key that moves the caret to the end of a text: Command-Down on macOS,
+ * where Command-End does nothing in Chromium, and Control-End elsewhere.
  */
-export function fieldPreview(dialog: Locator): Locator {
-  return dialog.getByRole('region', { name: 'Interactive preview' });
+const TEXT_END =
+  process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End';
+
+/** Puts the caret at the end of the document, below its last block. */
+export async function focusFormEnd(section: Locator): Promise<void> {
+  await formContent(section).click();
+  await section.page().keyboard.press(TEXT_END);
 }
 
 /**
- * The other half: the field's own settings.
- *
- * Scope every settings control to this rather than to the dialog, wherever the
- * control the participant answers with is of the same kind as a control the
- * researcher fills in — a slider, a date box, a set of options. Both halves
- * are on screen at once, and an unscoped query would resolve to two elements.
- */
-export function fieldSettings(dialog: Locator): Locator {
-  return dialog.getByRole('form', { name: 'Configuration' });
-}
-
-/** Authors one whole form field, from an attribute that does not exist yet. */
-export async function addFormField(
-  section: Locator,
-  opts: {
-    variableName: string;
-    promptText: string;
-    /** A `TYPE_OPTIONS` label. Derived from `inputControl` when absent. */
-    variableType?: string;
-    /** A `CONTROL_LABELS` label allowed for that type. */
-    inputControl?: string;
-  },
-): Promise<void> {
-  const dialog = await openFormFieldDialog(section);
-  await inventAttributeInFieldDialog(dialog, opts);
-  const prompt = dialog.getByRole('textbox', { name: 'Question text' });
-  await prompt.click();
-  await prompt.fill(opts.promptText);
-  // "Add" for a new row, "Save" for an existing one (`rowDialog.tsx`:
-  // `session.isNewItem ? messages.addSubmit : commonMessages.save`).
-  await dialog.getByRole('button', { name: 'Add', exact: true }).click();
-  // Full unmount, not just hidden: the next add reopens the same dialog, and
-  // a stale one still on screen would take the next helper's clicks.
-  await dialog.waitFor({ state: 'detached' });
-}
-
-/**
- * Which kind of answer an input control collects.
- *
- * Not a guess and not a shortcut: `VARIABLE_TYPE_COMPONENTS`
- * (protocol-validation's schema module) lists the controls each type may be
- * rendered with, and every control appears under exactly ONE type — so a
- * caller that has said which control the participant answers with has already
- * said what the attribute holds, and asking again would only create a second
- * place for the two to disagree.
- *
- * Keys are the researcher-facing control names (`collectableTypes.ts`'s
- * `CONTROL_LABELS`); values are the type names the dialog uses
- * (`variableTypeLabels.ts`'s `VARIABLE_TYPE_OPTIONS`). `layout` and `location`
- * are absent from both: they hold a position rather than an answer.
+ * Which kind of answer an input control collects: the type an attribute
+ * created for that control is given. Every control belongs to exactly one
+ * type (`VARIABLE_TYPE_COMPONENTS` in protocol-validation). Keys are the
+ * control names (`collectableTypes.ts`'s `CONTROL_LABELS`), values the type
+ * names that the picker offers.
  */
 const VARIABLE_TYPE_FOR_CONTROL: Readonly<Record<string, string>> = {
   'Text Input': 'Text',
@@ -106,37 +65,37 @@ const VARIABLE_TYPE_FOR_CONTROL: Readonly<Record<string, string>> = {
   'Relative Date Picker': 'Date',
 };
 
-export type InventAttributeOptions = {
-  variableName: string;
-  variableType?: string;
-  inputControl?: string;
-  inRow?: (dialog: Locator) => Promise<void>;
+/** The input control each type's new attribute is given first. */
+const DEFAULT_CONTROL_FOR_TYPE: Readonly<Record<string, string>> = {
+  Text: 'Text Input',
+  Number: 'Number Input',
 };
 
 /**
- * Fill in the codebook half of an open form-field dialog: an attribute that
- * does not exist yet, and the control the participant answers it with.
- *
- * `FormFieldEditor` (`sections/form-fields/FormFieldsSection.tsx`) asks which
- * attribute the answer is recorded under through the attribute picker
- * (`fields/VariablePickerField.tsx`), and passes it an `onCreateOption` — so
- * inventing one here is the window's own create row, taken on the name typed
- * into its search box. The row decides nothing and promises everything: it
- * writes the name onto the field row and closes the window, and what is left
- * to ask appears underneath.
- *
- * The dialog asks for no kind of answer: "Input control" is the only question,
- * and the kind follows from it. It opens on its placeholder, so it is always
- * selected here rather than merely confirmed.
- *
- * Nothing reaches the codebook until something is submitted: the row carries
- * `_newVariableName`/`_component` and `useCommitFormField` turns them into the
- * attribute when the ROW is saved.
+ * Adds a field at the end of the form, on an attribute that does not exist
+ * yet: the "Field" button, the picker's create row and type step, then the
+ * question typed into the new block. When `inputControl` is not the one a
+ * new attribute of its type starts with, it is chosen in the field's
+ * settings.
  */
-export async function inventAttributeInFieldDialog(
-  dialog: Locator,
-  opts: InventAttributeOptions,
+export async function addFormField(
+  section: Locator,
+  opts: {
+    variableName: string;
+    promptText: string;
+    /** A type the picker offers. Derived from `inputControl` when absent. */
+    variableType?: string;
+    /** A `CONTROL_LABELS` label allowed for that type. */
+    inputControl?: string;
+    /**
+     * For a type that a name cannot finish (a list of values, a scale), which
+     * opens the codebook's own editor: authors what it asks for beyond the
+     * name (`authorOptions`), before "Create attribute" is pressed.
+     */
+    author?: (editor: Locator) => Promise<void>;
+  },
 ): Promise<void> {
+  const page = section.page();
   const inputControl = opts.inputControl ?? 'Text Input';
   const variableType =
     opts.variableType ?? VARIABLE_TYPE_FOR_CONTROL[inputControl];
@@ -145,23 +104,177 @@ export async function inventAttributeInFieldDialog(
       `No codebook type is known for the input control "${inputControl}". Use one of the labels in CONTROL_LABELS (packages/protocol-builder/src/sections/collectableTypes.ts), or pass variableType.`,
     );
   }
+  const before = await fieldBlocks(section).count();
 
-  // Addressed by the field's own name rather than by its label: "Attribute" is
-  // also the heading of the dialog's first Section and the prefix of
-  // "Attribute name".
-  //
-  // `createAttribute` rather than a choose-or-create: this helper's whole job
-  // is to INVENT, and a name the subject already holds has to fail here rather
-  // than quietly bind the attribute that was already there and leave the
-  // controls below unanswered.
-  await createAttribute(
-    dialog.locator('[data-field-name="variable"]'),
-    opts.variableName,
-  );
-  const control = dialog.getByRole('combobox', {
-    name: 'Input control',
+  await focusFormEnd(section);
+  await section.getByRole('button', { name: 'Field', exact: true }).click();
+  const picker = page.getByRole('dialog', {
+    name: 'Attribute of the new field',
     exact: true,
   });
-  await control.selectOption({ label: inputControl });
-  await opts.inRow?.(dialog);
+  await picker
+    .getByRole('combobox', { name: 'Find or create an attribute' })
+    .fill(opts.variableName);
+  await picker
+    .getByRole('option', { name: `Create “${opts.variableName}”` })
+    .click();
+  await picker
+    .getByRole('button', { name: new RegExp(`^${variableType}\\b`) })
+    .click();
+  if (opts.author !== undefined) {
+    // The codebook's own editor, which opens with the name the list took.
+    const editor = page.getByRole('dialog', {
+      name: `New attribute: ${opts.variableName}`,
+      exact: true,
+    });
+    await expect(
+      editor.getByRole('textbox', { name: 'Attribute name', exact: true }),
+    ).toHaveValue(opts.variableName);
+    await opts.author(editor);
+    await editor
+      .getByRole('button', { name: 'Create attribute', exact: true })
+      .click();
+    await editor.waitFor({ state: 'detached' });
+  }
+  await expect(picker).toBeHidden();
+
+  // The caret moves into the new block's question once the picker has
+  // closed; what is typed before then does not reach it.
+  await expect(fieldBlocks(section)).toHaveCount(before + 1);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const node = document.getSelection()?.anchorNode;
+        const element = node instanceof Element ? node : node?.parentElement;
+        return (
+          document.activeElement?.getAttribute('role') === 'textbox' &&
+          element?.closest('[data-field-label]') !== null &&
+          element?.closest('[data-field-label]') !== undefined
+        );
+      }),
+    )
+    .toBe(true);
+  await page.keyboard.type(opts.promptText);
+  const block = fieldBlock(section, opts.promptText);
+  await expect(block).toHaveCount(1);
+
+  if (DEFAULT_CONTROL_FOR_TYPE[variableType] !== inputControl) {
+    const settings = await openFieldSettings(section, opts.promptText);
+    // Chosen from the keyboard: the list opens from the focused control,
+    // typing moves to the option and Enter takes it.
+    await settings.getByRole('combobox', { name: 'Input control' }).focus();
+    await page.keyboard.press('Enter');
+    const option = page.getByRole('option', {
+      name: new RegExp(`^${inputControl}\\b`),
+    });
+    await expect(option).toBeAttached();
+    await page.keyboard.type(inputControl);
+    await expect(option).toHaveAttribute('data-highlighted', '');
+    await page.keyboard.press('Enter');
+    await expect(
+      settings.getByRole('combobox', { name: 'Input control' }),
+    ).toContainText(inputControl);
+    await closeFieldSettings(section, settings);
+  }
+}
+
+/**
+ * The rich text editor that Tiptap draws on its own element, as far as these
+ * helpers read it.
+ */
+type EditorElement = HTMLElement & {
+  editor?: {
+    state: { selection: { from: number } };
+    view: {
+      domAtPos: (position: number) => { node: Node };
+      posAtDOM: (node: Node, offset: number) => number;
+    };
+  };
+};
+
+/**
+ * Whether the editor's own selection, which it takes from the browser's a
+ * moment after a click, is inside `region`.
+ */
+const editorSelectionIsIn = (region: Locator): Promise<boolean> =>
+  region.evaluate((element) => {
+    const editor = element.closest<EditorElement>('.ProseMirror')?.editor;
+    if (editor === undefined) return false;
+    const { node } = editor.view.domAtPos(editor.state.selection.from);
+    return element.contains(node);
+  });
+
+/**
+ * Opens the settings of the field that asks `question`, the way a keyboard
+ * user does: in the question's text, Escape selects the block, and Enter on
+ * the selected block presses the settings button in its tab.
+ *
+ * The editor takes a click's caret into its own selection a moment after
+ * the click, and an Escape pressed before then finds the caret where it
+ * was. So Escape is pressed once the editor's selection is in the question.
+ */
+export async function openFieldSettings(
+  section: Locator,
+  question: string,
+): Promise<Locator> {
+  const page = section.page();
+  const block = fieldBlock(section, question);
+  const label = block.locator('[data-field-label]');
+  await label.click();
+  await expect.poll(() => editorSelectionIsIn(label)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(block).toHaveAttribute('data-selected', /.*/);
+  const settings = page.getByRole('dialog', {
+    name: 'Field settings',
+    exact: true,
+  });
+  // Selecting the block opens nothing: Enter presses its settings button.
+  await expect(
+    block.getByRole('button', { name: 'Field settings' }),
+  ).toBeVisible();
+  await expect(settings).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(settings).toBeVisible();
+  return settings;
+}
+
+/**
+ * Closes a field's settings with Escape, which gives focus back to the
+ * settings button, and then leaves the field: from the text, the Down arrow
+ * moves the selection below it.
+ *
+ * The editor moves a selected block's selection by the Down arrow itself,
+ * from its own state, so the key works however soon it follows focus. A
+ * caret move left to the browser (such as Command-Down) can be undone by the
+ * editor as it takes focus. The block below can be another field, which is
+ * then selected, so the key is pressed once for each field that it selects,
+ * each time after the field selected before it has been left.
+ */
+export async function closeFieldSettings(
+  section: Locator,
+  settings: Locator,
+): Promise<void> {
+  const text = formContent(section);
+  const selected = fieldBlocks(section).and(
+    section.page().locator('[data-selected]'),
+  );
+  await settings.focus();
+  await section.page().keyboard.press('Escape');
+  await expect(settings).toBeHidden();
+  await text.focus();
+  await expect(text).toBeFocused();
+  const fields = await fieldBlocks(section).count();
+  for (let press = 0; press <= fields; press += 1) {
+    // The selection is the editor's own, so it is read as it stands.
+    if ((await selected.count()) === 0) break;
+    const field = await selected.first().elementHandle();
+    await section.page().keyboard.press('ArrowDown');
+    await expect
+      .poll(() =>
+        field.evaluate((element) => element.hasAttribute('data-selected')),
+      )
+      .toBe(false);
+    await field.dispose();
+  }
+  await expect(settings).toBeHidden();
 }

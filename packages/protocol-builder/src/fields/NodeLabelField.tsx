@@ -5,21 +5,22 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import {
   type Codebook,
+  dynamicValueNameFor,
   type LocalizedString,
   nodeLabelValueContext,
 } from '@codaco/protocol-validation';
 
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
-import { DynamicMessageEditor } from './DynamicTextField.tsx';
+import { DynamicMessageEditor } from './dynamicText/DynamicMessageEditor.tsx';
+import { translatableStringsUsing } from './DynamicTextField.tsx';
 
 const messages = defineMessages({
   textPlaceholder: {
-    id: 'protocolBuilder.nodeLabel.textPlaceholder',
-    defaultMessage:
-      'Write the label, and insert values and logic from the toolbar…',
+    id: 'protocolBuilder.nodeLabel.placeholder',
+    defaultMessage: 'Write the label, and insert attributes from the toolbar…',
     description:
-      'Placeholder inside the text field where a researcher writes the label shown on every node of a node type. The toolbar above the text has a button that inserts a value, such as one of the node’s attributes, and one that inserts logic, such as an “If”.',
+      'Placeholder inside the text field where a researcher writes the label shown on every node of a node type. The Attribute button in the toolbar above the text puts in one of the node’s attributes, or a dynamic attribute: a word or phrase that reads differently for different nodes.',
   },
 });
 
@@ -29,8 +30,13 @@ const messages = defineMessages({
  */
 export type NodeLabelDraft = Readonly<{
   text?: LocalizedString;
-  /** The conditions its text tests, by id, as the schema stores them. */
+  /**
+   * The conditions that its dynamic attributes test, by id, as the schema
+   * stores them.
+   */
   conditions?: Readonly<Record<string, unknown>>;
+  /** The dynamic attributes its text shows, by id, as the schema stores them. */
+  dynamicAttributes?: Readonly<Record<string, unknown>>;
 }>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -47,6 +53,10 @@ const withoutEmptyParts = (draft: NodeLabelDraft): NodeLabelDraft => ({
   ...(draft.conditions !== undefined &&
     Object.keys(draft.conditions).length > 0 && {
       conditions: draft.conditions,
+    }),
+  ...(draft.dynamicAttributes !== undefined &&
+    Object.keys(draft.dynamicAttributes).length > 0 && {
+      dynamicAttributes: draft.dynamicAttributes,
     }),
 });
 
@@ -67,17 +77,18 @@ export type NodeLabelFieldProps = CreateFormFieldProps<
 /**
  * How a node type labels its nodes: one line of text a participant reads on
  * every node of the type, which shows values as a stage's text does (the
- * same editor, with its two menus). What it can show is about the node the
- * label is on: its attributes, and the label the interview would otherwise
- * have chosen for it. An "If" in it tests rules about that node (its
- * attributes, and the edges that join it to others), built with the rule
- * builder that filters and skip logic use.
+ * same editor and Attribute menu). What it can show is about the node the
+ * label is on: its attributes, the label the interview would otherwise have
+ * chosen for it, and the label's own dynamic attributes, whose rules are
+ * about that node (its attributes, and the edges that join it to others).
  *
  * The whole label is one value of the surrounding form, as a rule set is:
- * the text declares the conditions it tests as it is written. A condition
- * that no translation names any more stays until the node type is saved,
- * which drops it (`withoutUnusedConditions`), so an "If" cut from the label
- * and pasted back, or brought back by an undo, keeps its rules.
+ * its text, the dynamic attributes the text shows and the conditions they
+ * test. A dynamic attribute or a condition that nothing uses any more stays
+ * until the node type is saved, which drops it
+ * (`withoutUnusedTextDefinitions`), so a pill
+ * cut from the label and pasted back, or brought back by an undo, keeps its
+ * settings.
  */
 export default function NodeLabelField({
   id,
@@ -94,7 +105,7 @@ export default function NodeLabelField({
   'aria-required': ariaRequired,
 }: NodeLabelFieldProps) {
   const intl = useAppIntl();
-  const { localization, locale } = useEditingLanguage();
+  const { editingLocale } = useEditingLanguage();
   const draft = useMemo(() => asDraft(value), [value]);
 
   // The text's editor writes the text and then the conditions it tests, one
@@ -116,8 +127,9 @@ export default function NodeLabelField({
         codebook,
         nodeType: nodeType ?? '',
         conditions: draft.conditions,
+        dynamicAttributes: draft.dynamicAttributes,
       }),
-    [codebook, nodeType, draft.conditions],
+    [codebook, nodeType, draft.conditions, draft.dynamicAttributes],
   );
 
   return (
@@ -140,7 +152,7 @@ export default function NodeLabelField({
           singleLine
           message={translation.message}
           onMessageChange={translation.onMessageChange}
-          locale={locale ?? localization?.defaultLocale ?? 'en'}
+          locale={editingLocale}
           site={{
             context,
             conditions: {
@@ -156,6 +168,19 @@ export default function NodeLabelField({
               // The label is drawn on many nodes at once, on every stage.
               allowEgoRules: false,
             },
+            dynamicAttributes: {
+              values: draft.dynamicAttributes ?? {},
+              set: (next) => write({ dynamicAttributes: next }),
+            },
+            owner: 'nodeLabel',
+            dynamicAttributeUsage: (dynamicAttributeId) =>
+              translatableStringsUsing(
+                { text: draft.text },
+                dynamicValueNameFor({
+                  kind: 'dynamicAttribute',
+                  id: dynamicAttributeId,
+                }),
+              ),
           }}
         />
       )}

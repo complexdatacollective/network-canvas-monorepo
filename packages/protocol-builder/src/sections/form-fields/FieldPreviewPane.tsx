@@ -1,4 +1,3 @@
-import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { type ReactNode, useContext, useId, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -17,20 +16,16 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   createInitialNetwork,
-  InterfaceTextOverlay,
   InterviewI18nProvider,
   ProtocolField,
   type ProtocolFieldDefinition,
-  ProtocolLocalizationProvider,
 } from '@codaco/interview';
 import {
   type ComponentType,
   ComponentTypesKeys,
-  getLocaleMetadata,
-  type InterfaceText,
   isBlankText,
-  type LocaleTag,
   type LocalizedString,
+  messageShowsValues,
   type Variable,
 } from '@codaco/protocol-validation';
 
@@ -42,17 +37,13 @@ import {
   messageWithValueNames,
   useDynamicValueNames,
 } from '../../fields/DynamicTextField.tsx';
-import {
-  DynamicTextPreview,
-  showsValues,
-} from '../../fields/DynamicTextPreview.tsx';
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import type { RowValues } from '../../form/rowDialog.tsx';
 import { StageEditorFormContext } from '../../form/stageEditorContext.ts';
 import { EditingLanguageSwitcher } from '../../localization/EditingLanguageSwitcher.tsx';
 import {
   asLocalizedString,
   localizedFromText,
-  type ProtocolLocalization,
 } from '../../localization/localizedText.ts';
 import {
   useEditingLanguage,
@@ -72,6 +63,7 @@ import {
   isCollectableType,
   isOptionType,
 } from '../collectableTypes.ts';
+import { FieldControlLanguage } from '../form-document/FieldControlLanguage.tsx';
 import { NEW_VARIABLE } from './inventedAttribute.ts';
 
 const messages = defineMessages({
@@ -119,13 +111,11 @@ const messages = defineMessages({
 /**
  * Row keys the preview follows as the researcher types.
  *
- * The union of both families' keys, and one list rather than two: a key the
- * family on screen never registers simply never has a live value, and asking
- * for it costs one `hasValue` read. The dialog-only spellings
- * (`_newVariableName`, `_component`) are written out here
- * rather than imported from `FormFieldsSection`, which imports this module —
- * the same rule its own test follows, so a key that moves has to move in both
- * places.
+ * A network composer's field rows are its only family now. A key that the row
+ * on screen never registers simply never has a live value, and asking for it
+ * costs one `hasValue` read. The dialog-only spellings (`_newVariableName`,
+ * `_component`) are written out here, as its own test writes them, so a key
+ * that moves has to move in both places.
  */
 const PREVIEW_DRAFT_FIELDS = [
   'variable',
@@ -199,63 +189,12 @@ const previewOptions = (options: readonly unknown[]): PreviewOption[] =>
     ];
   });
 
-/** The preview has no participant whose language choice could be kept. */
-const ignoreLocaleChange = () => undefined;
-
-const NO_REQUESTED_LOCALES: readonly string[] = [];
-
 /**
  * A trial answer is checked against the attribute's own rules and nothing
  * else. The preview's form has no document to save and no host to save it to,
  * so its submit exists only to make the field-level rules run.
  */
 const passPreviewValidation = () => ({ success: true as const });
-
-/**
- * The protocol's languages, as the interview resolves the field's copy in
- * them: the language being edited, falling back as a participant's would.
- * The field's own words around its control, such as a password field's
- * placeholder, come from the protocol's interface text in that language, as
- * they do in the interview.
- */
-function PreviewProtocolLanguage({
-  localization,
-  locale,
-  interfaceText,
-  children,
-}: Readonly<{
-  localization: ProtocolLocalization;
-  locale: LocaleTag;
-  interfaceText: InterfaceText | undefined;
-  children: ReactNode;
-}>) {
-  const localeOptions = useMemo(
-    () => localization.locales.map((declared) => getLocaleMetadata(declared)),
-    [localization],
-  );
-  const { direction } = getLocaleMetadata(locale);
-  return (
-    <ProtocolLocalizationProvider
-      localization={localization}
-      localeOptions={localeOptions}
-      requestedLocales={NO_REQUESTED_LOCALES}
-      localePreference={locale}
-      onLocalePreferenceChange={ignoreLocaleChange}
-    >
-      {/* The field's language boundary, as the interview Shell's region is:
-          everything inside, the participant's popups included, takes the
-          language being previewed and lays out in its direction, and no text
-          inside marks a language of its own. */}
-      <InterfaceTextOverlay interfaceText={interfaceText}>
-        <DirectionProvider direction={direction}>
-          <div lang={locale} dir={direction}>
-            {children}
-          </div>
-        </DirectionProvider>
-      </InterfaceTextOverlay>
-    </ProtocolLocalizationProvider>
-  );
-}
 
 export type FieldPreviewPaneProps = Readonly<{
   /** Whose codebook the previewed field collects into. */
@@ -314,7 +253,7 @@ const withScaleLabelValueNames = (
     const label = asLocalizedString(parameters[key]);
     if (label === undefined) continue;
     const entries = Object.entries(label).map(([locale, message]) => {
-      if (!showsValues(message)) return [locale, message] as const;
+      if (!messageShowsValues(message)) return [locale, message] as const;
       changed = true;
       return [locale, messageWithValueNames(message, nameOf)] as const;
     });
@@ -573,7 +512,7 @@ export default function FieldPreviewPane({
   // cannot format a value it was not given. Each value is shown as the pill
   // the editor shows instead.
   const withValues = (text: LocalizedString | undefined): ReactNode =>
-    text !== undefined && showsValues(localize(text).text) ? (
+    text !== undefined && messageShowsValues(localize(text).text) ? (
       <DynamicTextPreview value={text} render={<span />} />
     ) : undefined;
   const labelWithValues = withValues(authoredCopy);
@@ -626,7 +565,7 @@ export default function FieldPreviewPane({
               onSubmit={passPreviewValidation}
             >
               <InterviewI18nProvider>
-                <PreviewProtocolLanguage
+                <FieldControlLanguage
                   {...languages}
                   interfaceText={protocolContext.interfaceText}
                 >
@@ -652,7 +591,7 @@ export default function FieldPreviewPane({
                       )}
                     </PreviewField>
                   </PortalContainerProvider>
-                </PreviewProtocolLanguage>
+                </FieldControlLanguage>
               </InterviewI18nProvider>
               <div className="flex justify-end">
                 <Button type="submit">

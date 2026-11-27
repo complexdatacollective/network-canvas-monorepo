@@ -46,7 +46,7 @@ describe('assets shown as blocks in the text of an Information stage', () => {
   it('counts every file one text shows as used, not only the last', () => {
     const state = stateWith([
       information({
-        en: '# Page\n\n![](asset:a)\n\n![](asset:b?align=start)\n\n![](asset:c?size=large)',
+        en: '# Page\n\n![](asset:a)\n\n![](asset:b?loop=false)\n\n![](asset:c?size=large)',
       }),
     ]);
 

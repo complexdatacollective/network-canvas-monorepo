@@ -91,6 +91,22 @@ describe('LocalizedStringField', () => {
     expect(input.closest('[lang]')).toHaveAttribute('data-typed-language');
   });
 
+  it.each([
+    ['a value', 'Hello {name}'],
+    ['a formatted number', 'You have {count, number} friends'],
+    ['a date', 'Since {start, date, short}'],
+  ])(
+    'shows text with %s as it is stored, rather than editing its braces as words',
+    (_, message) => {
+      renderTitle({ initialValue: { en: message } });
+
+      expect(
+        screen.queryByRole('textbox', { name: 'Title' }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(message)).toBeInTheDocument();
+    },
+  );
+
   it('edits the initial language first when the protocol declares it', () => {
     renderTitle({
       initialValue: { en: 'Hello', es: 'Hola' },

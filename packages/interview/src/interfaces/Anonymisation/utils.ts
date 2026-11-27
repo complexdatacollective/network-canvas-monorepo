@@ -5,8 +5,8 @@ import type {
   EntitySecureAttributesMeta,
   VariableValue,
 } from '@codaco/shared-consts';
+import { writeOwnProperty } from '@codaco/shared-consts';
 
-import { writeOwnProperty } from '../../utils/ownProperty';
 import { encryptValue } from './encryptionFormat';
 
 /**

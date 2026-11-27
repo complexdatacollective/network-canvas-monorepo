@@ -1,7 +1,7 @@
 ---
 title: Formulario del ego
 navOrder: 16
-translatedFrom: b5f817e698cceea73129407bded73d8f2bdbede1
+translatedFrom: 8d51cac0feee6f916ea0e51b014d9b1a0cbbac81
 ---
 
 <InterfaceSummary type="EgoForm">
@@ -12,7 +12,19 @@ translatedFrom: b5f817e698cceea73129407bded73d8f2bdbede1
 
 </InterfaceSummary>
 
-La interfaz «Formulario del ego» es una interfaz que recoge datos sobre la persona participante: el ego (la persona entrevistada). En una etapa «Formulario del ego», cada participante rellena un [formulario](../key-concepts/forms) sobre su propia persona, formado por uno o varios campos. Esta interfaz también incluye un panel introductorio integrado en el que se puede explicar a la persona participante el propósito del formulario.
+La interfaz «Formulario del ego» es una interfaz que recoge datos sobre la persona participante: el ego (la persona entrevistada). En una etapa «Formulario del ego», cada participante rellena un [formulario](../key-concepts/forms) sobre su propia persona, formado por uno o varios campos.
+
+<AppOnly app="current">
+
+Para explicar a la persona participante el propósito del formulario, escribe un encabezado y un texto al principio del formulario, encima de su primer campo.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Esta interfaz también incluye un panel introductorio integrado en el que se puede explicar a la persona participante el propósito del formulario.
+
+</AppOnly>
 
 ## Configurar la etapa «Formulario del ego» {#configuring-ego-form}
 

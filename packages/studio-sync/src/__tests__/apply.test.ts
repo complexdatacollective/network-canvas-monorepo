@@ -3,6 +3,8 @@
 // guards what the operations DO; this guards where they do it.
 import { describe, expect, it } from 'vitest';
 
+import { fieldBlockMarkdown } from '@codaco/protocol-validation';
+
 import {
   ApplyError,
   applyCommand,
@@ -12,24 +14,34 @@ import {
   targetRoot,
 } from '../apply.ts';
 
-const NAME_FIELD = { variable: 'fm_name', prompt: 'What is their name?' };
+const NAME_FIELD = {
+  id: 'name',
+  variable: 'fm_name',
+  prompt: 'What is their name?',
+};
 
-/** A Family Pedigree, which keeps its person form under `form.fields`. */
+/** The person form's document, which places the name field. */
+const CONTENT = { en: fieldBlockMarkdown(NAME_FIELD.id) };
+
+/**
+ * A Family Pedigree, which keeps its person form's document under
+ * `form.content` and the form's fields under `form.fields`.
+ */
 const PEDIGREE: SectionDoc = {
   type: 'FamilyPedigree',
   label: 'Your family',
   nodeConfiguration: { nameAttribute: 'fm_name', egoAttribute: 'is_ego' },
-  form: { fields: [NAME_FIELD] },
+  form: { content: CONTENT, fields: [NAME_FIELD] },
 };
 
 const FORM = ['form', 'fields'];
 
-/** The pedigree with its person form replaced, and nothing else moved. */
+/** The pedigree with its person form's fields replaced, and nothing else moved. */
 const pedigreeHolding = (fields: readonly unknown[]): SectionDoc => ({
   type: 'FamilyPedigree',
   label: 'Your family',
   nodeConfiguration: { nameAttribute: 'fm_name', egoAttribute: 'is_ego' },
-  form: { fields },
+  form: { content: CONTENT, fields },
 });
 
 describe('a command addressed at a nested path', () => {
@@ -80,7 +92,7 @@ describe('a command addressed at a nested path', () => {
         nameAttribute: 'fm_nickname',
         egoAttribute: 'is_ego',
       },
-      form: { fields: [NAME_FIELD] },
+      form: { content: CONTENT, fields: [NAME_FIELD] },
     });
   });
 
@@ -88,7 +100,12 @@ describe('a command addressed at a nested path', () => {
     // What an empty object means is a question about the document's schema,
     // which this engine does not have. The editor that switched a capability
     // off says so by removing the container itself.
-    expect(applyCommand(PEDIGREE, { op: 'unset', key: FORM })).toEqual({
+    expect(
+      applyCommands(PEDIGREE, [
+        { op: 'unset', key: ['form', 'content'] },
+        { op: 'unset', key: FORM },
+      ]),
+    ).toEqual({
       type: 'FamilyPedigree',
       label: 'Your family',
       nodeConfiguration: { nameAttribute: 'fm_name', egoAttribute: 'is_ego' },

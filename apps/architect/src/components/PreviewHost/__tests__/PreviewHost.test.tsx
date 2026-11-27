@@ -39,8 +39,10 @@ import {
   type CurrentProtocol,
   getLocaleMetadata,
   createProtocolObjectId,
+  fieldBlockMarkdown,
   ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 import { architectProductionLocales } from '~/i18n/locales';
@@ -218,6 +220,9 @@ function makeUnbuildableProtocol() {
 }
 
 function makeConsentRouteProtocol(): CurrentProtocol {
+  const screeningField = createProtocolObjectId();
+  const consentField = createProtocolObjectId();
+  const nameField = createProtocolObjectId();
   return withTestCodebookIds<CurrentProtocol>({
     name: 'Consent route',
     description: '',
@@ -228,24 +233,21 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         id: createProtocolObjectId(),
         type: 'EgoForm',
         label: { en: 'Consent' },
-        introductionPanel: {
-          title: { en: 'Consent' },
-          text: { en: 'Review the study information.' },
-        },
-        form: {
-          fields: [
+        form: formOf(
+          [
             {
-              id: createProtocolObjectId(),
+              id: screeningField,
               variable: asEntityAttributeReference('screening'),
               prompt: { en: 'Are you eligible?' },
             },
             {
-              id: createProtocolObjectId(),
+              id: consentField,
               variable: asEntityAttributeReference('consent'),
               prompt: { en: 'Do you consent?' },
             },
           ],
-        },
+          { before: '# Consent\n\nReview the study information.' },
+        ),
       },
       {
         id: createProtocolObjectId(),
@@ -287,13 +289,13 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         behaviours: { minNodes: 4, maxNodes: 4 },
         form: {
           title: { en: 'About this person' },
-          fields: [
+          ...formOf([
             {
-              id: createProtocolObjectId(),
+              id: nameField,
               variable: asEntityAttributeReference('name'),
               prompt: { en: 'What is their name?' },
             },
-          ],
+          ]),
         },
       },
       {
@@ -510,6 +512,86 @@ describe('PreviewHost', () => {
     expect(call.currentStep).toBe(0);
   });
 
+  it('answers the synthetic forms in the language that the preview starts in', async () => {
+    // The Spanish form asks a question that the English form does not.
+    const sharedField = createProtocolObjectId();
+    const spanishField = createProtocolObjectId();
+    const protocol = withTestCodebookIds({
+      name: 'T',
+      description: '',
+      schemaVersion: 9,
+      localization: ENGLISH_AND_SPANISH,
+      stages: [
+        {
+          id: createProtocolObjectId(),
+          type: 'EgoForm',
+          label: { en: 'About you', es: 'Sobre ti' },
+          form: {
+            content: {
+              en: fieldBlockMarkdown(sharedField),
+              es: [
+                fieldBlockMarkdown(sharedField),
+                fieldBlockMarkdown(spanishField),
+              ].join('\n\n'),
+            },
+            fields: [
+              {
+                id: sharedField,
+                variable: asEntityAttributeReference('age'),
+                prompt: { en: 'How old are you?', es: '¿Cuántos años tienes?' },
+              },
+              {
+                id: spanishField,
+                variable: asEntityAttributeReference('region'),
+                prompt: { en: 'Which region?', es: '¿Qué región?' },
+              },
+            ],
+          },
+        },
+      ],
+      codebook: {
+        node: {},
+        edge: {},
+        ego: {
+          variables: {
+            age: { name: 'Age', type: 'number' },
+            region: { name: 'Region', type: 'text' },
+          },
+        },
+      },
+      assetManifest: {},
+    });
+    const egoIn = async (browserLanguages: readonly string[]) => {
+      const languages = vi
+        .spyOn(navigator, 'languages', 'get')
+        .mockReturnValue(browserLanguages);
+      try {
+        const { unmount } = render(<PreviewHost />);
+        postPayload(
+          openerStub,
+          makePayload({ protocol, useSyntheticData: true }),
+        );
+        await screen.findByTestId('shell-mounted');
+        const ego =
+          lastShellProps().payload.session.network.ego[
+            entityAttributesProperty
+          ];
+        unmount();
+        return ego;
+      } finally {
+        languages.mockRestore();
+      }
+    };
+
+    const spanish = await egoIn(['es-MX', 'en']);
+    expect(spanish[testVariableId('age')]).toBeTypeOf('number');
+    expect(spanish[testVariableId('region')]).toBeTypeOf('string');
+
+    const english = await egoIn(['en-GB']);
+    expect(english[testVariableId('age')]).toBeTypeOf('number');
+    expect(english).not.toHaveProperty(testVariableId('region'));
+  });
+
   it('leaves the previewed stage partially complete in synthetic data', async () => {
     render(<PreviewHost />);
     const protocol = withTestCodebookIds({
@@ -590,6 +672,8 @@ describe('PreviewHost', () => {
       stages: protocol.stages,
       seed: DEFAULT_SYNTHETIC_SEED,
       inProgressStageIndex: 3,
+      formLanguage: protocol.localization.defaultLocale,
+      localization: protocol.localization,
     });
     expect(
       initial.network.ego[entityAttributesProperty][testVariableId('consent')],

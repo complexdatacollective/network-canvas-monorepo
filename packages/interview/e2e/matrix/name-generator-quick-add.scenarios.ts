@@ -149,10 +149,12 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
             })
             .toBe(1);
 
+          // An empty entry is no answer: the node is added without a name,
+          // not with empty text.
           const network = await protocol.getNetworkState(interview.interviewId);
-          expect(network?.nodes[0]?.[entityAttributesProperty][nameVarId]).toBe(
-            '',
-          );
+          expect(
+            network?.nodes[0]?.[entityAttributesProperty][nameVarId],
+          ).toBeUndefined();
           await expect(
             page.getByText(/you must answer this question/i),
           ).toHaveCount(0);

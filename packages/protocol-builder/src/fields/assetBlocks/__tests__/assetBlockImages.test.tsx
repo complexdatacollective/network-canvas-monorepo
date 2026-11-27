@@ -6,10 +6,8 @@ import type { LocaleTag } from '@codaco/protocol-validation';
 
 import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
-import {
-  type DynamicMessageSite,
-  DynamicMessageSummary,
-} from '../../DynamicTextField.tsx';
+import { DynamicMessageSummary } from '../../dynamicText/DynamicMessageSummary.tsx';
+import type { DynamicMessageSite } from '../../dynamicText/messageSite.ts';
 import { createAssetBlockImages } from '../assetBlockImages.tsx';
 import { messages } from '../assetBlockMessages.ts';
 
@@ -59,7 +57,7 @@ describe('createAssetBlockImages', () => {
 
   it('reads the file from the address however it is spelled', () => {
     const { container } = render(
-      <Block url="asset:a1?size=small&align=end" alt="" />,
+      <Block url="asset:a1?size=small&loop=false" alt="" />,
     );
     expect(container.querySelector('bdi')).toHaveTextContent('harbour.png');
   });
@@ -112,7 +110,7 @@ describe('a message summary holding a value and a block', () => {
     const { getByTestId } = renderSummary(MESSAGE, images);
     const summary = getByTestId('summary');
 
-    expect(summary.querySelector('[data-token="name"]')).toBeInTheDocument();
+    expect(summary.querySelector('data[value="name"]')).toBeInTheDocument();
     const lines = [...summary.querySelectorAll('[data-asset-block]')];
     expect(lines.map((line) => line.getAttribute('data-asset-block'))).toEqual([
       'image',
@@ -139,7 +137,7 @@ describe('a message summary holding a value and a block', () => {
     const { getByTestId } = renderSummary(MESSAGE, undefined);
     const summary = getByTestId('summary');
 
-    expect(summary.querySelector('[data-token="name"]')).toBeInTheDocument();
+    expect(summary.querySelector('data[value="name"]')).toBeInTheDocument();
     expect(summary.querySelector('[data-asset-block]')).toBeNull();
   });
 });

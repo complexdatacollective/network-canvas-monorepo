@@ -25,7 +25,7 @@ export type WordingSetting = Readonly<{
   /**
    * Set for a setting that may show values the interview fills in, such as
    * the name of the stage's node type (see `localizedMessage`): its field
-   * offers them as piped text.
+   * offers them in its Attribute menu.
    */
   arguments?: MessageArguments;
 }>;

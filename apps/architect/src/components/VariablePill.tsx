@@ -21,12 +21,13 @@ import {
   variableNameRefusal,
   variableNameScope,
 } from '@codaco/protocol-builder/fields/variableNameRules';
-import { normalizeCodebookName } from '@codaco/shared-consts';
 import {
-  getVariableTypeLabel,
-  getColorForType,
-  getIconForType,
-} from '~/config/variables';
+  VariablePill as AttributeVariablePill,
+  VariablePillBody,
+  variablePillClassNames,
+  variablePillKindOf as kindOf,
+} from '@codaco/protocol-builder/fields/VariablePill';
+import { normalizeCodebookName } from '@codaco/shared-consts';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
@@ -73,11 +74,6 @@ export type VariablePillProps = {
    * codebook.
    */
   type: string;
-  /**
-   * Swaps the static type-coloured border for the orbiting gradient. For the
-   * attribute picker's held value only, never for a pill that is merely listed.
-   */
-  animated?: boolean;
   editable?: boolean;
   onLabelChange?: (label: string) => void;
   validateLabel?: (label: string) => string | null | undefined;
@@ -85,13 +81,9 @@ export type VariablePillProps = {
 
 export type ConnectedVariablePillProps = Pick<
   VariablePillProps,
-  'animated' | 'className' | 'editable'
+  'className' | 'editable'
 > & {
   uuid: string;
-};
-
-type VariablePillStyle = React.CSSProperties & {
-  '--variable-pill-accent': string;
 };
 
 type VariablePillEditorAnchor = {
@@ -101,17 +93,11 @@ type VariablePillEditorAnchor = {
   width: number;
 };
 
-const DARK_COLOR_SUFFIX = '-dark';
 const DEFAULT_EDITOR_MAX_WIDTH_REM = 20;
 const EDIT_MODE_SCALE = 1.5;
 const EDITOR_FRAME_GUTTER = 32;
 const EDITOR_FRAME_MIN_WIDTH = 320;
 const EDITOR_FRAME_PADDING = 24;
-
-const getRawColorToken = (color: string) =>
-  color.endsWith(DARK_COLOR_SUFFIX)
-    ? `${color.slice(0, -DARK_COLOR_SUFFIX.length)}--dark`
-    : color;
 
 /**
  * How wide the zoomed name editor may grow the pill to. The trigger's default
@@ -139,81 +125,32 @@ const getResolvedMaximumWidth = (
   return Math.max(currentWidth, numericMaxWidth);
 };
 
-const getVariablePillStyle = (type: string): VariablePillStyle => {
-  const accentColor = getRawColorToken(getColorForType(type));
-  return {
-    '--variable-pill-accent': `oklch(var(--${accentColor}))`,
-  };
-};
-
+/**
+ * The pill's own classes, from protocol-builder's one pill, with the raised
+ * affordance of a pill that opens the name editor.
+ */
 const getVariablePillClassName = ({
-  animated,
+  type,
   className,
   interactive,
 }: {
-  animated?: boolean;
+  type: string;
   className?: string;
   interactive?: boolean;
 }) =>
-  cx(
-    // `variable-pill` marker — hook for same-area cascades in VariablePicker
-    // (nested margin), the package’s `RulePreview` (zoom), and the printable
-    // summary (scale).
-    // `w-max` gives WebKit an explicit max-content basis. `w-fit` combined
-    // with the formerly percentage-sized inner wrapper collapsed to the
-    // ellipsis width in Safari instead of measuring the full label.
-    // oxlint-disable-next-line tailwindcss/no-unknown-classes -- hook class, see comment above
-    'variable-pill font-monospace inline-flex h-12 w-max max-w-full min-w-0 flex-nowrap rounded-full p-0.5 text-base',
-    'effect-shadow-sm',
-    animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
-    !interactive && 'cursor-default',
-    interactive &&
-      'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-start transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
-    className,
-  );
+  variablePillClassNames({
+    kind: kindOf(type),
+    className: cx(
+      !interactive && 'cursor-default',
+      interactive &&
+        'focusable hover:effect-shadow focus-visible:effect-shadow active:effect-shadow data-popup-open:effect-shadow cursor-pointer appearance-none border-0 text-start transition-[box-shadow,translate] duration-150 ease-out hover:-translate-y-0.5 focus-visible:-translate-y-0.5 active:-translate-y-0.5 data-popup-open:-translate-y-0.5',
+      className,
+    ),
+  }).root;
 
-function VariablePillContents({
-  children,
-  fill = false,
-  type,
-}: {
-  children: React.ReactNode;
-  fill?: boolean;
-  type: string;
-}) {
-  const intl = useAppIntl();
-  const icon = useMemo(() => getIconForType(type), [type]);
-
-  return (
-    // A two-track grid gives WebKit a stable intrinsic width: the icon is
-    // fixed, while the label contributes its max-content width and may still
-    // shrink to zero when the pill reaches its container or explicit max.
-    <span
-      className={cx(
-        'text-text bg-surface grid h-full min-w-0 overflow-hidden rounded-[inherit]',
-        fill
-          ? 'w-full grid-cols-[3rem_minmax(0,1fr)]'
-          : 'grid-cols-[3rem_minmax(0,auto)]',
-      )}
-    >
-      <span className="flex items-center justify-center border-e border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
-        <img
-          // oxlint-disable-next-line tailwindcss/no-unknown-classes -- icon selector hook for the parent
-          className="icon opacity-80"
-          src={icon}
-          // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
-          alt={`${getVariableTypeLabel(type, intl).toLocaleLowerCase(
-            intl.locale,
-          )} attribute`}
-          lang="en"
-        />
-      </span>
-      <span className="flex min-w-0 items-center justify-between">
-        {children}
-      </span>
-    </span>
-  );
-}
+/** The name inside a pill, in the classes of protocol-builder's one pill. */
+const nameClassName = (type: string) =>
+  variablePillClassNames({ kind: kindOf(type) }).name;
 
 /**
  * A variable reference whose interaction and visual treatment are independent.
@@ -221,7 +158,6 @@ function VariablePillContents({
  * the focused name editor directly.
  */
 export const VariablePill = ({
-  animated = false,
   className,
   editable = false,
   label,
@@ -349,7 +285,6 @@ export const VariablePill = ({
     }
   };
 
-  const style = getVariablePillStyle(type);
   const editorFrame = useMemo(() => {
     if (!editorAnchor) {
       return null;
@@ -387,33 +322,23 @@ export const VariablePill = ({
         width: frameWidth,
       } satisfies React.CSSProperties,
       pillStyle: {
-        ...style,
         width: `${targetPillWidth}px`,
         minWidth: `${Math.min(initialPillWidth, targetPillWidth)}px`,
         maxWidth: `${Math.max(initialPillWidth, targetPillWidth)}px`,
-      } satisfies VariablePillStyle,
+      } satisfies React.CSSProperties,
     };
-  }, [editorAnchor, style]);
+  }, [editorAnchor]);
 
   if (!editable) {
     return (
-      <data
-        value={label}
-        className={getVariablePillClassName({
-          animated,
-          className,
-        })}
-        style={style}
-      >
-        <VariablePillContents type={type}>
-          <span
-            dir="auto"
-            className="text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
-          >
-            {label}
-          </span>
-        </VariablePillContents>
-      </data>
+      <AttributeVariablePill
+        name={label}
+        {...(kindOf(type) === undefined ? {} : { kind: kindOf(type) })}
+        className={cx('cursor-default', className)}
+        // The table or summary that lists the pill states the type in words;
+        // a screen reader is told it here as well, as Architect always has.
+        describeKind
+      />
     );
   }
 
@@ -430,21 +355,23 @@ export const VariablePill = ({
                 label: label,
               })}
               className={getVariablePillClassName({
-                animated,
+                type,
                 className,
                 interactive: true,
               })}
-              style={style}
               onClick={handleStartEditing}
+              // As protocol-builder's pill says of its root: the kind of
+              // value it stands for, which its accent shows.
+              {...(kindOf(type) === undefined
+                ? {}
+                : { 'data-attribute-type': kindOf(type) })}
             >
-              <VariablePillContents type={type}>
-                <span
-                  dir="auto"
-                  className="text-match-parent m-0 min-w-0 grow overflow-hidden px-6 break-keep text-ellipsis whitespace-nowrap"
-                >
+              <VariablePillBody kind={kindOf(type)}>
+                {/* oxlint-disable-next-line direction/typed-text-matches-parent -- the name class from `variablePillClassNames` contains `text-match-parent` */}
+                <span dir="auto" className={nameClassName(type)}>
                   {label}
                 </span>
-              </VariablePillContents>
+              </VariablePillBody>
             </button>
           }
         />
@@ -488,12 +415,10 @@ export const VariablePill = ({
                 width: editorFrame.initialPillWidth,
               }}
               transition={reduced(springs.settle, reduceMotion === true)}
-              className={getVariablePillClassName({
-                animated: false,
-              })}
+              className={getVariablePillClassName({ type })}
               style={editorFrame.pillStyle}
             >
-              <VariablePillContents fill type={type}>
+              <VariablePillBody fill kind={kindOf(type)}>
                 <InputField
                   autoFocus
                   aria-label="Attribute name"
@@ -507,7 +432,7 @@ export const VariablePill = ({
                   onChange={handleUpdateName}
                   onKeyDown={handleKeyDown}
                 />
-              </VariablePillContents>
+              </VariablePillBody>
             </motion.div>
 
             {validation && (
@@ -562,7 +487,6 @@ export const VariablePill = ({
 };
 
 const ConnectedVariablePillComponent = ({
-  animated = false,
   className,
   editable = false,
   uuid,
@@ -600,7 +524,6 @@ const ConnectedVariablePillComponent = ({
 
   return (
     <VariablePill
-      animated={animated}
       className={className}
       editable={editable}
       label={name ?? ''}

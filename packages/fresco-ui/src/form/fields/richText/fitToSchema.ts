@@ -24,14 +24,26 @@ export const marksInSchema = (
     (mark) => !isNode(mark) || Object.hasOwn(schema.marks, mark.type),
   );
 
-const hasForeignMark = (node: JSONContent, schema: Schema): boolean =>
+/**
+ * Whether `node` has content where `schema` has a leaf of its type: a block
+ * that contains its text in one editor and none in another, such as a form's
+ * field (`RichTextFieldBlocks.text`). The leaf is kept without the content.
+ */
+const isLeafWithContent = (node: JSONContent, schema: Schema): boolean =>
+  typeof node.type === 'string' &&
+  Array.isArray(node.content) &&
+  schema.nodes[node.type]?.isLeaf === true;
+
+/** Whether `node`, at any depth, has a mark or content that `schema` refuses. */
+const needsFitting = (node: JSONContent, schema: Schema): boolean =>
   isNode(node) &&
   ((Array.isArray(node.marks) &&
     node.marks.some(
       (mark) => isNode(mark) && !Object.hasOwn(schema.marks, mark.type),
     )) ||
+    isLeafWithContent(node, schema) ||
     (Array.isArray(node.content) &&
-      node.content.some((child) => hasForeignMark(child, schema))));
+      node.content.some((child) => needsFitting(child, schema))));
 
 const fitNode = (node: JSONContent, schema: Schema): JSONContent => {
   if (!isNode(node)) return node;
@@ -40,22 +52,24 @@ const fitNode = (node: JSONContent, schema: Schema): JSONContent => {
   return {
     ...rest,
     ...(kept !== undefined && kept.length > 0 && { marks: kept }),
-    ...(Array.isArray(content) && {
-      content: content.map((child) => fitNode(child, schema)),
-    }),
+    ...(Array.isArray(content) &&
+      !isLeafWithContent(node, schema) && {
+        content: content.map((child) => fitNode(child, schema)),
+      }),
   };
 };
 
 /**
- * `content` with only the marks `schema` has a type for, at any depth. Given
- * back unchanged (the same array) when it holds none other, so a host value
- * still compares equal to the document the editor made of it.
+ * `content` with only the marks `schema` has a type for, at any depth, and
+ * without content in a node that is a leaf in `schema`. Given back unchanged
+ * (the same array) when there is nothing to take out, so a host value still
+ * compares equal to the document the editor made of it.
  */
 export const contentInSchema = (
   content: readonly JSONContent[],
   schema: Schema,
 ): readonly JSONContent[] =>
-  content.some((node) => hasForeignMark(node, schema))
+  content.some((node) => needsFitting(node, schema))
     ? content.map((node) => fitNode(node, schema))
     : content;
 
@@ -64,7 +78,7 @@ export const documentInSchema = (
   document: JSONContent,
   schema: Schema,
 ): JSONContent =>
-  hasForeignMark(document, schema) ? fitNode(document, schema) : document;
+  needsFitting(document, schema) ? fitNode(document, schema) : document;
 
 /** Whether `schema` can read `node`, with everything it holds. */
 const readableIn = (node: JSONContent, schema: Schema): boolean => {

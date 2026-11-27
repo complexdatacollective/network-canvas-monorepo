@@ -191,10 +191,6 @@
     "defaultMessage": "Required",
     "description": "Shown under one cell of a row in an editable list when the researcher has left it empty. Terse because it sits inside a row of a table-like list rather than under a full-width field."
   },
-  "protocolBuilder.assetBlock.alignLabel": {
-    "defaultMessage": "Alignment",
-    "description": "Label of the control, in the settings of an image, audio recording or video placed in the text of a page, that chooses where it sits across the page: where a line of text starts, in the middle, or where a line ends."
-  },
   "protocolBuilder.assetBlock.audioFileLabel": {
     "defaultMessage": "Audio",
     "description": "Label of the control, in the settings of an audio recording placed in the text of a page, that shows which audio file it is and lets another be chosen in its place."
@@ -205,7 +201,7 @@
   },
   "protocolBuilder.assetBlock.fileHint": {
     "defaultMessage": "The file shown here. Choosing another keeps the description and other settings.",
-    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text. \"The description and other settings\" are this image, recording or video's own settings in the same panel (its description, display size, alignment and playback); they stay as they are when a different file is chosen."
+    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text. \"The description and other settings\" are this image, recording or video's own settings (its description, its size and, for a recording, its playback); they stay as they are when a different file is chosen."
   },
   "protocolBuilder.assetBlock.imageFileLabel": {
     "defaultMessage": "Image",
@@ -217,15 +213,19 @@
   },
   "protocolBuilder.assetBlock.remove": {
     "defaultMessage": "Delete",
-    "description": "Button in the settings of an image, audio recording or video placed in the text of a page. It takes the image, recording or video out of the text; the file itself stays in the protocol."
+    "description": "Button at the end of the settings of a block in the text of a page whose file is not in the protocol, or is not something a page can show. It takes the block out of the text."
   },
-  "protocolBuilder.assetBlock.sizeHint": {
-    "defaultMessage": "How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.",
-    "description": "Guidance under the Display size control of an image or video placed in the text of a page. \"This\" is the image or video. The handle is a small round dot at a bottom corner of the selected image or video."
+  "protocolBuilder.assetBlock.removeAudio": {
+    "defaultMessage": "Delete audio",
+    "description": "Button at the end of the settings of an audio recording placed in the text of a page. It takes the recording out of the text; the file itself stays in the protocol."
   },
-  "protocolBuilder.assetBlock.sizeLabel": {
-    "defaultMessage": "Display size",
-    "description": "Label of the control, in the settings of an image or video placed in the text of a page, that chooses how tall it is drawn: Full size, Small, Medium or Large."
+  "protocolBuilder.assetBlock.removeImage": {
+    "defaultMessage": "Delete image",
+    "description": "Button at the end of the settings of an image placed in the text of a page. It takes the image out of the text; the file itself stays in the protocol."
+  },
+  "protocolBuilder.assetBlock.removeVideo": {
+    "defaultMessage": "Delete video",
+    "description": "Button at the end of the settings of a video placed in the text of a page. It takes the video out of the text; the file itself stays in the protocol."
   },
   "protocolBuilder.assetBlock.videoFileLabel": {
     "defaultMessage": "Video",
@@ -286,6 +286,54 @@
   "protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind": {
     "defaultMessage": "{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}",
     "description": "Shown after the researcher changes the kind of answer an attribute they are inventing holds, when rules they had already written for it cannot be kept — either the new kind does not accept them, or they compare this answer with another attribute that is no longer comparable. ruleNames is the list of rule names, already translated."
+  },
+  "protocolBuilder.attributeGroups.dynamic": {
+    "defaultMessage": "Dynamic attributes",
+    "description": "Heading of a group in an attribute list, above the dynamic attributes of the stage. A dynamic attribute shows different wording depending on rules or on an answer, such as “their”, “her” or “his”."
+  },
+  "protocolBuilder.attributeGroups.earlierAnswers": {
+    "defaultMessage": "Answers from earlier stages",
+    "description": "Heading of a group in an attribute list inside a form, above the attributes whose values were recorded before this form."
+  },
+  "protocolBuilder.attributeGroups.edge": {
+    "defaultMessage": "Edge attributes",
+    "description": "Heading of a group in an attribute list, above the attributes of the edge (the relationship between two nodes) that the text or form refers to."
+  },
+  "protocolBuilder.attributeGroups.ego": {
+    "defaultMessage": "Ego attributes",
+    "description": "Heading of a group in an attribute list, above the attributes of the participant (the ego) of the interview."
+  },
+  "protocolBuilder.attributeGroups.firstNode": {
+    "defaultMessage": "First node attributes",
+    "description": "Heading of a group in an attribute list, above the attributes of the first of the two nodes that an edge connects."
+  },
+  "protocolBuilder.attributeGroups.formAnswers": {
+    "defaultMessage": "Answers on this form",
+    "description": "Heading of a group in an attribute list inside a form, above the attributes collected by the fields of that form. A rule that uses one of them reads the answer while the participant fills in the form."
+  },
+  "protocolBuilder.attributeGroups.interview": {
+    "defaultMessage": "Interview attributes",
+    "description": "Heading of a group in an attribute list, above values that the interview itself supplies, such as today’s date."
+  },
+  "protocolBuilder.attributeGroups.node": {
+    "defaultMessage": "Node attributes",
+    "description": "Heading of a group in an attribute list, above the attributes of the node (the person or thing) that the text or form refers to."
+  },
+  "protocolBuilder.attributeGroups.secondNode": {
+    "defaultMessage": "Second node attributes",
+    "description": "Heading of a group in an attribute list, above the attributes of the second of the two nodes that an edge connects."
+  },
+  "protocolBuilder.attributeMenu.attribute": {
+    "defaultMessage": "Attribute",
+    "description": "Button in the toolbar of a text editor that opens the list of attributes that can be put in the text, such as the name of the node or today’s date."
+  },
+  "protocolBuilder.attributeMenu.createDynamicAttribute": {
+    "defaultMessage": "Create dynamic attribute",
+    "description": "Row at the end of the “Dynamic attributes” group of the attribute list in a text editor. It opens a dialog where the researcher creates a dynamic attribute: a word or phrase that reads differently in different cases, such as “his”, “her” or “their”."
+  },
+  "protocolBuilder.attributeMenu.switchHasNoLabels": {
+    "defaultMessage": "A Toggle has no labels for its answers. Use a dynamic attribute instead.",
+    "description": "Shown under an entry in the attribute list of a text editor that cannot be chosen. The entry is a yes-or-no attribute answered with a Toggle (Architect’s name for a single on/off switch, kept as the one word “Toggle” as elsewhere in Architect), which has no labels for its two answers, so the text cannot show the answer itself. A dynamic attribute can show different wording for each answer."
   },
   "protocolBuilder.attributeUnavailable.draftUnvalidatedHere": {
     "defaultMessage": "Another field on this stage sets this attribute without validation, so it cannot also be collected here.",
@@ -580,8 +628,8 @@
     "description": "Placeholder shown in the empty box where a researcher writes a Categorical Bin prompt. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.censusPrompts.dyadGuidance": {
-    "defaultMessage": "The participant sees two nodes side by side and answers yes or no, so write the question about that pair and phrase it so that yes and no are both sensible answers. To show the two nodes’ labels in the question, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.",
-    "description": "Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations."
+    "defaultMessage": "The participant sees two nodes side by side and answers yes or no, so write the question about that pair and phrase it so that yes and no are both sensible answers. To show the two nodes’ labels in the question, choose “First node: label” and “Second node: label” from the Attribute menu in the toolbar.",
+    "description": "Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The two quoted names are entries in the list that the Attribute button in the toolbar opens, and must match those entries’ own translations. “Attribute” is that button’s label, and must match its own translation."
   },
   "protocolBuilder.censusPrompts.dyadPlaceholder": {
     "defaultMessage": "Enter text for the prompt here...",
@@ -608,8 +656,8 @@
     "description": "Description of the group holding the rules that order the people the participant picks from for whoever they were asked about."
   },
   "protocolBuilder.censusPrompts.oneToManyGuidance": {
-    "defaultMessage": "The participant sees one node alongside the other nodes and selects each of the others that the question applies to, so write the question about that one node and the other nodes as a group rather than about a single pair. To show that node’s label in the question, insert “Node label” with the syringe button in the toolbar.",
-    "description": "Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The quoted name is an entry in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match that entry’s own translation."
+    "defaultMessage": "The participant sees one node alongside the other nodes and selects each of the others that the question applies to, so write the question about that one node and the other nodes as a group rather than about a single pair. To show that node’s label in the question, choose “Node label” from the Attribute menu in the toolbar.",
+    "description": "Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The quoted name is an entry in the list that the Attribute button in the toolbar opens, and must match that entry’s own translation. “Attribute” is that button’s label, and must match its own translation."
   },
   "protocolBuilder.censusPrompts.oneToManyPlaceholder": {
     "defaultMessage": "Enter text for the prompt here...",
@@ -748,8 +796,8 @@
     "description": "Description of the group holding the question one Tie-Strength Census prompt shows the participant."
   },
   "protocolBuilder.censusPrompts.tieStrengthPromptTextHint": {
-    "defaultMessage": "Refer clearly to the two nodes shown, and phrase the prompt so that every point of the scale, and the decline response, is a sensible answer. To show the two nodes’ labels in the prompt, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.",
-    "description": "Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what answers it has to suit: the points of the scale set by the response attribute, and the decline response the participant uses to say the two nodes are not connected. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations."
+    "defaultMessage": "Refer clearly to the two nodes shown, and phrase the prompt so that every point of the scale, and the decline response, is a sensible answer. To show the two nodes’ labels in the prompt, choose “First node: label” and “Second node: label” from the Attribute menu in the toolbar.",
+    "description": "Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what answers it has to suit: the points of the scale set by the response attribute, and the decline response the participant uses to say the two nodes are not connected. A node is one entity in the network, which may not be a person. The two quoted names are entries in the list that the Attribute button in the toolbar opens, and must match those entries’ own translations. “Attribute” is that button’s label, and must match its own translation."
   },
   "protocolBuilder.censusPrompts.tieStrengthResponseDescription": {
     "defaultMessage": "Configure the edge and ordinal value created by an affirmative response.",
@@ -932,16 +980,16 @@
     "description": "Label of the text field in the Dynamic label section of the node type editor, where the researcher writes the label shown on every node of this type."
   },
   "protocolBuilder.codebookEntity.dynamicLabelHint": {
-    "defaultMessage": "Define the label that nodes of this type should use. Use the syringe button to insert a dynamic attribute. Use the logic button to insert a group that conditionally renders different text. See our <docs>documentation article</docs> for more information.",
-    "description": "Hint under the Label field in the Dynamic label section of the node type editor. The syringe button is the toolbar button, drawn as a syringe, that opens the menu of values that can be inserted; a dynamic attribute is one of the node’s attributes, shown in the label as whatever value each node holds. The logic button is the toolbar button beside it; the group it inserts is a set of alternative wordings, of which the one whose rules are met is shown. The docs tag wraps the link text for the documentation article about node labels."
+    "defaultMessage": "Define the label that nodes of this type should use. To show one of the node’s attributes, choose it from the Attribute menu in the toolbar. To show wording that changes, such as a different word for each answer, choose “Create dynamic attribute” from the same menu. See our <docs>documentation article</docs> for more information.",
+    "description": "Hint under the Label field in the Dynamic label section of the node type editor. The Attribute menu is the list that the Attribute button in the toolbar opens; “Attribute” and “Create dynamic attribute” must match the translations of that button and of that entry in the list. An attribute is shown in the label as the value that each node has. A dynamic attribute is a word or phrase that reads differently in different cases, such as a different word for each answer to an attribute. The docs tag wraps the link text for the documentation article about node labels."
   },
   "protocolBuilder.codebookEntity.dynamicLabelProblem": {
     "defaultMessage": "The label cannot be used as it is written. Correct the problem shown beneath it.",
     "description": "Validation error on the Dynamic label section of the node type editor when the label text is not valid, for example because it shows a value in a place where the value could be missing. The specific problem is already shown directly beneath the label field."
   },
   "protocolBuilder.codebookEntity.dynamicLabelRulesRequired": {
-    "defaultMessage": "Every “If” in the label needs at least one rule. Open it and choose “Edit rules”, or remove it.",
-    "description": "Validation error on the Dynamic label section of the node type editor when an “If” in the label text has no rules. “Edit rules” is the name of the button on each row of an “If”."
+    "defaultMessage": "Every “If” in the label needs at least one rule. Select the dynamic attribute in the label, then add a rule to the “If” or remove the “If”.",
+    "description": "Validation error on the Dynamic label section of the node type editor when an “If” of a dynamic attribute in the label has no rules. A dynamic attribute is a word in the label that reads differently in different cases; selecting it opens its settings, where each “If” has its rules."
   },
   "protocolBuilder.codebookEntity.dynamicLabelTextRequired": {
     "defaultMessage": "Write the label, or turn off Dynamic label.",
@@ -1383,45 +1431,53 @@
     "defaultMessage": "This change could not be sent, and nothing was saved. Check your connection and try again.",
     "description": "Refusal shown in a codebook editor when the change never reached the application it is running in."
   },
-  "protocolBuilder.conditionDialog.aboutEdge": {
+  "protocolBuilder.conditionRows.rules": {
+    "defaultMessage": "Rules",
+    "description": "Heading of the rules of an “If” of a dynamic attribute or a logic block that has one “If” only."
+  },
+  "protocolBuilder.conditionRows.rulesForElseIf": {
+    "defaultMessage": "Rules for “Else if” {number}",
+    "description": "Heading of the rules of one “Else if” of a dynamic attribute or a logic block. number counts the “Else if” rows from 1."
+  },
+  "protocolBuilder.conditionRows.rulesForIf": {
+    "defaultMessage": "Rules for “If”",
+    "description": "Heading of the rules of the first “If” of a dynamic attribute or a logic block that also has one or more “Else if” rows."
+  },
+  "protocolBuilder.conditionRules.aboutEdge": {
     "defaultMessage": "The edge",
-    "description": "Choice of what the rules of an “If” are asked of: the one edge (relationship) the text is shown with."
+    "description": "Choice of what the rules of an “If” are asked of: the one edge (relationship) that the text refers to."
   },
-  "protocolBuilder.conditionDialog.aboutFirstNode": {
+  "protocolBuilder.conditionRules.aboutFirstNode": {
     "defaultMessage": "The first node of the pair",
-    "description": "Choice of what the rules of an “If” are asked of, for text shown with a pair of nodes: the first of the two."
+    "description": "Choice of what the rules of an “If” are asked of, for text that refers to a pair of nodes: the first of the two."
   },
-  "protocolBuilder.conditionDialog.aboutFocalNode": {
+  "protocolBuilder.conditionRules.aboutFocalNode": {
     "defaultMessage": "The node being asked about",
     "description": "Choice of what the rules of an “If” are asked of, for text shown while the participant is asked about one node in particular."
   },
-  "protocolBuilder.conditionDialog.aboutHint": {
-    "defaultMessage": "This text is shown alongside two nodes. Node rules and edge rules are checked against the node you choose here.",
+  "protocolBuilder.conditionRules.aboutHint": {
+    "defaultMessage": "This wording refers to two nodes. Node rules and edge rules are checked against the node that you choose here.",
     "description": "Guidance under the control where a researcher chooses which node the rules of an “If” are asked of."
   },
-  "protocolBuilder.conditionDialog.aboutLabel": {
+  "protocolBuilder.conditionRules.aboutLabel": {
     "defaultMessage": "Check rules against",
-    "description": "Label of the control where a researcher chooses which of the nodes on screen the rules of an “If” are asked of, for text shown with more than one (a pair of nodes)."
+    "description": "Label of the control where a researcher chooses which of the nodes that a text refers to the rules of an “If” are asked of, for text that refers to more than one (a pair of nodes)."
   },
-  "protocolBuilder.conditionDialog.aboutNode": {
+  "protocolBuilder.conditionRules.aboutNode": {
     "defaultMessage": "The node",
-    "description": "Choice of what the rules of an “If” are asked of: the one node (network member) the text is shown with."
+    "description": "Choice of what the rules of an “If” are asked of: the one node (network member) that the text refers to."
   },
-  "protocolBuilder.conditionDialog.aboutSecondNode": {
+  "protocolBuilder.conditionRules.aboutSecondNode": {
     "defaultMessage": "The second node of the pair",
-    "description": "Choice of what the rules of an “If” are asked of, for text shown with a pair of nodes: the second of the two."
+    "description": "Choice of what the rules of an “If” are asked of, for text that refers to a pair of nodes: the second of the two."
   },
-  "protocolBuilder.conditionDialog.rulesHint": {
-    "defaultMessage": "The text shows this version when the rules are met.",
-    "description": "Guidance under the rule builder in the dialog where a researcher sets when an “If” in a piece of text applies."
+  "protocolBuilder.conditionRules.match": {
+    "defaultMessage": "Match",
+    "description": "Label of the control under the rules of an “If” where a researcher chooses whether all of the rules must match or any one rule can match."
   },
-  "protocolBuilder.conditionDialog.rulesLabel": {
-    "defaultMessage": "Rules",
-    "description": "Label of the rule builder in the dialog where a researcher sets when an “If” in a piece of text applies."
-  },
-  "protocolBuilder.conditionDialog.submit": {
-    "defaultMessage": "Save rules",
-    "description": "Button that saves the rules of an “If” in a piece of text and closes the dialog."
+  "protocolBuilder.conditionRules.noRules": {
+    "defaultMessage": "Add at least one rule.",
+    "description": "Problem shown under the rules of an “If” in a dynamic attribute or a logic block that has no rules yet."
   },
   "protocolBuilder.contentBlock.audioDescriptionHint": {
     "defaultMessage": "This is read aloud, in place of the file’s name, to participants who use screen reader technology.",
@@ -1551,29 +1607,117 @@
     "defaultMessage": "Keep editing",
     "description": "Button that dismisses the discard confirmation and leaves the editing dialog open with its unsaved work intact."
   },
+  "protocolBuilder.dynamicAttribute.attribute": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the control where a researcher chooses the attribute whose answer (or number) decides which version of a dynamic attribute or a logic block is shown."
+  },
+  "protocolBuilder.dynamicAttribute.attributeAnswersHint": {
+    "defaultMessage": "The answer to this attribute decides which version is shown.",
+    "description": "Guidance under the Attribute control of a dynamic attribute or a logic block that has a version for each answer."
+  },
+  "protocolBuilder.dynamicAttribute.attributeNumberHint": {
+    "defaultMessage": "The number in this attribute decides which version is shown.",
+    "description": "Guidance under the Attribute control of a dynamic attribute or a logic block that has a version for singular or plural numbers."
+  },
+  "protocolBuilder.dynamicAttribute.chooseAttribute": {
+    "defaultMessage": "Choose an attribute.",
+    "description": "Problem shown under the Attribute control of a dynamic attribute or a logic block when no attribute is chosen."
+  },
+  "protocolBuilder.dynamicAttribute.createDescription": {
+    "defaultMessage": "A dynamic attribute is a word or phrase that changes during the interview. Choose how the version to show is decided, then write each version.",
+    "description": "Explanation at the top of the dialog where a researcher creates a dynamic attribute."
+  },
+  "protocolBuilder.dynamicAttribute.createSubmit": {
+    "defaultMessage": "Create dynamic attribute",
+    "description": "Button that creates the dynamic attribute described in the dialog and puts it in the text at the caret."
+  },
+  "protocolBuilder.dynamicAttribute.createTitle": {
+    "defaultMessage": "Create a dynamic attribute",
+    "description": "Title of the dialog where a researcher creates a dynamic attribute: a word or phrase in a sentence that reads differently in different cases, such as “his”, “her” or “their”."
+  },
+  "protocolBuilder.dynamicAttribute.editTitle": {
+    "defaultMessage": "Dynamic attribute",
+    "description": "Heading of the popover where a researcher edits a dynamic attribute that is already in the text."
+  },
+  "protocolBuilder.dynamicAttribute.noAttributes": {
+    "defaultMessage": "No attribute of this kind can be used here.",
+    "description": "Shown in the empty Attribute list of a dynamic attribute or a logic block when no attribute of the kind that its logic needs is available."
+  },
+  "protocolBuilder.dynamicAttribute.noReference": {
+    "defaultMessage": "{language}: (not written yet)",
+    "description": "Shown under a version of a dynamic attribute while it is edited in a language that is not the protocol’s default language, when the version has not been written in the default language yet. language is that language’s name, such as “English”."
+  },
+  "protocolBuilder.dynamicAttribute.numberWording": {
+    "defaultMessage": "If known",
+    "description": "Label of the version of a dynamic attribute that is shown when the number it depends on is known. It contains one version for each plural form, such as “1 child” and “3 children”."
+  },
+  "protocolBuilder.dynamicAttribute.otherLanguage": {
+    "defaultMessage": "The logic is the same in every language. The wording that you enter here is used only in {language}.",
+    "description": "Note in the popover of a dynamic attribute while the text is edited in a language that is not the protocol’s default language. language is the name of the language being edited, such as “Spanish”."
+  },
+  "protocolBuilder.dynamicAttribute.reference": {
+    "defaultMessage": "{language}: {wording}",
+    "description": "Shown under a version of a dynamic attribute while it is edited in a language that is not the protocol’s default language: the same version in the default language, for reference. language is that language’s name, such as “English”; wording is the version, such as “their”."
+  },
+  "protocolBuilder.dynamicAttribute.referenceShowsNothing": {
+    "defaultMessage": "{language}: (shows nothing)",
+    "description": "Shown under a version of a dynamic attribute while it is edited in a language that is not the protocol’s default language, when the version is empty in the default language, so that nothing is shown in its place. language is that language’s name, such as “English”."
+  },
+  "protocolBuilder.dynamicAttribute.removeFromText": {
+    "defaultMessage": "Remove from this wording",
+    "description": "Button in the popover of a dynamic attribute that removes every use of it from the wording being edited, in the language being edited. Other translatable strings that use it, and other languages, keep it."
+  },
+  "protocolBuilder.dynamicAttribute.usedInLabel": {
+    "defaultMessage": "Changes apply everywhere that this dynamic attribute is used in this label. It is used in {count, plural, one {# place} other {# places}}.",
+    "description": "Note in the popover of a dynamic attribute of a node type’s label. count is how many translations of the label use it."
+  },
+  "protocolBuilder.dynamicAttribute.usedOnStage": {
+    "defaultMessage": "Changes apply everywhere that this dynamic attribute is used on this stage. It is used in {count, plural, one {# place} other {# places}}.",
+    "description": "Note in the popover of a dynamic attribute of a stage. count is how many translatable strings of the stage use it."
+  },
+  "protocolBuilder.dynamicAttribute.versionUnreadable": {
+    "defaultMessage": "This wording cannot be saved as it is written. Write it again.",
+    "description": "Problem shown under a version of a dynamic attribute whose wording, in the language being edited, uses something that the wording cannot contain, such as a choice between versions inside its sentence. This can happen when the wording was imported from elsewhere."
+  },
+  "protocolBuilder.dynamicAttribute.wording": {
+    "defaultMessage": "Wording",
+    "description": "Heading above the versions of a dynamic attribute whose logic is singular or plural numbers, or participant or someone else."
+  },
+  "protocolBuilder.dynamicAttribute.wordingForEachAnswer": {
+    "defaultMessage": "Wording for each answer",
+    "description": "Heading above the versions of a dynamic attribute that has a version for each answer to an attribute."
+  },
+  "protocolBuilder.dynamicAttribute.wordingForEachCase": {
+    "defaultMessage": "Wording for each case",
+    "description": "Heading above the versions of a dynamic attribute whose logic is “If … else”: one short word or phrase for each case."
+  },
+  "protocolBuilder.dynamicAttribute.wordingHint": {
+    "defaultMessage": "Keep each version short. It is shown in place of the pill.",
+    "description": "Guidance under the heading above the versions of a dynamic attribute. The pill is how the dynamic attribute is drawn in the text being edited."
+  },
+  "protocolBuilder.dynamicAttribute.writeVersion": {
+    "defaultMessage": "Write this version.",
+    "description": "Problem shown under a version of a dynamic attribute that is empty in the language being edited, and in the list of problems of a stage or a node type label that has such a version."
+  },
+  "protocolBuilder.dynamicAttributeProblem.problem": {
+    "defaultMessage": "Dynamic attribute “{name}”: {problem}",
+    "description": "Shown in the list of problems of a stage, or under the label of a node type, when one of its dynamic attributes cannot be saved. name is the dynamic attribute as its pill in the text shows it: its versions joined by slashes, such as “their / her / his”. problem is a whole sentence saying what is wrong, such as “The rules that choose this version no longer exist.” A dynamic attribute is a word or phrase in a sentence that reads differently in different cases."
+  },
+  "protocolBuilder.dynamicAttributeProblem.versionProblem": {
+    "defaultMessage": "Dynamic attribute “{name}”, version “{version}”: {problem}",
+    "description": "Shown in the list of problems of a stage, or under the label of a node type, when one version of one of its dynamic attributes cannot be saved. name is the dynamic attribute as its pill in the text shows it: its versions joined by slashes, such as “their / her / his”. version is the label of the version, as the settings of the dynamic attribute show it, such as “Woman” or “Otherwise”. problem is a whole sentence saying what is wrong, such as “Write this version.” A dynamic attribute is a word or phrase in a sentence that reads differently in different cases."
+  },
   "protocolBuilder.dynamicText.addElseIf": {
     "defaultMessage": "Add else if",
-    "description": "Button under the rows of an “If” in a piece of text. It asks for rules, then adds a row shown when the rows above it did not apply and those rules are met."
+    "description": "Button that adds an “Else if” to a dynamic attribute or a logic block: a version shown when the versions above it do not apply and new rules are met."
   },
   "protocolBuilder.dynamicText.byAnswer": {
     "defaultMessage": "Different wording for each answer",
-    "description": "Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with one version for each answer to this attribute, so the text can say something different depending on the answer."
-  },
-  "protocolBuilder.dynamicText.byNumber": {
-    "defaultMessage": "Wording that fits the number",
-    "description": "Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with a version for each kind of number (such as one or several), so the words agree with the number, as in “1 child” and “3 children”."
-  },
-  "protocolBuilder.dynamicText.byParticipant": {
-    "defaultMessage": "Different wording for the participant and everyone else",
-    "description": "Second line of the “Participant or someone else” entry in the insert-a-value menu. Choosing it inserts a piece of text with two versions: one shown when the question is asked about the participant themselves (such as “Are you still living?”), one for everyone else in their family (such as “Is this person still living?”)."
+    "description": "Choice of logic for a dynamic attribute (a short word or phrase in a sentence that changes): one version of the wording for each answer to a categorical, ordinal or Boolean attribute."
   },
   "protocolBuilder.dynamicText.defaultNodeLabel": {
     "defaultMessage": "Default label",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu of a node type’s own label: the label the interview would choose for the node if the node type had no label of its own, taken from the node’s name or another of its answers. A node is one entity in the network, which may not be a person."
-  },
-  "protocolBuilder.dynamicText.defaultNodeLabelDescription": {
-    "defaultMessage": "The label the interview would give the node if this label were not set",
-    "description": "Short note under “Default label” in the insert-a-value menu of a node type’s own label, saying that the value is the label the interview chooses by its usual rules (the node’s name, or another of its answers)."
   },
   "protocolBuilder.dynamicText.deletedAttribute": {
     "defaultMessage": "Deleted attribute",
@@ -1582,6 +1726,10 @@
   "protocolBuilder.dynamicText.deletedCondition": {
     "defaultMessage": "Deleted condition",
     "description": "Shown in place of the rules of an “If” in a piece of text that a participant reads, when the rules that the “If” tests have been deleted from the stage."
+  },
+  "protocolBuilder.dynamicText.deletedDynamicAttribute": {
+    "defaultMessage": "Deleted dynamic attribute",
+    "description": "Shown in place of a dynamic attribute in a piece of text that a participant reads, when the dynamic attribute has been deleted from the stage. A dynamic attribute shows a short word or phrase that its logic chooses, such as “their”, “her” or “his”."
   },
   "protocolBuilder.dynamicText.deletedOption": {
     "defaultMessage": "Deleted option",
@@ -1595,17 +1743,13 @@
     "defaultMessage": "Second node: {attribute}",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the second of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
   },
-  "protocolBuilder.dynamicText.editIfTitle": {
-    "defaultMessage": "Edit rules",
-    "description": "Title of the dialog where a researcher changes the rules of an “If” in a piece of text that a participant reads. Also names the button on each row of an “If” that opens it."
-  },
   "protocolBuilder.dynamicText.elseIfNotRow": {
     "defaultMessage": "Else if not: {rules}",
-    "description": "Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are NOT met. rules is those rules as a phrase."
+    "description": "Label of a later version of a dynamic attribute or a logic block with “If” logic: the version shown when the versions above did not apply and these rules are NOT met. rules is those rules as a phrase."
   },
   "protocolBuilder.dynamicText.elseIfRow": {
     "defaultMessage": "Else if: {rules}",
-    "description": "Label of a later row of an “If” in a piece of text: the wording shown when the rows above did not apply and this row’s rules are met. rules is those rules as a phrase, such as “Age is more than 30”."
+    "description": "Label of a later version of a dynamic attribute or a logic block with “If” logic: the version shown when the versions above did not apply and these rules are met. rules is those rules as a phrase, such as “Age is more than 30”."
   },
   "protocolBuilder.dynamicText.firstNodeLabel": {
     "defaultMessage": "First node: label",
@@ -1613,51 +1757,31 @@
   },
   "protocolBuilder.dynamicText.ifNotRow": {
     "defaultMessage": "If not: {rules}",
-    "description": "Label of the first row of an “If not” in a piece of text: the wording shown when its rules are NOT met. rules is those rules as a phrase, such as “Age is more than 30”."
+    "description": "Label of the first version of a dynamic attribute or a logic block with “If not” logic: the version shown when its rules are NOT met. rules is those rules as a phrase, such as “Age is more than 30”."
   },
   "protocolBuilder.dynamicText.ifRow": {
     "defaultMessage": "If: {rules}",
-    "description": "Label of the first row of an “If” in a piece of text: the wording shown when its rules are met. rules is those rules as a phrase, such as “Age is more than 30” or “Friend exists and Close is true”. Also what the “If” is called while folded to a pill."
-  },
-  "protocolBuilder.dynamicText.insertMenu": {
-    "defaultMessage": "Inject piped text from interview metadata or a network attribute",
-    "description": "Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text field a participant reads. “Piped text” is survey-software vocabulary for text filled in from earlier data: the button injects a value the interview fills in, such as today’s date (interview metadata) or the participant’s name or an answer they gave earlier (a network attribute)."
-  },
-  "protocolBuilder.dynamicText.interviewGroup": {
-    "defaultMessage": "Interview Attributes",
-    "description": "Heading in the insert-a-value menu above values that come from the interview itself rather than from the network, such as today’s date."
+    "description": "Label of the first version of a dynamic attribute or a logic block with “If” logic: the version shown when its rules are met. rules is those rules as a phrase, such as “Age is more than 30” or “Friend exists and Close is true”."
   },
   "protocolBuilder.dynamicText.isParticipant": {
     "defaultMessage": "Participant or someone else",
-    "description": "Name of a value in the insert-a-value menu of a question on the Family Pedigree stage, and of the piece of text it inserts: whether the family member the question is asked about is the participant themselves or someone else in their family. It only chooses between two versions of the text and is never shown itself."
+    "description": "Name of a value that a question on the Family Pedigree stage can choose its wording by: whether the family member the question is asked about is the participant themselves or someone else in their family. It chooses which version of the text is shown. It is never shown."
+  },
+  "protocolBuilder.dynamicText.logicBlockButton": {
+    "defaultMessage": "Logic block",
+    "description": "Button in the toolbar of a text editor that puts in a logic block: content that is shown only in some cases, such as only when the participant is over 18."
   },
   "protocolBuilder.dynamicText.logicIf": {
     "defaultMessage": "If … else",
-    "description": "Entry in the insert-logic menu. Choosing it asks for rules, then inserts a piece of text with two versions: one shown when the rules are met, one shown otherwise. The ellipsis stands for the rules."
-  },
-  "protocolBuilder.dynamicText.logicIfDescription": {
-    "defaultMessage": "One wording when rules you set are met, another otherwise",
-    "description": "Second line of the “If … else” entry in the insert-logic menu, saying what it inserts."
+    "description": "Choice of logic for a dynamic attribute or a logic block: one version is shown when rules that the researcher sets are met, and another version otherwise. The ellipsis stands for the rules."
   },
   "protocolBuilder.dynamicText.logicIfNot": {
     "defaultMessage": "If not … else",
-    "description": "Entry in the insert-logic menu. Choosing it asks for rules, then inserts a piece of text with two versions: one shown when the rules are NOT met, one shown otherwise. The ellipsis stands for the rules."
-  },
-  "protocolBuilder.dynamicText.logicIfNotDescription": {
-    "defaultMessage": "One wording when rules you set are not met, another otherwise",
-    "description": "Second line of the “If not … else” entry in the insert-logic menu, saying what it inserts."
-  },
-  "protocolBuilder.dynamicText.logicMenu": {
-    "defaultMessage": "Insert logic",
-    "description": "Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text that a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu."
+    "description": "Choice of logic for a dynamic attribute or a logic block: one version is shown when rules that the researcher sets are NOT met, and another version otherwise. The ellipsis stands for the rules."
   },
   "protocolBuilder.dynamicText.needsAnswerLabels": {
     "defaultMessage": "Add labels for its yes and no answers first",
     "description": "Second line of an entry in the insert-a-value menu that cannot be chosen yet. The entry is a yes-or-no attribute without its own words for its two answers, so the text has nothing in the protocol’s languages to show for it. The researcher can add those words where the attribute is set up."
-  },
-  "protocolBuilder.dynamicText.newIfTitle": {
-    "defaultMessage": "When should this text be shown?",
-    "description": "Title of the dialog where a researcher sets the rules of a new “If” in a piece of text that a participant reads."
   },
   "protocolBuilder.dynamicText.no": {
     "defaultMessage": "No",
@@ -1665,63 +1789,47 @@
   },
   "protocolBuilder.dynamicText.noRules": {
     "defaultMessage": "(no rules yet)",
-    "description": "Stands in for the rules of an “If” in a piece of text when it has none that can be described, in a label such as “If (no rules yet)”."
-  },
-  "protocolBuilder.dynamicText.nodeAttributesGroup": {
-    "defaultMessage": "Node Attributes",
-    "description": "Heading in the insert-a-value menu of a node type’s own label, above the default label and the attributes of the node the label is shown on. A node is one entity in the network, which may not be a person."
+    "description": "Stands in for the rules of an “If” when it has none yet, in a label such as “If: (no rules yet)”."
   },
   "protocolBuilder.dynamicText.nodeLabel": {
     "defaultMessage": "Node label",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on a node, which it takes from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person."
   },
-  "protocolBuilder.dynamicText.nodeLabelDescription": {
-    "defaultMessage": "Text shown on the node",
-    "description": "Short note under “Node label” in the insert-a-value menu, saying that the value is the same text the interview shows on the node itself. Other items in the menu show the kind of answer here, such as “Text” or “Number”."
-  },
   "protocolBuilder.dynamicText.removeIfRow": {
     "defaultMessage": "Remove this case",
-    "description": "Names the button that removes one row (its rules and its wording) from an “If” in a piece of text that has more than one."
-  },
-  "protocolBuilder.dynamicText.roleContext": {
-    "defaultMessage": "Contextual Attributes",
-    "description": "Heading in the insert-a-value menu above the attributes of whatever the text is shown alongside: the node or edge a form asks about, the node a question is asking about, or both nodes of a pair a question asks about together (each of those values then starts “First node:” or “Second node:”). It may not be a person, so the heading does not say what it is."
-  },
-  "protocolBuilder.dynamicText.roleEgo": {
-    "defaultMessage": "Ego Attributes",
-    "description": "Heading in the insert-a-value menu above the attributes of the ego, the participant taking part in the interview. “Ego” is the network-research term Architect uses for the participant."
+    "description": "Button that removes one “Else if” (its rules and its version) from a dynamic attribute or a logic block."
   },
   "protocolBuilder.dynamicText.secondNodeLabel": {
     "defaultMessage": "Second node: label",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the second node’s attributes such as “Second node: nickname”: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
   },
-  "protocolBuilder.dynamicText.switchHasNoLabels": {
-    "defaultMessage": "A Toggle has no labels for its answers. Use different wording for each answer instead.",
-    "description": "Second line of an entry in the insert-a-value menu that cannot be chosen. The entry is a yes-or-no attribute answered with a Toggle (Architect’s name for a single on/off switch, kept as the one word “Toggle” as elsewhere in Architect), which has no researcher-written labels for its two answers, so the text cannot show the answer itself. The menu has another entry for the same attribute, “Different wording for each answer”, which the researcher can use instead."
+  "protocolBuilder.dynamicText.showsNothing": {
+    "defaultMessage": "Shows nothing",
+    "description": "Shown in the pill of a dynamic attribute whose versions are all empty, and as a muted hint inside an empty box for one version of a dynamic attribute. An empty version is allowed: nothing is shown in its place during the interview. A dynamic attribute is a word or phrase in a sentence that reads differently in different cases."
   },
   "protocolBuilder.dynamicText.today": {
     "defaultMessage": "Today’s date",
     "description": "A value a researcher can insert into text a participant reads: the date on the day the participant reads it."
   },
-  "protocolBuilder.dynamicText.versionKnown": {
-    "defaultMessage": "If known",
-    "description": "Label of the version of a piece of text shown when the value it depends on has been given."
+  "protocolBuilder.dynamicText.unreadable": {
+    "defaultMessage": "This wording cannot be edited here, because the editor does not support the way it is written. It is shown below as it is stored.",
+    "description": "Shown in place of a text editor when the stored text cannot be opened, such as text in an imported or hand-written protocol that chooses between versions inside a sentence."
   },
   "protocolBuilder.dynamicText.versionMissing": {
     "defaultMessage": "If not known",
-    "description": "Label of the version of a piece of text shown when the value it depends on has not been given, such as a name the participant skipped."
+    "description": "Label of the version of a dynamic attribute or a logic block that is shown when the attribute that it depends on has no answer, such as a question the participant skipped."
   },
   "protocolBuilder.dynamicText.versionNumbers": {
     "defaultMessage": "When it is {numbers}",
-    "description": "Label of the version of a piece of text shown for some numbers. numbers lists examples of those numbers, in the language being edited, such as “1” or “0, 2, 3, …”."
+    "description": "Label of the version of a logic block that is shown for some numbers. numbers lists examples of those numbers, in the language being edited, such as “1” or “0, 2, 3, …”."
   },
   "protocolBuilder.dynamicText.versionOtherAnswer": {
     "defaultMessage": "Any other answer",
-    "description": "Label of the version of a piece of text shown for an answer that has no version of its own."
+    "description": "Label of the version of a dynamic attribute or a logic block that is shown for an answer that has no version of its own."
   },
   "protocolBuilder.dynamicText.versionOtherwise": {
     "defaultMessage": "Otherwise",
-    "description": "Label of the last row of an “If” in a piece of text: the wording shown when none of the rows above applied."
+    "description": "Label of the last version of a dynamic attribute or a logic block with “If” logic: the version shown when none of the versions above applied."
   },
   "protocolBuilder.dynamicText.yes": {
     "defaultMessage": "Yes",
@@ -2015,65 +2123,249 @@
     "defaultMessage": "Outcome",
     "description": "Heading of the section where a researcher chooses how an interview that ends on this screen is recorded as having ended."
   },
-  "protocolBuilder.formFields.addLabel": {
-    "defaultMessage": "Create new form field",
-    "description": "Button that opens the dialog for adding one more question to a form. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
+  "protocolBuilder.formAnswers.insideBlock": {
+    "defaultMessage": "A field inside this logic block collects this attribute, so it cannot decide which content the block shows.",
+    "description": "Why an attribute cannot be chosen for a rule of a logic block in a form: the question that collects it is inside the same logic block, so it is shown only after the block has decided what to show."
   },
-  "protocolBuilder.formFields.addTitle": {
-    "defaultMessage": "Create form field",
-    "description": "Title of the dialog a researcher fills in to add one more question to a form."
+  "protocolBuilder.formAnswers.otherVersion": {
+    "defaultMessage": "This attribute is collected only by fields in another version of a logic block that contains this block, so those fields are never shown with this logic block.",
+    "description": "Why an attribute cannot be chosen for a rule of a logic block in a form: the logic block is inside one version of a larger logic block, and the only question that collects the attribute is in a different version of that larger block. The participant sees only one version, so that question is never shown together with this logic block. A version is one of the alternative contents of a logic block."
   },
-  "protocolBuilder.formFields.atLeastOne": {
-    "defaultMessage": "You must create at least one item.",
-    "description": "Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member."
+  "protocolBuilder.formDocument.attributeHint": {
+    "defaultMessage": "Answers to this field are saved to this attribute.",
+    "description": "Guidance under the Attribute control of a field."
   },
-  "protocolBuilder.formFields.attributeControlBadge": {
-    "defaultMessage": "<type>{typeLabel}</type> attribute using <control>{controlLabel}</control> input control",
-    "description": "Shown in the collapsed row of a form’s list of questions, naming the kind of attribute it records into and the control the participant answers with. Both are already translated where they are read from, and both are emphasised inside the sentence so a translator moves them with the clause they belong to."
-  },
-  "protocolBuilder.formFields.attributeHint": {
-    "defaultMessage": "Select an attribute",
-    "description": "Guidance under the attribute control."
-  },
-  "protocolBuilder.formFields.attributeLabel": {
+  "protocolBuilder.formDocument.attributeLabel": {
     "defaultMessage": "Attribute",
-    "description": "Label of the control choosing which attribute this question’s answer is recorded under. The same word as the section heading above it, and translated once for each."
+    "description": "Label of the control in the settings of a field that chooses the attribute to which the answers are saved."
   },
-  "protocolBuilder.formFields.attributeRequired": {
-    "defaultMessage": "Choose the attribute this field collects.",
-    "description": "Refusal shown under the attribute control when nothing has been chosen."
+  "protocolBuilder.formDocument.attributeRequired": {
+    "defaultMessage": "Choose an attribute for this field.",
+    "description": "Refusal shown when the researcher saves a form that has a field whose attribute has not been chosen."
   },
-  "protocolBuilder.formFields.attributeSectionDescription": {
-    "defaultMessage": "Choose the attribute this form field will collect.",
-    "description": "Description under the Attribute heading."
+  "protocolBuilder.formDocument.attributeRequiredElsewhere": {
+    "defaultMessage": "Choose an attribute for the field “{question}” in the form in {language}.",
+    "description": "Refusal shown when the researcher saves a form in which a field of the form in another language than the one being edited has no attribute. question is the question of the field in that language. language is the name of that language, such as \"Spanish\"."
   },
-  "protocolBuilder.formFields.attributeSectionTitle": {
-    "defaultMessage": "Attribute selection",
-    "description": "Heading of the half of the field dialog that says which attribute this question’s answer is recorded under."
+  "protocolBuilder.formDocument.attributeRequiredElsewhereUnnamed": {
+    "defaultMessage": "Choose an attribute for a field in the form in {language}.",
+    "description": "Refusal shown when the researcher saves a form in which a field of the form in another language than the one being edited has neither an attribute nor a question. language is the name of that language, such as \"Spanish\"."
   },
-  "protocolBuilder.formFields.attributeTaken": {
-    "defaultMessage": "This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.",
-    "description": "Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen."
+  "protocolBuilder.formDocument.attributeTaken": {
+    "defaultMessage": "Another field of this form already collects this attribute. Each attribute can be collected once in a form.",
+    "description": "Refusal shown when the researcher saves a form in which two fields collect the same attribute."
   },
-  "protocolBuilder.formFields.componentHint": {
-    "defaultMessage": "How the answer is collected. For detailed information about these options, see our <link>documentation</link>.",
-    "description": "Guidance under the input-control field, ending in a link to the documentation page about input controls. The link is a tag inside the sentence rather than markup around a fragment of it, so a translator moves the whole clause and the link text together."
+  "protocolBuilder.formDocument.booleanType": {
+    "defaultMessage": "Yes or no.",
+    "description": "Explains the Boolean type of attribute, in the list of types."
   },
-  "protocolBuilder.formFields.componentInventsHint": {
-    "defaultMessage": "How the answer is collected, and what kind of answer the new attribute will hold. Every control a form can offer is listed, grouped by the kind each one collects. For detailed information about these options, see our <link>documentation</link>.",
-    "description": "Guidance under the input-control field while the field is inventing the attribute it collects. Replaces the ordinary guidance, which says nothing about the kind: there is no attribute yet to narrow the list by, and the control chosen here is what decides what kind of answer the attribute records. Ends in a link to the documentation page about input controls."
+  "protocolBuilder.formDocument.categoricalType": {
+    "defaultMessage": "One or more options from a list.",
+    "description": "Explains the Categorical type of attribute, in the list of types."
   },
-  "protocolBuilder.formFields.componentInventsRequired": {
-    "defaultMessage": "Choose how the participant answers this question.",
-    "description": "Refusal shown under the input-control field when a researcher saves a field that is inventing its attribute without having chosen a control. Only an invented attribute can reach this: an attribute that already exists arrives with a control already chosen."
+  "protocolBuilder.formDocument.chooseAttribute": {
+    "defaultMessage": "Choose an attribute",
+    "description": "Shown on a field of a form whose attribute has not been chosen yet. Choosing it opens the list of attributes."
   },
-  "protocolBuilder.formFields.componentLabel": {
+  "protocolBuilder.formDocument.contentLabel": {
+    "defaultMessage": "Form content",
+    "description": "Label of the editor where a researcher writes a form: its text and its fields."
+  },
+  "protocolBuilder.formDocument.contentPlaceholder": {
+    "defaultMessage": "Type the text of the form, or add a field…",
+    "description": "Placeholder shown in the empty editor of a form. The ellipsis is one character."
+  },
+  "protocolBuilder.formDocument.controlSettingsLabel": {
+    "defaultMessage": "Control settings",
+    "description": "Heading in the settings of a field whose attribute has no options, above the button that opens the settings of its input control, such as the earliest and latest dates of a date picker."
+  },
+  "protocolBuilder.formDocument.datetimeType": {
+    "defaultMessage": "A date on the calendar.",
+    "description": "Explains the Date type of attribute, in the list of types."
+  },
+  "protocolBuilder.formDocument.deleteField": {
+    "defaultMessage": "Delete field",
+    "description": "Button in the settings of a field that removes the field from the form."
+  },
+  "protocolBuilder.formDocument.description": {
+    "defaultMessage": "Write the text that participants read, and add a field for each question that they answer.",
+    "description": "Description of the form section of a stage editor."
+  },
+  "protocolBuilder.formDocument.dialogTitleHint": {
+    "defaultMessage": "Shown as the heading of the dialog in which the participant adds a person.",
+    "description": "Guidance under the Dialog title field of a name generator."
+  },
+  "protocolBuilder.formDocument.dialogTitleLabel": {
+    "defaultMessage": "Dialog title",
+    "description": "Label of the field holding the heading of the dialog in which the participant fills in the form of a name generator."
+  },
+  "protocolBuilder.formDocument.dialogTitleRequired": {
+    "defaultMessage": "Give this dialog a title.",
+    "description": "Refusal shown under the Dialog title field of a name generator when it has been left empty."
+  },
+  "protocolBuilder.formDocument.editControlSettings": {
+    "defaultMessage": "Edit control settings",
+    "description": "Button in the settings of a field that opens a dialog for changing the settings of its input control, such as the labels at the ends of a scale."
+  },
+  "protocolBuilder.formDocument.editOptions": {
+    "defaultMessage": "Edit options",
+    "description": "Button in the settings of a field that opens a dialog for changing the options that the participant can choose from."
+  },
+  "protocolBuilder.formDocument.fieldButton": {
+    "defaultMessage": "Field",
+    "description": "Button in the toolbar of the form editor that adds a field: one question that the participant answers, saved to an attribute."
+  },
+  "protocolBuilder.formDocument.formInLanguage": {
+    "defaultMessage": "Form in {language}",
+    "description": "Names the form in one language in the list of problems that stop a stage from being saved, before a problem with a field of that form. Choosing the problem switches the editor to that language. language is the name of a language, such as \"Spanish\"."
+  },
+  "protocolBuilder.formDocument.hintName": {
+    "defaultMessage": "Hint",
+    "description": "Names the hint of one field of a form, in a list of translatable strings that have no translation in a language. The hint is extra guidance shown under the question. Follows the name of the field."
+  },
+  "protocolBuilder.formDocument.hintPlaceholder": {
+    "defaultMessage": "Add a hint (optional)",
+    "description": "Placeholder shown in the empty hint under the question of a field in a form that a researcher is writing."
+  },
+  "protocolBuilder.formDocument.inThisDocument": {
+    "defaultMessage": "This field is already in the form in this language.",
+    "description": "Shown under a field that cannot be chosen, in the list of fields that can be added to the text of a form in the translation table, because the text in this language already contains it."
+  },
+  "protocolBuilder.formDocument.inputControlHint": {
+    "defaultMessage": "How the participant answers this question.",
+    "description": "Guidance under the Input control of a field."
+  },
+  "protocolBuilder.formDocument.inputControlLabel": {
     "defaultMessage": "Input control",
-    "description": "Label of the control choosing what the participant uses to answer — a text box, a slider, a set of buttons."
+    "description": "Label of the control in the settings of a field that chooses what the participant answers with, such as a text box, a slider or a set of buttons."
   },
-  "protocolBuilder.formFields.componentRequired": {
-    "defaultMessage": "This field’s attribute gives the participant no way to answer. Choose a different attribute, or remove this field.",
-    "description": "Refusal shown above the fields of a form field’s dialog, and named by its unavailable save control, when the attribute the field collects has no input control to offer — an attribute that records a position rather than an answer, or one that has been deleted from the codebook. There is no control to choose in this dialog, so the way out is a different attribute."
+  "protocolBuilder.formDocument.labelPlaceholder": {
+    "defaultMessage": "Type the question",
+    "description": "Placeholder shown in the empty question of a field in a form that a researcher is writing."
+  },
+  "protocolBuilder.formDocument.languageFieldsAllowed": {
+    "defaultMessage": "Forms in different languages can contain different fields.",
+    "description": "Last sentence of the note above the form editor when the forms in two languages contain different fields."
+  },
+  "protocolBuilder.formDocument.languageFieldsExtra": {
+    "defaultMessage": "{count, plural, one {The {language} form contains # field that the {defaultLanguage} form does not include:} other {The {language} form contains # fields that the {defaultLanguage} form does not include:}} {attributes}.",
+    "description": "Note above the form editor when the form in the language being edited contains fields that the form in the default language does not include. language and defaultLanguage are names of languages. attributes is the attributes of those fields, shown as pills. count is how many there are."
+  },
+  "protocolBuilder.formDocument.languageFieldsMissing": {
+    "defaultMessage": "{count, plural, one {The {language} form does not include # field that the {defaultLanguage} form contains:} other {The {language} form does not include # fields that the {defaultLanguage} form contains:}} {attributes}.",
+    "description": "Note above the form editor when the form in the language being edited leaves out fields that the form in the default language contains. language and defaultLanguage are names of languages. attributes is the attributes of those fields, shown as pills. count is how many there are."
+  },
+  "protocolBuilder.formDocument.missingAttribute": {
+    "defaultMessage": "Deleted attribute",
+    "description": "Shown on a field of a form in place of the name of its attribute, when that attribute has been deleted from the codebook."
+  },
+  "protocolBuilder.formDocument.nameGeneratorDescription": {
+    "defaultMessage": "Participants fill in this form each time that they add a person.",
+    "description": "Description of the form section of a name generator stage, whose form the participant fills in for each person that they name."
+  },
+  "protocolBuilder.formDocument.namedField": {
+    "defaultMessage": "Field “{name}”",
+    "description": "Names one field of a form in the list of problems that stop a stage from being saved, before the problem itself. name is the question of the field, or the name of its attribute when it has no question yet."
+  },
+  "protocolBuilder.formDocument.newAttributeDescription": {
+    "defaultMessage": "Choose the type of answer that it records.",
+    "description": "Guidance under the heading of the step in which the researcher chooses the type of a new attribute."
+  },
+  "protocolBuilder.formDocument.newAttributeTitle": {
+    "defaultMessage": "New attribute: {name}",
+    "description": "Heading of the step of the attribute list in which the researcher chooses the type of a new attribute. name is the name that they typed, which is not translated."
+  },
+  "protocolBuilder.formDocument.newField": {
+    "defaultMessage": "New field",
+    "description": "Names a field of a form that has neither a question nor an attribute yet, in the list of problems that stop a stage from being saved."
+  },
+  "protocolBuilder.formDocument.noFields": {
+    "defaultMessage": "Add at least one field to this form.",
+    "description": "Refusal shown under the form editor when the form in the language being edited contains no fields. A field is a question that the participant answers."
+  },
+  "protocolBuilder.formDocument.noFieldsInLanguages": {
+    "defaultMessage": "Add at least one field to the form in {languages}.",
+    "description": "Refusal shown under the form editor when the form in other languages than the one being edited contains no fields. languages is a list of names of languages, such as \"Spanish and French\"."
+  },
+  "protocolBuilder.formDocument.noInputControl": {
+    "defaultMessage": "This attribute gives the participant no way to answer. Choose a different attribute.",
+    "description": "Shown in the settings of a field whose attribute cannot be collected by any input control, such as one deleted from the codebook."
+  },
+  "protocolBuilder.formDocument.numberType": {
+    "defaultMessage": "A whole number or a decimal number.",
+    "description": "Explains the Number type of attribute, in the list of types."
+  },
+  "protocolBuilder.formDocument.optionsDialogTitle": {
+    "defaultMessage": "Options and settings of {attribute}",
+    "description": "Title of the dialog for changing the options and the settings of the input control of an attribute. attribute is the attribute’s name, which is not translated."
+  },
+  "protocolBuilder.formDocument.optionsHint": {
+    "defaultMessage": "The participant can choose from these options.",
+    "description": "Guidance under the Options heading of a field."
+  },
+  "protocolBuilder.formDocument.optionsLabel": {
+    "defaultMessage": "Options",
+    "description": "Heading in the settings of a field above the answers that the participant can choose from."
+  },
+  "protocolBuilder.formDocument.ordinalType": {
+    "defaultMessage": "One option from a list in a fixed order.",
+    "description": "Explains the Ordinal type of attribute, in the list of types."
+  },
+  "protocolBuilder.formDocument.otherLanguages": {
+    "defaultMessage": "This field is also in the {languages} form. Its settings are the same in every language.",
+    "description": "Last sentence of the note in the settings of a field, when the forms of other languages also contain this field. languages is the names of those languages, as a list."
+  },
+  "protocolBuilder.formDocument.questionName": {
+    "defaultMessage": "Question",
+    "description": "Names the question of one field of a form, in a list of translatable strings that have no translation in a language. Follows the name of the field."
+  },
+  "protocolBuilder.formDocument.questionRequired": {
+    "defaultMessage": "Type the question of each field.",
+    "description": "Refusal shown when the researcher saves a form in which a field has no question in a language whose form contains that field, while that language is being edited."
+  },
+  "protocolBuilder.formDocument.questionRequiredElsewhere": {
+    "defaultMessage": "Type the question of the field “{attribute}” in {language}.",
+    "description": "Refusal shown when the researcher saves a form in which a field of the form in another language than the one being edited has no question in that language. attribute is the name of the attribute that the field collects. language is the name of that language, such as \"Spanish\"."
+  },
+  "protocolBuilder.formDocument.scalarType": {
+    "defaultMessage": "A point on a scale between two labels.",
+    "description": "Explains the Scalar type of attribute, in the list of types."
+  },
+  "protocolBuilder.formDocument.sharedNote": {
+    "defaultMessage": "The input control, options and validation are part of the attribute {attribute}. Changes here apply to every form that uses it.",
+    "description": "Note in the settings of a field. attribute is the attribute, shown as a pill with its name."
+  },
+  "protocolBuilder.formDocument.tableAttributeTitle": {
+    "defaultMessage": "Fields of this form",
+    "description": "Heading of the list of fields that can be added to the text of a form in the translation table. Only the fields that the form already has in another language can be added there."
+  },
+  "protocolBuilder.formDocument.tableLabelPlaceholder": {
+    "defaultMessage": "No question in this language yet",
+    "description": "Shown in place of the question of a field in the text of a form in the translation table, when the field has no question in the language of the column. The question is translated in its own row of the table."
+  },
+  "protocolBuilder.formDocument.textType": {
+    "defaultMessage": "Words or sentences that the participant types.",
+    "description": "Explains the Text type of attribute, in the list of types."
+  },
+  "protocolBuilder.formDocument.title": {
+    "defaultMessage": "Form",
+    "description": "Heading of the section of a stage editor where a researcher writes a form: the text that participants read, with a field for each question that they answer."
+  },
+  "protocolBuilder.formDocument.usedOnStages": {
+    "defaultMessage": "{count, plural, one {This attribute is also used on the stage {stages}.} other {This attribute is also used on the stages {stages}.}}",
+    "description": "Second sentence of the note in the settings of a field, naming the other stages that use the attribute. stages is the names of those stages, each in quotation marks, as a list. count is how many there are."
+  },
+  "protocolBuilder.formDocument.validationHintsHint": {
+    "defaultMessage": "Shows the rules under the question before the participant answers, for example “Must choose at least 1 option.”",
+    "description": "Guidance under the Show validation hints switch of a field."
+  },
+  "protocolBuilder.formDocument.validationHintsLabel": {
+    "defaultMessage": "Show validation hints",
+    "description": "Label of the switch in the settings of a field that shows the participant the rules that their answer must follow."
+  },
+  "protocolBuilder.formDocument.waitingDescription": {
+    "defaultMessage": "Choose what this stage works with before writing its form.",
+    "description": "Shown in place of the description of the form section while the researcher has not yet chosen which node or edge type the stage is about."
   },
   "protocolBuilder.formFields.controlBoolean": {
     "defaultMessage": "Boolean Choice",
@@ -2086,10 +2378,6 @@
   "protocolBuilder.formFields.controlDatePicker": {
     "defaultMessage": "Date Picker",
     "description": "Choice offered for the control a participant answers with: a calendar they choose a date from. Architect names this control DatePicker; the label is that name with its words separated."
-  },
-  "protocolBuilder.formFields.controlLandedElsewhere": {
-    "defaultMessage": "The input control for “{variableName}” was changed, but this field no longer collects that attribute, so the field was not saved.",
-    "description": "Refusal shown above the fields of a form field’s dialog when the researcher’s choice of input control was recorded in the codebook — the protocol’s definition of what an interview records — and, while that was happening, someone else pointed this field at a different attribute. variableName is the attribute’s researcher-facing name and is not translated."
   },
   "protocolBuilder.formFields.controlLikertScale": {
     "defaultMessage": "Likert Scale",
@@ -2127,125 +2415,9 @@
     "defaultMessage": "Visual Analog Scale",
     "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line. Architect names this control VisualAnalogScale; the label is that name with its words separated."
   },
-  "protocolBuilder.formFields.description": {
-    "defaultMessage": "Map attributes to input controls and define the validation rules for this form.",
-    "description": "Description of the form-fields section."
-  },
-  "protocolBuilder.formFields.duplicateField": {
-    "defaultMessage": "Two fields collect the same attribute. Each attribute may be collected once per form.",
-    "description": "Refusal shown above a form’s list of fields when two of them record their answers under the same attribute, which would leave only one of the answers."
-  },
-  "protocolBuilder.formFields.editTitle": {
-    "defaultMessage": "Edit form field",
-    "description": "Title of the dialog a researcher fills in to change a question a form already asks."
-  },
-  "protocolBuilder.formFields.emptyState": {
-    "defaultMessage": "No items have been created yet.",
-    "description": "Shown in place of the list of form fields while a form asks nothing yet."
-  },
-  "protocolBuilder.formFields.fieldHint": {
-    "defaultMessage": "Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order.",
-    "description": "Guidance under the list of form fields."
-  },
-  "protocolBuilder.formFields.fieldLabel": {
-    "defaultMessage": "Form fields",
-    "description": "Label of the ordered list of questions a form asks."
-  },
-  "protocolBuilder.formFields.formTitleHint": {
-    "defaultMessage": "Shown at the top of the form. Use a short descriptive title such as 'Add a contact'.",
-    "description": "Guidance under the form-title field. The quoted phrase is an example a researcher might write, and should be translated as such."
-  },
-  "protocolBuilder.formFields.formTitleLabel": {
-    "defaultMessage": "Form title",
-    "description": "Label of the field holding the heading shown above the form a participant fills in."
-  },
-  "protocolBuilder.formFields.formTitlePlaceholder": {
-    "defaultMessage": "Enter a title...",
-    "description": "Placeholder shown in the empty form-title field. The trailing dots are an ellipsis written as three full stops."
-  },
-  "protocolBuilder.formFields.formTitleRequired": {
-    "defaultMessage": "Give this form a title.",
-    "description": "Refusal shown under the form-title field when it has been left empty."
-  },
-  "protocolBuilder.formFields.hintHint": {
-    "defaultMessage": "Optionally display a markdown-formatted hint below the question, to help participants understand how to answer.",
-    "description": "Guidance under the hint-text field."
-  },
-  "protocolBuilder.formFields.hintLabel": {
-    "defaultMessage": "Hint text",
-    "description": "Label of the optional field holding extra guidance shown to the participant under the question."
-  },
-  "protocolBuilder.formFields.hintPlaceholder": {
-    "defaultMessage": "e.g. Select all that apply...",
-    "description": "Example hint shown in the empty hint-text field. An example a researcher might write, not a value that is stored. The trailing dots are an ellipsis written as three full stops."
-  },
-  "protocolBuilder.formFields.incompleteField": {
-    "defaultMessage": "Every field needs both an attribute and a question. Open the incomplete field and finish it.",
-    "description": "Refusal shown above a form’s list of fields when one of them names no attribute, or asks no question."
-  },
-  "protocolBuilder.formFields.itemNoun": {
-    "defaultMessage": "field",
-    "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Delete this field?\" — so it is lower case and singular."
-  },
-  "protocolBuilder.formFields.lockedTypeDescription": {
-    "defaultMessage": "A pre-existing attribute is currently selected. You cannot change an attribute type after it has been created, so only <strong>{variableType}</strong> compatible input controls can be selected above. If you would like to use a different input control type, you will need to create a new attribute.",
-    "description": "Warning body explaining why the input-control list is narrow for an attribute that already exists. variableType is the attribute’s kind, already translated."
-  },
-  "protocolBuilder.formFields.lockedTypeTitle": {
-    "defaultMessage": "Attribute type is locked",
-    "description": "Warning heading shown when the field collects an attribute that already exists, so the list of input controls above is narrower than the whole list."
-  },
-  "protocolBuilder.formFields.malformedField": {
-    "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
-    "description": "Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired."
-  },
   "protocolBuilder.formFields.newTypeNotice": {
     "defaultMessage": "The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).",
     "description": "Shown while the field is inventing an attribute, saying which kind the chosen input control will make it. variableType is that kind, already translated."
-  },
-  "protocolBuilder.formFields.previewMissing": {
-    "defaultMessage": "This attribute is no longer in the codebook.",
-    "description": "Shown in the collapsed row of a form’s list of questions when the attribute it records into has been deleted from the codebook."
-  },
-  "protocolBuilder.formFields.promptHint": {
-    "defaultMessage": "The question to display to the participant. Supports markdown formatting.",
-    "description": "Guidance under the question-text field. Markdown is the name of the formatting syntax and is not translated."
-  },
-  "protocolBuilder.formFields.promptLabel": {
-    "defaultMessage": "Question text",
-    "description": "Label of the field holding what the participant is asked for this one answer."
-  },
-  "protocolBuilder.formFields.promptPlaceholder": {
-    "defaultMessage": "What is this person's name?",
-    "description": "Example question shown in the empty question-text field. An example a researcher might write, not a value that is stored."
-  },
-  "protocolBuilder.formFields.promptRequired": {
-    "defaultMessage": "Write the question this field asks.",
-    "description": "Refusal shown under the question-text field when it has been left empty."
-  },
-  "protocolBuilder.formFields.questionSectionDescription": {
-    "defaultMessage": "Write the participant-facing prompt and choose how the response is collected.",
-    "description": "Description under the Question heading."
-  },
-  "protocolBuilder.formFields.questionSectionTitle": {
-    "defaultMessage": "Field configuration",
-    "description": "Heading of the half of the field dialog that says what the participant is asked."
-  },
-  "protocolBuilder.formFields.title": {
-    "defaultMessage": "Form configuration",
-    "description": "Heading of the section holding the questions a form asks and the attributes each answer is recorded under."
-  },
-  "protocolBuilder.formFields.validationHintsHint": {
-    "defaultMessage": "Automatically display hints derived from this field's validation rules, helping participants understand input requirements.",
-    "description": "Guidance under the validation-hints switch."
-  },
-  "protocolBuilder.formFields.validationHintsLabel": {
-    "defaultMessage": "Show validation hints",
-    "description": "Label of the switch that tells the participant what a valid answer to this question looks like."
-  },
-  "protocolBuilder.formFields.waitingDescription": {
-    "defaultMessage": "Choose what this stage works with before writing its form.",
-    "description": "Shown in place of the form-fields section’s description while the researcher has not yet chosen which node or edge type the stage is about."
   },
   "protocolBuilder.geospatial.accessDescription": {
     "defaultMessage": "Provide the Mapbox API key required to display the map.",
@@ -2659,22 +2831,6 @@
     "defaultMessage": "Interviewer guidance",
     "description": "Heading of the section holding notes written for the person running the interview. Never shown to a participant."
   },
-  "protocolBuilder.introduction.description": {
-    "defaultMessage": "Introduce the task before participants complete its forms.",
-    "description": "Description of the task-introduction section."
-  },
-  "protocolBuilder.introduction.headingLabel": {
-    "defaultMessage": "Title",
-    "description": "Label of the field holding the heading at the top of the introduction screen a participant reads."
-  },
-  "protocolBuilder.introduction.textLabel": {
-    "defaultMessage": "Introduction text",
-    "description": "Label of the field holding the prose a participant reads before this step of the interview begins."
-  },
-  "protocolBuilder.introduction.title": {
-    "defaultMessage": "Task introduction",
-    "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
-  },
   "protocolBuilder.languageChooser.headingHint": {
     "defaultMessage": "Shown above the list of languages. When a participant chooses a language, the heading is shown in that language.",
     "description": "Guidance under the field holding the heading of the language-choosing stage. The heading is shown in the language the participant has chosen, so it changes to that language’s translation as soon as they choose."
@@ -2718,10 +2874,6 @@
   "protocolBuilder.localization.showsValuesNotEditable": {
     "defaultMessage": "This text shows values the interview fills in, so it can’t be edited in this field. It is kept as it is.",
     "description": "Shown in place of a text field when the stored text includes values filled in during the interview, such as the participant’s name, and this field cannot show them. The stored text is shown below it unchanged."
-  },
-  "protocolBuilder.localizedMessage.byCase": {
-    "defaultMessage": "Different wording for each case",
-    "description": "Second line of an entry in the insert-a-value menu of a text a participant reads. The entry names something the text can change with, such as “Participant or someone else” or “Relation”; choosing it inserts a piece of text with one version for each of its cases, such as one about the participant and one about someone else."
   },
   "protocolBuilder.localizedMessage.caseAboutParticipant": {
     "defaultMessage": "When it is about the participant",
@@ -2923,10 +3075,6 @@
     "defaultMessage": "When the twin is the participant",
     "description": "Heading over the version of a message used when the twin it is about is the participant themself."
   },
-  "protocolBuilder.localizedMessage.insertMenu": {
-    "defaultMessage": "Inject piped text from this stage",
-    "description": "Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text a participant reads whose wording Network Canvas supplies, such as a label on the Family Pedigree. “Piped text” is survey-software vocabulary for text filled in while the interview runs: the menu offers what this text can show or change with, such as a family member’s name, the number of parents still to add, or whether the text is about the participant."
-  },
   "protocolBuilder.localizedMessage.placeholderAnchor": {
     "defaultMessage": "Name of the person they are added to",
     "description": "Name of the placeholder, inserted into a message, that shows the name of the person a new family member is added to."
@@ -3036,16 +3184,24 @@
     "description": "Name of the placeholder, inserted into a message, that shows a twin’s name."
   },
   "protocolBuilder.localizedMessage.placementMissing": {
-    "defaultMessage": "This text must include the attribute “{placeholder}”.",
+    "defaultMessage": "This wording must include the attribute “{placeholder}”.",
     "description": "Refusal shown to a researcher under a text in a protocol that leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”."
   },
   "protocolBuilder.localizedMessage.placementMissingIn": {
-    "defaultMessage": "This text must include the attribute “{placeholder}” in the “{version}” scenario.",
+    "defaultMessage": "This wording must include the attribute “{placeholder}” in the “{version}” scenario.",
     "description": "Refusal shown to a researcher under a text in a protocol that is worded differently for different scenarios (for example, one wording about the participant and another about someone else), when the wording for one scenario leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”; version is the label of the scenario, such as “About someone else”."
   },
   "protocolBuilder.localizedMessage.pluralVersion": {
     "defaultMessage": "When “{placeholder}” is {numbers}",
     "description": "Label of the box holding the version of a text shown for some numbers. placeholder is the name of the number the text can show, such as “Parents missing”; numbers lists examples of the numbers that version is for, in the language being edited, such as “1” or “0, 2, 3, …”."
+  },
+  "protocolBuilder.localizedMessage.required": {
+    "defaultMessage": "Required in this wording",
+    "description": "Note under an entry in the Attribute menu of wording that Network Canvas supplies, such as the name of the person, when the version of the wording being written must include it and does not include it yet."
+  },
+  "protocolBuilder.localizedMessage.requiredMissing": {
+    "defaultMessage": "This wording is missing something it requires",
+    "description": "Read by a screen reader as the description of the Attribute button of the toolbar, above wording that Network Canvas supplies, while the version of the wording being written lacks something it must include, such as the name of the person. The button shows a dot for sighted users."
   },
   "protocolBuilder.localizedMessage.switchAnchorIsYou": {
     "defaultMessage": "Person they are added to: participant or someone else",
@@ -3128,16 +3284,20 @@
     "description": "Name of something a text the interview shows can choose its version by, shown on the folded piece of text that has a version for each case, and in the menu that inserts one: which of the people the text is about, if any, is the participant themself. The participant never sees this name."
   },
   "protocolBuilder.localizedMessage.unreadable": {
-    "defaultMessage": "This text uses something it cannot show. Write it again here.",
+    "defaultMessage": "This wording uses something that it cannot show. Write it again here.",
     "description": "Refusal shown under a text written in several versions when a translation imported from elsewhere uses a placeholder or a choice this text does not offer."
   },
   "protocolBuilder.localizedMessage.versionsBlank": {
-    "defaultMessage": "Write something in every version of this text.",
+    "defaultMessage": "Write something in every version of this wording.",
     "description": "Refusal shown under a text with a piece written in several versions (one about the participant, one about someone else, and so on) when one of those versions is empty, in any of the protocol’s languages."
   },
   "protocolBuilder.localizedTextNames.diseasePosition": {
     "defaultMessage": "Disease {position, number}",
     "description": "Names one disease mapping of a narrative pedigree stage where its label is listed without a translation. position is the mapping’s place in the stage’s list of diseases, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.dynamicAttribute": {
+    "defaultMessage": "Dynamic attribute",
+    "description": "Names a dynamic attribute that has no wording yet, where a text is listed without its translation. A dynamic attribute is a word or phrase that reads differently in different cases, such as “their”, “her” or “his”."
   },
   "protocolBuilder.localizedTextNames.dynamicLabelSection": {
     "defaultMessage": "Dynamic label",
@@ -3331,6 +3491,10 @@
     "defaultMessage": "Item {position, number}",
     "description": "Names one entry of a list in a stage — a block of page content, a row of a table — where a text is listed without its translation. position is the entry’s place in its list, counting from one."
   },
+  "protocolBuilder.localizedTextNames.numberWording": {
+    "defaultMessage": "Wording for singular or plural numbers",
+    "description": "Names the wording of a dynamic attribute that shows a number, which has a version for each plural form of the language, where it is listed without a translation."
+  },
   "protocolBuilder.localizedTextNames.panelPosition": {
     "defaultMessage": "Panel {position, number}",
     "description": "Names one side panel of a name generator where its title is listed without a translation. position is the panel’s place in the stage’s list of side panels, counting from one."
@@ -3342,6 +3506,130 @@
   "protocolBuilder.localizedTextNames.promptPosition": {
     "defaultMessage": "Prompt {position, number}",
     "description": "Names one prompt of a stage where a text is listed without its translation. position is the prompt’s place in the stage’s list of prompts, counting from one."
+  },
+  "protocolBuilder.localizedTextNames.versionPosition": {
+    "defaultMessage": "Version {position, number}",
+    "description": "Names one version of a dynamic attribute, chosen by rules or by an answer, where its wording is listed without a translation. position is the version’s place among those versions, counting from one."
+  },
+  "protocolBuilder.logic.answersContent": {
+    "defaultMessage": "Different content for each answer",
+    "description": "Choice of logic for a logic block (a part of a page or form that changes): one version of the content for each answer to a categorical, ordinal or Boolean attribute."
+  },
+  "protocolBuilder.logic.answersDescription": {
+    "defaultMessage": "One version for each answer to a categorical, ordinal or Boolean attribute.",
+    "description": "Explains the logic that gives one version for each answer to an attribute, under the Logic control of a dynamic attribute or a logic block."
+  },
+  "protocolBuilder.logic.ifContentDescription": {
+    "defaultMessage": "One version of the content when the rules that you set are met, and another version otherwise.",
+    "description": "Explains the “If … else” logic of a logic block, under the Logic control."
+  },
+  "protocolBuilder.logic.ifNotContentDescription": {
+    "defaultMessage": "One version of the content when the rules that you set are not met, and another version otherwise.",
+    "description": "Explains the “If not … else” logic of a logic block, under the Logic control."
+  },
+  "protocolBuilder.logic.ifNotWordingDescription": {
+    "defaultMessage": "One version of the wording when the rules that you set are not met, and another version otherwise.",
+    "description": "Explains the “If not … else” logic of a dynamic attribute, under the Logic control."
+  },
+  "protocolBuilder.logic.ifWordingDescription": {
+    "defaultMessage": "One version of the wording when the rules that you set are met, and another version otherwise.",
+    "description": "Explains the “If … else” logic of a dynamic attribute, under the Logic control."
+  },
+  "protocolBuilder.logic.logicLabel": {
+    "defaultMessage": "Logic",
+    "description": "Label of the control where a researcher chooses how a dynamic attribute or a logic block chooses which version to show: by rules, by the answer to an attribute, by a number, or by whether a person is the participant."
+  },
+  "protocolBuilder.logic.noAnswersUnavailable": {
+    "defaultMessage": "No categorical, ordinal or Boolean attribute can be used here.",
+    "description": "Why the logic that gives one version for each answer cannot be chosen: no attribute with a fixed set of answers is available where the text is shown."
+  },
+  "protocolBuilder.logic.noNumbersUnavailable": {
+    "defaultMessage": "No number attribute can be used here.",
+    "description": "Why the logic for singular or plural numbers cannot be chosen: no number attribute is available where the text is shown."
+  },
+  "protocolBuilder.logic.noRulesUnavailable": {
+    "defaultMessage": "There is nothing here that rules can be about.",
+    "description": "Why the “If … else” logic cannot be chosen for a piece of text: the text is shown where there is no participant or node that a rule could ask about."
+  },
+  "protocolBuilder.logic.numberContent": {
+    "defaultMessage": "Content for singular or plural numbers",
+    "description": "Choice of logic for a logic block: content that suits the number in an attribute, with one version for each number form that the language distinguishes."
+  },
+  "protocolBuilder.logic.numberDescription": {
+    "defaultMessage": "One version for each number form that the language distinguishes, such as “1 child” and “3 children”.",
+    "description": "Explains the logic that gives one version for each plural form of a number, under the Logic control of a dynamic attribute or a logic block."
+  },
+  "protocolBuilder.logic.numberWording": {
+    "defaultMessage": "Wording for singular or plural numbers",
+    "description": "Choice of logic for a dynamic attribute: wording that suits the number in an attribute, such as “1 child” or “3 children”."
+  },
+  "protocolBuilder.logic.participant": {
+    "defaultMessage": "Participant or someone else",
+    "description": "Choice of logic for a dynamic attribute or a logic block on the form of a Family Pedigree: one version when the family member that the form asks about is the participant, and another for everyone else."
+  },
+  "protocolBuilder.logic.participantContentDescription": {
+    "defaultMessage": "Different content for the participant and for everyone else.",
+    "description": "Explains the “Participant or someone else” logic of a logic block, under the Logic control."
+  },
+  "protocolBuilder.logic.participantUnavailable": {
+    "defaultMessage": "Only in the form of a Family Pedigree.",
+    "description": "Why the “Participant or someone else” logic cannot be chosen here: it is only available in the form of a Family Pedigree stage, which asks about each family member, one of whom is the participant."
+  },
+  "protocolBuilder.logic.participantWordingDescription": {
+    "defaultMessage": "Different wording for the participant and for everyone else.",
+    "description": "Explains the “Participant or someone else” logic of a dynamic attribute, under the Logic control."
+  },
+  "protocolBuilder.logicBlock.addAnswer": {
+    "defaultMessage": "Add a version for another answer",
+    "description": "Button at the foot of a logic block that has different content for each answer. It opens the block’s settings, where the researcher chooses which answers have content of their own."
+  },
+  "protocolBuilder.logicBlock.addNumberForms": {
+    "defaultMessage": "Add a version for each number form of {language}",
+    "description": "Button at the foot of a logic block that has a version for singular or plural numbers, shown when the block lacks versions for some of the number forms of the language being edited, as a block copied from another language can. It adds the missing versions, empty. language is the name of the language being edited, such as “Arabic”."
+  },
+  "protocolBuilder.logicBlock.answersWithVersions": {
+    "defaultMessage": "Answers with their own content",
+    "description": "Label of the list of the answers to an attribute, each with a checkbox: a ticked answer has content of its own in the logic block. Content for the other answers is under “Any other answer”."
+  },
+  "protocolBuilder.logicBlock.attribute": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the control where a researcher chooses the attribute whose answer (or number) decides which content of a logic block is shown."
+  },
+  "protocolBuilder.logicBlock.dropConfirm": {
+    "defaultMessage": "Delete content",
+    "description": "Button that confirms a change to a logic block that deletes the content of some of its versions."
+  },
+  "protocolBuilder.logicBlock.dropDescription": {
+    "defaultMessage": "This change removes {count, plural, one {a version that contains content} other {# versions that contain content}}. The content is deleted with {count, plural, one {it} other {them}}.",
+    "description": "Explanation in the dialog that asks a researcher to confirm a change to a logic block. count is how many versions with content the change removes. A version is one of the alternative contents of the logic block."
+  },
+  "protocolBuilder.logicBlock.dropTitle": {
+    "defaultMessage": "Delete content?",
+    "description": "Title of the dialog that asks a researcher to confirm a change to a logic block that removes versions that contain content. A version is one of the alternative contents of the logic block."
+  },
+  "protocolBuilder.logicBlock.emptyBranch": {
+    "defaultMessage": "Nothing is shown.",
+    "description": "Shown in a branch of a logic block that has no content: in that case, the participant sees nothing in its place."
+  },
+  "protocolBuilder.logicBlock.formAnswersCleared": {
+    "defaultMessage": "When the participant submits the form, the answers to any fields in versions that are not shown are cleared.",
+    "description": "Note in the settings of a logic block in a form. A version is one of the alternative contents of the logic block, of which the participant is shown one."
+  },
+  "protocolBuilder.logicBlock.remove": {
+    "defaultMessage": "Delete logic block",
+    "description": "Button that deletes a logic block from the text, with all of its content."
+  },
+  "protocolBuilder.logicBlock.removeDescription": {
+    "defaultMessage": "This logic block contains content, which is deleted with it.",
+    "description": "Explanation in the dialog that asks a researcher to confirm deleting a logic block that contains content, such as text or fields, in its versions."
+  },
+  "protocolBuilder.logicBlock.removeTitle": {
+    "defaultMessage": "Delete logic block?",
+    "description": "Title of the dialog that asks a researcher to confirm deleting a logic block that contains content."
+  },
+  "protocolBuilder.logicBlock.title": {
+    "defaultMessage": "Logic block",
+    "description": "Name of a logic block: content in a text that is shown only in some cases. Heading of the block in the text, and of the popover where its settings are edited."
   },
   "protocolBuilder.multiSelect.emptyState": {
     "defaultMessage": "No items available.",
@@ -4599,9 +4887,9 @@
     "defaultMessage": "Filter network",
     "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on, written as an instruction (“filter the network”). A stage is one step of an interview."
   },
-  "protocolBuilder.nodeLabel.textPlaceholder": {
-    "defaultMessage": "Write the label, and insert values and logic from the toolbar…",
-    "description": "Placeholder inside the text field where a researcher writes the label shown on every node of a node type. The toolbar above the text has a button that inserts a value, such as one of the node’s attributes, and one that inserts logic, such as an “If”."
+  "protocolBuilder.nodeLabel.placeholder": {
+    "defaultMessage": "Write the label, and insert attributes from the toolbar…",
+    "description": "Placeholder inside the text field where a researcher writes the label shown on every node of a node type. The Attribute button in the toolbar above the text puts in one of the node’s attributes, or a dynamic attribute: a word or phrase that reads differently for different nodes."
   },
   "protocolBuilder.nodePanels.addLabel": {
     "defaultMessage": "Add new panel",
@@ -4769,7 +5057,7 @@
   },
   "protocolBuilder.operators.exists": {
     "defaultMessage": "exists",
-    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is present in the interview network at all. Compares no value."
+    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is there at all: a node or edge type that is present in the interview network, or an attribute that has an answer (\"Age exists\"). Compares no value."
   },
   "protocolBuilder.operators.greaterThan": {
     "defaultMessage": "is greater than",
@@ -4797,7 +5085,7 @@
   },
   "protocolBuilder.operators.notExists": {
     "defaultMessage": "does not exist",
-    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is absent from the interview network. Compares no value."
+    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is not there: a node or edge type that is absent from the interview network, or an attribute that has no answer (\"Age does not exist\"). Compares no value."
   },
   "protocolBuilder.operators.optionsEquals": {
     "defaultMessage": "number of selected options is exactly",
@@ -4875,10 +5163,6 @@
     "defaultMessage": "Create the content that participants will see on this stage.",
     "description": "Description of the section where a researcher writes a page a participant reads instead of doing a task."
   },
-  "protocolBuilder.pageContent.contentHint": {
-    "defaultMessage": "Use the toolbar to add headings and format text, as well as to insert images, audio and video.",
-    "description": "Guidance under the label of the text editor where a researcher writes a page a participant reads. The toolbar is the row of buttons above the text; it formats the text and inserts media files between its paragraphs."
-  },
   "protocolBuilder.pageContent.contentLabel": {
     "defaultMessage": "Rich Text",
     "description": "Label of the text editor where a researcher writes a page a participant reads. Rich text is text that can hold headings, formatting and media files, as opposed to plain text."
@@ -4890,6 +5174,10 @@
   "protocolBuilder.pageContent.pageTitle": {
     "defaultMessage": "Content",
     "description": "Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task."
+  },
+  "protocolBuilder.pageContent.toolbarHint": {
+    "defaultMessage": "Use the toolbar to format the text, and to insert attributes, logic blocks, images, audio and video. A logic block contains content that is shown only in some cases.",
+    "description": "Guidance under the label of the text editor where a researcher writes a page a participant reads. The toolbar is the row of buttons above the text. An attribute is a value that the interview fills in, such as the participant’s name; a logic block is content shown only when its rules are met, or only for some answers."
   },
   "protocolBuilder.pedigree.completenessClearConfirm": {
     "defaultMessage": "Remove the requirement",
@@ -5327,10 +5615,6 @@
     "defaultMessage": "Choose the node type before choosing its attributes.",
     "description": "Shown in place of the person attributes section’s description while no node type has been chosen for the stage."
   },
-  "protocolBuilder.pedigree.personFormAddLabel": {
-    "defaultMessage": "Create new person field",
-    "description": "Button that opens the dialog for adding one more question about each family member."
-  },
   "protocolBuilder.pedigree.personFormClearConfirm": {
     "defaultMessage": "Remove the fields",
     "description": "Button that confirms switching off the additional person fields and discarding them."
@@ -5346,14 +5630,6 @@
   "protocolBuilder.pedigree.personFormDescription": {
     "defaultMessage": "Optionally ask more about each family member. These questions come last in the side panel, after the interface’s own questions about the person and how they are related.",
     "description": "Description of the additional person fields section. The side panel is where the participant describes each person they add. The interface’s own questions are the person’s name, gender identity (when the stage asks it) and sex assigned at birth, and then how the person is related to others in the family."
-  },
-  "protocolBuilder.pedigree.personFormEmptyState": {
-    "defaultMessage": "No fields yet. Create one to ask something more about each family member.",
-    "description": "Shown in place of the additional person fields list while it asks nothing yet."
-  },
-  "protocolBuilder.pedigree.personFormFieldLabel": {
-    "defaultMessage": "Form fields",
-    "description": "Label of the ordered list of extra questions asked about each family member."
   },
   "protocolBuilder.pedigree.personFormReservedReason": {
     "defaultMessage": "This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.",
@@ -8286,6 +8562,10 @@
   "protocolBuilder.variableParameters.settingsRefused": {
     "defaultMessage": "These settings cannot be saved as they are written. Check the values below.",
     "description": "Refusal shown over the whole block of settings an input control takes, when the protocol refuses them for a reason the editor has no wording of its own for. The settings themselves are listed underneath it."
+  },
+  "protocolBuilder.variablePicker.createHint": {
+    "defaultMessage": "Type a name in the search box to create a new attribute.",
+    "description": "Shown at the bottom of the attribute list while the search box is empty, where this control allows a new attribute to be created. Typing a name adds a row that creates an attribute with that name."
   },
   "protocolBuilder.variablePicker.createRow": {
     "defaultMessage": "Create “{attributeName}”",

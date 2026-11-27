@@ -8,6 +8,7 @@ import {
   testTypeId,
   testVariableId,
 } from '../../../__tests__/testIds.ts';
+import { formOf } from '../../../testing/fixtures.ts';
 import {
   createBaseProtocol,
   localized,
@@ -148,6 +149,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               type: 'nonexistent',
             },
             form: {
+              content: localized('Tell us about it.'),
               fields: [],
             },
           },
@@ -177,16 +179,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'egoForm1',
             type: 'EgoForm',
             label: localized('Ego Form'),
-            introductionPanel: { title: localized('Ego Form Intro') },
-            form: {
-              fields: [
-                {
-                  id: 'field-1',
-                  variable: 'egoName',
-                  prompt: localized('Enter your name'),
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Enter your name'),
+              },
+            ]),
           },
         ],
       };
@@ -209,16 +208,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'egoForm1',
             type: 'EgoForm',
             label: localized('Ego Form'),
-            introductionPanel: { title: localized('Ego Form Intro') },
-            form: {
-              fields: [
-                {
-                  id: 'field-1',
-                  variable: 'egoName',
-                  prompt: localized('Enter your name'),
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Enter your name'),
+              },
+            ]),
           },
         ],
       };
@@ -246,7 +242,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             ...baseValidProtocol.stages[0],
             form: {
               title: localized('Add person'),
-              fields: [
+              ...formOf([
                 {
                   id: 'field-1',
                   variable: 'name',
@@ -257,7 +253,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                   variable: 'age',
                   prompt: localized('Enter age'),
                 },
-              ],
+              ]),
             },
           },
         ],
@@ -275,13 +271,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             ...baseValidProtocol.stages[0],
             form: {
               title: localized('Add person'),
-              fields: [
+              ...formOf([
                 {
                   id: 'field-1',
                   variable: 'nonexistentVariable',
                   prompt: localized('Enter something'),
                 },
-              ],
+              ]),
             },
           },
         ],
@@ -315,21 +311,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'egoForm1',
             type: 'EgoForm',
             label: localized('Ego Form'),
-            introductionPanel: { title: localized('Ego Form Intro') },
-            form: {
-              fields: [
-                {
-                  id: 'field-1',
-                  variable: 'egoName',
-                  prompt: localized('Enter your name'),
-                },
-                {
-                  id: 'field-2',
-                  variable: 'egoAge',
-                  prompt: localized('Enter your age'),
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Enter your name'),
+              },
+              {
+                id: 'field-2',
+                variable: 'egoAge',
+                prompt: localized('Enter your age'),
+              },
+            ]),
           },
         ],
       };
@@ -348,16 +341,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'egoForm1',
             type: 'EgoForm',
             label: localized('Ego Form'),
-            introductionPanel: { title: localized('Ego Form Intro') },
-            form: {
-              fields: [
-                {
-                  id: 'field-1',
-                  variable: 'nonexistentEgoVariable',
-                  prompt: localized('Enter something'),
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: 'field-1',
+                variable: 'nonexistentEgoVariable',
+                prompt: localized('Enter something'),
+              },
+            ]),
           },
         ],
       };
@@ -394,20 +384,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               entity: 'edge',
               type: 'knows',
             },
-            form: {
-              fields: [
-                {
-                  id: 'field-1',
-                  variable: 'closeness',
-                  prompt: localized('How close are you?'),
-                },
-                {
-                  id: 'field-2',
-                  variable: 'duration',
-                  prompt: localized('How long have you known them?'),
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: 'field-1',
+                variable: 'closeness',
+                prompt: localized('How close are you?'),
+              },
+              {
+                id: 'field-2',
+                variable: 'duration',
+                prompt: localized('How long have you known them?'),
+              },
+            ]),
           },
         ],
       };
@@ -430,13 +418,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             },
             form: {
               title: localized('Add person'),
-              fields: [
+              ...formOf([
                 {
                   id: 'field-1',
                   variable: 'department', // This variable exists on 'colleague' not 'person'
                   prompt: localized('Enter department'),
                 },
-              ],
+              ]),
             },
           },
         ],
@@ -468,6 +456,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Duplicate Stage'),
             form: {
               ...stage.form,
+              content: formOf([{ id: testId('copy-field') }]).content,
               fields: stage.form.fields.map((field) => ({
                 ...field,
                 id: testId('copy-field'),
@@ -1143,13 +1132,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           subject: { entity: 'node', type: 'person' },
           form: {
             title: localized('Add person'),
-            fields: [
+            ...formOf([
               {
                 id: 'field-1',
                 variable: 'name',
                 prompt: localized('Enter name'),
               },
-            ],
+            ]),
           },
           prompts: [
             {
@@ -1207,13 +1196,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             },
             form: {
               title: localized('Add person'),
-              fields: [
+              ...formOf([
                 {
                   id: 'field-1',
                   variable: 'name',
                   prompt: localized('Enter name'),
                 },
-              ],
+              ]),
             },
             prompts: [
               {
@@ -1249,13 +1238,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             },
             form: {
               title: localized('Add person'),
-              fields: [
+              ...formOf([
                 {
                   id: 'field-1',
                   variable: 'name',
                   prompt: localized('Enter name'),
                 },
-              ],
+              ]),
             },
             prompts: [
               {
@@ -2610,13 +2599,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             },
             form: {
               title: localized('Add person'),
-              fields: [
+              ...formOf([
                 {
                   id: 'field-1',
                   variable: 'name',
                   prompt: localized('Enter name'),
                 },
-              ],
+              ]),
             },
             prompts: [
               {
@@ -2668,13 +2657,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             },
             form: {
               title: localized('Add person'),
-              fields: [
+              ...formOf([
                 {
                   id: 'field-1',
                   variable: 'nonexistentVariable', // Error 2: Invalid form field variable
                   prompt: localized('Enter something'),
                 },
-              ],
+              ]),
             },
             prompts: [
               {

@@ -9,6 +9,7 @@ import {
   type RichTextAssetBlockViewProps,
   type RichTextAssetBlocks,
 } from '../richText/assetBlockNode';
+import { blockBoxProps } from '../richText/blockFrames';
 import RichTextEditorField from '../RichTextEditor';
 
 export type FieldProps = ComponentProps<typeof RichTextEditorField>;
@@ -43,6 +44,8 @@ function View({
   active,
   update,
   remove,
+  resizeHandle,
+  resizing,
 }: RichTextAssetBlockViewProps) {
   return (
     <div
@@ -52,6 +55,15 @@ function View({
       data-active={String(active)}
     >
       <output data-testid="attributes">{JSON.stringify(attributes)}</output>
+      <div
+        data-testid="picture"
+        data-resizing={
+          resizing === undefined ? undefined : String(resizing.size)
+        }
+        {...blockBoxProps(true)}
+      >
+        {resizeHandle}
+      </div>
       <div {...assetBlockControlsProps}>
         <button type="button" onClick={() => update({ size: 'large' })}>
           Make large

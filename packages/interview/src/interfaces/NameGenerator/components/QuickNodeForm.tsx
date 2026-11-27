@@ -177,7 +177,10 @@ const QuickNodeForm = ({
         };
       }
 
-      const patchResult = formValuesToAttributePatch(values, [targetVariable]);
+      const patchResult = formValuesToAttributePatch(values, {
+        fields: [targetVariable],
+        shown: new Set([targetVariable]),
+      });
       if (!patchResult.success) {
         return {
           success: false,

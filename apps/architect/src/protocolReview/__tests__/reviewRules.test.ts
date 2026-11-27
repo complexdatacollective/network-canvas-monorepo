@@ -9,7 +9,6 @@ import { editProtocol, protocolReplacement, recordFix } from '../protocolFix';
 import {
   makeProtocol,
   op,
-  WELCOME_STAGE_ID,
   NAMES_STAGE_ID,
   NAMES_PROMPT_ID,
   FREQ,
@@ -192,20 +191,20 @@ describe('F: the preview shows every text change a fix makes', () => {
   it('shows a new localized text, which has nothing now', () => {
     const protocol = makeProtocol();
     const { operations } = recordFix(protocol, [
-      op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel`, {
-        en: 'Before you start',
+      op('set', `/stages/${NAMES_STAGE_ID}/minNodesNotice`, {
+        en: 'Name at least two people',
       }),
     ]);
     expect(describeFixTextEdits(protocol, operations)).toEqual([
       {
-        path: `/stages/${WELCOME_STAGE_ID}/introductionPanel/en`,
+        path: `/stages/${NAMES_STAGE_ID}/minNodesNotice/en`,
         now: null,
-        after: 'Before you start',
+        after: 'Name at least two people',
         locale: 'en',
         otherTranslations: [],
         markdown: false,
-        singleLine: false,
-        textPath: ['stages', 0, 'introductionPanel'],
+        singleLine: true,
+        textPath: ['stages', 1, 'minNodesNotice'],
         kind: 'text',
         editable: true,
       },

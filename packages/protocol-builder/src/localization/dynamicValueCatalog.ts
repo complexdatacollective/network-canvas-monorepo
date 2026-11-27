@@ -3,7 +3,6 @@ import {
   type DynamicValueRole,
   type DynamicValueSiteContext,
   dynamicValueNameFor,
-  dynamicValueNamesIn,
   dynamicValueStatus,
   dynamicValueUnshowableReason,
   FALSE_CASE,
@@ -50,7 +49,9 @@ export type DynamicValueChoice = Readonly<{
   role: DynamicValueRole | undefined;
   /** The attribute's id, or the interview value's key; empty for a label. */
   variableId: string;
-  /** The codebook's name for the attribute; undefined for an interview value. */
+  /**
+   * The codebook's name for the attribute; undefined for an interview value.
+   */
   variableName: string | undefined;
   variableType: string;
   /** Whether it can be missing, so text shows it only when it is not. */
@@ -298,26 +299,3 @@ export const dynamicValueChoices = (
  */
 export const isFlagChoice = (choice: DynamicValueChoice): boolean =>
   choice.kind === 'participant' || choice.kind === 'condition';
-
-/**
- * Every value name the text in `value` uses, anywhere in it: what keeps a
- * condition needed. Over-counting is safe; a condition is only ever dropped
- * when no text names it.
- */
-export const dynamicValueNamesUsedIn = (
-  value: unknown,
-  names: Set<string> = new Set(),
-): Set<string> => {
-  if (typeof value === 'string') {
-    if (value.includes('{')) {
-      for (const name of dynamicValueNamesIn(value)) names.add(name);
-    }
-  } else if (Array.isArray(value)) {
-    for (const item of value) dynamicValueNamesUsedIn(item, names);
-  } else if (isRecord(value)) {
-    for (const item of Object.values(value)) {
-      dynamicValueNamesUsedIn(item, names);
-    }
-  }
-  return names;
-};

@@ -28,6 +28,7 @@ export { default as Shell, type NavigationOrientation } from './Shell';
 export { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
 export {
   default as ProtocolField,
+  ProtocolFieldControl,
   type ProtocolFieldDefinition,
 } from './forms/ProtocolField';
 export { InterfaceTextOverlay } from './localization/InterfaceTextOverlay';

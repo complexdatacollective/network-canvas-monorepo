@@ -5,6 +5,9 @@
  */
 @import '@codaco/tailwind-config/fresco.css';
 @import '@codaco/fresco-ui/styles.css';
+/* Architect's components draw protocol-builder's (the attribute pill among
+   them), whose utilities live in that package's source. */
+@import '@codaco/protocol-builder/styles.css';
 @import '../src/styles/architect-theme.css';
 
 @layer base {

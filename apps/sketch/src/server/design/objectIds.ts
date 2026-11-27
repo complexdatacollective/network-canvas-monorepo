@@ -5,8 +5,10 @@ import {
   deterministicVariableId,
   type ProtocolObjectId,
   renameCodebookIds,
+  renameFieldBlocks,
   stageSchema,
 } from '@codaco/protocol-validation';
+import { isRecord, valueAtPath } from '@codaco/shared-consts';
 
 // The namespace of every id Sketch gives a protocol object. It must never
 // change: a different namespace gives a design compiled again a different
@@ -26,8 +28,23 @@ const variableIdIn = deterministicVariableId(SKETCH_ID_NAMESPACE);
 export const sketchStageId = (name: string): ProtocolObjectId =>
   sketchObjectId(`stage:${name}`);
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+/**
+ * Points each field block in the document of the form at `formPath` (its
+ * `content`, in each language) at the id `renames` gives its field, with
+ * protocol-validation's rename, which renames every block in one pass.
+ */
+const renameFieldBlocksOf = (
+  stage: Record<string, unknown>,
+  formPath: readonly (string | number)[],
+  renames: ReadonlyMap<string, string>,
+): void => {
+  const content = valueAtPath(stage, [...formPath, 'content']);
+  if (!isRecord(content)) return;
+  for (const [locale, message] of Object.entries(content)) {
+    if (typeof message !== 'string') continue;
+    Reflect.set(content, locale, renameFieldBlocks(message, renames));
+  }
+};
 
 /**
  * Replaces the id of every marked object inside `stages` other than a stage
@@ -35,30 +52,45 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
  * compiler gives these objects readable ids that repeat from stage to stage
  * (every stage's first prompt is `p1`) and copies filters into several
  * places, so the ids are only made unique here, once the stages are built.
- * Stage ids, which skip logic and the Narrative Pedigree refer to, are left
- * as they are.
+ * A form's document names its fields by id, so its field blocks are given
+ * the new ids too. Stage ids, which skip logic and the Narrative Pedigree
+ * refer to, are left as they are.
  */
 export const assignNestedObjectIds = (
   stages: readonly Record<string, unknown>[],
 ): void => {
   for (const stage of stages) {
-    for (const { path, kind } of collectProtocolObjectIdsFromSchema(
+    // The new id of each field, by the path of its form.
+    const fieldRenames = new Map<
+      string,
+      { formPath: readonly (string | number)[]; renames: Map<string, string> }
+    >();
+    for (const { id, path, kind } of collectProtocolObjectIdsFromSchema(
       stageSchema,
       stage,
     )) {
       if (kind === 'stage') continue;
       const key = path.at(-1);
-      let holder: unknown = stage;
-      for (const segment of path.slice(0, -1)) {
-        holder = isObject(holder) ? Reflect.get(holder, segment) : undefined;
-      }
-      if (isObject(holder) && key !== undefined) {
-        Reflect.set(
-          holder,
-          key,
-          sketchObjectId(`${String(stage.id)}${JSON.stringify(path)}`),
+      const holder = valueAtPath(stage, path.slice(0, -1));
+      if (isRecord(holder) && key !== undefined) {
+        const newId = sketchObjectId(
+          `${String(stage.id)}${JSON.stringify(path)}`,
         );
+        Reflect.set(holder, key, newId);
+        if (kind === 'formField') {
+          // A field's id is at `<form>.fields.<index>.id`.
+          const formPath = path.slice(0, -3);
+          const form = fieldRenames.get(JSON.stringify(formPath)) ?? {
+            formPath,
+            renames: new Map<string, string>(),
+          };
+          form.renames.set(id, newId);
+          fieldRenames.set(JSON.stringify(formPath), form);
+        }
       }
+    }
+    for (const { formPath, renames } of fieldRenames.values()) {
+      renameFieldBlocksOf(stage, formPath, renames);
     }
   }
 };
@@ -116,6 +148,10 @@ const OPTION_ID_VARIABLE_TYPES: ReadonlySet<unknown> = new Set([
   'ordinal',
 ]);
 
+/** The entity types under a codebook's `node` or `edge`. */
+const entitiesOf = (entity: unknown): unknown[] =>
+  isRecord(entity) ? Object.values(entity) : [];
+
 /**
  * Gives every option of a categorical or ordinal variable of `protocol` an
  * id named by its variable's id and its value, so compiling one design twice
@@ -125,26 +161,24 @@ const OPTION_ID_VARIABLE_TYPES: ReadonlySet<unknown> = new Set([
  */
 export const assignOptionIds = (protocol: Record<string, unknown>): void => {
   const { codebook } = protocol;
-  if (!isObject(codebook)) return;
-  const entitiesOf = (entity: unknown): unknown[] =>
-    isObject(entity) ? Object.values(entity) : [];
+  if (!isRecord(codebook)) return;
   const owners = [
     codebook.ego,
     ...entitiesOf(codebook.node),
     ...entitiesOf(codebook.edge),
   ];
   for (const owner of owners) {
-    if (!isObject(owner) || !isObject(owner.variables)) continue;
+    if (!isRecord(owner) || !isRecord(owner.variables)) continue;
     for (const [variableId, variable] of Object.entries(owner.variables)) {
       if (
-        !isObject(variable) ||
+        !isRecord(variable) ||
         !OPTION_ID_VARIABLE_TYPES.has(variable.type) ||
         !Array.isArray(variable.options)
       ) {
         continue;
       }
       variable.options = variable.options.map((option: unknown) =>
-        isObject(option)
+        isRecord(option)
           ? {
               id: sketchObjectId(
                 `option:${variableId}/${JSON.stringify(option.value)}`,

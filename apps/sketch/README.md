@@ -41,8 +41,9 @@ steps. They are the five rows the generating screen shows
    participant-facing text is a localized string with one translation. When
    Network Canvas supplies no interface text in that language, its English
    interface text is kept under the declared language and the researcher
-   notes say it needs translating. Only Ego Forms have an
-   introduction panel, as schema 9 requires. Instead, the compiler puts an
+   notes say it needs translating. Each form is one document that
+   places its fields among its text. Only an Ego Form's document starts with a
+   heading and an introduction. For other stages, the compiler puts an
    Information screen explaining the task before the first stage of each
    new kind of task (`intros.ts`), shown exactly when that stage is, unless
    the design already has an instructions screen there. It ends the interview

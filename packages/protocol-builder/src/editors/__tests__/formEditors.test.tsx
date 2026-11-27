@@ -62,19 +62,14 @@ const FORM_EDITORS: FormEditorCase[] = [
     stageId: 'information-1',
     editor: informationStageEditor,
     sections: ['Content', 'Skip logic', 'Interviewer guidance'],
-    ownedKeys: ['conditions', 'content', 'label'],
+    ownedKeys: ['conditions', 'content', 'dynamicAttributes', 'label'],
   },
   {
     interfaceName: 'EgoForm',
     stageId: 'ego-form-1',
     editor: egoFormStageEditor,
-    sections: [
-      'Task introduction',
-      'Form configuration',
-      'Skip logic',
-      'Interviewer guidance',
-    ],
-    ownedKeys: ['conditions', 'form', 'introductionPanel', 'label'],
+    sections: ['Form', 'Skip logic', 'Interviewer guidance'],
+    ownedKeys: ['conditions', 'dynamicAttributes', 'form', 'label'],
   },
   {
     interfaceName: 'AlterForm',
@@ -83,11 +78,11 @@ const FORM_EDITORS: FormEditorCase[] = [
     sections: [
       'Node setup',
       'Filter network',
-      'Form configuration',
+      'Form',
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['conditions', 'form', 'label', 'subject'],
+    ownedKeys: ['conditions', 'dynamicAttributes', 'form', 'label', 'subject'],
   },
   {
     interfaceName: 'AlterEdgeForm',
@@ -96,11 +91,11 @@ const FORM_EDITORS: FormEditorCase[] = [
     sections: [
       'Edge setup',
       'Filter network',
-      'Form configuration',
+      'Form',
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['conditions', 'form', 'label', 'subject'],
+    ownedKeys: ['conditions', 'dynamicAttributes', 'form', 'label', 'subject'],
   },
 ];
 

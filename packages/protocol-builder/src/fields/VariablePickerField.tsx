@@ -1,12 +1,5 @@
 import { Combobox } from '@base-ui/react/combobox';
-import {
-  Check,
-  ChevronsUpDown,
-  Info,
-  Plus,
-  SearchIcon,
-  TriangleAlert,
-} from 'lucide-react';
+import { ChevronsUpDown } from 'lucide-react';
 import {
   AnimatePresence,
   motion,
@@ -14,12 +7,10 @@ import {
   usePresenceData,
 } from 'motion/react';
 import {
-  type ComponentPropsWithRef,
   type FocusEvent,
   type ReactNode,
   useCallback,
   useId,
-  useMemo,
   useState,
 } from 'react';
 
@@ -28,34 +19,24 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { comboboxTriggerVariants } from '@codaco/fresco-ui/form/fields/Combobox/shared';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { getInputState } from '@codaco/fresco-ui/form/utils/getInputState';
 import { useComboboxTriggerEscape } from '@codaco/fresco-ui/hooks/useComboboxTriggerEscape';
-import Surface from '@codaco/fresco-ui/layout/Surface';
 import { springs } from '@codaco/fresco-ui/motion';
-import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
-import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import Spinner from '@codaco/fresco-ui/Spinner';
-import { dropdownItemVariants } from '@codaco/fresco-ui/styles/controlVariants';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { fuzzyFilter } from '@codaco/fresco-ui/utils/fuzzyMatch';
 import type { VariableType } from '@codaco/protocol-validation';
-import {
-  normalizeCodebookName,
-  normalizeForComparison,
-} from '@codaco/shared-consts';
 
 import { createVariableRefused } from '../codebook/useCodebookVariableEdits.ts';
-import { variableTypeLabel } from '../codebook/variableTypeLabels.ts';
-import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
-import { isVariableType } from '../rules/operators.ts';
-import AttributePill, { AttributeTypeMark } from './AttributePill.tsx';
-import {
-  variableNameRefusal,
-  type VariableNameScope,
-} from './variableNameRules.ts';
+import type { VariableNameScope } from './variableNameRules.ts';
+import VariablePickerList, {
+  allPickerOptions,
+  emptyAttributeListMessage,
+  optionPillProps,
+  typeDescriptionFor,
+  VARIABLE_PICKER_POPUP_MARKER,
+  type VariablePickerListProps,
+} from './VariablePickerList.tsx';
+import { VariablePill } from './VariablePill.tsx';
 
 export type VariablePickerOption = Readonly<{
   value: string;
@@ -87,6 +68,13 @@ export type VariablePickerOption = Readonly<{
    * most need to read.
    */
   unavailableForType?: boolean;
+  /**
+   * A short note under the attribute, beside a warning dot, and read as part
+   * of its name, after the attribute's own: that the text being written
+   * requires it and does not include it yet, say. Formatted by the caller, as
+   * `unavailableReason` is.
+   */
+  marker?: string;
 }>;
 
 export type VariablePickerFieldProps = CreateFormFieldProps<
@@ -147,6 +135,14 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
      * the researcher binds it, and left alone when the stage is merely opened.
      */
     onSelectExisting?: (variableId: string) => void;
+    /** See `VariablePickerList`. */
+    groups?: VariablePickerListProps['groups'];
+    /** See `VariablePickerList`. */
+    unavailableDisplay?: VariablePickerListProps['unavailableDisplay'];
+    /** See `VariablePickerList`. */
+    actions?: VariablePickerListProps['actions'];
+    /** See `VariablePickerList`; also draws the held attribute. */
+    optionPill?: VariablePickerListProps['optionPill'];
   }
 >;
 
@@ -157,93 +153,12 @@ const messages = defineMessages({
     description:
       'Shown inside the attribute control while no attribute has been chosen. Pressing the control opens a list of the attributes to choose from. An attribute is a variable that the protocol’s codebook defines for a node type, an edge type or the interview participant.',
   },
-  emptyState: {
-    id: 'protocolBuilder.variablePicker.emptyState',
-    defaultMessage: 'No attributes are available to choose from.',
-    description:
-      'Shown in place of the control when nothing can be picked — the caller offered no attributes at all and does not allow one to be created. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead.',
-  },
-  searchPlaceholder: {
-    id: 'protocolBuilder.variablePicker.searchPlaceholder',
-    defaultMessage: 'Find or create an attribute…',
-    description:
-      'Placeholder in the search box at the top of the attribute list, where this control allows a new attribute to be created.',
-  },
-  searchOnlyPlaceholder: {
-    id: 'protocolBuilder.variablePicker.searchOnlyPlaceholder',
-    defaultMessage: 'Find an attribute…',
-    description:
-      'Placeholder in the search box at the top of the attribute list, where this control only chooses from attributes that already exist.',
-  },
-  unavailableHeading: {
-    id: 'protocolBuilder.variablePicker.unavailableHeading',
-    defaultMessage: 'Not available here',
-    description:
-      'Heading in the attribute list, above the attributes that exist but cannot be chosen for this setting. Choosing one of them shows a sentence saying why.',
-  },
-  noneAvailable: {
-    id: 'protocolBuilder.variablePicker.noneAvailable',
-    defaultMessage:
-      'None of the attributes below can be used here. Choose one to see why.',
-    description:
-      'Shown at the top of the attribute list when the codebook has attributes but none of them can be chosen for this setting, and this control does not allow an attribute to be created. Choosing one of the attributes shows a sentence saying why it cannot be used.',
-  },
-  noneAvailableCreate: {
-    id: 'protocolBuilder.variablePicker.noneAvailableCreate',
-    defaultMessage:
-      'None of the attributes below can be used here. Type a name above to create a new attribute, or choose one below to see why it cannot be used.',
-    description:
-      'Shown at the top of the attribute list when the codebook has attributes but none of them can be chosen for this setting, and this control allows a new attribute to be created from the search box above the list.',
-  },
   noneAvailableField: {
     id: 'protocolBuilder.variablePicker.noneAvailableField',
     defaultMessage:
       'None of the existing attributes can be used here. Open the list to see why.',
     description:
       'Shown under an attribute control while nothing is chosen, when the codebook has attributes but none of them can be chosen for this setting. Opening the list shows each attribute with the reason it cannot be used.',
-  },
-  noMatches: {
-    id: 'protocolBuilder.variablePicker.noMatches',
-    defaultMessage: 'No attributes match “{query}”.',
-    description:
-      'Shown in the attribute list when no attribute matches what the researcher typed in the search box, and this control does not allow an attribute to be created. query is what they typed and is not translated.',
-  },
-  firstAttribute: {
-    id: 'protocolBuilder.variablePicker.firstAttribute',
-    defaultMessage:
-      'Nothing has been recorded about this type yet. Type a name above to create the first attribute, and see the <docs>documentation on attribute naming</docs> for what makes a good one.',
-    description:
-      'Shown in the attribute list when the protocol’s codebook contains nothing this control can offer and the researcher may create an attribute. The text inside the docs tag is the words of a link to the Network Canvas documentation and must read as part of the sentence.',
-  },
-  createRow: {
-    id: 'protocolBuilder.variablePicker.createRow',
-    defaultMessage: 'Create “{attributeName}”',
-    description:
-      'First row of the attribute list, offering to add an attribute under the name the researcher has typed into the search box. attributeName is what they typed and is not translated.',
-  },
-  createRowBusy: {
-    id: 'protocolBuilder.variablePicker.createRowBusy',
-    defaultMessage: 'Creating “{attributeName}”…',
-    description:
-      'The first row of the attribute list while the attribute the researcher asked for is being added to the codebook — the protocol’s definition of what an interview records. attributeName is the name they typed and is not translated.',
-  },
-  createRowType: {
-    id: 'protocolBuilder.variablePicker.createRowType',
-    defaultMessage: 'New {typeName} attribute',
-    description:
-      'Second line of the row that creates an attribute, naming the kind of answer the new attribute will record. typeName is the translated name of that kind, such as Boolean, Text or Date, as the codebook editor names it.',
-  },
-  createRowUntyped: {
-    id: 'protocolBuilder.variablePicker.createRowUntyped',
-    defaultMessage: 'New attribute',
-    description:
-      'Second line of the row that creates an attribute, when the kind of answer that the new attribute will record is chosen later.',
-  },
-  createRowInvalidName: {
-    id: 'protocolBuilder.variablePicker.createRowInvalidName',
-    defaultMessage: 'An attribute cannot be named “{attributeName}”',
-    description:
-      'First row of the attribute list, switched off because the name typed into the search box cannot be used. A second line below it gives the reason. attributeName is what the researcher typed and is not translated.',
   },
   /**
    * Names a stored choice that is not among the attributes this picker was
@@ -343,78 +258,6 @@ type FieldNotice =
    * the researcher anything.
    */
   | Readonly<{ kind: 'failed' }>;
-
-/**
- * The value of the create row. No attribute id can be it: a protocol mints ids
- * from printable characters, and this one starts with a NUL.
- */
-const CREATE_VALUE = '\u0000create';
-
-/**
- * Marks the popup, so the field's blur handling and tests can tell the
- * picker's own popup from any dialog it is opened inside.
- */
-const POPUP_MARKER = 'data-attribute-picker-popup';
-
-const ITEM_CLASSES = cx(
-  dropdownItemVariants(),
-  'items-start gap-2 py-1.5',
-  // An unavailable row is reachable with the arrow keys, so it keeps the
-  // highlight, but it does not invite a click with a pointer cursor.
-  'aria-disabled:cursor-default',
-);
-
-/**
- * The link inside the invitation to make a first attribute.
- *
- * A tag inside the sentence rather than markup around a fragment of it, so a
- * translator moves the whole clause with its link. Defined once at module
- * level: a tag function written inline is a component defined during render.
- */
-const firstAttributeTags = {
-  docs: (chunks: ReactNode) => (
-    <NativeLink
-      key="docs"
-      href={protocolAuthoringLinks.attributeNaming}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      {chunks}
-    </NativeLink>
-  ),
-};
-
-/**
- * The English name of a kind of answer, for screen-reader text, which stays
- * English in every language. Written out rather than read from the codebook
- * editor's message descriptors: an app build compiles a descriptor's
- * `defaultMessage` to an AST, so reading it there yields no string. The names
- * match the English of `variableTypeLabels.ts`.
- */
-const ENGLISH_TYPE_NAMES: Record<VariableType, string> = {
-  text: 'Text',
-  number: 'Number',
-  boolean: 'Boolean',
-  ordinal: 'Ordinal',
-  categorical: 'Categorical',
-  scalar: 'Scalar',
-  datetime: 'Date',
-  layout: 'Layout',
-  location: 'Location',
-};
-
-const englishTypeName = (type: VariableType): string =>
-  ENGLISH_TYPE_NAMES[type] ?? type;
-
-/** What a screen reader is told about the kind of answer an attribute records. */
-const typeDescriptionFor = (type: VariableType | undefined) =>
-  type === undefined ? undefined : `Attribute type: ${englishTypeName(type)}`;
-
-/** The create that is waiting for the codebook, or that it refused. */
-type CreateState =
-  | Readonly<{ kind: 'busy'; name: string }>
-  | Readonly<{ kind: 'refused'; name: string; message: string }>
-  | undefined;
 
 /**
  * How what the trigger shows comes and goes.
@@ -519,7 +362,8 @@ function TriggerValue({
  * a pedigree slot cannot use the ones whose values do not fit. Callers list
  * every attribute and rule out the rest with an `unavailableReason` (see
  * `codebook/attributeAvailability.ts`); those are listed under "Not available
- * here", and choosing one explains why instead of choosing it.
+ * here", or in place with their reason (see `VariablePickerList`), and choosing
+ * one explains why instead of choosing it.
  *
  * The attribute a researcher wants is often the one they have only just
  * thought of, so a caller that knows what a new attribute would be for passes
@@ -538,6 +382,10 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     onBlur,
     onFocus,
     options = [],
+    groups,
+    unavailableDisplay,
+    actions,
+    optionPill,
     emptyMessage,
     nameScope,
     newVariableType,
@@ -551,14 +399,10 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     'aria-labelledby': ariaLabelledBy,
   } = props;
   const intl = useAppIntl();
-  const portalContainer = usePortalContainer();
   const scopeId = useId();
   const valueId = `${scopeId}-value`;
   const typeId = `${scopeId}-type`;
   const reasonId = `${scopeId}-reason`;
-  const listId = `${scopeId}-list`;
-  const createTitleId = `${scopeId}-create-title`;
-  const createDetailId = `${scopeId}-create-detail`;
 
   const locked = disabled || readOnly;
   const [requestedOpen, setRequestedOpen] = useState(false);
@@ -570,13 +414,6 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
    */
   const open = requestedOpen && !locked;
 
-  const [query, setQuery] = useState('');
-  /** The unavailable attribute whose reason is shown, if any. */
-  const [revealed, setRevealed] = useState<string | undefined>(undefined);
-  const [create, setCreate] = useState<CreateState>(undefined);
-  const busy = create?.kind === 'busy';
-  /** What the polite region below says: a reason, or the state of a create. */
-  const [announcement, setAnnouncement] = useState('');
   /**
    * What is left to say about the create that has just happened, held for as
    * long as the notice about it is on screen.
@@ -617,37 +454,17 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     reduced: prefersReducedMotion,
   };
 
-  const selected = options.find((option) => option.value === value);
+  const everyOption = allPickerOptions({ options, groups });
+  const selected = everyOption.find((option) => option.value === value);
   const held = value !== undefined && value !== '';
   const isMissing = held && selected === undefined;
   const heldReason = selected?.unavailableReason;
-
-  const sorted = useMemo(
-    () =>
-      options.toSorted((first, second) =>
-        first.label.localeCompare(second.label, intl.locale),
-      ),
-    [intl.locale, options],
-  );
-  const matching = useMemo(
-    () => fuzzyFilter(sorted, query, (option) => option.label, intl.locale),
-    [intl.locale, query, sorted],
-  );
-  const available = matching.filter(
+  const anyAvailable = everyOption.some(
     (option) => option.unavailableReason === undefined,
   );
-  // Attributes ruled out for a reason about this setting first, then those
-  // ruled out only for their type; each group stays in name order.
-  const unavailable = matching
-    .filter((option) => option.unavailableReason !== undefined)
-    .toSorted(
-      (first, second) =>
-        Number(first.unavailableForType === true) -
-        Number(second.unavailableForType === true),
-    );
-  const anyAvailable = options.some(
-    (option) => option.unavailableReason === undefined,
-  );
+  const anyActions =
+    (actions?.length ?? 0) > 0 ||
+    (groups ?? []).some((group) => (group.actions?.length ?? 0) > 0);
 
   /**
    * Nothing to choose, nothing to create and nothing held, which is the one
@@ -659,67 +476,17 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
    * hide it and leave no way to change it.
    */
   const nothingToDo =
-    !held && options.length === 0 && onCreateOption === undefined;
-
-  // What the codebook would be asked to store: the name as typed, trimmed and
-  // canonical. A leading space is not a different attribute, and a search of
-  // spaces alone has nothing to create.
-  const typedName = normalizeCodebookName(query);
-  /**
-   * Whether a listed attribute already goes by the typed name — asked the
-   * codebook's way, so `Name` finds `name` and a decomposed `café` finds the
-   * precomposed one. There is nothing to create under a name that is already
-   * in the list.
-   */
-  const exactMatch = useMemo(() => {
-    const typed = normalizeForComparison(typedName);
-    return options.some(
-      (option) => normalizeForComparison(option.label) === typed,
-    );
-  }, [options, typedName]);
-  const offersCreate =
-    onCreateOption !== undefined && typedName !== '' && !exactMatch;
-  /**
-   * Why the typed name cannot be created, or `undefined` while it can.
-   *
-   * Asked of the whole type rather than of the listed attributes, and against
-   * the codebook's own rule: the codebook is what refuses the write, and a row
-   * that offered a create the codebook would refuse would spend a round trip
-   * to say so.
-   */
-  const invalidName = useMemo(
-    () =>
-      offersCreate
-        ? variableNameRefusal(typedName, {
-            intl,
-            ...(nameScope === undefined ? {} : { scope: nameScope }),
-            ...(newVariableType === undefined ? {} : { type: newVariableType }),
-          })
-        : undefined,
-    [intl, nameScope, newVariableType, offersCreate, typedName],
-  );
-
-  const close = useCallback(() => {
-    setRequestedOpen(false);
-    setQuery('');
-    setRevealed(undefined);
-    setCreate(undefined);
-  }, []);
+    !held &&
+    everyOption.length === 0 &&
+    onCreateOption === undefined &&
+    !anyActions;
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
-      if (nextOpen) {
-        if (locked) return;
-        setRequestedOpen(true);
-        return;
-      }
-      // The answer decides what this list does next, so it is not dismissed
-      // while a create is with the codebook. The write completes regardless,
-      // and leaving would look like calling it off.
-      if (busy) return;
-      close();
+      if (nextOpen && locked) return;
+      setRequestedOpen(nextOpen);
     },
-    [busy, close, locked],
+    [locked],
   );
 
   const { onTriggerKeyDown } = useComboboxTriggerEscape({
@@ -727,82 +494,44 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     onOpenChange: handleOpenChange,
   });
 
-  const requestCreate = useCallback(async () => {
-    if (onCreateOption === undefined || invalidName !== undefined || busy) {
-      return;
-    }
-    const variableName = typedName;
-    setNotice(undefined);
-    // The caller may give this field the new attribute before it answers.
-    setAwaitingChoice(true);
-    setCreate({ kind: 'busy', name: variableName });
-    setAnnouncement(
-      intl.formatMessage(messages.createRowBusy, {
-        attributeName: variableName,
-      }),
-    );
-    try {
-      const outcome = await onCreateOption(variableName);
-      // A refusal is ABOUT this name, so the list stays open with it still in
-      // the search box, and the reason is shown on the row it was asked from.
-      if (outcome.status === 'refused') {
+  /**
+   * The caller's create, with what this field says about it afterwards. The
+   * list decides what happens to itself; the field keeps what is left to say
+   * once the list has closed.
+   */
+  const createOption = useCallback(
+    async (variableName: string): Promise<CreateOptionOutcome> => {
+      if (onCreateOption === undefined) return { status: 'refused' };
+      setNotice(undefined);
+      // The caller may give this field the new attribute before it answers.
+      setAwaitingChoice(true);
+      try {
+        const outcome = await onCreateOption(variableName);
+        if (outcome.status !== 'created') setAwaitingChoice(false);
+        if (outcome.status === 'unassigned') {
+          setNotice({ kind: 'unassigned', variableName });
+        }
+        return outcome;
+      } catch (error) {
+        // A caller that throws — synchronously, or by rejecting, or by
+        // answering with something that is not an outcome at all — has broken
+        // the promise `onCreateOption` makes: nothing is known to exist, and
+        // nobody has said anything about it. Said on the FIELD, because the
+        // list closes and the control the researcher acts on next is this one.
         setAwaitingChoice(false);
-        setAnnouncement(outcome.message ?? '');
-        setCreate(
-          outcome.message === undefined
-            ? undefined
-            : { kind: 'refused', name: variableName, message: outcome.message },
-        );
-        return;
+        setNotice({ kind: 'failed' });
+        throw error;
       }
-      // Every other answer means the codebook now has it, and asking for it a
-      // second time would be refused for a duplicate name the researcher never
-      // chose to ask for.
-      if (outcome.status === 'unassigned') {
-        setAwaitingChoice(false);
-        setNotice({ kind: 'unassigned', variableName });
-      }
-      setAnnouncement('');
-      close();
-    } catch {
-      // A caller that throws — synchronously, or by rejecting, or by answering
-      // with something that is not an outcome at all — has broken the promise
-      // `onCreateOption` makes: nothing is known to exist, and nobody has said
-      // anything about it. Said on the FIELD, because the list closes and the
-      // control the researcher acts on next is this one.
-      setAwaitingChoice(false);
-      setNotice({ kind: 'failed' });
-      setAnnouncement('');
-      close();
-    }
-  }, [busy, close, intl, invalidName, onCreateOption, typedName]);
+    },
+    [onCreateOption],
+  );
 
-  const handleValueChange = (
-    next: string | null,
-    details: Combobox.Root.ChangeEventDetails,
-  ) => {
-    // The list keeps its own choice out of the field: every outcome below is
-    // decided here, and Base UI is told what happened only by the value.
-    details.cancel();
-    if (busy || locked || next === null) return;
-    if (next === CREATE_VALUE) {
-      void requestCreate();
-      return;
-    }
-    const option = options.find((candidate) => candidate.value === next);
-    if (option?.unavailableReason !== undefined) {
-      // Base UI does nothing at all for a `disabled` item, so an unavailable
-      // row is only `aria-disabled`, and choosing it is answered here: nothing
-      // is selected, and the reason is shown under its pill.
-      setRevealed(option.value);
-      setAnnouncement(option.unavailableReason);
-      return;
-    }
+  const handleSelect = (next: string) => {
+    if (locked) return;
     setNotice(undefined);
     if (next !== value) setAwaitingChoice(true);
     onChange?.(next);
     onSelectExisting?.(next);
-    close();
   };
 
   /**
@@ -821,7 +550,8 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
       if (
         open ||
         (next instanceof Node && event.currentTarget.contains(next)) ||
-        (next instanceof Element && next.closest(`[${POPUP_MARKER}]`))
+        (next instanceof Element &&
+          next.closest(`[${VARIABLE_PICKER_POPUP_MARKER}]`))
       ) {
         event.stopPropagation();
         return;
@@ -845,9 +575,9 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
   const heldPill = (() => {
     if (isMissing && value !== undefined) {
       return (
-        <AttributePill
+        <VariablePill
           missing
-          className="h-9"
+          size="md"
           name={intl.formatMessage(messages.missingOptionLabel, {
             attributeId: value,
           })}
@@ -855,201 +585,85 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
       );
     }
     if (selected === undefined) return undefined;
-    return (
-      <AttributePill
-        name={selected.label}
-        type={selected.type}
-        className="h-9"
-      />
-    );
+    return <VariablePill {...optionPillProps(selected, optionPill)} />;
   })();
 
-  const attributeRow = (option: VariablePickerOption) => {
-    const isUnavailable = option.unavailableReason !== undefined;
-    const isRevealed = isUnavailable && revealed === option.value;
-    const rowTypeId = `${scopeId}-${option.value}-type`;
-    const rowReasonId = `${scopeId}-${option.value}-reason`;
-    const typeDescription = typeDescriptionFor(option.type);
-    const describedBy =
-      [
-        typeDescription === undefined ? undefined : rowTypeId,
-        isRevealed ? rowReasonId : undefined,
-      ]
-        .filter((part) => part !== undefined)
-        .join(' ') || undefined;
-    return (
-      <Combobox.Item
-        key={option.value}
-        value={option.value}
-        aria-disabled={isUnavailable || busy || undefined}
-        aria-describedby={describedBy}
-        // What choosing this row would store, and the kind of answer it
-        // records. The researcher's name for an attribute and the id the
-        // protocol files it under are different things, and the list shows
-        // only the first — so a test asserting on what a stage ends up holding
-        // has nowhere else to read it.
-        data-attribute-id={option.value}
-        data-attribute-type={option.type}
-        data-unavailable={isUnavailable || undefined}
-        data-revealed={isRevealed || undefined}
-        className={cx(ITEM_CLASSES, 'flex-col items-stretch')}
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          <span className={cx('min-w-0 flex-1', isUnavailable && 'opacity-50')}>
-            <AttributePill
-              name={option.label}
-              type={option.type}
-              className="h-9"
-            />
-          </span>
-          <Combobox.ItemIndicator className="flex size-5 shrink-0 items-center justify-center">
-            <Check aria-hidden className="size-5" />
-          </Combobox.ItemIndicator>
-        </span>
-        {typeDescription !== undefined && (
-          <span id={rowTypeId} hidden lang="en">
-            {typeDescription}
-          </span>
-        )}
-        {isRevealed && (
-          // Hidden from the row's name, which is the attribute's own name, and
-          // read as its description instead.
-          <span
-            id={rowReasonId}
-            aria-hidden
-            className="flex items-start gap-2 ps-1 pb-1 text-sm text-current/80"
-          >
-            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span className="min-w-0">{option.unavailableReason}</span>
-          </span>
-        )}
-      </Combobox.Item>
-    );
-  };
-
-  const createRow = () => {
-    if (!offersCreate) return null;
-
-    if (invalidName !== undefined) {
-      return (
-        <Combobox.Item
-          value={CREATE_VALUE}
-          aria-disabled
-          aria-labelledby={createTitleId}
-          aria-describedby={createDetailId}
-          data-create-name={typedName}
-          data-create-state="invalid"
-          className={ITEM_CLASSES}
-        >
-          <TriangleAlert
-            aria-hidden
-            className="text-warning mt-0.5 size-5 shrink-0"
-          />
-          <span className="flex min-w-0 flex-col gap-1">
-            <span id={createTitleId} className="font-semibold break-words">
-              {intl.formatMessage(messages.createRowInvalidName, {
-                attributeName: typedName,
-              })}
-            </span>
-            <span id={createDetailId} className="text-sm text-current/70">
-              {invalidName}
-            </span>
-          </span>
-        </Combobox.Item>
-      );
-    }
-
-    const typeName =
-      newVariableType === undefined
-        ? undefined
-        : variableTypeLabel(newVariableType);
-    const refusal =
-      create?.kind === 'refused' && create.name === typedName
-        ? create.message
-        : undefined;
-    return (
-      <Combobox.Item
-        value={CREATE_VALUE}
-        aria-labelledby={createTitleId}
-        aria-describedby={createDetailId}
-        aria-disabled={busy || undefined}
-        data-create-name={typedName}
-        data-create-state={
-          busy ? 'busy' : refusal === undefined ? 'offered' : 'refused'
-        }
-        className={ITEM_CLASSES}
-      >
-        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center">
-          {busy ? (
-            <Spinner size="xs" className="m-0" />
-          ) : (
-            <Plus aria-hidden className="size-5" />
-          )}
-        </span>
-        <span className="flex min-w-0 flex-col gap-1">
-          <span id={createTitleId} className="font-semibold break-words">
-            {intl.formatMessage(
-              busy ? messages.createRowBusy : messages.createRow,
-              { attributeName: typedName },
-            )}
-          </span>
-          {refusal === undefined ? (
-            <span
-              id={createDetailId}
-              className="flex items-center gap-2 text-sm text-current/70"
-            >
-              {newVariableType !== undefined &&
-                isVariableType(newVariableType) && (
-                  <AttributeTypeMark type={newVariableType} />
-                )}
-              {typeName === undefined
-                ? intl.formatMessage(messages.createRowUntyped)
-                : intl.formatMessage(messages.createRowType, {
-                    typeName: intl.formatMessage(typeName),
-                  })}
-            </span>
-          ) : (
-            <span
-              id={createDetailId}
-              className="text-destructive-ink flex items-start gap-2 text-sm"
-            >
-              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span className="min-w-0">{refusal}</span>
-            </span>
-          )}
-        </span>
-      </Combobox.Item>
-    );
-  };
-
-  /**
-   * What the list says above its rows, when it has something to say: an
-   * invitation to create the first attribute, the caller's sentence when none
-   * of the attributes can be chosen, or that nothing matches the search.
-   */
-  const listNote = (() => {
-    if (query.trim() === '') {
-      if (anyAvailable) return undefined;
-      if (options.length > 0) {
-        return intl.formatMessage(
-          onCreateOption === undefined
-            ? messages.noneAvailable
-            : messages.noneAvailableCreate,
-        );
+  const trigger = (
+    <Combobox.Trigger
+      id={id}
+      onKeyDown={onTriggerKeyDown}
+      aria-labelledby={
+        ariaLabelledBy === undefined
+          ? undefined
+          : `${ariaLabelledBy} ${valueId}`
       }
-      if (onCreateOption !== undefined) {
-        return intl.formatMessage(messages.firstAttribute, firstAttributeTags);
-      }
-      return emptyMessage ?? intl.formatMessage(messages.emptyState);
-    }
-    if (available.length === 0 && unavailable.length === 0 && !offersCreate) {
-      return intl.formatMessage(messages.noMatches, { query: query.trim() });
-    }
-    return undefined;
-  })();
-
-  const hasRows =
-    offersCreate || available.length > 0 || unavailable.length > 0;
+      aria-describedby={triggerDescribedBy}
+      aria-invalid={ariaInvalid || undefined}
+      // Not `disabled`: a disabled button cannot take focus, and a save that
+      // is refused while the form is busy sends focus here (every field is
+      // disabled for as long as a save is in flight). The list refuses to
+      // open while the field takes no answers.
+      aria-disabled={disabled || undefined}
+      aria-readonly={readOnly || undefined}
+      // Names this control as where a refused save sends focus for this
+      // field: it resolves a "choose an attribute" error.
+      data-field-focus-target=""
+      className={comboboxTriggerVariants({
+        state: getInputState({
+          disabled,
+          readOnly,
+          'aria-invalid': ariaInvalid === true,
+        }),
+        className: cx('relative w-full', heldPill !== undefined && 'ps-1.5'),
+      })}
+    >
+      {/* One grid cell, so that a value leaving and the value arriving
+          share it while they cross. */}
+      <span
+        id={valueId}
+        className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-center text-start"
+      >
+        <AnimatePresence initial={false} custom={slotMotion}>
+          {heldPill === undefined ? (
+            <TriggerValue
+              key="placeholder"
+              motionState={slotMotion}
+              arrives={false}
+            >
+              <span className="text-input-contrast/70 truncate italic">
+                {intl.formatMessage(messages.placeholder)}
+              </span>
+            </TriggerValue>
+          ) : (
+            <TriggerValue
+              key={`${isMissing ? 'missing' : 'held'}:${value}`}
+              motionState={slotMotion}
+              arrives={arrived}
+            >
+              {heldPill}
+            </TriggerValue>
+          )}
+        </AnimatePresence>
+      </span>
+      <Combobox.Icon className="shrink-0">
+        <ChevronsUpDown aria-hidden className="h-[1.2em] w-[1.2em]" />
+      </Combobox.Icon>
+      {/* The trigger's border confirms a choice made here: it flashes in
+          the colour a chosen row's check mark takes. Keyed by the choice, so
+          each one plays it once and nothing else does. */}
+      {arrived && heldPill !== undefined && (
+        <motion.span
+          key={shown.count}
+          aria-hidden
+          data-choice-confirmation=""
+          className="ring-sea-green pointer-events-none absolute inset-0 rounded-[inherit] ring-2 ring-inset"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 0.35, times: [0, 0.3, 1] }}
+        />
+      )}
+    </Combobox.Trigger>
+  );
 
   return (
     <div
@@ -1067,225 +681,42 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
           aria-describedby={ariaDescribedBy}
           className="w-full py-6 text-center text-sm text-current/70 italic"
         >
-          {emptyMessage ?? intl.formatMessage(messages.emptyState)}
+          {emptyMessage ?? intl.formatMessage(emptyAttributeListMessage)}
         </p>
       ) : (
         <>
-          <Combobox.Root<string>
-            value={value === undefined || value === '' ? null : value}
-            onValueChange={handleValueChange}
-            inputValue={query}
-            onInputValueChange={(next, details) => {
-              // Only typing changes the search. Base UI also writes the chosen
-              // item's text into the box when an item is pressed.
-              if (details.reason !== 'input-change') return;
-              setQuery(next);
-              setRevealed(undefined);
-              if (create?.kind === 'refused') setCreate(undefined);
-            }}
+          <VariablePickerList
+            trigger={trigger}
             open={open}
             onOpenChange={handleOpenChange}
-            onItemHighlighted={(highlighted) => {
-              // A reason is shown only for the row that was chosen, and goes
-              // when the highlight moves to another row.
-              if (highlighted !== revealed) setRevealed(undefined);
-            }}
-            autoHighlight
-            filter={null}
-          >
-            <Combobox.Trigger
-              id={id}
-              onKeyDown={onTriggerKeyDown}
-              aria-labelledby={
-                ariaLabelledBy === undefined
-                  ? undefined
-                  : `${ariaLabelledBy} ${valueId}`
-              }
-              aria-describedby={triggerDescribedBy}
-              aria-invalid={ariaInvalid || undefined}
-              // Not `disabled`: a disabled button cannot take focus, and a save
-              // that is refused while the form is busy sends focus here (every
-              // field is disabled for as long as a save is in flight). The list
-              // refuses to open while the field takes no answers.
-              aria-disabled={disabled || undefined}
-              aria-readonly={readOnly || undefined}
-              // Names this control as where a refused save sends focus for
-              // this field: it resolves a "choose an attribute" error.
-              data-field-focus-target=""
-              className={comboboxTriggerVariants({
-                state: getInputState({
-                  disabled,
-                  readOnly,
-                  'aria-invalid': ariaInvalid === true,
-                }),
-                className: cx(
-                  'relative w-full',
-                  heldPill !== undefined && 'ps-1.5',
-                ),
-              })}
-            >
-              {/* One grid cell, so that a value leaving and the value
-                  arriving share it while they cross. */}
-              <span
-                id={valueId}
-                className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-center text-start"
-              >
-                <AnimatePresence initial={false} custom={slotMotion}>
-                  {heldPill === undefined ? (
-                    <TriggerValue
-                      key="placeholder"
-                      motionState={slotMotion}
-                      arrives={false}
-                    >
-                      <span className="text-input-contrast/70 truncate italic">
-                        {intl.formatMessage(messages.placeholder)}
-                      </span>
-                    </TriggerValue>
-                  ) : (
-                    <TriggerValue
-                      key={`${isMissing ? 'missing' : 'held'}:${value}`}
-                      motionState={slotMotion}
-                      arrives={arrived}
-                    >
-                      {heldPill}
-                    </TriggerValue>
-                  )}
-                </AnimatePresence>
-              </span>
-              <Combobox.Icon className="shrink-0">
-                <ChevronsUpDown aria-hidden className="h-[1.2em] w-[1.2em]" />
-              </Combobox.Icon>
-              {/* The trigger's border confirms a choice made here: it flashes
-                  in the colour a chosen row's check mark takes. Keyed by the
-                  choice, so each one plays it once and nothing else does. */}
-              {arrived && heldPill !== undefined && (
-                <motion.span
-                  key={shown.count}
-                  aria-hidden
-                  data-choice-confirmation=""
-                  className="ring-sea-green pointer-events-none absolute inset-0 rounded-[inherit] ring-2 ring-inset"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 1, 0] }}
-                  transition={{ duration: 0.35, times: [0, 0.3, 1] }}
-                />
-              )}
-            </Combobox.Trigger>
-            <Combobox.Portal container={portalContainer ?? undefined}>
-              {/* The popup layer, as `Popover`'s: this opens inside dialogs. */}
-              <Combobox.Positioner
-                align="start"
-                sideOffset={8}
-                // The popup layer, except while a create is with the codebook:
-                // a create can open the codebook's own editor, which has to
-                // paint over this list rather than under it.
-                className={busy ? undefined : 'z-3000'}
-              >
-                <Combobox.Popup
-                  {...{ [POPUP_MARKER]: '' }}
-                  aria-labelledby={ariaLabelledBy}
-                  aria-label={
-                    ariaLabelledBy === undefined ? 'Attributes' : undefined
-                  }
-                  render={
-                    <Surface
-                      floating
-                      spacing="none"
-                      shadow="lg"
-                      noContainer
-                      className="flex max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-80 flex-col"
-                    />
-                  }
-                >
-                  <div className="shrink-0 p-3">
-                    <Combobox.Input
-                      // Base UI points the box at the list only while the list
-                      // has rows; a combobox must always name what it controls,
-                      // and the list is there, empty, under a sentence that
-                      // says why.
-                      aria-controls={listId}
-                      // Both the name and the placeholder say whether this
-                      // list can create an attribute.
-                      aria-label={
-                        onCreateOption === undefined
-                          ? 'Find an attribute'
-                          : 'Find or create an attribute'
-                      }
-                      placeholder={intl.formatMessage(
-                        onCreateOption === undefined
-                          ? messages.searchOnlyPlaceholder
-                          : messages.searchPlaceholder,
-                      )}
-                      readOnly={busy}
-                      render={({
-                        onChange: nativeOnChange,
-                        ...renderProps
-                      }) => (
-                        <InputField
-                          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the same bridge fresco-ui's Combobox uses: Base UI types its input props as generic HTML attributes
-                          {...(renderProps as unknown as ComponentPropsWithRef<
-                            typeof InputField
-                          >)}
-                          size="sm"
-                          prefixComponent={<SearchIcon aria-hidden />}
-                          className="w-full"
-                          nativeOnChange={nativeOnChange}
-                        />
-                      )}
-                    />
-                  </div>
-                  {listNote !== undefined && (
-                    <p className="flex items-start gap-2 px-4 pb-3 text-sm text-current/70">
-                      <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-                      <span className="min-w-0">{listNote}</span>
-                    </p>
-                  )}
-                  {hasRows && (
-                    <Combobox.List
-                      id={listId}
-                      className="flex min-h-0 flex-col outline-none"
-                    >
-                      {/*
-                        `role="group"`: ScrollArea's viewport is focusable,
-                        and a listbox may only contain options and groups.
-                      */}
-                      <ScrollArea
-                        role="group"
-                        aria-label="Attributes"
-                        className="max-h-80 min-h-0"
-                        viewportClassName="flex flex-col px-2 pt-0 pb-2"
-                      >
-                        {createRow()}
-                        {available.map(attributeRow)}
-                        {unavailable.length > 0 && (
-                          <Combobox.Group
-                            className={cx(
-                              'flex flex-col',
-                              (available.length > 0 || offersCreate) &&
-                                'border-outline mt-2 border-t pt-2',
-                            )}
-                          >
-                            <Combobox.GroupLabel className="px-4 py-1.5 text-sm font-semibold text-current/70">
-                              {intl.formatMessage(messages.unavailableHeading)}
-                            </Combobox.GroupLabel>
-                            {unavailable.map(attributeRow)}
-                          </Combobox.Group>
-                        )}
-                      </ScrollArea>
-                    </Combobox.List>
-                  )}
-                </Combobox.Popup>
-              </Combobox.Positioner>
-            </Combobox.Portal>
-          </Combobox.Root>
+            options={options}
+            {...(groups === undefined ? {} : { groups })}
+            {...(unavailableDisplay === undefined
+              ? {}
+              : { unavailableDisplay })}
+            {...(actions === undefined ? {} : { actions })}
+            {...(optionPill === undefined ? {} : { optionPill })}
+            {...(value === undefined ? {} : { value })}
+            onSelect={handleSelect}
+            {...(onCreateOption === undefined
+              ? {}
+              : { onCreateOption: createOption })}
+            {...(nameScope === undefined ? {} : { nameScope })}
+            {...(newVariableType === undefined ? {} : { newVariableType })}
+            {...(emptyMessage === undefined ? {} : { emptyMessage })}
+            {...(ariaLabelledBy === undefined
+              ? {}
+              : { 'aria-labelledby': ariaLabelledBy })}
+          />
           {/* Said where it is seen without opening the list, while nothing
               is chosen and nothing in the list can be: the caller's sentence
               when there are no attributes at all, and otherwise that the ones
               there are cannot be used here. */}
           {heldPill === undefined &&
             !anyAvailable &&
-            (options.length > 0 || emptyMessage !== undefined) && (
+            (everyOption.length > 0 || emptyMessage !== undefined) && (
               <p className="text-sm text-current/70">
-                {options.length > 0
+                {everyOption.length > 0
                   ? intl.formatMessage(messages.noneAvailableField)
                   : emptyMessage}
               </p>
@@ -1305,13 +736,6 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
               {heldReason}
             </p>
           )}
-          {/* Says what the list shows as it changes: the reason for an
-              attribute that cannot be chosen, and a create on its way or
-              refused. Always mounted, so a screen reader is watching it
-              before there is anything to say. */}
-          <span className="sr-only" aria-live="polite">
-            {announcement}
-          </span>
           {/* Always mounted, so a screen reader is watching this region before
               the notice appears: a live region added to the page at the same
               moment as its own content is not reliably announced.

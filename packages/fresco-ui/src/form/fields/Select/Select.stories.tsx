@@ -633,6 +633,74 @@ export const LongUnbrokenOption: Story = {
   },
 };
 
+const describedOptions: (SelectOption & { label: string })[] = [
+  {
+    value: 'scheduled',
+    label: 'Scheduled',
+    description: 'The message is sent at a time that you choose.',
+  },
+  {
+    value: 'immediate',
+    label: 'Immediately',
+    description: 'The message is sent as soon as it is saved.',
+  },
+  { value: 'never', label: 'Never' },
+];
+
+/**
+ * A styled select whose options say what each one does. The label of an
+ * option with a description is drawn as a heading, with the description in
+ * smaller text under it; an option without one keeps the ordinary label.
+ */
+export const OptionsWithDescriptions: Story = {
+  render: () => {
+    const [value, setValue] = useState<string | number>('scheduled');
+    return (
+      <div className="w-80">
+        <StyledSelectField
+          aria-label="When to send"
+          name="when-to-send"
+          options={describedOptions}
+          value={value}
+          onChange={(v) => setValue(v ?? '')}
+        />
+        <span data-heading-sample className="font-heading sr-only">
+          Heading
+        </span>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await document.fonts.ready;
+    await userEvent.click(
+      canvas.getByRole('combobox', { name: 'When to send' }),
+    );
+    const listbox = await screen.findByRole('listbox');
+    const sample = canvasElement.querySelector('[data-heading-sample]');
+    if (sample === null) throw new Error('No heading sample.');
+    const headingFont = getComputedStyle(sample).fontFamily;
+
+    for (const option of describedOptions) {
+      const label = within(
+        within(listbox).getByRole('option', { name: option.label }),
+      ).getByText(option.label);
+      const drawn = getComputedStyle(label);
+      if (option.description === undefined) {
+        await expect(Number(drawn.fontWeight)).toBeLessThan(700);
+        await expect(drawn.fontFamily).not.toBe(headingFont);
+      } else {
+        await expect(Number(drawn.fontWeight)).toBeGreaterThanOrEqual(700);
+        await expect(drawn.fontFamily).toBe(headingFont);
+        const description = within(listbox).getByText(option.description);
+        await expect(
+          Number(getComputedStyle(description).fontWeight),
+        ).toBeLessThan(700);
+      }
+    }
+  },
+};
+
 export const NumericValues: Story = {
   render: () => {
     const [value, setValue] = useState<string | number>(3);

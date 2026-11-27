@@ -2,11 +2,10 @@ import { type ComponentProps, useContext } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { useInterfaceLanguage } from '@codaco/fresco-ui/interfaceLanguage';
 import type { MarkdownBlockImages } from '@codaco/fresco-ui/RenderMarkdown';
-import { useTokenPillLanguage } from '@codaco/fresco-ui/TokenPill';
 import { assetBlockDescription } from '@codaco/protocol-builder/fields/assetBlocks/assetBlockDescription';
 import {
-  assetBlockAlignmentShows,
   assetBlockFile,
   assetBlockSettings,
   isAssetBlockUrl,
@@ -60,24 +59,6 @@ const messages = defineMessages({
     description:
       'Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage.',
   },
-  position: {
-    id: 'architect.protocolSummary.stage.pageContent.position',
-    defaultMessage: 'Position',
-    description:
-      'Label in the printable protocol summary, in the details of an image, audio recording or video placed in the text of an Information stage. Beside it is where the file sits across the page: at the side a line of text starts, in the middle, or at the side a line ends.',
-  },
-  positionStart: {
-    id: 'architect.protocolSummary.stage.pageContent.positionStart',
-    defaultMessage: 'Where a line of text starts',
-    description:
-      'Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text starts (the left in English, the right in Arabic).',
-  },
-  positionEnd: {
-    id: 'architect.protocolSummary.stage.pageContent.positionEnd',
-    defaultMessage: 'Where a line of text ends',
-    description:
-      'Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text ends (the right in English, the left in Arabic).',
-  },
   playback: {
     id: 'architect.protocolSummary.stage.pageContent.playback',
     defaultMessage: 'Playback',
@@ -129,7 +110,7 @@ const PageContentFile = ({
   // The file is described in the summary's own words, inside a translation
   // in its own language; the description the block gives the file is that
   // translation's text.
-  const interfaceLanguage = useTokenPillLanguage();
+  const interfaceLanguage = useInterfaceLanguage();
   const translationLanguage = useTranslationLanguage();
   const { protocol } = useContext(SummaryContext);
   const block = readAssetBlockUrl(url)?.block;
@@ -149,9 +130,6 @@ const PageContentFile = ({
   const description = assetBlockDescription(alt);
   const plays = file.kind !== 'image';
   const { autoplay, loop } = assetBlockSettings(block);
-  const placed =
-    block.align !== undefined &&
-    assetBlockAlignmentShows(file.kind, block.size);
 
   return (
     <div {...interfaceLanguage} data-asset-block={file.kind} className="my-2">
@@ -186,18 +164,6 @@ const PageContentFile = ({
                   intl.formatMessage(SIZE_MESSAGES[block.size]),
                 ],
               ]),
-          ...(placed
-            ? [
-                [
-                  intl.formatMessage(messages.position),
-                  intl.formatMessage(
-                    block.align === 'start'
-                      ? messages.positionStart
-                      : messages.positionEnd,
-                  ),
-                ],
-              ]
-            : []),
           ...(plays
             ? [
                 [

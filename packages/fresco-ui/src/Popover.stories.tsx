@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, waitFor } from 'storybook/test';
+import { expect, screen, userEvent, waitFor } from 'storybook/test';
 
 import { Button } from './Button';
 import ComboboxField from './form/fields/Combobox/Combobox';
 import type { ComboboxOption } from './form/fields/Combobox/shared';
+import StyledSelectField from './form/fields/Select/Styled';
 import {
   Popover,
   PopoverContent,
@@ -418,5 +419,73 @@ export const StaysInsideAFrame: Story = {
         inside.top + FRAME_PADDING - 0.5,
       );
     });
+  },
+};
+
+/**
+ * A select inside a popover, such as a field's settings: its list opens over
+ * the popover, and Escape closes the list first, then the popover.
+ */
+export const SelectInsidePopover: Story = {
+  args: {
+    children: null,
+  },
+  render: () => {
+    const [control, setControl] = useState<string | number>('text');
+    return (
+      <Popover defaultOpen>
+        <PopoverTrigger render={<Button>Field settings</Button>} />
+        <PopoverContent aria-label="Field settings" side="bottom">
+          <div className="flex w-72 flex-col gap-2">
+            <StyledSelectField
+              aria-label="Input control"
+              name="control"
+              options={[
+                { value: 'text', label: 'Text box' },
+                { value: 'number', label: 'Number box' },
+                { value: 'date', label: 'Date picker' },
+              ]}
+              value={control}
+              onChange={(next) => setControl(next ?? 'text')}
+            />
+            {/* More settings below, which the list opens over. */}
+            <Paragraph>Options</Paragraph>
+            <Paragraph>Validation</Paragraph>
+            <Paragraph>Show validation hints</Paragraph>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  },
+  play: async () => {
+    const popup = await screen.findByRole('dialog', { name: 'Field settings' });
+    const trigger = screen.getByRole('combobox', { name: 'Input control' });
+    await userEvent.click(trigger);
+    const list = await screen.findByRole('listbox');
+
+    // The list is drawn over the popover: what is under the middle of each
+    // option is the option.
+    for (const option of screen.getAllByRole('option')) {
+      const box = option.getBoundingClientRect();
+      const under = document.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      );
+      await expect(option.contains(under)).toBe(true);
+    }
+
+    // Escape closes the list, and the popover stays open.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(list).not.toBeVisible());
+    await expect(popup).toBeVisible();
+    await waitFor(() => expect(trigger).toHaveFocus());
+
+    // Escape again closes the popover.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Field settings' }),
+      ).not.toBeInTheDocument(),
+    );
   },
 };

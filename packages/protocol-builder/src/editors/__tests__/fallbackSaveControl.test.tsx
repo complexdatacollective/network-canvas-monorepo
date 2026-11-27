@@ -33,7 +33,7 @@ const FAMILIES = [
   {
     family: 'name generator',
     stageId: 'name-generator-1',
-    settleLabel: 'Form title',
+    settleLabel: 'Dialog title',
   },
 ] as const;
 

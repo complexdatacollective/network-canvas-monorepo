@@ -1,5 +1,4 @@
 import { isEqual } from 'es-toolkit/compat';
-import { useMemo, useState } from 'react';
 
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
@@ -7,10 +6,10 @@ import RichTextEditorField, {
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 
 import { richTextToolbarFor } from '../localization/textShape.ts';
+import { useMessageDocument } from '../localization/useMessageDocument.ts';
 import {
   markdownToRichTextContent,
   richTextContentToMarkdown,
-  type RichTextContent,
 } from '../markdown/markdownAdapter.ts';
 
 type RichTextFieldProps = CreateFormFieldProps<
@@ -51,11 +50,6 @@ type RichTextFieldProps = CreateFormFieldProps<
   }
 >;
 
-const asRichTextContent = (value: unknown): RichTextContent | undefined =>
-  value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as RichTextContent)
-    : undefined;
-
 /**
  * Markdown editor over a plain markdown string. Labelling belongs to the
  * surrounding field — pass it through the field wrapper's `label`/`hint`.
@@ -71,61 +65,20 @@ const RichTextField = ({
   const holdsAssetBlocks = assetBlocks !== undefined;
   const toolbarOptions = richTextToolbarFor(singleLine, disallowedTypes);
 
-  const markdown = typeof value === 'string' ? value : null;
-  const normalizedContent = useMemo(
-    () =>
-      markdownToRichTextContent(markdown, {
-        inline: singleLine,
-        assetBlocks: holdsAssetBlocks,
-      }),
-    [markdown, singleLine, holdsAssetBlocks],
-  );
-
-  // The editor's live document can hold structure markdown cannot express —
-  // most visibly the empty paragraph left behind by pressing Enter twice to
-  // leave a list. Parsing the stored markdown back into a document drops it,
-  // and `RichTextEditorField` applies whatever document it is handed as soon
-  // as the field loses focus: the field silently shrinks by a line, and
-  // because that happens between mousedown and mouseup, the very click that
-  // caused the blur lands on whatever moved under the pointer instead of the
-  // control the author aimed at.
-  //
-  // So hand the editor back its OWN last document whenever that document
-  // still serialises to the markdown this field holds — same content, no
-  // rewrite, no reflow. A value that did NOT come from this editor (a write
-  // made elsewhere in the form, a different stage) does not match and
-  // normalises as before.
-  const [lastEmitted, setLastEmitted] = useState<{
-    markdown: string;
-    content: RichTextContent | undefined;
-  } | null>(null);
-  const content =
-    lastEmitted?.markdown === markdown
-      ? lastEmitted.content
-      : normalizedContent;
-
-  const handleChange = (nextValue: unknown) => {
-    const nextContent = asRichTextContent(nextValue);
-    const nextMarkdown = richTextContentToMarkdown(nextContent, singleLine);
-    setLastEmitted({ markdown: nextMarkdown, content: nextContent });
-
-    // The editor emits a change as it mounts. Committing a value that
-    // round-trips to the same document would dirty the stage merely by
-    // rendering the field.
-    if (
-      isEqual(
-        normalizedContent,
-        markdownToRichTextContent(nextMarkdown, {
-          inline: singleLine,
-          assetBlocks: holdsAssetBlocks,
-        }),
-      )
-    ) {
-      return;
-    }
-
-    onChange?.(nextMarkdown);
-  };
+  const readOptions = { inline: singleLine, assetBlocks: holdsAssetBlocks };
+  const editorDocument = useMessageDocument({
+    text: typeof value === 'string' ? value : '',
+    openKey: `${singleLine}:${holdsAssetBlocks}`,
+    open: (markdown) => markdownToRichTextContent(markdown, readOptions),
+    write: (document) => richTextContentToMarkdown(document, singleLine),
+    // The editor emits a change as it mounts, and the markdown it writes can
+    // be spelled differently from the stored markdown. Markdown that opens
+    // as the same document is not written, so that drawing the field does
+    // not change the stage.
+    holds: (written, opened) =>
+      isEqual(opened, markdownToRichTextContent(written, readOptions)),
+    onWrite: (written) => onChange?.(written ?? ''),
+  });
 
   return (
     <RichTextEditorField
@@ -134,8 +87,8 @@ const RichTextField = ({
       changeMode="input"
       toolbarOptions={toolbarOptions}
       {...(assetBlocks !== undefined && { assetBlocks })}
-      value={content}
-      onChange={handleChange}
+      value={editorDocument.content}
+      onChange={editorDocument.onDocumentChange}
     />
   );
 };

@@ -8,10 +8,8 @@ import {
   type DynamicValueSite,
   familyPedigreeStage,
   finishSessionStage,
-  FormFieldSchema,
   geospatialStage,
   informationStage,
-  IntroductionPanelSchema,
   nameGeneratorRosterStage,
   nameGeneratorStage,
   promptSchema,
@@ -43,10 +41,6 @@ const EDITOR_SITES: Readonly<Record<string, readonly EditorSite[]>> = {
   'fields/PromptTextField.tsx': [
     { kind: 'prompt', schema: promptSchema, path: ['text'] },
   ],
-  'sections/introduction/IntroductionSection.tsx': [
-    { kind: 'stageText', schema: IntroductionPanelSchema, path: ['title'] },
-    { kind: 'stageText', schema: IntroductionPanelSchema, path: ['text'] },
-  ],
   'sections/panels/NodePanelsSection.tsx': [
     {
       kind: 'stageText',
@@ -58,10 +52,8 @@ const EDITOR_SITES: Readonly<Record<string, readonly EditorSite[]>> = {
     { kind: 'formField', schema: ComposerFormFieldSchema, path: ['label'] },
     { kind: 'formField', schema: ComposerFormFieldSchema, path: ['hint'] },
   ],
-  'sections/form-fields/FormFieldsSection.tsx': [
+  'sections/form-document/FormDocumentSection.tsx': [
     { kind: 'stageText', schema: nameGeneratorStage, path: ['form', 'title'] },
-    { kind: 'formField', schema: FormFieldSchema, path: ['prompt'] },
-    { kind: 'formField', schema: FormFieldSchema, path: ['hint'] },
   ],
   'sections/page-content/PageContentSection.tsx': [
     { kind: 'stageText', schema: informationStage, path: ['content'] },
@@ -156,7 +148,8 @@ const sources = import.meta.glob<string>('../../**/*.{ts,tsx}', {
 const SITE_PROP =
   /\bdynamicValues(?:=|:\s*)(?:\{\s*)?['"](stageText|prompt|formField|nodeLabel)['"]/g;
 
-const NOT_EDITOR_SOURCE = /(__tests__|\.test\.|\.stories\.)/;
+// Test and story helpers (`testing/`) mount editors; they are not editors.
+const NOT_EDITOR_SOURCE = /(__tests__|\.test\.|\.stories\.|\/testing\/)/;
 
 /** The kinds each source file writes out as a literal, in source order. */
 const writtenKinds = (): Record<string, string[]> => {

@@ -15,3 +15,4 @@ export {
   DEFAULT_SYNTHETIC_SEED,
   SyntheticInterview,
 } from './SyntheticInterview.ts';
+export type { FormContentInput, FormDocumentBlocks } from './types.ts';

@@ -79,22 +79,27 @@ refused popup is a failure, not a pass.
   to translate" link. Last, adds American English with no offer and, made
   the default, it has the English wording and no download warning.
 - `dynamic-values` (Playwright) — creates an ego attribute, inserts it and
-  "Today’s date" into an Information stage through the insert ("piped text")
-  menu, checks the menu's groups, the "If known" / "If not known" versions and
-  the folded pill, that they persist, and that the preview shows the filled-in
-  text.
+  "Today’s date" into an Information stage through the toolbar's "Attribute"
+  menu, checks the menu's groups, creates an "If … else" dynamic attribute
+  whose rule reads the ego attribute, checks that the pills and the dynamic
+  attribute persist, and that the preview shows the filled-in text, nothing
+  for the unanswered attribute, and the "Otherwise" version.
 - `finish-stages` (pane) — the finish stage every protocol starts with, its
   confirmation and automatic modes, a second finish stage, the reorder rule
   (finish stages swap among themselves, never rise above another stage) and
-  the refusal to delete the last one.
+  the refusal to delete the last one. The other stage is an Information
+  stage whose page is written as one rich text in the "Rich Text" box of its
+  "Content" section: a Heading 1, then a short sentence.
 - `bins-and-encryption` (pane) — a Categorical Bin with tap to place and the
   completion gate, and an Anonymisation stage that encrypts a text attribute
   with no experiment to enable, its explanation led by a Heading 1.
 - `templates-and-upgrade` (pane) — opens the CEGRM template (Family Pedigree,
-  Narrative Pedigree, two finish stages), edits its pedigree, confirms no form
-  or census editor offers an introduction panel, and opens a schema 8
-  protocol, which must arrive upgraded (its introduction panel an Information
-  stage, a finish stage added). The pane has no file chooser, so the agent
+  Narrative Pedigree, two finish stages), edits its pedigree, confirms that
+  the Ego Form's introduction is the heading and text at the top of its form
+  document and that no form or census editor offers an introduction panel,
+  and opens a schema 8 protocol, which must arrive upgraded (its Ego Form's
+  introduction panel the heading and text at the top of the form, a finish
+  stage added). The pane has no file chooser, so the agent
   hands the start screen's file input a small schema 8 `.netcanvas` built by a
   script the workflow writes (`legacyUpgradeScript`), as Fresco's release test
   does for uploads.
@@ -105,8 +110,9 @@ refused popup is a failure, not a pass.
   "Start preview with example data" on (made-up people fill the name
   generator) and off (it starts empty), and checks the bare `/preview/`
   route.
-- `send-to-interviewer` — sends a protocol to the Interviewer this
-  deployment pairs with (production with production, every other deployment
+- `send-to-interviewer` — sends a protocol with one Information stage (its
+  page one rich text: a Heading 1, "Sent from Architect", then a sentence)
+  to the Interviewer this deployment pairs with (production with production, every other deployment
   with interviewer.networkcanvas.dev), checks Interviewer imports it, then
   deletes it there.
 - `legacy-editors` — keeps older-schema protocols unchanged in their own

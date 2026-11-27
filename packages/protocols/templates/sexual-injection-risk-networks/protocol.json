@@ -398,15 +398,30 @@
       "label": {
         "en": "About you"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "A few questions about you"
-        },
-        "text": {
-          "en": "Before we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
+      "dynamicAttributes": {
+        "5b606791-8fec-52fd-b9ce-0c363c2c7380": {
+          "logic": "answers",
+          "value": "ego_0d99c62b_a3e2_5e14_b9e7_6100c4662f8e",
+          "missing": {
+            "en": "If you are living with HIV, are you currently taking antiretroviral treatment?"
+          },
+          "answers": [
+            {
+              "answer": "60ff3bc2_2559_599c_9100_86335df00f95",
+              "wording": {
+                "en": "Are you currently taking antiretroviral treatment?"
+              }
+            }
+          ],
+          "other": {
+            "en": "If you are living with HIV, are you currently taking antiretroviral treatment?"
+          }
         }
       },
       "form": {
+        "content": {
+          "en": "# A few questions about you\n\nBefore we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question.\n\n![](field:e1e2a161-a14a-5e3d-8358-b81b6925258d)\n\n![](field:78125377-94fc-590a-a1b5-98251813a801)\n\n![](field:3398c3a2-6f26-5e89-8e7d-7271d0a13763)\n\n![](field:39ecac05-f8ba-558e-8bec-1add04c28a15)\n\n![](field:88c7107a-04de-537e-8acf-cdc5ee6ef12c)"
+        },
         "fields": [
           {
             "id": "e1e2a161-a14a-5e3d-8358-b81b6925258d",
@@ -429,7 +444,7 @@
             "id": "3398c3a2-6f26-5e89-8e7d-7271d0a13763",
             "variable": "c6970d36-c080-53c0-b77b-425bf37a4623",
             "prompt": {
-              "en": "{ego_0d99c62b_a3e2_5e14_b9e7_6100c4662f8e, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} 60ff3bc2_2559_599c_9100_86335df00f95 {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
+              "en": "{dynamic_5b606791_8fec_52fd_b9ce_0c363c2c7380}"
             },
             "hint": {
               "en": "Antiretroviral treatment is also known as ART."
@@ -477,6 +492,9 @@
       "form": {
         "title": {
           "en": "Add Partner"
+        },
+        "content": {
+          "en": "![](field:2878c819-e8d1-56c1-8e7d-83637aa1e411)"
         },
         "fields": [
           {
@@ -526,6 +544,9 @@
         "title": {
           "en": "Add Partner"
         },
+        "content": {
+          "en": "![](field:d31f2245-f9e1-5c5a-aea9-510971cc67ef)"
+        },
         "fields": [
           {
             "id": "d31f2245-f9e1-5c5a-aea9-510971cc67ef",
@@ -567,11 +588,30 @@
       "label": {
         "en": "About each partnership"
       },
+      "conditions": {
+        "142d8e79-1ebd-550b-95a9-ac44cd4701cd": {
+          "about": "node",
+          "rules": [
+            {
+              "id": "8d7c925a-5538-5b5e-a6d1-f1b140868c8a",
+              "type": "node",
+              "options": {
+                "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143",
+                "attribute": "388dfe6a-24b3-5b36-98bc-289e6ac08e92",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
       "subject": {
         "entity": "node",
         "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "form": {
+        "content": {
+          "en": "![](field:61776abd-cf8c-538f-9402-4753f71cd5ce)\n\n![](field:60e226df-90b9-55ab-8dc2-0be26ee503b6)\n\n![](field:9af3d1fd-a7a8-5e46-9c31-c0e11d11e701)\n\n![](field:c676dac1-fa39-5435-9643-401b0ff4a58f)\n\n![](field:f0c72086-6e18-55f8-88d8-1e65039803ec)\n\n![](field:5ea71954-3eff-589f-8545-02f6050f24c2)\n\n![](field:96a703b7-0ad6-5945-a3d0-4d3cdd4fc5df)\n\n{condition_142d8e79_1ebd_550b_95a9_ac44cd4701cd, select, true {It began in {node_388dfe6a_24b3_5b36_98bc_289e6ac08e92}.} other {}}\n\n![](field:cab81d9d-0807-5c02-9920-83a4a51e1b05)"
+        },
         "fields": [
           {
             "id": "61776abd-cf8c-538f-9402-4753f71cd5ce",
@@ -635,7 +675,7 @@
               "en": "When did it end?"
             },
             "hint": {
-              "en": "{node_388dfe6a_24b3_5b36_98bc_289e6ac08e92, select, missing {} other {It began in {node_388dfe6a_24b3_5b36_98bc_289e6ac08e92}. }}If it is still going on, you can leave this blank or choose this month."
+              "en": "If it is still going on, you can leave this blank or choose this month."
             }
           }
         ]

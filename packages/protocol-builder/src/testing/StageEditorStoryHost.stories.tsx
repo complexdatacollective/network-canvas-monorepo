@@ -11,7 +11,6 @@ import { StageEditSession } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
 import { fixtureStageId, fixtureVariableId } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
-import { exactlyText } from './text.ts';
 
 const EGO_NAME = fixtureVariableId('ego', 'ego_name');
 
@@ -154,10 +153,9 @@ export const Spectating: Story = {
  * editor that reloaded the stage from the protocol on every revision would
  * pass the first half and silently discard an afternoon's work.
  *
- * The revision renames the attribute as well, and nothing on screen says so:
- * the row names the KIND of attribute and the control it is collected with,
- * never its identifier. What proves the rename was not echoed back into this
- * researcher's edit is the save at the end.
+ * The revision renames the attribute as well. The field block shows the new
+ * name in its corner, and what proves the rename was not echoed back into
+ * this researcher's edit is the save at the end.
  *
  * The revision is a codebook one rather than a change to this stage, because a
  * collaborator cannot revise a stage this editor holds the lock on: that is
@@ -190,17 +188,19 @@ export const ACollaboratorRevisesTheCodebook: Story = {
     await awaitPassiveEffects();
 
     // Boot, then the codebook read, as two waits: the editor mounting and the
-    // form field's summary resolving an attribute through the protocol cache
+    // form field's block resolving its attribute through the protocol cache
     // are different questions, and one budget covering both is a budget for
     // neither.
     const stageName = await canvas.findByRole('textbox', {
       name: 'Stage name',
     });
-    await expect(
-      await canvas.findByText(
-        exactlyText('Text attribute using Text Input input control'),
-      ),
-    ).toBeInTheDocument();
+    const form = await canvas.findByRole('textbox', { name: 'Form content' });
+    await waitFor(async () => {
+      await expect(form).toHaveTextContent('ego_name');
+      await expect(
+        form.querySelector('[data-field-control] input'),
+      ).not.toBeNull();
+    });
 
     // The researcher's draft: typed, not saved. Nothing has been committed, so
     // the only place this value exists is the open edit.
@@ -214,11 +214,12 @@ export const ACollaboratorRevisesTheCodebook: Story = {
     );
 
     // Their change, on screen, without this editor having asked for it.
-    await expect(
-      await canvas.findByText(
-        exactlyText('Text attribute using Text Area input control'),
-      ),
-    ).toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(form).toHaveTextContent('given_name');
+      await expect(
+        form.querySelector('[data-field-control] textarea'),
+      ).not.toBeNull();
+    });
 
     // And the draft is still the researcher's. Read after the revision landed
     // rather than before, which is the whole point: a re-read of the stage

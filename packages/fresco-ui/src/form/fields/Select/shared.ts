@@ -40,6 +40,12 @@ export type SelectOption = {
    * readers switch pronunciation per option.
    */
   label: PresentationalText;
+  /**
+   * A sentence under the label in the styled select's list, saying what the
+   * option does. The trigger shows the label alone, and the native select
+   * shows no description.
+   */
+  description?: string;
   disabled?: boolean;
 };
 

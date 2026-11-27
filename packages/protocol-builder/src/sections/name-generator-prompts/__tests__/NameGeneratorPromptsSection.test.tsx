@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { dynamicValueNameFor } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
@@ -22,11 +23,12 @@ import {
   fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testVariableId } from '../../../testing/testId.ts';
+import { testId, testVariableId } from '../../../testing/testId.ts';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
 
 const CONTACTED = testVariableId('contacted');
 const PERSON = fixtureTypeId('node', 'person');
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
 const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 const FLAGGED = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
@@ -552,18 +554,47 @@ describe("a name generator's prompts", () => {
 });
 
 describe("a name generator prompt's preview", () => {
-  it('shows the values its text fills in, and its versions, as pills', async () => {
+  /**
+   * The preview reads a prompt as the participant will, with each value it
+   * fills in drawn as a pill: a value the interview supplies by its kind, and
+   * a dynamic attribute of the stage by the wordings it can show. The
+   * dynamic attribute is the stage's, so the preview can only name it if the
+   * section reads the stage's definitions.
+   */
+  it('shows the values its text fills in as pills, and a dynamic attribute by its wordings', async () => {
     const { type, fields } = loadFixtureStage('name-generator-1');
+    const named = testId('condition/named');
+    const word = testId('dynamic/people');
     renderStageEditor({
       stage: {
         type,
         fields: {
           ...fields,
+          conditions: {
+            [named]: {
+              rules: [
+                {
+                  id: testId('named-rule'),
+                  type: 'ego',
+                  options: { attribute: EGO_NAME, operator: 'EXISTS' },
+                },
+              ],
+            },
+          },
+          dynamicAttributes: {
+            [word]: {
+              logic: 'conditions',
+              cases: [
+                { condition: named, when: 'met', wording: en('friends') },
+              ],
+              otherwise: en('people'),
+            },
+          },
           prompts: [
             {
               id: 'dated',
               text: en(
-                'Who did you see **{now}**? {now, select, missing {Anyone} other {Everyone}}',
+                `Who did you see **{now}**? Name the {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: word })}} you saw.`,
               ),
             },
           ],
@@ -574,14 +605,14 @@ describe("a name generator prompt's preview", () => {
 
     await waitFor(() =>
       expect(
-        document.querySelector('strong [data-token="now"]'),
+        document.querySelector('strong data[data-attribute-type="datetime"]'),
       ).toHaveTextContent('Today’s date'),
     );
-    // Outside the editor a value's versions fold into its pill.
-    expect(
-      document.querySelectorAll('[data-token="now"]').length,
-    ).toBeGreaterThan(1);
-    expect(screen.queryByText('Everyone')).not.toBeInTheDocument();
-    expect(screen.queryByText(/\{now/)).not.toBeInTheDocument();
+    const dynamic = document.querySelector(
+      'data[data-attribute-type="dynamic"]',
+    );
+    expect(dynamic).toHaveTextContent('friends / people');
+    expect(dynamic).not.toHaveAttribute('data-attribute-missing');
+    expect(screen.queryByText(/\{(now|dynamic_)/)).not.toBeInTheDocument();
   });
 });

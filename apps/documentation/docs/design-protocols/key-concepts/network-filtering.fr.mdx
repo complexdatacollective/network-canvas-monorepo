@@ -1,7 +1,7 @@
 ---
 title: Filtrage du réseau
 navOrder: 11
-translatedFrom: 4ca4dfdfdf36ebfa7dfe480ea752244219e98696
+translatedFrom: e3d2bb3cf61eebb556678bd72820d947db7ad2db
 ---
 
 <Definition>
@@ -41,6 +41,8 @@ Comme les règles de la [logique de saut](/fr/design-protocols/key-concepts/skip
 - **Règles d’« attribut »** : elles permettent d’interroger la valeur d’un attribut sur un type d’entité donné. Par exemple, vous pouvez interroger la valeur d’un attribut appelé `age` sur un type de nœud appelé « Person » (personne). Vous pouvez évaluer le résultat avec l’un de plusieurs opérateurs logiques, qui varient selon le type d’attribut. Par exemple, les attributs de type nombre permettent d’utiliser des opérateurs comme _est supérieur à_ et _est inférieur à_.
 
 Les opérateurs disponibles pour une règle d’attribut dépendent du type de l’attribut. Les attributs de type nombre proposent des comparaisons comme _est supérieur à_ et _est inférieur à_ ; les attributs de texte peuvent être comparés avec _est exactement_, _n’est pas_ et, à partir du schéma 8, _contient_ et _ne contient pas_, qui vérifient si le texte enregistré inclut ou non une valeur. Pour les attributs ordinaux et catégoriels, les opérateurs _inclut_ et _exclut_ acceptent **plusieurs** valeurs sélectionnées : une seule règle peut donc correspondre à une entité dont l’attribut contient l’une quelconque de plusieurs options.
+
+Pour tout attribut, une règle peut aussi utiliser **existe** ou **n’existe pas** pour vérifier si l’attribut a reçu une réponse. Un nombre égal à 0, ou une réponse « non » à une question par oui ou non, compte comme une réponse. Une réponse textuelle vide ou qui ne contient que des espaces compte comme une absence de réponse, de même qu’une réponse catégorielle sans aucune option sélectionnée. C’est la même vérification que celle qui détermine si une question obligatoire a reçu une réponse.
 
 Contrairement aux règles de logique de saut (qui sont agrégées en une seule valeur booléenne globale, `true` ou `false`), les règles de filtrage sont appliquées à chaque nœud et à chaque lien du réseau, et ne sont pas agrégées. Les nœuds conservés sont ceux qui satisfont les contraintes des règles.
 

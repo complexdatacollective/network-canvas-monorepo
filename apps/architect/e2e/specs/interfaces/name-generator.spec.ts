@@ -24,21 +24,21 @@ test('creates a valid NameGenerator stage from scratch', async ({
   // form describes the people the prompts ask for — so this runs first.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // The shared form section (`sections/form-fields/FormFieldsSection.tsx`,
-  // "Form fields") renders the form's own title only when the interface asks
-  // for one: `nameGeneratorFormFields` passes `hasTitle`, as the ego form does
-  // and the alter and alter edge forms do not. It is an ordinary field at `form.title`, so the
-  // `data-field-name` seam reaches it directly.
+  // The shared form section (`sections/form-document/FormDocumentSection.tsx`,
+  // "Form") shows the form's own title, labelled "Dialog title", only when
+  // the interface asks for one: `nameGeneratorFormFields` passes `hasTitle`,
+  // and the other forms do not. It is an ordinary field at `form.title`, so
+  // the `data-field-name` seam reaches it directly.
   await editor.field('form.title').getByRole('textbox').fill('Add a person');
 
-  await addFormField(editor.section('Form configuration'), {
+  await addFormField(editor.section('Form'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',
   });
 
   // The `prompts` list (`sections/name-generator-prompts/`) is a second
-  // list-in-a-dialog rendered alongside the form's own, hence addPrompt's
+  // list-in-a-dialog rendered beside the form, hence addPrompt's
   // field-scoped open click (see prompts.ts). Inside the dialog the prompt's
   // RichText field is labelled "Prompt text" (`NameGeneratorPromptsSection`'s
   // `textLabel`), which is what its accessible name resolves to.

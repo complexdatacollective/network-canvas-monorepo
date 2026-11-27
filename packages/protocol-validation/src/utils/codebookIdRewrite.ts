@@ -109,7 +109,8 @@ const renamedAttributeName = (
  * `renames` names for it, and points every reference to each at its new id:
  * every site `schema` tags as an entity type reference or an entity
  * attribute reference, including each attribute text that shows dynamic
- * values names (`ego_<id>`), whose name in the text is rewritten.
+ * values names (`ego_<id>`), whose name in the text is rewritten, and the
+ * attribute that a dynamic attribute's logic reads.
  * `root` is changed in place: it must be a copy the caller owns.
  *
  * Every reference is resolved against the document as it was before any
@@ -193,6 +194,10 @@ export const rewriteCodebookIds = (
     }
     const newName = renamedAttributeName(hit.inMessage.name, renamed);
     if (newName === undefined) continue;
+    if (hit.asName) {
+      writes.push({ path: hit.path, value: newName });
+      continue;
+    }
     const key = JSON.stringify(hit.path);
     const entry = messageRenames.get(key) ?? {
       path: hit.path,

@@ -976,7 +976,11 @@ describe('a date field whose floor is later than today, through feasibility', ()
     },
     label: { 'en-US': 'Name generator' },
     subject: { entity: 'node', type: 'person' },
-    form: { title: { 'en-US': 'About this person' }, fields: [] },
+    form: {
+      title: { 'en-US': 'About this person' },
+      content: { 'en-US': '' },
+      fields: [],
+    },
     prompts: [{ id: testId('p1'), text: { 'en-US': 'Name people' } }],
     behaviours: { maxNodes: 4 },
   };

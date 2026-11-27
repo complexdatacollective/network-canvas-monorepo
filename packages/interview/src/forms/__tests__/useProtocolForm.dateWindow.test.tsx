@@ -11,6 +11,7 @@ import {
   asEntityAttributeReference,
   type FormField,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   dateWithinPickerRange,
   entityAttributesProperty,
@@ -97,8 +98,8 @@ function makeWrapper(
 }
 
 function Harness({ onSubmit }: { onSubmit: () => void }) {
-  const { fieldComponents } = useProtocolForm({
-    fields,
+  const { formContent } = useProtocolForm({
+    form: formOf(fields),
     subject: { entity: 'node', type: NODE_TYPE },
   });
 
@@ -109,7 +110,7 @@ function Harness({ onSubmit }: { onSubmit: () => void }) {
         return { success: true as const };
       }}
     >
-      {fieldComponents}
+      {formContent}
       <SubmitButton>Submit</SubmitButton>
     </Form>
   );

@@ -6,6 +6,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../__tests__/englishForms.ts';
 import { generateNetwork } from '../../generateNetwork.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
@@ -54,7 +55,12 @@ describe('stage-linear node writes', () => {
 
     let observedSecondPrompt = false;
     for (let seed = 1; seed <= 20; seed++) {
-      const { network } = generateNetwork({ codebook, stages: [stage], seed });
+      const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
+        codebook,
+        stages: [stage],
+        seed,
+      });
       const first = network.nodes.filter((node) =>
         node.promptIDs?.includes('first-prompt'),
       );
@@ -143,6 +149,7 @@ describe('stage-linear node writes', () => {
     } as unknown as Stage;
 
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook,
       stages: [people, sociogram],
       seed: 1,

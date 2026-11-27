@@ -827,35 +827,49 @@ describe('the operand a rule compares against', () => {
  * cannot see is saved back exactly as it was.
  */
 describe('a choice a stored rule holds that the editor does not offer', () => {
-  const attributeRule = (operator: string): RuleDraft => ({
+  // The schema accepts the relational operators for a date attribute, which
+  // the editor does not offer (see `operatorsForSubject`).
+  const dateRule = (operator: string): RuleDraft => ({
     id: testId('rule-a'),
     type: 'node',
-    options: { type: PERSON, attribute: AGE, operator },
+    options: { type: PERSON, attribute: BORN, operator, value: 1800 },
   });
 
-  it('shows a stored presence operator instead of an empty select', async () => {
+  it('shows a stored operator that the editor no longer offers instead of an empty select', async () => {
     const user = userEvent.setup();
-    renderRuleList([attributeRule('EXISTS')]);
+    renderRuleList([dateRule('GREATER_THAN')]);
 
     await openExistingRule(user);
 
     const operator = await screen.findByRole('combobox', { name: /Operator/ });
-    expect(operator).toHaveValue('EXISTS');
+    expect(operator).toHaveValue('GREATER_THAN');
     // Named as what it is: the schema accepts it, so the researcher is being
     // shown their rule rather than sent to fix something that is not wrong.
     expect(
       within(operator).getByRole('option', {
-        name: 'exists (no longer offered)',
+        name: 'is greater than (no longer offered)',
       }),
     ).toBeEnabled();
   });
 
-  it('saves a rule holding one back unchanged', async () => {
+  // A presence rule about an attribute was once left out of this list, and a
+  // protocol may contain one. It is offered now, as itself.
+  it('shows a stored presence rule about an attribute as offered, and saves it back unchanged', async () => {
     const user = userEvent.setup();
-    renderRuleList([attributeRule('EXISTS')]);
+    renderRuleList([
+      {
+        id: testId('rule-a'),
+        type: 'node',
+        options: { type: PERSON, attribute: AGE, operator: 'EXISTS' },
+      },
+    ]);
 
     await openExistingRule(user);
-    await screen.findByRole('combobox', { name: /Operator/ });
+    const operator = await screen.findByRole('combobox', { name: /Operator/ });
+    expect(operator).toHaveValue('EXISTS');
+    expect(
+      within(operator).getByRole('option', { name: 'exists' }),
+    ).toBeEnabled();
     await finishAndClose(user);
 
     await waitFor(() =>
@@ -1096,6 +1110,8 @@ describe('an encrypted attribute', () => {
     );
 
     expect(await offeredOperators()).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
       'EXACTLY',
       'NOT',
       'CONTAINS',

@@ -24,8 +24,10 @@ const hasSafeOwnProperty = (value: object, property: string): boolean =>
  * entity attributes — not in the current form's values. Form values take
  * precedence (they reflect in-progress edits); otherwise the value is sourced
  * from pending attributes for a new entity, then from the persisted entity
- * being edited. `present` is false only when the variable is absent from every
- * source, in which case the validator should no-op.
+ * being edited. A variable that the form asks (`formVariables`) is read only
+ * from the form's values: when its field is not mounted, it has no answer.
+ * `present` is false only when the variable is absent from every source it is
+ * read from, in which case the validator should no-op.
  */
 export function getComparisonValue(
   formValues: Record<string, FieldValue>,
@@ -57,7 +59,7 @@ export function getComparisonValue(
     };
   }
 
-  if (!context) {
+  if (!context || context.formVariables?.includes(attribute) === true) {
     return { present: false, value: undefined };
   }
 

@@ -174,17 +174,16 @@ const NodeForm = (props: NodeFormProps) => {
   const edited =
     selectedNode && editing.status === 'ready' ? editing : undefined;
 
-  const { fieldComponents, toAttributePatch, passphraseNeeded } =
-    useProtocolForm({
-      fields: form.fields,
-      autoFocus: true,
-      initialValues: edited?.values,
-      currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
-      unavailableVariables: edited?.unavailable,
-      // A new person is created with the prompt's attributes, which the
-      // form's text can show while they are added.
-      newEntityAttributes: newNodeAttributes,
-    });
+  const { formContent, toAttributePatch, passphraseNeeded } = useProtocolForm({
+    form,
+    autoFocus: true,
+    initialValues: edited?.values,
+    currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
+    unavailableVariables: edited?.unavailable,
+    // A new person is created with the prompt's attributes, which the
+    // form's text can show while they are added.
+    newEntityAttributes: newNodeAttributes,
+  });
 
   const handleSubmit: FormSubmitHandler = useCallback(
     async (values) => {
@@ -293,7 +292,7 @@ const NodeForm = (props: NodeFormProps) => {
         >
           <SubmittingObserver onChange={setSubmitting} />
           <PassphraseEntry needed={passphraseNeeded} />
-          {fieldComponents}
+          {formContent}
         </Form>
       </Dialog>
     </>

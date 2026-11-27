@@ -14,6 +14,7 @@ import {
   type VariableType,
   validateProtocol,
   VariableTypesKeys,
+  fieldBlockMarkdown,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -27,6 +28,7 @@ import {
   canAuthorRuleForType,
   type OperandControl,
   operandRequirement,
+  isPresenceOperator,
   operatorsForSubject,
   ruleVariableTypes,
 } from '../operators.ts';
@@ -132,13 +134,16 @@ const personSection = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 const STAGE_ID = createProtocolObjectId();
 
+const AGE_FIELD = createProtocolObjectId();
+
 const stageFields: SectionDoc = {
   label: { en: 'Details' },
   subject: { entity: 'node', type: PERSON },
   form: {
+    content: { en: fieldBlockMarkdown(AGE_FIELD) },
     fields: [
       {
-        id: createProtocolObjectId(),
+        id: AGE_FIELD,
         variable: AGE,
         prompt: { en: 'How old are they?' },
       },
@@ -346,10 +351,17 @@ const validationIssues = async (rule: RuleDraft): Promise<string[]> => {
  * with no control and no representative value fails rather than falling
  * through.
  */
-const cases = VariableTypesKeys.flatMap((variableType) =>
+const offeredCases = VariableTypesKeys.flatMap((variableType) =>
   [...operatorsForSubject(variableType)].map(
     (operator) => [variableType, operator] as const,
   ),
+);
+const cases = offeredCases.filter(
+  ([, operator]) => !isPresenceOperator(operator),
+);
+// Whether the attribute has been answered: no operand is entered.
+const presenceCases = offeredCases.filter(([, operator]) =>
+  isPresenceOperator(operator),
 );
 
 describe('the operand every offered rule commits', () => {
@@ -392,6 +404,45 @@ describe('the operand every offered rule commits', () => {
       // ...and the whole protocol validates, which is where the per-operator
       // operand rules live: a relational operator holding a date string, or a
       // count holding a fraction, is refused here and nowhere earlier.
+      expect(await validationIssues(rule!)).toEqual([]);
+    },
+  );
+});
+
+/**
+ * Every rule editor offers each attribute type with a comparison the two
+ * operators that ask whether it has been answered. They take no operand, and
+ * the rule that they commit is one the protocol accepts in skip logic and
+ * filters as well as in conditions.
+ */
+describe('the rule every offered presence operator commits', () => {
+  it('is offered for every type that a rule can be built for', () => {
+    expect(new Set(presenceCases.map(([type]) => type))).toEqual(
+      new Set(ruleVariableTypes),
+    );
+  });
+
+  it.each(presenceCases)(
+    'commits a %s rule with %s and no operand',
+    async (variableType, operator) => {
+      expect(operandRequirement(variableType, operator)?.kind).toBe('none');
+
+      const user = userEvent.setup();
+      const onSave = renderEditor();
+
+      await buildRule(user, ATTRIBUTES[variableType], operator);
+      await user.click(
+        screen.getByRole('button', { name: 'Finish and Close' }),
+      );
+
+      await waitFor(() => expect(onSave).toHaveBeenCalled());
+      const rule = onSave.mock.calls[0]?.[0];
+      expect(rule?.options).toEqual({
+        type: expect.any(String),
+        attribute: ATTRIBUTES[variableType],
+        operator,
+      });
+      expect(filterRuleSchema.safeParse(rule).success).toBe(true);
       expect(await validationIssues(rule!)).toEqual([]);
     },
   );
@@ -566,7 +617,12 @@ describe('an attribute the protocol can hold no operand for', () => {
     // NUMBER beside them — and a date answer compared against a number is not
     // a comparison a researcher can express. Equality is offered, with a date
     // control, because a datetime answer is the date string it compares to.
-    expect([...operatorsForSubject('datetime')]).toEqual(['EXACTLY', 'NOT']);
+    expect([...operatorsForSubject('datetime')]).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
+      'EXACTLY',
+      'NOT',
+    ]);
     expect(operandRequirement('datetime', 'GREATER_THAN')).toBeUndefined();
     expect(operandRequirement('datetime', 'EXACTLY')).toMatchObject({
       control: 'date',

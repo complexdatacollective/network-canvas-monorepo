@@ -2,9 +2,13 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  collectLocalizedStringsFromSchema,
+  dynamicValueNameFor,
   PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
+  stageSchema,
   type StageType,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
@@ -120,6 +124,13 @@ type MaximalStage = Readonly<{
    * naming one here is the way to say so rather than to claim it is owned.
    */
   unowned?: readonly string[];
+  /**
+   * Keys the interface's schema has that no valid stage of it can carry: a
+   * dynamic attribute on a stage with no text that can show one, which the
+   * protocol refuses and a save drops, and the condition that only the
+   * dynamic attribute tests, which a save drops with it.
+   */
+  unusable?: readonly string[];
 }>;
 
 const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
@@ -161,11 +172,15 @@ const mapOptionsOfFixture = (): Record<string, unknown> => {
   return typeof options === 'object' && options !== null ? { ...options } : {};
 };
 
+const CONSENT_WORD = testId('dynamic/consent-word');
+
 /** What every stage may carry, and no fixture stage does. */
 const EVERY_STAGE = {
   interviewScript: 'Read this to the participant before you begin.',
   skipLogic,
-  // No text here tests it, so it too must survive a save as it was given.
+  // Tested by the dynamic attribute below, and by nothing else: a save keeps
+  // it while the stage's text shows the dynamic attribute
+  // (`withTheWordShown`), and drops it with the dynamic attribute otherwise.
   conditions: {
     [testId('condition/consented')]: {
       rules: [
@@ -175,6 +190,20 @@ const EVERY_STAGE = {
           options: { attribute: testVariableId('consent'), operator: 'EXISTS' },
         },
       ],
+    },
+  },
+  // A version of a word that the stage's text shows (`withTheWordShown`).
+  dynamicAttributes: {
+    [CONSENT_WORD]: {
+      logic: 'conditions',
+      cases: [
+        {
+          condition: testId('condition/consented'),
+          when: 'met',
+          wording: { 'en-US': 'agreed' },
+        },
+      ],
+      otherwise: { 'en-US': 'not yet agreed' },
     },
   },
 };
@@ -191,12 +220,13 @@ const MAXIMAL_STAGES: MaximalStage[] = [
           '',
           'Welcome to this interview.',
           '',
-          '![A map of the regions.](asset:rubberduck?size=large&align=start&autoplay=false&loop=false)',
+          '![A map of the regions.](asset:rubberduck?size=large&autoplay=false&loop=false)',
         ].join('\n'),
       },
       interviewScript: 'Read this aloud.',
       skipLogic,
       conditions: EVERY_STAGE.conditions,
+      dynamicAttributes: EVERY_STAGE.dynamicAttributes,
     },
     settle: stageName,
   },
@@ -208,12 +238,9 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Ask about them.',
       skipLogic,
       conditions: EVERY_STAGE.conditions,
-      introductionPanel: {
-        title: { 'en-US': 'Introduction' },
-        text: { 'en-US': 'A few questions.' },
-      },
-      form: {
-        fields: [
+      dynamicAttributes: EVERY_STAGE.dynamicAttributes,
+      form: formOf(
+        [
           {
             id: testId('field-1'),
             variable: fixtureVariableId('ego', 'ego_name'),
@@ -222,7 +249,8 @@ const MAXIMAL_STAGES: MaximalStage[] = [
             showValidationHints: true,
           },
         ],
-      },
+        { locale: 'en-US', before: '## Introduction\n\nA few questions.' },
+      ),
     },
     settle: stageName,
   },
@@ -234,10 +262,11 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Ask about each person.',
       skipLogic,
       conditions: EVERY_STAGE.conditions,
+      dynamicAttributes: EVERY_STAGE.dynamicAttributes,
       filter: nodeFilter('stage'),
       subject: { entity: 'node', type: PERSON },
-      form: {
-        fields: [
+      form: formOf(
+        [
           {
             id: testId('field-1'),
             variable: personVariable('relationship_to_ego'),
@@ -246,7 +275,8 @@ const MAXIMAL_STAGES: MaximalStage[] = [
             showValidationHints: true,
           },
         ],
-      },
+        { locale: 'en-US' },
+      ),
     },
     settle: stageName,
   },
@@ -258,10 +288,11 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Ask about each relationship.',
       skipLogic,
       conditions: EVERY_STAGE.conditions,
+      dynamicAttributes: EVERY_STAGE.dynamicAttributes,
       filter: edgeFilter('stage'),
       subject: { entity: 'edge', type: KNOWS },
-      form: {
-        fields: [
+      form: formOf(
+        [
           {
             id: testId('field-1'),
             variable: knowsVariable('edgeNotes'),
@@ -270,7 +301,8 @@ const MAXIMAL_STAGES: MaximalStage[] = [
             showValidationHints: true,
           },
         ],
-      },
+        { locale: 'en-US' },
+      ),
     },
     settle: stageName,
   },
@@ -282,18 +314,22 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Guidance.',
       skipLogic,
       conditions: EVERY_STAGE.conditions,
+      dynamicAttributes: EVERY_STAGE.dynamicAttributes,
       subject: { entity: 'node', type: PERSON },
       form: {
         title: { 'en-US': 'Add a person' },
-        fields: [
-          {
-            id: testId('field-1'),
-            variable: personVariable('name'),
-            prompt: { 'en-US': 'What is their name?' },
-            hint: { 'en-US': 'Their first name.' },
-            showValidationHints: true,
-          },
-        ],
+        ...formOf(
+          [
+            {
+              id: testId('field-1'),
+              variable: personVariable('name'),
+              prompt: { 'en-US': 'What is their name?' },
+              hint: { 'en-US': 'Their first name.' },
+              showValidationHints: true,
+            },
+          ],
+          { locale: 'en-US' },
+        ),
       },
       prompts: [
         {
@@ -331,7 +367,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
           'You have completed this task. Click the next arrow to continue.',
       },
     },
-    settle: () => screen.findByRole('textbox', { name: 'Form title' }),
+    settle: () => screen.findByRole('textbox', { name: 'Dialog title' }),
   },
 ];
 
@@ -394,6 +430,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('finish', {
       interviewScript: EVERY_STAGE.interviewScript,
       conditions: EVERY_STAGE.conditions,
+      dynamicAttributes: EVERY_STAGE.dynamicAttributes,
     }),
   },
   {
@@ -524,15 +561,16 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
           .nodeConfiguration as SectionDoc),
         relationshipToParticipantAttribute: FM_RELATIONSHIP,
       },
-      form: {
-        fields: [
+      form: formOf(
+        [
           {
             id: testId('field-1'),
             variable: FM_OCCUPATION,
             prompt: { 'en-US': 'What do they do?' },
           },
         ],
-      },
+        { locale: 'en-US' },
+      ),
       completeness: {
         scope: 'thirdDegree',
         enforcement: 'recommended',
@@ -612,11 +650,71 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
  * stages — including its reach into nested keys, which is where a maximal
  * stage has most of its content.
  */
+/**
+ * `stage` with its dynamic attribute shown at the end of the first line of
+ * the first text of the stage's own that can show one, and is not only a block (a field or an
+ * asset alone in its paragraph). A save drops a dynamic attribute that no
+ * text uses, so a stage that declares one has to show it.
+ */
+const withTheWordShown = (stage: MaximalStage): MaximalStage => {
+  const { fields, type } = stage;
+  if (fields.dynamicAttributes === undefined) return stage;
+  const shown = `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: CONSENT_WORD })}}`;
+  const hit = collectLocalizedStringsFromSchema(
+    stageSchema,
+    { ...fields, type },
+    'owner',
+  ).find(
+    ({ dynamicValues, place, value }) =>
+      dynamicValues !== undefined &&
+      // The wording of the dynamic attribute itself can show values too,
+      // but a dynamic attribute cannot show itself.
+      place.kind !== 'dynamicAttributeWording' &&
+      typeof value['en-US'] === 'string' &&
+      !value['en-US'].startsWith('!['),
+  );
+  if (hit === undefined) {
+    const {
+      dynamicAttributes: _unusable,
+      conditions: _testedOnlyByIt,
+      ...usable
+    } = fields;
+    return {
+      ...stage,
+      fields: usable,
+      unusable: ['dynamicAttributes', 'conditions'],
+    };
+  }
+  const message = hit.value['en-US'] ?? '';
+  const [first = '', ...rest] = message.split('\n');
+  const at = hit.path.map(String);
+  const write = (container: unknown, path: readonly string[]): unknown => {
+    const [head, ...tail] = path;
+    if (head === undefined) {
+      return {
+        ...hit.value,
+        'en-US': [`${first} ${shown}`, ...rest].join('\n'),
+      };
+    }
+    if (Array.isArray(container)) {
+      return container.map((item, index) =>
+        String(index) === head ? write(item, tail) : item,
+      );
+    }
+    const record =
+      typeof container === 'object' && container !== null
+        ? (container as Record<string, unknown>)
+        : {};
+    return { ...record, [head]: write(record[head], tail) };
+  };
+  return { ...stage, fields: write(fields, at) as SectionDoc };
+};
+
 /** Both kinds of case, as one list: nothing below cares which it is. */
 const EVERY_MAXIMAL_STAGE: MaximalStage[] = [
   ...MAXIMAL_STAGES,
   ...FIXTURE_MAXIMAL_STAGES,
-];
+].map(withTheWordShown);
 
 describe('a maximal stage of each interface', () => {
   /**
@@ -645,8 +743,10 @@ describe('a maximal stage of each interface', () => {
    */
   it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: carries every key its schema declares',
-    ({ type, fields }) => {
-      expect(Object.keys(fields).toSorted()).toEqual(schemaKeysFor(type));
+    ({ type, fields, unusable = [] }) => {
+      expect(Object.keys(fields).toSorted()).toEqual(
+        schemaKeysFor(type).filter((key) => !unusable.includes(key)),
+      );
     },
   );
 

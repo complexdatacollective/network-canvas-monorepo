@@ -67,7 +67,7 @@ Each prompt asks about one kind of relationship. The participant goes through ev
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
-> Do: Use [piped text](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/piped-text) in your prompt to reference the alters the participant is comparing.
+> Do: In your prompt, name the two alters that the participant is comparing. Choose **Attribute** in the prompt's toolbar, and then choose an attribute from the **First node attributes** or **Second node attributes** group. Read more about [piped text](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/piped-text).
 
 <!-- include: skip-logic -->
 

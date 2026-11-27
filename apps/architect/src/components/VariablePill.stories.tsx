@@ -20,7 +20,7 @@ const VARIABLE_TYPES = [
 
 type StoryArgs = Pick<
   VariablePillProps,
-  'animated' | 'className' | 'editable' | 'label' | 'type'
+  'className' | 'editable' | 'label' | 'type'
 >;
 
 const StoryVariablePill = ({ label, ...props }: StoryArgs) => {
@@ -44,14 +44,13 @@ const meta = {
     docs: {
       description: {
         component: `
-\`VariablePill\` is the single presentation component for every attribute
-reference in Architect. Its semantics and visual treatment are controlled
-independently:
+\`VariablePill\` is Architect's attribute pill: it draws protocol-builder's one
+\`VariablePill\` (the same pill as the attribute pickers and the stage editors)
+and adds a rename editor and the Redux connection:
 
 | Props | Element and behavior | Use when |
 | --- | --- | --- |
-| \`editable={false}\`, \`animated={false}\` | Non-interactive \`<data>\` with a static type-colored border. | Picker options, query previews, stage configuration, and printable output. This is the default. |
-| \`animated\` | Adds the orbiting gradient border to either element. | Only in the attribute picker, on the value the picker currently holds. Never for a listing, a preview, or printable output. |
+| \`editable={false}\` | Non-interactive \`<data>\` with a static type-colored border. | The codebook, query previews and printable output. This is the default. |
 | \`editable\` | A button that opens the anchored name editor directly. Hover, focus, and tooltip affordances communicate the action. | The attribute can be renamed. Provide \`onLabelChange\` to persist edits. |
 | \`ConnectedVariablePill\` | Resolves \`label\` and \`type\` from an attribute UUID, validates uniqueness, then renders \`VariablePill\`. | Architect state owns the attribute and edits must update the protocol codebook. |
 
@@ -77,10 +76,6 @@ independently:
 - Its containing block provides the default width constraint; long labels
   truncate rather than expanding beyond it.
 - \`className\` composes Tailwind layout constraints such as \`max-w-64\`.
-- \`animated\` changes only the border treatment, and belongs to the attribute
-  picker's held value alone. A pill that is listed rather than held — the
-  codebook table, query previews, stage configuration — keeps the static
-  type-coloured border.
 - \`editable\` changes the semantic element to a button, adds the raised
   interaction affordance and edit tooltip, and enables the editing workflow.
 - On entering edit mode, the pill expands from its current width to
@@ -92,7 +87,6 @@ independently:
   args: {
     label: 'participant_age',
     type: 'number',
-    animated: false,
     editable: false,
   },
   argTypes: {
@@ -110,11 +104,6 @@ independently:
       description:
         'Optional Tailwind classes, such as max-w-64, for context-specific layout constraints.',
     },
-    animated: {
-      control: 'boolean',
-      description:
-        "Enables the animated border, independently of editing. Reserved for the attribute picker's held value.",
-    },
     editable: {
       control: 'boolean',
       description:
@@ -129,45 +118,46 @@ independently:
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const borderOf = (canvasElement: HTMLElement) => {
-  const pill = canvasElement.querySelector('data');
-  if (!pill) throw new Error('the pill did not render a data element');
-  return getComputedStyle(pill).backgroundImage;
+const pillOf = (canvasElement: HTMLElement) => {
+  const pill = canvasElement.querySelector('.variable-pill');
+  if (!(pill instanceof HTMLElement)) {
+    throw new Error('the pill did not render');
+  }
+  return pill;
 };
 
+/** A static pill draws in the accent of its type, read from the page. */
 export const Static: Story = {
   play: async ({ canvasElement }) => {
-    await expect(borderOf(canvasElement)).not.toContain('conic-gradient');
+    const pill = pillOf(canvasElement);
+    await expect(pill.tagName).toBe('DATA');
+    await expect(getComputedStyle(pill).backgroundColor).not.toBe(
+      'rgba(0, 0, 0, 0)',
+    );
   },
 };
 
-export const Animated: Story = {
-  args: {
-    animated: true,
-  },
-  // Animation is independent of editing: the pill stays a non-interactive
-  // data element and still draws the orbiting gradient border.
-  play: async ({ canvasElement }) => {
-    await expect(borderOf(canvasElement)).toContain('conic-gradient');
-  },
-};
-
+/**
+ * The editable pill draws the same pill as the static one, as a button: the
+ * same accent and the same mark.
+ */
 export const Editable: Story = {
   args: {
-    animated: true,
     editable: true,
   },
-};
-
-export const EditableStaticBorder: Story = {
-  args: {
-    editable: true,
+  play: async ({ canvasElement }) => {
+    const pill = pillOf(canvasElement);
+    await expect(pill.tagName).toBe('BUTTON');
+    await expect(getComputedStyle(pill).backgroundColor).not.toBe(
+      'rgba(0, 0, 0, 0)',
+    );
+    const mark = pill.querySelector('img');
+    await expect(mark?.getAttribute('alt')).toBe('');
   },
 };
 
 export const LongLabel: Story = {
   args: {
-    animated: true,
     editable: true,
     label: 'participant_neighbourhood_connection_frequency',
     className: 'max-w-64',

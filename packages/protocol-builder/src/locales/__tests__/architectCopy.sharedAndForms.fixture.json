@@ -64,17 +64,6 @@
     "es": "Determina si se muestra esta etapa y dónde continúa la entrevista cuando se omite.",
     "from": "74a07e626 architect.sections.skipLogic.determineWhetherThisStageIsShown"
   },
-  "protocolBuilder.introduction.description": {
-    "en": "Introduce the task before participants complete its forms.",
-    "es": "Presenta la tarea antes de que quienes participan completen sus formularios.",
-    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.introduction.headingLabel": {
-    "en": "Title",
-    "es": "Título",
-    "from": "74a07e626 architect.sections.introductionPanel.title"
-  },
   "protocolBuilder.promptsSection.title": {
     "en": "Prompt collection",
     "es": "Conjunto de preguntas",
@@ -340,119 +329,10 @@
     "es": "Selecciona el atributo al que se asigna un valor al crear un nodo mediante el botón Adición rápida. Usa un atributo llamado «name», salvo que tengas un motivo para elegir otro. Interviewer utilizará automáticamente ese atributo como etiqueta del nodo durante la entrevista.",
     "from": "74a07e626 architect.sections.quickAdd.quickAdd.selectTheAttributeThatIsAssigned"
   },
-  "protocolBuilder.formFields.title": {
-    "en": "Form configuration",
-    "es": "Configuración del formulario",
-    "from": "74a07e626 architect.sections.form.form.formConfiguration"
-  },
-  "protocolBuilder.formFields.description": {
-    "en": "Map attributes to input controls and define the validation rules for this form.",
-    "es": "Asigna atributos a los controles de entrada y define las reglas de validación de este formulario.",
-    "from": "74a07e626 architect.sections.form.form.mapAttributesToInputControlsAnd"
-  },
-  "protocolBuilder.formFields.formTitleHint": {
-    "en": "Shown at the top of the form. Use a short descriptive title such as 'Add a contact'.",
-    "es": "Se muestra en la parte superior del formulario. Usa un título descriptivo breve, como «Añadir un contacto».",
-    "from": "74a07e626 architect.sections.form.form.shownAtTheTopOfThe"
-  },
-  "protocolBuilder.formFields.formTitlePlaceholder": {
-    "en": "Enter a title...",
-    "es": "Introduce un título...",
-    "from": "74a07e626 architect.sections.form.form.enterATitle"
-  },
-  "protocolBuilder.formFields.fieldLabel": {
-    "en": "Form fields",
-    "es": "Campos del formulario",
-    "from": "74a07e626 architect.sections.form.form.formFields"
-  },
-  "protocolBuilder.formFields.fieldHint": {
-    "en": "Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order.",
-    "es": "Añade uno o varios campos al formulario para recoger atributos. Usa el control de arrastre a la izquierda de cada pregunta para ajustar su orden.",
-    "from": "74a07e626 architect.sections.form.form.addOneOrMoreFieldsTo"
-  },
-  "protocolBuilder.formFields.emptyState": {
-    "en": "No items have been created yet.",
-    "es": "Todavía no se ha creado ningún elemento.",
-    "from": "74a07e626 architect.defaults.components.Form.arrayFields.DialogArrayField.emptyStateMessage"
-  },
-  "protocolBuilder.formFields.attributeSectionTitle": {
-    "en": "Attribute selection",
-    "es": "Selección de atributo",
-    "from": "74a07e626 architect.sections.form.variableDefinitionFields.attributeSelection"
-  },
-  "protocolBuilder.formFields.attributeSectionDescription": {
-    "en": "Choose the attribute this form field will collect.",
-    "es": "Elige el atributo que recogerá este campo de formulario.",
-    "from": "74a07e626 architect.sections.form.variableDefinitionFields.chooseTheAttributeThisFormField"
-  },
-  "protocolBuilder.formFields.attributeHint": {
-    "en": "Select an attribute",
-    "es": "Selecciona un atributo",
-    "from": "74a07e626 architect.sections.form.fieldFields.selectAnAttribute"
-  },
-  "protocolBuilder.formFields.questionSectionTitle": {
-    "en": "Field configuration",
-    "es": "Configuración del campo",
-    "from": "74a07e626 architect.sections.form.fieldFields.fieldConfiguration"
-  },
-  "protocolBuilder.formFields.questionSectionDescription": {
-    "en": "Write the participant-facing prompt and choose how the response is collected.",
-    "es": "Escribe la pregunta para la persona participante y elige cómo se recoge la respuesta.",
-    "from": "74a07e626 architect.sections.form.fieldFields.writeTheParticipantFacingPromptAndChoose",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.formFields.componentHint": {
-    "en": "How the answer is collected. For detailed information about these options, see our <link>documentation</link>.",
-    "es": "Cómo se recoge la respuesta. Consulta nuestra <link>documentación</link> para obtener información detallada sobre estas opciones.",
-    "from": "74a07e626 architect.additional.sections.form.variableDefinitionFields.howTheAnswerIsCollectedFor, its <ExternalLink> tag renamed and its extraction spacing closed up"
-  },
-  "protocolBuilder.formFields.promptHint": {
-    "en": "The question to display to the participant. Supports markdown formatting.",
-    "es": "La pregunta que se mostrará a la persona participante. Admite formato Markdown.",
-    "from": "74a07e626 architect.sections.form.fieldFields.theQuestionToDisplayToThe",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.formFields.promptPlaceholder": {
-    "en": "What is this person's name?",
-    "es": "¿Cómo se llama esta persona?",
-    "from": "74a07e626 architect.sections.form.fieldFields.whatIsThisPersonSName"
-  },
-  "protocolBuilder.formFields.hintHint": {
-    "en": "Optionally display a markdown-formatted hint below the question, to help participants understand how to answer.",
-    "es": "Puedes mostrar una indicación con formato Markdown debajo de la pregunta para ayudar a quienes participan a entender cómo responder.",
-    "from": "74a07e626 architect.sections.form.fieldFields.optionallyDisplayAMarkdownFormattedHintBelow",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.formFields.hintPlaceholder": {
-    "en": "e.g. Select all that apply...",
-    "es": "p. ej., Selecciona todas las opciones que correspondan...",
-    "from": "74a07e626 architect.sections.form.fieldFields.eGSelectAllThatApply"
-  },
-  "protocolBuilder.formFields.validationHintsHint": {
-    "en": "Automatically display hints derived from this field's validation rules, helping participants understand input requirements.",
-    "es": "Muestra automáticamente indicaciones derivadas de las reglas de validación de este campo para ayudar a quienes participan a entender los requisitos de entrada.",
-    "from": "74a07e626 architect.sections.form.fieldFields.automaticallyDisplayHintsDerivedFromThis; es revised in the 2026-09-17 Spanish translation pass",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.formFields.lockedTypeTitle": {
-    "en": "Attribute type is locked",
-    "es": "El tipo de atributo está bloqueado",
-    "from": "74a07e626 architect.sections.form.variableDefinitionFields.attributeTypeIsLocked"
-  },
-  "protocolBuilder.formFields.lockedTypeDescription": {
-    "en": "A pre-existing attribute is currently selected. You cannot change an attribute type after it has been created, so only <strong>{variableType}</strong> compatible input controls can be selected above. If you would like to use a different input control type, you will need to create a new attribute.",
-    "es": "Hay un atributo existente seleccionado. No se puede cambiar el tipo de un atributo después de crearlo, por lo que arriba solo se pueden seleccionar controles de entrada compatibles con <strong>{variableType}</strong>. Si quieres usar otro tipo de control de entrada, deberás crear un nuevo atributo.",
-    "from": "74a07e626 architect.sections.form.variableDefinitionFields.aPreExistingAttributeIsCurrentlySelected"
-  },
   "protocolBuilder.formFields.newTypeNotice": {
     "en": "The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).",
     "es": "El control de entrada seleccionado hará que este atributo se defina con el tipo <strong>{variableType}</strong>. Una vez establecido, no se puede cambiar, aunque podrás cambiar el control de entrada dentro de este tipo.",
     "from": "74a07e626 architect.sections.form.variableDefinitionFields.theSelectedInputControlWillCause"
-  },
-  "protocolBuilder.formFields.attributeControlBadge": {
-    "en": "<type>{typeLabel}</type> attribute using <control>{controlLabel}</control> input control",
-    "es": "Atributo de tipo <type>{typeLabel}</type> con control <control>{controlLabel}</control>",
-    "from": "74a07e626 architect.form.attributeControlDescription"
   },
   "protocolBuilder.codebookVariable.optionsLegend": {
     "en": "Choice values",
@@ -534,15 +414,5 @@
     "en": "Use a network data file",
     "es": "Usar un archivo de datos de red",
     "from": "74a07e626 architect.form.fields.dataSource.useANetworkDataFile"
-  },
-  "protocolBuilder.formFields.atLeastOne": {
-    "en": "You must create at least one item.",
-    "es": "Debes crear al menos un elemento.",
-    "from": "74a07e626 architect.arrayValidation.required"
-  },
-  "protocolBuilder.formFields.attributeTaken": {
-    "en": "This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.",
-    "es": "Otro campo de este formulario ya recoge este atributo. Elige otro atributo o edita el campo existente.",
-    "from": "74a07e626 architect.arrayValidation.duplicateField"
   }
 }

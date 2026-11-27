@@ -172,7 +172,7 @@ const STEP_SELECTOR = '[data-question-step]';
 const STEP_DELAY = 650;
 
 /** How long a chosen answer shows before the form moves on from itself. */
-const COMPLETE_DELAY = 350;
+export const COMPLETE_DELAY = 350;
 
 /** How far a step slides as it leaves or comes in, in pixels. */
 const STEP_SLIDE = 40;
@@ -228,11 +228,37 @@ const isComplete = (root: Element, read?: ReadValue) =>
     (field) => !isClosed(field) && isUnanswered(field, read),
   );
 
+/** Every element marked as a step, in the order they show. */
+const sectionsIn = (root: Element) => [...root.querySelectorAll(STEP_SELECTOR)];
+
 /** The steps holding at least one question, in the order they show. */
 const stepsIn = (root: Element) =>
-  [...root.querySelectorAll(STEP_SELECTOR)].filter(
+  sectionsIn(root).filter(
     (step) => step.querySelector(FIELD_SELECTOR) !== null,
   );
+
+const sameElements = (a: readonly Element[], b: readonly Element[]) =>
+  a.length === b.length && a.every((entry, at) => entry === b[at]);
+
+/**
+ * The step that each section shows with. A section that holds a question is
+ * a step of its own. One that holds none (text whose questions logic hides)
+ * introduces the questions after it, so it shows with the next step that
+ * holds one; after the last such step there is nothing for it to introduce,
+ * and it shows with none.
+ */
+const holdersOf = (
+  sections: readonly Element[],
+  steps: readonly Element[],
+): Map<Element, Element | undefined> => {
+  const holders = new Map<Element, Element | undefined>();
+  let next: Element | undefined;
+  for (const section of sections.toReversed()) {
+    if (steps.includes(section)) next = section;
+    holders.set(section, next);
+  }
+  return holders;
+};
 
 type QuestionFlowProps = {
   className?: string;
@@ -305,6 +331,7 @@ export default function QuestionFlow({
   const stepped = steppedWanted && navigation != null;
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const [steps, setSteps] = useState<readonly Element[]>([]);
+  const [sections, setSections] = useState<readonly Element[]>([]);
   const [current, setCurrent] = useState(0);
   const [state, setState] = useState<StepState>('answered');
   const moved = useRef(false);
@@ -333,22 +360,24 @@ export default function QuestionFlow({
   const survey = useCallback(() => {
     if (!root || !stepped) return;
     const next = stepsIn(root);
-    setSteps((known) =>
-      known.length === next.length &&
-      known.every((entry, at) => entry === next[at])
-        ? known
-        : next,
+    setSteps((known) => (sameElements(known, next) ? known : next));
+    const nextSections = sectionsIn(root);
+    setSections((known) =>
+      sameElements(known, nextSections) ? known : nextSections,
     );
   }, [root, stepped]);
 
-  // Only the current step shows; the others stay in the form, hidden, so
-  // their answers are kept and saved with the rest.
+  // Only the current step shows, with any section that introduces it; the
+  // others stay in the form, hidden, so their answers are kept and saved
+  // with the rest. While no step holds a question, every section shows.
   useEffect(() => {
     if (!stepped) return undefined;
-    steps.forEach((element, at) => {
-      if (!(element instanceof HTMLElement)) return;
-      element.hidden = at !== index;
-      element.inert = at !== index;
+    const holders = holdersOf(sections, steps);
+    sections.forEach((section) => {
+      if (!(section instanceof HTMLElement)) return;
+      const shown = steps.length === 0 || holders.get(section) === step;
+      section.hidden = !shown;
+      section.inert = !shown;
     });
     shownIndex.current = index;
     shownStep.current = step;
@@ -357,7 +386,7 @@ export default function QuestionFlow({
     // answers once they have painted, as with every other answer.
     const frame = requestAnimationFrame(() => setState(stateOf(step, read)));
     return () => cancelAnimationFrame(frame);
-  }, [stepped, steps, index, step, read]);
+  }, [stepped, sections, steps, index, step, read]);
 
   // Moving on, the step shown leaves to the left and the next comes in from
   // the right; going back, the other way round. The step starts out of
@@ -425,7 +454,10 @@ export default function QuestionFlow({
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         survey();
-        const shown = root.querySelector(`${STEP_SELECTOR}:not([hidden])`);
+        // The step shown, not a section that introduces it.
+        const shown = stepsIn(root).find(
+          (entry) => !entry.hasAttribute('hidden'),
+        );
         if (shown) setState(stateOf(shown, read));
       });
     };

@@ -59,6 +59,7 @@ import validateProtocol, {
 
 export {
   analyzeProtocolLocalization,
+  expectedLocalesOf,
   type ProtocolLocalizationWarning,
 } from './localization/analyzeProtocolLocalization.ts';
 export {
@@ -93,6 +94,8 @@ export {
   type MessageVariant,
   messageVariants,
   type MissingPlacement,
+  isPluralCategory,
+  type PluralCategory,
   pluralCategoriesOf,
   pluralCountExamples,
 } from './localization/messageArguments.ts';
@@ -108,17 +111,74 @@ export {
   dynamicMessageParts,
   dynamicValueCaseKeysIn,
   dynamicValueNamesIn,
+  messageShowsValues,
   findDynamicValueProblem,
   MISSING_CASE,
   pluralValueExamples,
 } from './localization/dynamicValueMessages.ts';
+// Text of several lines read as a document: markdown, a form's fields, and
+// logic blocks. The one reader and printer that every consumer uses, and the
+// choice that a logic block or a dynamic attribute makes.
 export {
-  ASSET_BLOCK_ALIGNMENTS,
+  type ContentLogic,
+  type ContentNode,
+  type ContentNodes,
+  fieldIdsIn,
+  logicBlocksIn,
+  printContentDocument,
+  readContentDocument,
+} from './localization/contentDocument.ts';
+export {
+  fieldBlockMarkdown,
+  renameFieldBlocks,
+} from './localization/fieldBlock.ts';
+// The owners of conditions and dynamic attributes, and what a save of one
+// leaves out: the one normalisation that the stage editor, the codebook, the
+// translation table and removing a language write an owner with.
+export {
+  ownerOfTextPath,
+  type TextOwnerPath,
+  textOwnersOf,
+} from './utils/textOwners.ts';
+export { withoutUnusedTextDefinitions } from './utils/withoutUnusedDefinitions.ts';
+// What a translatable string is, by where it sits: the one reading of a
+// string's path, so that no reader looks at the segments of the path.
+export {
+  isOwnTextOf,
+  type TextPlace,
+  textPlaceOf,
+  type TextRoot,
+} from './utils/textPlace.ts';
+// Which fields each language's form places: the one rule that the editors,
+// the translation table, validation and the interview read.
+export {
+  fieldIdsInDocument,
+  formFieldPlacement,
+} from './localization/formFieldLocales.ts';
+// Logic: the one model of a logic block and of a dynamic attribute, the one
+// choice between its versions, and what it reads.
+export {
+  type Logic,
+  logicReads,
+  logicValueNames,
+  type LogicVersion,
+  logicVersions,
+  type NumberVersionsByMessage,
+} from './localization/logic.ts';
+export {
+  chooseVersion,
+  type LogicChoice,
+  type LogicInputs,
+  type LogicValue,
+  type ShownContentBlock,
+  shownContent,
+  shownFieldIds,
+} from './localization/logicChoice.ts';
+export {
   ASSET_BLOCK_DEFAULTS,
   ASSET_BLOCK_KINDS,
   ASSET_BLOCK_SIZES,
   type AssetBlock,
-  type AssetBlockAlignment,
   type AssetBlockAttributes,
   type AssetBlockKind,
   type AssetBlockSize,
@@ -126,14 +186,12 @@ export {
   assetBlocksInMarkdown,
   assetBlocksInMessage,
   assetBlockUrl,
-  isAssetBlockAlignment,
   isAssetBlockKind,
   isAssetBlockSize,
   isAssetBlockUrl,
   readAssetBlockUrl,
 } from './localization/assetBlock.ts';
 export {
-  assetBlockAlignmentShows,
   assetBlockFile,
   assetBlockSettings,
   assetInManifest,
@@ -236,6 +294,7 @@ export {
   DYNAMIC_VALUE_VARIABLE_TYPES,
   type AttributeDynamicValueRole,
   type DynamicValueForm,
+  type DynamicValueName,
   type DynamicValueReference,
   type DynamicValueRole,
   type DynamicValueSite,
@@ -263,6 +322,36 @@ export {
   rewriteDynamicValueReferences,
   TRUE_CASE,
 } from './schemas/9/dynamic-values.ts';
+// Dynamic attributes: values whose wording logic chooses, declared beside a
+// stage's or a node label's conditions.
+export {
+  createDynamicAttributeId,
+  type DynamicAttribute,
+  type DynamicAttributes,
+  DynamicAttributeSchema,
+  DynamicAttributesSchema,
+  type DynamicAttributeVersion,
+  dynamicAttributeMayShow,
+  dynamicAttributeOfLogic,
+  dynamicAttributesShownBy,
+  dynamicAttributeValueNames,
+  dynamicAttributeVersions,
+  dynamicAttributeWordingNames,
+  logicOfDynamicAttribute,
+  NUMBER_WORDING_ARGUMENTS,
+  NUMBER_WORDING_COUNT,
+  readDynamicAttributeLogic,
+  valueNamesReadThrough,
+} from './schemas/9/dynamic-attributes.ts';
+// One line of markdown, with values between its pieces, as the words it
+// shows.
+export { inlineMarkdownText } from './localization/inlineMarkdownText.ts';
+// The protocol's check of its dynamic attributes, for an editor that checks
+// one stage before it saves it.
+export {
+  findDynamicAttributeProblems,
+  VERSION_WITHOUT_WORDING,
+} from './schemas/9/dynamic-attribute-validation.ts';
 export {
   removedOptionIds,
   withoutRemovedOptionVersions,
@@ -292,6 +381,7 @@ export {
 } from './schemas/9/node-label.ts';
 export {
   conditionsContextOf,
+  dynamicAttributesContextOf,
   dynamicValueContextFor,
   type DynamicValueProblem,
   findDynamicValueProblems,

@@ -53,6 +53,24 @@ const findInSteps = (
   return undefined;
 };
 
+/** The translations of `value` in the protocol's languages, by tag. */
+const declaredTranslations = (
+  value: LocaleKeyedText,
+  localization: LocalizationDeclaration,
+): Translation[] =>
+  localization.locales
+    .flatMap((locale): Translation[] => {
+      const text = Object.hasOwn(value, locale) ? value[locale] : undefined;
+      return text === undefined ? [] : [{ locale, text }];
+    })
+    .toSorted((a, b) => compareLocaleTags(a.locale, b.locale));
+
+/** The first step: the selected language, or its closest related language. */
+const selectedStep = (selected: LocaleTag | undefined): Step => ({
+  matchedBy: 'selected',
+  preferences: selected === undefined ? [] : [selected],
+});
+
 /**
  * The translation of `value` shown to a participant reading in
  * `requestedLocales[0]`. Without one, the text falls back to the rest of
@@ -70,12 +88,7 @@ export function resolveLocalizedString(
   localization: LocalizationDeclaration,
   requestedLocales: readonly [string, ...string[]],
 ): ResolvedLocalizedString {
-  const available = localization.locales
-    .flatMap((locale): Translation[] => {
-      const text = Object.hasOwn(value, locale) ? value[locale] : undefined;
-      return text === undefined ? [] : [{ locale, text }];
-    })
-    .toSorted((a, b) => compareLocaleTags(a.locale, b.locale));
+  const available = declaredTranslations(value, localization);
   const [first] = available;
   if (first === undefined) {
     throw new Error(
@@ -86,10 +99,7 @@ export function resolveLocalizedString(
   const [requestedSelection, ...otherRequested] = requestedLocales;
   const selected = canonicalizeLocale(requestedSelection);
   const resolved: Resolved = findInSteps(available, [
-    {
-      matchedBy: 'selected',
-      preferences: selected === undefined ? [] : [selected],
-    },
+    selectedStep(selected),
     {
       matchedBy: 'requested',
       preferences: normalizeLocalePreferences(otherRequested),
@@ -141,5 +151,33 @@ export function resolveTextsInEachLocale(
         ]).text;
       }),
     ]),
+  );
+}
+
+/**
+ * The declared languages whose translation of `value` a participant reading
+ * in `locale` may be shown (`resolveLocalizedString`), whatever languages
+ * their browser lists after it. Those languages are not known when the
+ * protocol is written.
+ *
+ * The first step, the selected language or its closest related language,
+ * does not depend on the browser: when it finds a translation, that is the
+ * only one that can be shown. When it finds none, the browser may list any
+ * declared language that has the text first, so each of them may be shown.
+ * Empty when no declared language has the text.
+ */
+export function localesThatMayBeShown(
+  value: LocaleKeyedText,
+  localization: LocalizationDeclaration,
+  locale: string,
+): ReadonlySet<LocaleTag> {
+  const available = declaredTranslations(value, localization);
+  const selected = findInSteps(available, [
+    selectedStep(canonicalizeLocale(locale)),
+  ]);
+  return new Set(
+    selected === undefined
+      ? available.map((translation) => translation.locale)
+      : [selected.locale],
   );
 }

@@ -25,12 +25,23 @@ export type EditingLanguage = Readonly<{
    * default language.
    */
   locale: LocaleTag | undefined;
+  /**
+   * The language that text is edited and shown in: `locale` once the
+   * protocol's settings are read, and English until then. For a control
+   * that always needs a language; `locale` says whether the settings have
+   * been read.
+   */
+  editingLocale: LocaleTag;
   setLocale: (locale: LocaleTag) => void;
 }>;
+
+/** The language of text before the protocol's languages are read. */
+const UNREAD_LOCALE: LocaleTag = 'en';
 
 const NO_LANGUAGE: EditingLanguage = Object.freeze({
   localization: undefined,
   locale: undefined,
+  editingLocale: UNREAD_LOCALE,
   setLocale: () => undefined,
 });
 
@@ -63,7 +74,12 @@ export function ProtocolLocalizationProvider({
   const setLocale = useCallback((next: LocaleTag) => setSelected(next), []);
 
   const value = useMemo(
-    () => ({ localization, locale, setLocale }),
+    () => ({
+      localization,
+      locale,
+      editingLocale: locale ?? UNREAD_LOCALE,
+      setLocale,
+    }),
     [localization, locale, setLocale],
   );
 

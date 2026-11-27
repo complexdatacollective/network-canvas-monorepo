@@ -8,6 +8,7 @@ import {
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
   pluralValueExamples,
+  messageShowsValues,
 } from '../dynamicValueMessages.ts';
 
 const VALUES: DynamicValueArguments = {
@@ -220,31 +221,15 @@ describe('findDynamicValueProblem', () => {
     ok('Interview {id}');
   });
 
-  it('shows a value that can be missing only where it has one', () => {
-    refused(
-      'Hi {name}',
-      'The "Name" attribute of the participant can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.',
-    );
+  // A value that is missing shows nothing, so text can show it anywhere.
+  it('shows a value that can be missing anywhere', () => {
+    ok('Hi {name}');
     ok('{name, select, missing {Hi} other {Hi {name}}}');
     ok('Hi {name, select, missing {there} other {{name}}}!');
-    refused(
-      '{name, select, other {Hi {name}}}',
-      '"Name" attribute of the participant can be missing',
-    );
-    refused(
-      '{name, select, missing {Hi {name}} other {Hi}}',
-      '"Name" attribute of the participant can be missing',
-    );
-  });
-
-  it('keeps an outer guard through an inner select on the same value', () => {
-    ok('{name, select, missing {none} other {{name, select, other {{name}}}}}');
+    ok('{name, select, other {Hi {name}}}');
+    ok('{name, select, missing {Hi {name}} other {Hi}}');
     ok(
-      '{name, select, missing {none} other {{name, select, missing {{name}} other {{name}}}}}',
-    );
-    refused(
       '{name, select, missing {none} other {Hi}} {name, select, other {{name}}}',
-      '"Name" attribute of the participant can be missing',
     );
   });
 
@@ -254,7 +239,7 @@ describe('findDynamicValueProblem', () => {
     );
     refused(
       '{kind, select, colleague {x} other {y}}',
-      'This text has a version that the "Kind" attribute of the participant can never choose.',
+      'This wording has a version that the "Kind" attribute of the participant can never choose.',
     );
   });
 
@@ -287,10 +272,7 @@ describe('findDynamicValueProblem', () => {
     ok(
       '{count, select, missing {Some} other {{count, plural, one {# year} other {# years}}}}',
     );
-    refused(
-      '{count, plural, one {#} other {#}}',
-      '"Count" attribute of the participant can be missing',
-    );
+    ok('{count, plural, one {#} other {#}}');
     refused(
       '{name, select, missing {x} other {{name, plural, one {#} other {#}}}}',
       'not a number',
@@ -309,13 +291,17 @@ describe('findDynamicValueProblem', () => {
     refused('{other}', UNKNOWN);
     refused('{constructor}', UNKNOWN);
     refused('{toString, select, missing {x} other {y}}', UNKNOWN);
-    // In the order the message reads: the unguarded value comes first.
     expect(
       findDynamicValueProblem('{name} {ghost}', lookupOf(VALUES), 'en'),
-    ).toContain('can be missing');
-    expect(
-      findDynamicValueProblem('{ghost} {name}', lookupOf(VALUES), 'en'),
     ).toBe(UNKNOWN);
+    // In the order the message reads: the first problem is reported.
+    expect(
+      findDynamicValueProblem(
+        '{name, plural, one {#} other {#}} {ghost}',
+        lookupOf(VALUES),
+        'en',
+      ),
+    ).toContain('not a number');
   });
 
   it('names a value by its description in every problem about it, never by its name', () => {
@@ -335,7 +321,7 @@ describe('findDynamicValueProblem', () => {
         'en',
       ),
     ).toBe(
-      'The "Name" attribute of the participant is not a number, so it cannot choose a version of the text by number.',
+      'The "Name" attribute of the participant is not a number, so it cannot choose a version of the wording by number.',
     );
   });
 
@@ -563,5 +549,32 @@ describe('pluralValueExamples', () => {
     expect(pluralValueExamples('en').get('other')?.slice(0, 3)).toEqual([
       0, 2, 3,
     ]);
+  });
+});
+
+describe('messageShowsValues', () => {
+  it('is true of a message that shows a value or chooses a version by one', () => {
+    for (const message of [
+      'Hello {ego_name}',
+      '{ego_x, select, missing {} other {Yes}}',
+      'You have {n, plural, one {# child} other {# children}}',
+      // A format that no protocol text may use still shows a value.
+      'Born {ego_year, number}',
+      '{n, selectordinal, one {#st} other {#th}}',
+    ]) {
+      expect(messageShowsValues(message)).toBe(true);
+    }
+  });
+
+  it('is false of literal text, and of a message that cannot be read', () => {
+    for (const message of [
+      '',
+      'Plain words',
+      "Braces written as text: '{'ego_name'}'",
+      '<b>bold</b> words',
+      'Not {valid',
+    ]) {
+      expect(messageShowsValues(message)).toBe(false);
+    }
   });
 });

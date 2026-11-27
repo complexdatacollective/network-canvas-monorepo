@@ -6,6 +6,7 @@ import {
 } from '@codaco/network-query';
 import {
   isFinishSessionStage,
+  type LocalizationDeclaration,
   type Stage,
   type StructuralCodebook,
 } from '@codaco/protocol-validation';
@@ -85,6 +86,22 @@ export type GenerateNetworkParams = {
    * types where complete data is preferable (e.g. forms).
    */
   inProgressStageIndex?: number;
+  /**
+   * The language that the participant reads, as a locale tag. Forms are
+   * answered as the form's document in this language asks them: a field that
+   * the document does not place is not answered, and nor is a field that a
+   * logic block hides. A form without a document in this language is read in
+   * the closest related language, else in the protocol's default language
+   * (see `localization`).
+   */
+  formLanguage: string;
+  /**
+   * The protocol's languages (`protocol.localization`), which say what
+   * language a form falls back to, as the interview reads it: a form
+   * without a document in `formLanguage` or a related language is read in
+   * the protocol's default language.
+   */
+  localization: LocalizationDeclaration;
   /** Overrides for generation tuning constants. See {@link GenerationConfig}. */
   config?: Partial<GenerationConfig>;
 };
@@ -107,6 +124,8 @@ export function generateNetwork(
     simulateDropOut = false,
     respectSkipLogicAndFiltering = false,
     inProgressStageIndex,
+    formLanguage,
+    localization,
     config,
   } = params;
 
@@ -190,6 +209,8 @@ export function generateNetwork(
     usedRosterUids: new Set<string>(),
     externalData,
     respectSkipLogicAndFiltering,
+    formLanguage,
+    formLocalization: localization,
     uniqueRegistry: new UniqueRegistry(),
     entityConstraints: {
       ego: buildEntityConstraints(
@@ -328,7 +349,7 @@ export function generateNetwork(
           handleCategoricalBin(ctx, draft, stage);
           break;
         case 'EgoForm':
-          handleEgoForm(ctx, draft);
+          handleEgoForm(ctx, draft, stage);
           break;
         case 'AlterForm':
           handleAlterForm(ctx, draft, stage);

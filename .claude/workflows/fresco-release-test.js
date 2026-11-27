@@ -724,7 +724,7 @@ const expectedScriptChecks = {
     'interview-opens',
     'interview-information-selectable',
     'interview-video-descriptions',
-    'interview-ego-form-keeps-introduction-panel',
+    'interview-ego-form-opens-with-introduction',
     'interview-ego-form-answered',
     'interview-nodes-created',
     'interview-sociogram-placed-and-connected',

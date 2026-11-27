@@ -11,6 +11,7 @@ import {
   parseNodeShapeSvg,
   serializeNodeShapeSvg,
 } from '../../fresco-ui/src/node/nodeShapeSvg.ts';
+import { fieldBlockMarkdown } from '../../protocol-validation/src/localization/fieldBlock.ts';
 import {
   deterministicEntityTypeId,
   deterministicVariableId,
@@ -122,6 +123,18 @@ function nodeType({ key, name, color, customShapes }) {
 }
 
 function nameGenerator({ name, type, label, prompt }) {
+  const fields = [
+    {
+      id: objectId(`${name}/field-${type}_name`),
+      variable: `${type}_name`,
+      prompt: en('What do you call them or it?'),
+    },
+    {
+      id: objectId(`${name}/field-${type}_type`),
+      variable: `${type}_type`,
+      prompt: en('What kind of thing is it?'),
+    },
+  ];
   return {
     id: objectId(name),
     type: 'NameGenerator',
@@ -129,18 +142,11 @@ function nameGenerator({ name, type, label, prompt }) {
     subject: { entity: 'node', type },
     form: {
       title: en('Add to my world'),
-      fields: [
-        {
-          id: objectId(`${name}/field-${type}_name`),
-          variable: `${type}_name`,
-          prompt: en('What do you call them or it?'),
-        },
-        {
-          id: objectId(`${name}/field-${type}_type`),
-          variable: `${type}_type`,
-          prompt: en('What kind of thing is it?'),
-        },
-      ],
+      // The form's document: one field block per field, in order.
+      content: en(
+        fields.map((field) => fieldBlockMarkdown(field.id)).join('\n\n'),
+      ),
+      fields,
     },
     prompts: [{ id: objectId(`${name}/prompt`), text: en(prompt) }],
   };

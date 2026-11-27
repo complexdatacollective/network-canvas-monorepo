@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../../__tests__/englishForms.ts';
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { collectBinOnlyVariables } from '../binOnlyVariables.ts';
 import { SyntheticDataConstraintError } from '../error.ts';
@@ -79,6 +80,7 @@ const narrativeDisplayingRank = {
 describe('a unique variable used only by a binning stage', () => {
   it('generates, because nothing in the interview validates it', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [nameGenerator, ordinalBin],
@@ -98,6 +100,7 @@ describe('a unique variable used only by a binning stage', () => {
     let error: unknown;
     try {
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 3,
         codebook,
         stages: [nameGeneratorRankingRank, ordinalBin],
@@ -115,6 +118,7 @@ describe('a unique variable used only by a binning stage', () => {
 
   it('generates when the only other reference is on a read-only stage', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [nameGenerator, ordinalBin, narrativeDisplayingRank],
@@ -150,6 +154,7 @@ describe('a unique variable used only by a binning stage', () => {
     } as unknown as Stage;
 
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [nameGenerator, ordinalBin, unreachableForm],

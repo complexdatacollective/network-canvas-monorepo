@@ -10,18 +10,21 @@ import { ControlName, getVariableMeta } from '../helpers';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
 import {
+  SummaryLineIn,
   SummaryMarkdown,
   SummaryText,
   useMultilingualSummary,
+  useTranslationLocale,
 } from '../SummaryText';
 import Variable from '../Variable';
 import SectionFrame from './SectionFrame';
+
 const messages = defineMessages({
   form: {
     id: 'architect.protocolSummary.stage.form.form',
     defaultMessage: 'Form',
     description:
-      "Section heading in the printable protocol summary, above the table of the fields of a stage's form.",
+      "Section heading in the printable protocol summary, above the text of a stage's form, which places each of the form's fields.",
   },
   title: {
     id: 'architect.protocolSummary.stage.form.title',
@@ -29,39 +32,99 @@ const messages = defineMessages({
     description:
       "Heading in the printable protocol summary giving the title of a stage's form. value1 is the title as written in the protocol.",
   },
+  question: {
+    id: 'architect.protocolSummary.stage.form.question',
+    defaultMessage: 'Question',
+    description:
+      'Label in the printable protocol summary, in the details of a field placed in the text of a form. Beside it is the question that the field asks participants.',
+  },
+  hint: {
+    id: 'architect.protocolSummary.stage.form.hint',
+    defaultMessage: 'Hint',
+    description:
+      'Label in the printable protocol summary, in the details of a field placed in the text of a form. Beside it is the hint shown below the question.',
+  },
+  inputControl: {
+    id: 'architect.protocolSummary.stage.form.inputControl',
+    defaultMessage: 'Input control',
+    description:
+      'Label in the printable protocol summary, in the details of a field placed in the text of a form. Beside it is the kind of control that participants answer with, such as a text box or a set of buttons.',
+  },
 });
 
 type FormFieldType = {
-  prompt: LocalizedString;
+  id: string;
   variable: string;
+  prompt: LocalizedString;
+  hint?: LocalizedString;
 };
+
 type FormProps = {
   form?: {
     title?: LocalizedString;
+    content?: LocalizedString;
     fields?: FormFieldType[];
   } | null;
 };
-const Form = ({ form = null }: FormProps) => {
+
+/**
+ * A field where the text of its form places it: the question and hint that
+ * participants read in the language of that text, the attribute that the
+ * answer is stored in, and the control that they answer with.
+ */
+const FieldSummary = ({ field }: Readonly<{ field: FormFieldType }>) => {
   const intl = useAppIntl();
   const { index } = useContext(SummaryContext);
+  const locale = useTranslationLocale();
+  const meta = getVariableMeta(index, field.variable);
+  const inLanguage = (value: LocalizedString) =>
+    locale === undefined ? (
+      <SummaryMarkdown value={value} />
+    ) : (
+      <SummaryLineIn value={value} locale={locale} />
+    );
+  return (
+    <div lang={intl.locale} data-field-summary={field.id}>
+      <MiniTable
+        rotated
+        wide
+        narrowLabels
+        rows={[
+          [intl.formatMessage(messages.question), inLanguage(field.prompt)],
+          ...(field.hint === undefined
+            ? []
+            : [[intl.formatMessage(messages.hint), inLanguage(field.hint)]]),
+          [
+            intl.formatMessage(summaryMessages.attribute),
+            <Variable key="variable" id={field.variable} />,
+          ],
+          [
+            intl.formatMessage(messages.inputControl),
+            <ControlName key="control" component={meta.component} />,
+          ],
+        ]}
+      />
+    </div>
+  );
+};
+
+/**
+ * A stage's form: its title, where it has one, and its text in each
+ * language, with each field drawn where the text places it.
+ */
+const Form = ({ form = null }: FormProps) => {
+  const intl = useAppIntl();
   const multilingual = useMultilingualSummary();
   if (!form) {
     return null;
   }
-  const fieldRows =
-    form.fields?.map(({ prompt, variable }) => {
-      const meta = getVariableMeta(index, variable);
-      return [
-        <Variable key={`var-${variable}`} id={variable} />,
-        <ControlName key={`comp-${variable}`} component={meta.component} />,
-        <SummaryMarkdown key={`prompt-${variable}`} value={prompt} />,
-      ];
-    }) ?? [];
+  const fields = form.fields ?? [];
+  const fieldSummary = (fieldId: string) => {
+    const field = fields.find(({ id }) => id === fieldId);
+    return field === undefined ? null : <FieldSummary field={field} />;
+  };
   return (
-    <SectionFrame
-      title={intl.formatMessage(messages.form)}
-      wrapperClassName="break-inside-avoid"
-    >
+    <SectionFrame title={intl.formatMessage(messages.form)}>
       {form.title &&
         (multilingual ? (
           <MiniTable
@@ -81,19 +144,16 @@ const Form = ({ form = null }: FormProps) => {
             })}
           </Heading>
         ))}
-      <MiniTable
-        wide
-        className="table-fixed [&_:is(th,td):nth-child(1)]:w-[40%] [&_:is(th,td):nth-child(2)]:w-[24%] [&_:is(th,td):nth-child(3)]:w-[36%]"
-        rows={[
-          [
-            intl.formatMessage(summaryMessages.attribute),
-            intl.formatMessage(summaryMessages.component),
-            intl.formatMessage(summaryMessages.prompt),
-          ],
-          ...fieldRows,
-        ]}
-      />
+      {/* A form opens with its own text, which may start with a heading. */}
+      <div className="mt-3">
+        <SummaryMarkdown
+          value={form.content}
+          multiline
+          fieldSummary={fieldSummary}
+        />
+      </div>
     </SectionFrame>
   );
 };
+
 export default Form;

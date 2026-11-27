@@ -241,11 +241,12 @@ try {
   await nextStage();
 
   // The fixture's source is schema 8, and its Ego Form opens with an
-  // introduction panel. Upgraded to schema 9, the Ego Form keeps that panel:
-  // the participant reads its title and text above the form's questions, on
+  // introduction panel. The upgrade to schema 9 writes that panel's title as
+  // a heading and its text as the paragraph after it, at the top of the
+  // form's text: the participant reads them above the form's questions, on
   // the same screen.
   checks.push(
-    await attempt('interview-ego-form-keeps-introduction-panel', async () => {
+    await attempt('interview-ego-form-opens-with-introduction', async () => {
       const step = await settledStep();
       const title = await page
         .getByRole('heading', { name: 'Introduction' })
@@ -272,7 +273,7 @@ try {
           intro &&
           emphasised.includes('you') &&
           formField,
-        detail: `step ${step}: panel title "Introduction" shown ${title}, panel text ${intro} (emphasis ${JSON.stringify(emphasised)}), the form's first question ${formField}`,
+        detail: `step ${step}: heading "Introduction" shown ${title}, introduction text ${intro} (emphasis ${JSON.stringify(emphasised)}), the form's first question ${formField}`,
       };
     }),
   );

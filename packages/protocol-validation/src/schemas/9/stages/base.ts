@@ -6,6 +6,7 @@ import {
 } from '../../../localization/messageSyntax.ts';
 import { SkipLogicSchema } from '../common/index.ts';
 import { ConditionsSchema } from '../conditions.ts';
+import { DynamicAttributesSchema } from '../dynamic-attributes.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { protocolObjectId } from '../protocol-object-id.ts';
 
@@ -63,4 +64,7 @@ export const baseStageSchema = z.strictObject({
   // `conditions.ts`); text names one by `condition_<id>` (see
   // `dynamic-values.ts`).
   conditions: ConditionsSchema.optional(),
+  // The dynamic attributes the stage's text shows (see
+  // `dynamic-attributes.ts`); text names one by `dynamic_<id>`.
+  dynamicAttributes: DynamicAttributesSchema.optional(),
 });

@@ -14,6 +14,7 @@ import { resolveGenerationConfig } from '../generateNetwork/config.ts';
 import { describeValue } from '../generateNetwork/constraints/describeValue.ts';
 import { analyseFeasibility } from '../generateNetwork/constraints/feasibility.ts';
 import { delegatedValidationContradictions } from '../generateNetwork/constraints/validationContradictions.ts';
+import { ENGLISH_FORMS } from './englishForms.ts';
 
 /**
  * Randomised acceptance corpus for the finite-domain solver.
@@ -1008,6 +1009,7 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
           try {
             const startedAt = performance.now();
             const { network } = generateNetwork({
+              ...ENGLISH_FORMS,
               codebook,
               stages,
               seed,

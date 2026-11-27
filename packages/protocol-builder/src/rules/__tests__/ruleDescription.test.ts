@@ -195,10 +195,9 @@ describe('describeRule', () => {
   });
 
   /**
-   * The editor no longer offers `EXISTS`/`NOT_EXISTS` against an attribute —
-   * an unanswered attribute is already covered by the presence rule above it —
-   * but protocols authored before it stopped still hold them, and Architect
-   * reads them as "Person where Age" / "Person without Age". The operator IS
+   * `EXISTS`/`NOT_EXISTS` against an attribute asks whether it has been
+   * answered, in skip logic and filters as in conditions, and Architect reads
+   * either as "Person where Age" / "Person without Age". The operator IS
    * the word that introduces the attribute here, so writing the connector as
    * well and then repeating the operator after the name produced "Person where
    * Age where".

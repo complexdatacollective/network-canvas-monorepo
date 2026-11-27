@@ -48,7 +48,7 @@ const section = (
   id,
   // The outline matches sections to the walkthrough by key, which none of
   // these tests involve.
-  sectionKey: 'introduction',
+  sectionKey: 'form-fields',
   title,
   status,
   problems,

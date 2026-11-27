@@ -21,14 +21,21 @@ import {
   isSuppliedOptionLabelSet,
   isUndeterminedLocale,
   type LocaleTag,
+  type LocalizationDeclaration,
+  ownerOfTextPath,
+  textOwnersOf,
   type LocalizedString,
   type LocalizedStringHit,
+  type TextOwnerPath,
+  textPlaceOf,
   defaultFinishSessionTextAfterLanguageChange,
   type LanguageChange,
   needsFallbackLanguage,
   suppliedOptionLabelsAfterLanguageChange,
   withFallbackLanguage,
+  withoutUnusedTextDefinitions,
 } from '@codaco/protocol-validation';
+import { isRecord, valueAtPath } from '@codaco/shared-consts';
 
 export type LocaleOperationFailure =
   /** Not a well-formed BCP 47 language tag, or the undetermined language. */
@@ -300,6 +307,13 @@ export type LocaleRemovalImpact = {
  * that place is not stranded. Only Network Canvas's wording counts: what the
  * saved protocol holds at a place says nothing about an unsaved reading of
  * it.
+ *
+ * `kept` says which texts the removal leaves in the protocol, once it is
+ * stored as the stage editor saves it (`textKeptAfterRemoval`): the question
+ * of a field that only the removed language's form places goes with the
+ * field, and the wording of a dynamic attribute that only the removed
+ * language's text shows goes with the dynamic attribute, so neither is
+ * stranded. It is asked for only when some text would be stranded.
  */
 export const getLocaleRemovalImpact = (
   texts: readonly LocalizedStringHit[],
@@ -307,6 +321,7 @@ export const getLocaleRemovalImpact = (
   supplied: (
     path: LocalizedStringHit['path'],
   ) => LocalizedString | undefined = () => undefined,
+  kept?: () => (path: LocalizedStringHit['path']) => boolean,
 ): LocaleRemovalImpact => {
   const translated = new Set<string>();
   const stranded = new Map<string, LocalizedStringHit>();
@@ -322,15 +337,124 @@ export const getLocaleRemovalImpact = (
       stranded.set(place, hit);
     }
   }
+  // Read only when something would be stranded, which is rare: removing a
+  // language is worked out for every language the Languages page lists.
+  const isKept = stranded.size === 0 || kept === undefined ? undefined : kept();
   return {
     translationCount: translated.size,
-    strandedStrings: [...stranded.values()],
+    strandedStrings: [...stranded.values()].filter(
+      ({ path }) => isKept?.(path) ?? true,
+    ),
   };
+};
+
+/** Whether `owner` still has the form field or dynamic attribute of the text at `path`, relative to it. */
+const ownerKeeps = (
+  before: unknown,
+  after: unknown,
+  path: readonly (string | number)[],
+): boolean => {
+  const place = textPlaceOf(path, 'owner');
+  if (place.kind === 'formFieldText') {
+    const id = valueAtPath(before, [
+      ...place.form,
+      'fields',
+      place.index,
+      'id',
+    ]);
+    const fields = valueAtPath(after, [...place.form, 'fields']);
+    return (
+      typeof id !== 'string' ||
+      (Array.isArray(fields) &&
+        fields.some((entry) => isRecord(entry) && entry.id === id))
+    );
+  }
+  if (place.kind !== 'dynamicAttributeWording') return true;
+  const definitions = valueAtPath(after, ['dynamicAttributes']);
+  return isRecord(definitions) && Object.hasOwn(definitions, place.id);
+};
+
+/**
+ * Which texts removing `locale` leaves in `protocol`, once it is stored as
+ * the stage editor saves it (`removedLocale`): not the question or hint of a
+ * form field that the clean-up removes, nor the wording of a dynamic
+ * attribute that it removes. The paths of the stored protocol cannot say so,
+ * as removing a field moves the fields after it, so each text's field or
+ * dynamic attribute is looked for by its id.
+ *
+ * `openStage` is a stage open in an editor, at its index in the protocol:
+ * its texts are judged as that editor's save would store it once the
+ * language is removed, since that save, not the removal, writes it.
+ */
+export const textKeptAfterRemoval = (
+  protocol: CurrentProtocol,
+  locale: LocaleTag,
+  openStage?: Readonly<{ index: number; stage: unknown }>,
+): ((path: readonly (string | number)[]) => boolean) => {
+  const removed = removedLocale(protocol, locale);
+  const after = removed.localization;
+  const [openBefore] =
+    openStage === undefined || !isRecord(openStage.stage)
+      ? []
+      : rewriteLocalizedStrings(
+          { stages: [openStage.stage] },
+          withoutLocale(locale),
+        ).stages;
+  const openAfter =
+    openBefore === undefined
+      ? undefined
+      : withoutUnusedTextDefinitions(openBefore, after);
+  return (path) => {
+    const owner = ownerOfTextPath(path);
+    if (owner === undefined) return true;
+    const within = path.slice(owner.length);
+    return openStage !== undefined &&
+      openAfter !== undefined &&
+      isEqual(owner, ['stages', openStage.index])
+      ? ownerKeeps(openStage.stage, openAfter, within)
+      : ownerKeeps(
+          valueAtPath(protocol, owner),
+          valueAtPath(removed, owner),
+          within,
+        );
+  };
+};
+
+/**
+ * `protocol` without `locale` and every translation written in it, stored as
+ * the stage editor saves it (`withoutUnusedTextDefinitions`): without the
+ * form fields, dynamic attributes and conditions that only the deleted
+ * language's text used.
+ */
+const removedLocale = (
+  protocol: CurrentProtocol,
+  locale: LocaleTag,
+): CurrentProtocol => {
+  const before = protocol.localization;
+  const removed = withLanguageChange(
+    protocol,
+    rewriteLocalizedStrings(protocol, withoutLocale(locale)),
+    {
+      before,
+      after: {
+        ...before,
+        locales: before.locales.filter((declared) => declared !== locale),
+      },
+    },
+  );
+  return withoutUnusedDefinitions(removed, textOwnersOf(removed));
 };
 
 /**
  * Deletes a language and every translation written in it. No other text
  * changes: no language is added, so none gains Network Canvas's wording.
+ * Every stage and every node type's label is then written as the stage
+ * editor saves it (`withoutUnusedTextDefinitions`): without the form fields,
+ * dynamic attributes and conditions that only the deleted language's text
+ * used, so that what is left is a valid protocol. It is refused when it
+ * would leave a text with no translation, judged in the protocol as it is
+ * then stored: a text that goes with its field or dynamic attribute does not
+ * count.
  */
 export const removeLocale = (
   protocol: CurrentProtocol,
@@ -344,23 +468,10 @@ export const removeLocale = (
     collectLocalizedStrings(protocol),
     locale,
     suppliedWordingIn(protocol),
+    () => textKeptAfterRemoval(protocol, locale),
   );
   if (impact.strandedStrings.length > 0) return fail('would-empty');
-  const before = protocol.localization;
-  return {
-    ok: true,
-    protocol: withLanguageChange(
-      protocol,
-      rewriteLocalizedStrings(protocol, withoutLocale(locale)),
-      {
-        before,
-        after: {
-          ...before,
-          locales: before.locales.filter((declared) => declared !== locale),
-        },
-      },
-    ),
-  };
+  return { ok: true, protocol: removedLocale(protocol, locale) };
 };
 
 /**
@@ -438,11 +549,6 @@ const storedAfterEdit = (
   };
 };
 
-const isSamePath = (
-  a: readonly (string | number)[],
-  b: readonly (string | number)[],
-) => a.length === b.length && a.every((segment, index) => segment === b[index]);
-
 /**
  * Writes one translation of one participant-facing text, stored exactly as the
  * stage editors store it. `path` must be where `collectLocalizedStrings` finds
@@ -463,7 +569,7 @@ export const setTranslation = (
   if (isBlankText(text)) return fail('blank-text');
   const shown = withSuppliedWording(protocol);
   const hit = collectLocalizedStrings(shown).find((candidate) =>
-    isSamePath(candidate.path, path),
+    isEqual(candidate.path, path),
   );
   if (!hit) return fail('not-localized-string');
   return {
@@ -540,6 +646,111 @@ export const setLocalizedStrings = (
         for (const { path, value } of writes) setAtPath(draft, path, value);
       }),
     ),
+  };
+};
+
+/**
+ * One kind of the text definitions of an owner of text (see
+ * `withoutUnusedTextDefinitions`): its conditions, or its dynamic
+ * attributes.
+ */
+export type TextDefinitionKey = 'conditions' | 'dynamicAttributes';
+
+/** One owner's conditions or dynamic attributes, written whole. */
+export type OwnerTextDefinitions = Readonly<{
+  owner: TextOwnerPath;
+  key: TextDefinitionKey;
+  /** Empty when the owner declares none. */
+  value: Readonly<Record<string, unknown>>;
+}>;
+
+/**
+ * `protocol` with each owner's conditions or dynamic attributes as
+ * `definitions` give them, or undefined when an owner is not in it.
+ */
+const withOwnerDefinitions = (
+  protocol: CurrentProtocol,
+  definitions: readonly OwnerTextDefinitions[],
+): CurrentProtocol | undefined => {
+  if (definitions.length === 0) return protocol;
+  if (
+    definitions.some(({ owner }) => !isRecord(valueAtPath(protocol, owner)))
+  ) {
+    return undefined;
+  }
+  return createNextState(protocol, (draft) => {
+    for (const { owner, key, value } of definitions) {
+      const held = valueAtPath(draft, owner);
+      if (!isRecord(held)) continue;
+      if (Object.keys(value).length === 0) Reflect.deleteProperty(held, key);
+      else Reflect.set(held, key, value);
+    }
+  });
+};
+
+/**
+ * `protocol` with each of `owners` written as the stage editor saves it
+ * (`withoutUnusedTextDefinitions`), in the protocol's languages.
+ */
+const withoutUnusedDefinitions = (
+  protocol: CurrentProtocol,
+  owners: readonly TextOwnerPath[],
+): CurrentProtocol => {
+  const localization: LocalizationDeclaration = protocol.localization;
+  const pruned = owners.flatMap((owner) => {
+    const held = valueAtPath(protocol, owner);
+    if (!isRecord(held)) return [];
+    const kept = withoutUnusedTextDefinitions(held, localization);
+    return kept === held ? [] : [{ owner, kept }];
+  });
+  if (pruned.length === 0) return protocol;
+  return createNextState(protocol, (draft) => {
+    for (const { owner, kept } of pruned) {
+      const parent = valueAtPath(draft, owner.slice(0, -1));
+      const key = owner.at(-1);
+      if (typeof parent === 'object' && parent !== null && key !== undefined) {
+        Reflect.set(parent, key, kept);
+      }
+    }
+  });
+};
+
+/**
+ * What the translation table saves, in one step: the conditions and dynamic
+ * attributes that its text declares (written first, so that a text can use a
+ * dynamic attribute created with it), then every changed text
+ * (`setLocalizedStrings`). Each owner that changed is then written as the
+ * stage editor saves it (`withoutUnusedTextDefinitions`): without the form
+ * fields and translations of their questions and hints that its form does
+ * not use, and the dynamic attributes and conditions that nothing uses.
+ */
+export const setTranslations = (
+  protocol: CurrentProtocol,
+  {
+    definitions,
+    updates,
+  }: Readonly<{
+    definitions: readonly OwnerTextDefinitions[];
+    updates: Parameters<typeof setLocalizedStrings>[1];
+  }>,
+): LocaleOperationResult => {
+  const declared = withOwnerDefinitions(protocol, definitions);
+  if (declared === undefined) return fail('not-localized-string');
+  const result = setLocalizedStrings(declared, updates);
+  if (!result.ok) return result;
+  const owners = new Map<string, TextOwnerPath>();
+  for (const owner of [
+    ...definitions.map((definition) => definition.owner),
+    ...updates.flatMap(({ path }) => {
+      const textOwner = ownerOfTextPath(path);
+      return textOwner === undefined ? [] : [textOwner];
+    }),
+  ]) {
+    owners.set(JSON.stringify(owner), owner);
+  }
+  return {
+    ok: true,
+    protocol: withoutUnusedDefinitions(result.protocol, [...owners.values()]),
   };
 };
 

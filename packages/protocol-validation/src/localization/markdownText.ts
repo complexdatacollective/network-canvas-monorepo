@@ -232,10 +232,3 @@ export const messageHeadingMarkdown = (message: string): string =>
  * cannot hold keeps markdown from taking it as one.
  */
 export const VERSION_LINE_LEAD = '\uE002';
-
-/**
- * A version's markdown as it is read inside the line it sits in: one line,
- * without the spaces at its ends, behind `VERSION_LINE_LEAD`.
- */
-export const versionLineMarkdown = (markdown: string): string =>
-  VERSION_LINE_LEAD + markdown.trim();

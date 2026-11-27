@@ -45,11 +45,11 @@ describe('versionsPreview', () => {
         label: 'Wording by Age',
         summary: 'Age',
         versions: [
-          version('other', [{ type: 'token', attrs: { id: 'age' } }]),
+          version('other', [{ type: 'inlineValue', attrs: { id: 'age' } }]),
           version('missing', text('unknown')),
           version('x', [
             { type: 'text', text: 'aged ' },
-            { type: 'token', attrs: { id: 'age' } },
+            { type: 'inlineValue', attrs: { id: 'age' } },
           ]),
         ],
       },

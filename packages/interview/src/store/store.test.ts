@@ -10,6 +10,7 @@ import {
   asEntityAttributeReference,
   getLocaleMetadata,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { testId } from '../__tests__/testIds';
@@ -86,13 +87,13 @@ const payload: InterviewPayload = {
         subject: { entity: 'node', type: NODE_TYPE },
         form: {
           title: { en: 'Add a person' },
-          fields: [
+          ...formOf([
             {
               id: testId('field-1'),
               variable: asEntityAttributeReference(NAME_VARIABLE),
               prompt: { en: 'Name' },
             },
-          ],
+          ]),
         },
         prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
       },

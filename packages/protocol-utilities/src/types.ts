@@ -1,9 +1,9 @@
 import type {
-  AssetBlockAlignment,
   AssetBlockSize,
   ColorReference,
   ComponentType,
   ConditionRole,
+  DynamicAttributes,
   EdgeColorReference,
   EdgeCountComparison,
   FilterOperator,
@@ -306,7 +306,26 @@ export type NetworkComposerEdgeEntry = {
 type FormEntry = {
   title: TextInput;
   fields: FormFieldEntry[];
+  content?: FormContentInput;
 };
+
+/** The blocks that place a form's fields in its document. */
+export type FormDocumentBlocks = Readonly<{
+  /** The block that places the field asking for `variable` (a variable id). */
+  field: (variable: string) => string;
+  /** Every field's block, in the order the fields were added. */
+  fields: readonly string[];
+  /** A top-level heading showing `text` as written. */
+  heading: (text: string) => string;
+}>;
+
+/**
+ * A form's document, written from the blocks that place its fields: markdown
+ * that may contain logic blocks. A string is the default language's message,
+ * written as it is (not escaped); a locale map gives each language its own
+ * document, which may contain different fields.
+ */
+export type FormContentInput = (blocks: FormDocumentBlocks) => TextInput;
 
 type PanelEntry = {
   id: string;
@@ -325,7 +344,6 @@ export type AssetBlockInput = {
   /** What the file shows or says; the image's alt text and the player's name. */
   description?: TextInput;
   size?: AssetBlockSize;
-  align?: AssetBlockAlignment;
   autoplay?: boolean;
   loop?: boolean;
 };
@@ -339,6 +357,8 @@ export type StageEntry = {
   filter?: FilterInput;
   /** What the stage's text tests to choose its wording, by condition id. */
   conditions?: ConditionsInput;
+  /** Wording that logic chooses, which the stage's text names, by id. */
+  dynamicAttributes?: DynamicAttributes;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   form?: FormEntry;
   prompts: PromptEntry[];
@@ -358,11 +378,6 @@ export type StageEntry = {
     minNodes?: number;
     maxNodes?: number;
     interactionMode?: 'drag' | 'select';
-  };
-  // EgoForm: the heading and text shown above its questions
-  introductionPanel?: {
-    title: TextInput;
-    text?: TextInput;
   };
   initialEdges: [number, number][];
   // NameGeneratorQuickAdd
@@ -604,11 +619,12 @@ export type AddStageInput = {
   form?: {
     title?: TextInput;
     fields: FormFieldInput[];
-  };
-  // EgoForm: the heading and text shown above its questions
-  introductionPanel?: {
-    title?: TextInput;
-    text?: TextInput;
+    /**
+     * The form's document. Without one, an Ego Form's document is the heading
+     * "About you" above its fields, and every other form's is its fields, in
+     * the order they were added.
+     */
+    content?: FormContentInput;
   };
   // NameGeneratorQuickAdd
   quickAdd?: string;

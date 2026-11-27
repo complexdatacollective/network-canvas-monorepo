@@ -11,14 +11,18 @@ import type { JSONContent } from '@tiptap/react';
 import { type ComponentProps, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { inlineValuesFor } from '../../../testing/inlineValues';
 import { withMod } from '../../../testing/modKey';
 import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
-import { tokenPillClasses } from '../../../TokenPill';
 import { EnclosingHeadingLevel } from '../../../typography/EnclosingHeadingLevel';
 import Field from '../../Field/Field';
 import Form from '../../Form';
 import SubmitButton from '../../SubmitButton';
-import RichTextEditorField, { hasVersionRowBeside } from '../RichTextEditor';
+import type { RichTextInsertState } from '../richText/insertTools';
+import RichTextEditorField, {
+  hasVersionRowBeside,
+  ToolbarButton,
+} from '../RichTextEditor';
 
 const documentWithText = {
   type: 'doc',
@@ -467,6 +471,75 @@ describe('RichTextEditorField', () => {
     });
   });
 
+  // The host's value is not an edit made in the editor. Undone, the first
+  // one emptied the whole text, and reported that as the person's edit.
+  it('keeps the host’s value out of the history when it first arrives', async () => {
+    const onChange = vi.fn();
+    const props = {
+      'id': 'bio',
+      'name': 'bio',
+      'aria-describedby': 'bio-hint',
+      'aria-label': 'Biography',
+      'changeMode': 'input',
+      'onChange': onChange,
+    } as const;
+    const { rerender } = render(
+      <RichTextEditorField {...props} value={undefined} />,
+    );
+    const editor = await screen.findByRole('textbox', { name: 'Biography' });
+
+    rerender(<RichTextEditorField {...props} value={documentWithText} />);
+    await waitFor(() => {
+      expect(editor).toHaveTextContent('Existing content');
+    });
+
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    expect(undo).toHaveAttribute('aria-disabled', 'true');
+    // Mod is Control in jsdom, as `navigator.platform` is empty.
+    fireEvent.keyDown(editor, { key: 'z', ctrlKey: true });
+    expect(editor).toHaveTextContent('Existing content');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // The host replacing the document (its own undo, say) leaves nothing to
+  // undo in the editor: its edits were to a document no longer shown.
+  it('starts the history again from a document the host replaces', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    const onChange = vi.fn();
+    const props = {
+      'id': 'bio',
+      'name': 'bio',
+      'aria-describedby': 'bio-hint',
+      'aria-label': 'Biography',
+      'changeMode': 'input',
+      'onChange': onChange,
+    } as const;
+    const { rerender } = render(
+      <RichTextEditorField {...props} value={documentWithText} />,
+    );
+    const editor = await screen.findByRole('textbox', { name: 'Biography' });
+    await user.click(editor);
+    await user.keyboard('!');
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    await waitFor(() => {
+      expect(undo).toHaveAttribute('aria-disabled', 'false');
+    });
+    fireEvent.blur(editor, { relatedTarget: null });
+
+    rerender(<RichTextEditorField {...props} value={otherDocument} />);
+    await waitFor(() => {
+      expect(editor).toHaveTextContent('Replacement content');
+    });
+    await waitFor(() => {
+      expect(undo).toHaveAttribute('aria-disabled', 'true');
+    });
+    const emitted = onChange.mock.calls.length;
+    // Mod is Control in jsdom, as `navigator.platform` is empty.
+    fireEvent.keyDown(editor, { key: 'z', ctrlKey: true });
+    expect(editor).toHaveTextContent('Replacement content');
+    expect(onChange).toHaveBeenCalledTimes(emitted);
+  });
+
   it('reports no change merely by mounting', async () => {
     const onChange = vi.fn();
     render(
@@ -736,7 +809,7 @@ describe('a single-line RichTextEditorField with versions', () => {
         aria-label="Greeting"
         singleLine
         versions
-        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        inlineValues={inlineValuesFor({ name: 'Name' })}
         changeMode="input"
         value={{
           type: 'doc',
@@ -757,7 +830,7 @@ describe('a single-line RichTextEditorField with versions', () => {
                         label: 'If known',
                         content: [
                           { type: 'text', text: ', ' },
-                          { type: 'token', attrs: { id: 'name' } },
+                          { type: 'inlineValue', attrs: { id: 'name' } },
                         ],
                       },
                     ],
@@ -886,7 +959,7 @@ describe('versions folded to a pill', () => {
         {
           key: 'other',
           label: 'If known',
-          content: [{ type: 'token', attrs: { id: 'name' } }],
+          content: [{ type: 'inlineValue', attrs: { id: 'name' } }],
         },
         { key: 'missing', label: 'If not known', content: [] },
       ],
@@ -904,11 +977,7 @@ describe('versions folded to a pill', () => {
           aria-label="Greeting"
           singleLine
           versions
-          tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
-          insertMenu={{
-            label: 'Insert a value',
-            items: [{ id: 'name', label: 'Name', content: NAME_VERSIONS }],
-          }}
+          inlineValues={inlineValuesFor({ name: 'Name' })}
           changeMode="input"
           value={value}
           onChange={() => undefined}
@@ -964,7 +1033,7 @@ describe('versions folded to a pill', () => {
       expect(screen.getByRole('button', { name: 'Name' })).toBe(pill()),
     );
     expect(pill()).toHaveTextContent(/^Name$/);
-    expect(pill().querySelector('svg.lucide-syringe')).not.toBeNull();
+    expect(pill().querySelector('svg.lucide-braces')).not.toBeNull();
     expect(editor).toHaveTextContent(/^Hello Name/);
     expectFolded(pill());
   });
@@ -1024,7 +1093,7 @@ describe('versions folded to a pill', () => {
         aria-describedby="intro-hint"
         versions
         toolbarOptions={{ headings: true, lists: true, thematicBreak: true }}
-        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        inlineValues={inlineValuesFor({ name: 'Name' })}
         changeMode="input"
         value={holdingVersions}
         onChange={() => undefined}
@@ -1086,7 +1155,7 @@ describe('versions folded to a pill', () => {
   });
 
   // That a just-inserted element opens is checked in a real browser, by the
-  // WithVersionsAndInsertMenu story: jsdom cannot hold a node selection once
+  // WithVersionsAndInsertTools story: jsdom cannot hold a node selection once
   // a selectionchange makes ProseMirror read the selection back from the DOM,
   // so here the element could fold again as soon as it opened.
 
@@ -1118,7 +1187,7 @@ describe('versions folded to a pill', () => {
         aria-label="Greeting"
         singleLine
         versions
-        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        inlineValues={inlineValuesFor({ name: 'Name' })}
         changeMode="input"
         value={holdingVersions}
         onChange={onChange}
@@ -1182,11 +1251,9 @@ describe('versions that are the whole message', () => {
 
   const renderField = ({
     value,
-    open = true,
     onChange = () => undefined,
   }: {
     value: JSONContent;
-    open?: boolean;
     onChange?: (value: JSONContent | undefined) => void;
   }) => {
     const user = withSafeTypingIntoRichText(userEvent.setup());
@@ -1199,8 +1266,7 @@ describe('versions that are the whole message', () => {
           aria-label="Minimum not reached"
           singleLine
           versions
-          openWholeMessageVersions={open}
-          tokens={[{ id: 'count', label: 'Number', inToolbar: false }]}
+          inlineValues={inlineValuesFor({ count: 'Number' })}
           changeMode="input"
           value={value}
           onChange={onChange}
@@ -1302,14 +1368,6 @@ describe('versions that are the whole message', () => {
     ]);
   });
 
-  it('is folded to a pill unless the field asks for it open', async () => {
-    renderField({ value: lineOf(COUNT_VERSIONS), open: false });
-
-    await waitFor(() => expect(pillOf()).not.toBeNull());
-    expect(pillOf()).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByRole('textbox', { name: 'When it is 1' })).toBeNull();
-  });
-
   it('folds when the message is more than the versions', async () => {
     const { rerender } = renderField({ value: lineOf(COUNT_VERSIONS) });
     await waitFor(expectBothRowsShown);
@@ -1327,8 +1385,7 @@ describe('versions that are the whole message', () => {
           aria-label="Minimum not reached"
           singleLine
           versions
-          openWholeMessageVersions
-          tokens={[{ id: 'count', label: 'Number', inToolbar: false }]}
+          inlineValues={inlineValuesFor({ count: 'Number' })}
           changeMode="input"
           value={withTextBeside}
           onChange={() => undefined}
@@ -1354,7 +1411,7 @@ describe('versions that are the whole message', () => {
     expect(pillOf()).toBeNull();
   });
 
-  it('folds a pill inside a sentence even when the field asks for open versions', async () => {
+  it('folds a pill inside a sentence', async () => {
     renderField({
       value: lineOf({ type: 'text', text: 'You must add ' }, COUNT_VERSIONS),
     });
@@ -1747,7 +1804,6 @@ describe('versions that are the whole message', () => {
             aria-label="Minimum not reached"
             singleLine
             versions
-            openWholeMessageVersions
             changeMode="input"
             value={value}
             onChange={() => undefined}
@@ -1871,10 +1927,7 @@ describe('typing into an ordinary field that holds text', () => {
   // (jsdom lays nothing out, so user-event puts the caret at the start).
   it.each([
     ['a plain field', {}],
-    [
-      'a field that lists whole-message versions',
-      { versions: true, openWholeMessageVersions: true },
-    ],
+    ['a field that lists whole-message versions', { versions: true }],
   ])('puts the words typed at the start of %s', async (_name, options) => {
     const onChange = vi.fn();
     const user = withSafeTypingIntoRichText(userEvent.setup());
@@ -1907,8 +1960,59 @@ describe('typing into an ordinary field that holds text', () => {
   });
 });
 
+describe('a placeholder that changes as the text is written', () => {
+  /**
+   * A host that says the text shows nothing only while it is empty, as a
+   * version of a dynamic attribute does, and passes an empty placeholder
+   * otherwise.
+   */
+  function Host({ onText }: Readonly<{ onText: (text: string) => void }>) {
+    const [value, setValue] = useState<JSONContent>(emptyDocument);
+    const text = (value.content ?? [])
+      .flatMap((block) => block.content ?? [])
+      .map((node) => node.text ?? '')
+      .join('');
+    return (
+      <RichTextEditorField
+        id="version"
+        name="version"
+        aria-label="Version"
+        singleLine
+        changeMode="input"
+        value={value}
+        placeholder={text === '' ? 'Shows nothing' : ''}
+        onChange={(next) => {
+          if (next === undefined) return;
+          setValue(next);
+          onText(
+            (next.content ?? [])
+              .flatMap((block) => block.content ?? [])
+              .map((node) => node.text ?? '')
+              .join(''),
+          );
+        }}
+      />
+    );
+  }
+
+  it('keeps the editor being typed in, so every letter is kept', async () => {
+    const onText = vi.fn();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(<Host onText={onText} />);
+    const editor = await screen.findByRole('textbox', { name: 'Version' });
+    expect(editor).toHaveAttribute('aria-placeholder', 'Shows nothing');
+
+    await user.type(editor, 'someone');
+
+    await waitFor(() => expect(onText).toHaveBeenLastCalledWith('someone'));
+    expect(screen.getByRole('textbox', { name: 'Version' })).toBe(editor);
+    expect(editor).toHaveFocus();
+    expect(editor).not.toHaveAttribute('aria-placeholder');
+  });
+});
+
 describe('undo and redo of values and versions', () => {
-  const NAME_TOKEN = { type: 'token', attrs: { id: 'name' } };
+  const NAME_TOKEN = { type: 'inlineValue', attrs: { id: 'name' } };
   const helloDocument = {
     type: 'doc',
     content: [
@@ -1920,13 +2024,17 @@ describe('undo and redo of values and versions', () => {
    * A host like Architect's: the placeholders it offers come back in another
    * order once a value is bound, as inserting one binds it.
    */
+  function insertName({ commands }: RichTextInsertState) {
+    return (
+      <ToolbarButton onClick={() => commands.insertContent(NAME_TOKEN)}>
+        Insert Name
+      </ToolbarButton>
+    );
+  }
   function ReorderingHost({ initial }: { initial: JSONContent }) {
     const [value, setValue] = useState<JSONContent | undefined>(initial);
     const [bound, setBound] = useState(false);
-    const tokens = [
-      { id: 'name', label: 'Name', inToolbar: false },
-      { id: 'age', label: 'Age', inToolbar: false },
-    ];
+    const labels = { name: 'Name', age: 'Age' };
     return (
       <RichTextEditorField
         id="greeting"
@@ -1935,11 +2043,10 @@ describe('undo and redo of values and versions', () => {
         aria-label="Greeting"
         singleLine
         versions
-        tokens={bound ? tokens.toReversed() : tokens}
-        insertMenu={{
-          label: 'Insert a value',
-          items: [{ id: 'name', label: 'Name', content: NAME_TOKEN }],
-        }}
+        inlineValues={inlineValuesFor(
+          bound ? { age: labels.age, name: labels.name } : labels,
+        )}
+        insertTools={{ label: 'Insert a value', render: insertName }}
         changeMode="input"
         value={value}
         onChange={(next) => {
@@ -1950,119 +2057,30 @@ describe('undo and redo of values and versions', () => {
     );
   }
 
-  it('undoes and redoes a value inserted from the menu, from the keyboard', async () => {
+  it('undoes and redoes a value inserted by the insert tools, from the keyboard', async () => {
     const user = withSafeTypingIntoRichText(userEvent.setup());
     render(<ReorderingHost initial={helloDocument} />);
     const editor = await screen.findByRole('textbox', { name: 'Greeting' });
 
     await user.click(editor);
-    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
-    // The menu is a dialog, named as the button that opened it.
-    expect(
-      await screen.findByRole('dialog', { name: 'Insert a value' }),
-    ).toBeInTheDocument();
-    await user.click(await screen.findByRole('option', { name: /Name/ }));
+    await user.click(screen.getByRole('button', { name: 'Insert Name' }));
     await waitFor(() =>
-      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+      expect(editor.querySelector('[data-inline-value="name"]')).not.toBeNull(),
     );
     // The caret is back in the text the value went into.
     await waitFor(() => expect(editor).toHaveFocus());
 
     await user.keyboard(withMod('z'));
     await waitFor(() =>
-      expect(editor.querySelector('[data-token="name"]')).toBeNull(),
+      expect(editor.querySelector('[data-inline-value="name"]')).toBeNull(),
     );
     expect(editor).toHaveTextContent(/^Hello$/);
 
     await user.keyboard(withMod('{Shift>}z{/Shift}'));
     await waitFor(() =>
-      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+      expect(editor.querySelector('[data-inline-value="name"]')).not.toBeNull(),
     );
   });
-
-  // A consumer that keeps part of what a version says outside the text (the
-  // rules an "If" tests) restates it in the version's label. Undoing in the
-  // text cannot take the consumer's own change back, so the new label must
-  // not be undone either, or the text would show rules that no longer hold.
-  it.each([
-    { undoable: false, afterUndo: 'If: two friends' },
-    { undoable: true, afterUndo: 'If: one friend' },
-  ])(
-    'leaves a relabelled version as it is on undo only when told the change is not undoable ($undoable)',
-    async ({ undoable, afterUndo }) => {
-      const user = withSafeTypingIntoRichText(userEvent.setup());
-      render(
-        <RichTextEditorField
-          id="greeting"
-          name="greeting"
-          aria-describedby="greeting-hint"
-          aria-label="Greeting"
-          singleLine
-          versions
-          changeMode="input"
-          value={{
-            type: 'doc',
-            content: [
-              {
-                type: 'paragraph',
-                content: [
-                  { type: 'text', text: 'Hello' },
-                  {
-                    type: 'versions',
-                    attrs: {
-                      label: 'If',
-                      versions: [
-                        {
-                          key: 'yes',
-                          label: 'If: one friend',
-                          action: 'Edit rules',
-                          content: [],
-                        },
-                      ],
-                    },
-                  },
-                ],
-              },
-            ],
-          }}
-          onChange={() => undefined}
-          onVersionsAction={(event) =>
-            event.update(
-              {
-                versions: event.attributes.versions.map((version) => ({
-                  ...version,
-                  label: 'If: two friends',
-                })),
-              },
-              { undoable },
-            )
-          }
-        />,
-      );
-      const editor = await screen.findByRole('textbox', { name: 'Greeting' });
-      const pill = await waitFor(() => {
-        const found = document.querySelector<HTMLElement>(
-          '[data-versions-pill]',
-        );
-        if (found === null) throw new Error('No pill');
-        return found;
-      });
-      await user.click(pill);
-      await user.click(
-        await screen.findByRole('button', { name: 'Edit rules' }),
-      );
-      expect(
-        await screen.findByRole('textbox', { name: 'If: two friends' }),
-      ).toBeInTheDocument();
-
-      await user.click(editor);
-      await user.keyboard(withMod('z'));
-      await user.click(pill);
-      expect(
-        await screen.findByRole('textbox', { name: afterUndo }),
-      ).toBeInTheDocument();
-    },
-  );
 
   it('undoes an edit in a version from the line, and redoes it from the version', async () => {
     const onChange = vi.fn();
@@ -2139,7 +2157,7 @@ describe('undo and redo of values and versions', () => {
   });
 });
 
-describe('the insert menu opened by typing in a version', () => {
+describe('the insert tools asked for by typing in a version', () => {
   const VERSIONED_GREETING: JSONContent = {
     type: 'doc',
     content: [
@@ -2162,7 +2180,17 @@ describe('the insert menu opened by typing in a version', () => {
     ],
   };
 
-  function Host() {
+  // A menu of one value, shown while the trigger waits for a value.
+  function nameMenu({ commands, trigger }: RichTextInsertState) {
+    return (
+      trigger !== null && (
+        <ToolbarButton onClick={() => commands.insertInlineValue('name')}>
+          Name
+        </ToolbarButton>
+      )
+    );
+  }
+  function Host({ onChange }: { onChange: (value: JSONContent) => void }) {
     const [value, setValue] = useState<JSONContent | undefined>(
       VERSIONED_GREETING,
     );
@@ -2174,41 +2202,25 @@ describe('the insert menu opened by typing in a version', () => {
         aria-label="Greeting"
         singleLine
         versions
-        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
-        insertMenu={{
-          label: 'Insert a value',
-          trigger: '{',
-          items: [
-            {
-              id: 'name',
-              label: 'Name',
-              content: { type: 'token', attrs: { id: 'name' } },
-            },
-          ],
-        }}
+        inlineValues={inlineValuesFor({ name: 'Name' })}
+        insertTools={{ label: 'Insert a value', render: nameMenu }}
         changeMode="input"
         value={value}
-        onChange={setValue}
+        onChange={(next) => {
+          setValue(next);
+          if (next !== undefined) onChange(next);
+        }}
       />
     );
   }
 
-  it('hands the caret back to the version, not to where an earlier pick went', async () => {
+  it('puts the value in the version, in place of the trigger, with the caret back in the version', async () => {
+    const onChange = vi.fn<(value: JSONContent) => void>();
     const user = withSafeTypingIntoRichText(userEvent.setup());
-    render(<Host />);
-    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+    render(<Host onChange={onChange} />);
+    await screen.findByRole('textbox', { name: 'Greeting' });
+    expect(screen.queryByRole('button', { name: 'Name' })).toBeNull();
 
-    // An item picked into the line: the menu hands the caret to the line.
-    await user.click(editor);
-    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
-    await user.click(await screen.findByRole('option', { name: /Name/ }));
-    await waitFor(() =>
-      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
-    );
-    await waitFor(() => expect(editor).toHaveFocus());
-
-    // Opened again by typing its trigger in a version, and dismissed: the
-    // caret goes back to the version it was typed in.
     await user.click(
       await screen.findByRole('button', { name: 'Depending on the name' }),
     );
@@ -2217,13 +2229,24 @@ describe('the insert menu opened by typing in a version', () => {
     });
     await user.click(version);
     await user.keyboard('{{');
-    const search = await screen.findByRole('combobox', { name: 'Search' });
-    // The menu takes focus a moment after it is drawn. Escape pressed before
-    // that is the version's own, which hands the caret to the line around it.
-    await waitFor(() => expect(search).toHaveFocus());
-    await user.keyboard('{Escape}');
+    await user.click(await screen.findByRole('button', { name: 'Name' }));
 
+    await waitFor(() =>
+      expect(
+        version.querySelector('[data-inline-value="name"]'),
+      ).not.toBeNull(),
+    );
+    expect(version).not.toHaveTextContent('{');
     await waitFor(() => expect(version).toHaveFocus());
+    expect(screen.queryByRole('button', { name: 'Name' })).toBeNull();
+    const versions = onChange.mock.lastCall?.[0].content?.[0]?.content?.[1];
+    expect(versions?.attrs?.versions).toEqual([
+      {
+        key: 'missing',
+        label: 'If not known',
+        content: [{ type: 'inlineValue', attrs: { id: 'name' } }],
+      },
+    ]);
   });
 });
 
@@ -2359,7 +2382,7 @@ describe('a single-line field holding marked values and versions', () => {
         singleLine
         versions
         toolbarOptions={{ bold: true }}
-        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        inlineValues={inlineValuesFor({ name: 'Name' })}
         changeMode="input"
         value={{
           type: 'doc',
@@ -2369,7 +2392,7 @@ describe('a single-line field holding marked values and versions', () => {
               content: [
                 { type: 'text', text: 'Hello ' },
                 {
-                  type: 'token',
+                  type: 'inlineValue',
                   attrs: { id: 'name' },
                   marks: [{ type: 'bold' }],
                 },
@@ -2980,22 +3003,17 @@ describe('a multi-line RichTextEditorField', () => {
   });
 });
 
-describe('a RichTextEditorField with tokens', () => {
-  const TOKENS = [
-    { id: 'name', label: 'Name' },
-    { id: '#', label: 'Number' },
-  ];
-
+describe('a single-line RichTextEditorField given several lines', () => {
   const lineOf = (...content: JSONContent[]): JSONContent => ({
     type: 'doc',
     content: [{ type: 'paragraph', content }],
   });
-  const token = (id: string): JSONContent => ({
-    type: 'token',
+  const value = (id: string): JSONContent => ({
+    type: 'inlineValue',
     attrs: { id },
   });
 
-  const renderWithTokens = (
+  const renderLine = (
     props?: Partial<ComponentProps<typeof RichTextEditorField>>,
   ) => {
     const onChange = vi.fn<(value: JSONContent | undefined) => void>();
@@ -3009,8 +3027,8 @@ describe('a RichTextEditorField with tokens', () => {
         singleLine
         changeMode="input"
         toolbarOptions={{ bold: false, italic: false, history: false }}
-        tokens={TOKENS}
-        value={lineOf({ type: 'text', text: 'Add ' }, token('name'))}
+        inlineValues={inlineValuesFor({ 'name': 'Name', '#': 'Number' })}
+        value={lineOf({ type: 'text', text: 'Add ' }, value('name'))}
         onChange={onChange}
         {...props}
       />,
@@ -3022,247 +3040,19 @@ describe('a RichTextEditorField with tokens', () => {
     };
   };
 
-  it('shows a token by its label, as one piece of the line', async () => {
-    const field = renderWithTokens();
-    const editor = await field.editor();
-
-    expect(editor.textContent).toBe('Add Name');
-    const chip = editor.querySelector('[data-token="name"]');
-    expect(chip).toHaveTextContent('Name');
-    expect(chip).toHaveAttribute('contenteditable', 'false');
-    // The pill read-only text shows is drawn with the same classes, with a
-    // pointer over it, since the pill is one object.
-    expect(chip?.className).toBe(tokenPillClasses('cursor-pointer'));
-    // It opens with the value icon, hidden from screen readers.
-    const icon = chip?.querySelector('svg.lucide-syringe');
-    expect(icon).toHaveAttribute('aria-hidden', 'true');
-    // Held on one line with the label's first word, so it never ends a line
-    // the label does not start on.
-    const lead = chip?.firstElementChild;
-    expect(lead).toHaveClass('whitespace-nowrap');
-    expect(lead?.firstChild).toBe(icon);
-    expect(lead).toHaveTextContent(/^Name$/);
-  });
-
-  it('offers its insert menu from an icon button named, and tipped, by the menu', async () => {
-    const field = renderWithTokens({
-      insertMenu: {
-        label: 'Insert a value',
-        items: [
-          {
-            id: 'name',
-            label: 'Name',
-            content: { type: 'token', attrs: { id: 'name' } },
-          },
-        ],
-      },
-    });
-    await field.editor();
-
-    const button = screen.getByRole('button', { name: 'Insert a value' });
-    // Its name is the menu's; what it shows is the value icon alone.
-    expect(button.textContent).toBe('');
-    expect(button.querySelector('svg.lucide-syringe')).toHaveAttribute(
-      'aria-hidden',
-      'true',
-    );
-    await field.user.hover(button);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'Insert a value',
-    );
-    await field.user.click(button);
-    expect(
-      await screen.findByRole('option', { name: /Name/ }),
-    ).toBeInTheDocument();
-  });
-
-  it('marks a menu item the text requires and lacks, and its menu button', async () => {
-    const places: unknown[] = [];
-    const field = renderWithTokens({
-      value: lineOf({ type: 'text', text: 'Add ' }),
-      insertMenu: {
-        label: 'Insert a value',
-        items: [
-          {
-            id: 'name',
-            label: 'Name',
-            description: 'A person',
-            content: { type: 'token', attrs: { id: 'name' } },
-            required: (place) => {
-              places.push(place);
-              return true;
-            },
-          },
-          {
-            id: 'number',
-            label: 'Number',
-            content: { type: 'token', attrs: { id: '#' } },
-            required: () => false,
-          },
-        ],
-      },
-    });
-    await field.editor();
-
-    const button = screen.getByRole('button', { name: 'Insert a value' });
-    expect(button).toHaveAttribute('data-missing', 'true');
-    expect(button).toHaveAccessibleDescription(
-      'Something this text requires is not in it yet',
-    );
-    // The field's own line is in no version.
-    expect(places.at(-1)).toEqual([]);
-    await field.user.click(button);
-
-    const name = await screen.findByRole('option', {
-      name: 'Name, A person, Required in this text',
-    });
-    expect(name).toHaveAttribute('data-required', 'true');
-    expect(name.querySelector('[data-required-marker]')).toHaveTextContent(
-      'Required in this text',
-    );
-    const number = screen.getByRole('option', { name: 'Number' });
-    expect(number).not.toHaveAttribute('data-required');
-    expect(number.querySelector('[data-required-marker]')).toBeNull();
-  });
-
-  it('leaves the menu button unmarked while nothing required is missing', async () => {
-    renderWithTokens({
-      insertMenu: {
-        label: 'Insert a value',
-        items: [
-          {
-            id: 'name',
-            label: 'Name',
-            content: { type: 'token', attrs: { id: 'name' } },
-            required: () => false,
-          },
-        ],
-      },
-    });
-
-    expect(
-      await screen.findByRole('button', { name: 'Insert a value' }),
-    ).not.toHaveAttribute('data-missing');
-  });
-
-  it('says which required tokens the text does not include yet', async () => {
-    const field = renderWithTokens({
-      tokens: [
-        { id: 'name', label: 'Name', required: true },
-        { id: '#', label: 'Number', required: true },
-      ],
-    });
-    const editor = await field.editor();
-
-    // The name is in the text; the number is not.
-    expect(
-      screen.getByRole('button', { name: 'Insert “Name”' }),
-    ).not.toHaveAttribute('data-missing');
-    const number = screen.getByRole('button', {
-      name: 'Insert “Number” (required in this text)',
-    });
-    expect(number).toHaveAttribute('data-missing', 'true');
-
-    await field.user.click(editor);
-    await field.user.click(number);
-
-    expect(
-      await screen.findByRole('button', { name: 'Insert “Number”' }),
-    ).not.toHaveAttribute('data-missing');
-  });
-
-  it('inserts a token at the caret from its toolbar button', async () => {
-    const field = renderWithTokens({ value: lineOf() });
-    const editor = await field.editor();
-
-    await field.user.click(editor);
-    await field.user.type(editor, 'Parents: ');
-    await field.user.click(
-      screen.getByRole('button', { name: 'Insert “Number”' }),
-    );
-
-    expect(field.onChange).toHaveBeenLastCalledWith(
-      lineOf({ type: 'text', text: 'Parents: ' }, token('#')),
-    );
-    // Typing goes on where the token went in.
-    await waitFor(() => {
-      expect(editor).toHaveFocus();
-    });
-  });
-
-  it('groups the insert buttons under one name', async () => {
-    renderWithTokens();
-
-    const group = await screen.findByRole('group', {
-      name: 'Insert a placeholder',
-    });
-    expect(within(group).getAllByRole('button')).toHaveLength(2);
-  });
-
-  it('keeps a token when a value it is given is flattened to one line', async () => {
-    const field = renderWithTokens({
+  it('keeps a value when a value it is given is flattened to one line', async () => {
+    const field = renderLine({
       value: {
         type: 'doc',
         content: [
           { type: 'paragraph', content: [{ type: 'text', text: 'Add' }] },
-          { type: 'paragraph', content: [token('name')] },
+          { type: 'paragraph', content: [value('name')] },
         ],
       },
     });
     const editor = await field.editor();
 
     expect(editor.textContent).toBe('Add Name');
-    expect(editor.querySelector('[data-token="name"]')).not.toBe(null);
-  });
-
-  it('keeps a pasted token it offers, and the words of one it does not', async () => {
-    const field = renderWithTokens({ value: lineOf() });
-    const editor = await field.editor();
-
-    fireEvent.focus(editor);
-    fireEvent.paste(editor, {
-      clipboardData: clipboardOf({
-        'text/html':
-          '<p>For <span data-token="name">Name</span> and <span data-token="relation">Relation</span></p>',
-        'text/plain': 'For Name and Relation',
-      }),
-    });
-
-    expect(editor.textContent).toBe('For Name and Relation');
-    expect(editor.querySelector('[data-token="name"]')).not.toBe(null);
-    expect(editor.querySelector('[data-token="relation"]')).toBe(null);
-  });
-
-  it('offers no insert button while the field is read-only', async () => {
-    renderWithTokens({ readOnly: true });
-
-    expect(
-      await screen.findByRole('button', { name: 'Insert “Name”' }),
-    ).toBeDisabled();
-  });
-
-  it('is not rebuilt by a host passing the same tokens anew', async () => {
-    const onChange = vi.fn();
-    const props = {
-      'id': 'item',
-      'name': 'item',
-      'aria-describedby': 'item-hint',
-      'aria-label': 'List item',
-      'singleLine': true,
-      'changeMode': 'input',
-      'value': lineOf({ type: 'text', text: 'Add ' }, token('name')),
-      onChange,
-    } as const;
-    const { rerender } = render(
-      <RichTextEditorField {...props} tokens={[...TOKENS]} />,
-    );
-    const editor = await screen.findByRole('textbox', { name: 'List item' });
-
-    rerender(<RichTextEditorField {...props} tokens={[...TOKENS]} />);
-
-    expect(await screen.findByRole('textbox', { name: 'List item' })).toBe(
-      editor,
-    );
-    expect(onChange).not.toHaveBeenCalled();
+    expect(editor.querySelector('[data-inline-value="name"]')).not.toBe(null);
   });
 });

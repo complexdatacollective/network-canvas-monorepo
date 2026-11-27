@@ -4,13 +4,16 @@ import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  testId,
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
 import {
   type CurrentProtocol,
   dynamicValueNameFor,
+  fieldBlockMarkdown,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 
 import SummaryContext from '../../SummaryContext';
 import Stage from '../Stage';
@@ -325,7 +328,7 @@ describe('Protocol Summary stage wording that the interview fills in', () => {
     // The wording that fits the number folds to the number's pill, which the
     // declaration names; read as a value the stage shows, it would print
     // `count`.
-    const pill = row.querySelector('[data-token="count"]');
+    const pill = row.querySelector('data[data-attribute-type="placeholder"]');
     expect(pill).toHaveTextContent('Number');
     expect(within(row).queryByText('count')).not.toBeInTheDocument();
   });
@@ -365,15 +368,13 @@ describe('Protocol Summary form text that shows values', () => {
           type="AlterForm"
           configuration={{
             subject: { entity: 'node', type: PERSON },
-            form: {
-              fields: [
-                {
-                  id: 'field-1',
-                  variable: testVariableId('age'),
-                  prompt: { en: `How old is {${NODE_NICK}}?` },
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: testId('field/age'),
+                variable: testVariableId('age'),
+                prompt: { en: `How old is {${NODE_NICK}}?` },
+              },
+            ]),
           }}
         />
       </SummaryContext.Provider>,
@@ -385,8 +386,114 @@ describe('Protocol Summary form text that shows values', () => {
   });
 });
 
+describe('Protocol Summary form text', () => {
+  const EMPLOYED = testVariableId('employed');
+  const EMPLOYER = testVariableId('employer');
+  const NAME_FIELD = testId('field/name');
+  const EMPLOYER_FIELD = testId('field/employer');
+  const employedName = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'ego',
+    variableId: EMPLOYED,
+  });
+  const formProtocol = {
+    ...protocol,
+    codebook: {
+      node: {},
+      edge: {},
+      ego: {
+        variables: {
+          [EMPLOYED]: { name: 'employed', type: 'boolean' },
+          [EMPLOYER]: { name: 'employer', type: 'text' },
+        },
+      },
+    },
+  } as unknown as CurrentProtocol;
+  const index = [
+    {
+      id: EMPLOYER,
+      name: 'employer',
+      type: 'text',
+      component: 'Text',
+      stages: [],
+    },
+  ];
+
+  it('prints the text of a form with each field where the text places it, including a field inside a logic block', () => {
+    render(
+      <SummaryContext.Provider
+        value={{
+          protocol: formProtocol,
+          protocolName: formProtocol.name,
+          index,
+        }}
+      >
+        <Stage
+          id="ego-form"
+          label={{ en: 'Your situation' }}
+          stageNumber={2}
+          type="EgoForm"
+          configuration={{
+            form: {
+              content: {
+                en: [
+                  '# About you',
+                  'Please answer these questions.',
+                  fieldBlockMarkdown(NAME_FIELD),
+                  `{${employedName}, select, missing {} true {${fieldBlockMarkdown(EMPLOYER_FIELD)}} other {}}`,
+                ].join('\n\n'),
+              },
+              fields: [
+                {
+                  id: NAME_FIELD,
+                  variable: EMPLOYED,
+                  prompt: { en: 'Are you employed?' },
+                },
+                {
+                  id: EMPLOYER_FIELD,
+                  variable: EMPLOYER,
+                  prompt: { en: 'Who is your employer?' },
+                  hint: { en: 'The organisation that pays you.' },
+                },
+              ],
+            },
+          }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    // The text is drawn as markdown, never as its stored syntax.
+    expect(
+      screen.getByRole('heading', { name: 'About you', level: 1 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Please answer these questions.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/field:/)).not.toBeInTheDocument();
+
+    // A field outside the logic block is drawn in the text itself.
+    const first = document.querySelector(
+      `[data-field-summary="${NAME_FIELD}"]`,
+    );
+    expect(first).toHaveTextContent('Are you employed?');
+    expect(first?.closest('[data-logic-summary]')).toBeNull();
+
+    // The field inside the logic block is drawn in the branch that shows it,
+    // with its hint, its attribute and its input control.
+    const inBranch = document.querySelector(
+      `[data-logic-summary="answers"] [data-branch-summary="true"] [data-field-summary="${EMPLOYER_FIELD}"]`,
+    );
+    expect(inBranch).toHaveTextContent('Who is your employer?');
+    expect(inBranch).toHaveTextContent('The organisation that pays you.');
+    expect(inBranch).toHaveTextContent('employer');
+    expect(
+      within(inBranch as HTMLElement).getByText('Input control'),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('Protocol Summary text that reads by a number answer', () => {
-  it('shows text that reads by a number as the number’s pill, without listing its versions', () => {
+  it('shows a logic block on a number answer as the number’s pill and a branch for each form of the number', () => {
     const czechProtocol = {
       ...protocol,
       localization: { defaultLocale: 'cs', locales: ['cs'] },
@@ -415,20 +522,29 @@ describe('Protocol Summary text that reads by a number answer', () => {
           type="Information"
           configuration={{
             content: {
-              cs: `{${EGO_HOURS}, select, missing {} other {{${EGO_HOURS}, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}`,
+              cs: `{${EGO_HOURS}, select, missing {} other {{${EGO_HOURS}, plural, one {Jedna hodina.} few {Několik hodin.} many {Část hodiny.} other {Mnoho hodin.}}}}`,
             },
           }}
         />
       </SummaryContext.Provider>,
     );
 
-    // The summary prints only the value the versions are on; the versions,
-    // and the numbers each is for, are read in the editor.
-    const pills = document.querySelectorAll('[data-token]');
-    expect(pills).toHaveLength(1);
-    expect(pills[0]).toHaveAttribute('data-token', EGO_HOURS);
-    expect(pills[0]).toHaveTextContent('Hours');
-    expect(screen.queryByText(/When it is/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/hodin/)).not.toBeInTheDocument();
+    // The block is named by its logic and the number's pill, and each form
+    // of the number in the protocol's language is a labelled branch.
+    const block = document.querySelector('[data-logic-summary="number"]');
+    expect(block).toHaveTextContent(
+      'Content for singular or plural numbers: Hours',
+    );
+    expect(
+      block?.querySelector('data[data-attribute-type="number"]'),
+    ).toHaveTextContent('Hours');
+    expect(
+      [...(block?.querySelectorAll('[data-branch-summary]') ?? [])].map(
+        (branch) => branch.getAttribute('data-branch-summary'),
+      ),
+    ).toEqual(['missing', 'one', 'few', 'many', 'other']);
+    expect(
+      block?.querySelector('[data-branch-summary="few"]'),
+    ).toHaveTextContent('When it is 2, 3, 4Několik hodin.');
   });
 });

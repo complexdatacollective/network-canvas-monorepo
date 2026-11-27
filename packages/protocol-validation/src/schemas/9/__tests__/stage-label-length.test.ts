@@ -58,7 +58,7 @@ describe('a stage name', () => {
     ).toEqual([
       expect.objectContaining({
         path: ['stages', 0, 'label', 'fr'],
-        message: 'Text cannot contain a line break.',
+        message: 'This wording cannot contain a line break.',
       }),
     ]);
     expect(
@@ -67,7 +67,7 @@ describe('a stage name', () => {
       ),
     ).toEqual([
       `Stage name "${longest}\ny" is 102 characters long, but a stage name may be at most 100.`,
-      'Text cannot contain a line break.',
+      'This wording cannot contain a line break.',
     ]);
   });
 

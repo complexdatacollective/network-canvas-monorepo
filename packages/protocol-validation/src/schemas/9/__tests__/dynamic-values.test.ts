@@ -8,6 +8,7 @@ import {
   testVariableId,
   withTestIds,
 } from '../../../__tests__/testIds.ts';
+import { fieldBlockMarkdown } from '../../../localization/fieldBlock.ts';
 import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
@@ -115,11 +116,24 @@ const FAMILY = optionKey('node', 'person', 'category', 1);
 const guarded = (name: string) =>
   `{${name}, select, missing {Tell us about them.} other {Tell us about {${name}}.}}`;
 
-/** An alter form whose one field asks `prompt`. */
-const askingInAlterForm = (prompt: string) =>
+/** The block that places the fixture forms' one field (`field-1`). */
+const FIELD = fieldBlockMarkdown('field-1');
+
+/**
+ * A form's text: `text`, then the form's field, unless `text` places it
+ * itself.
+ */
+const formText = (text: string) =>
+  text.includes(FIELD) ? text : `${text}\n\n${FIELD}`;
+
+/** An alter form whose text is `text`, with its one field. */
+const askingInAlterForm = (text: string) =>
   editing('alterForm', (stage) => {
     stage.form = {
-      fields: [{ id: 'field-1', variable: 'nickname', prompt: { en: prompt } }],
+      content: { en: formText(text) },
+      fields: [
+        { id: 'field-1', variable: 'nickname', prompt: { en: 'Nickname?' } },
+      ],
     };
   });
 
@@ -138,27 +152,24 @@ describe('dynamic values in stage text', () => {
     expect(issuesOf(protocol)).toEqual([]);
   });
 
-  it('refuses a network value shown outside a version for when it has one', () => {
+  it('shows a value that can be missing anywhere, since a missing value shows nothing', () => {
     const protocol = editing('information', (stage) => {
       stage.content = { en: `Hello {${EGO_NAME}}` };
     });
-    const index = stageIndex(protocol, 'information');
-    expect(issuesOf(protocol)).toEqual([
-      expect.objectContaining({
-        path: `stages.${index}.content.en`,
-        message:
-          'The "EgoName" attribute of the participant can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.',
-      }),
-    ]);
+    expect(issuesOf(protocol)).toEqual([]);
   });
 
-  it('refuses a select without a missing version as the guard of its other version', () => {
+  it('refuses a choice by answer without a missing version, which is no logic block', () => {
     const protocol = editing('information', (stage) => {
       stage.content = {
         en: `{${EGO_NAME}, select, other {Hi {${EGO_NAME}}}}`,
       };
     });
-    expect(issuesOf(protocol)).toHaveLength(1);
+    expect(issuesOf(protocol)).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('is not a logic block'),
+      }),
+    ]);
   });
 
   it('needs no missing version for a value every host guarantees', () => {
@@ -188,7 +199,7 @@ describe('dynamic values in stage text', () => {
     expect(issuesOf(protocol)).toEqual([
       {
         path: `stages.${index}.content.en`,
-        message: `This text cannot use "${name}": ${NOTHING}.`,
+        message: `This wording cannot use "${name}": ${NOTHING}.`,
       },
     ]);
   });
@@ -202,7 +213,7 @@ describe('dynamic values in stage text', () => {
     expect(issuesOf(protocol)).toEqual([
       {
         path: `stages.${index}.content.en`,
-        message: 'This text refers to an attribute that no longer exists.',
+        message: 'This wording refers to an attribute that no longer exists.',
       },
     ]);
   });
@@ -219,7 +230,7 @@ describe('dynamic values in stage text', () => {
     });
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
-        message: 'This text has an If block whose rules no longer exist.',
+        message: 'This wording has a logic block whose rules no longer exist.',
       }),
     ]);
   });
@@ -292,13 +303,13 @@ describe('dynamic values in stage text', () => {
         expect(
           issuesOf(
             askingInAlterForm(
-              `{${CATEGORY}, select, ${key} {Your friend?} other {Them?}}`,
+              `{${CATEGORY}, select, missing {Them?} ${key} {Your friend?} other {Them?}}`,
             ),
           ),
         ).toEqual([
           expect.objectContaining({
             message:
-              'This text chooses its wording by the "Category" attribute of the node this stage is about, but one of its versions is for an option that no longer exists.',
+              'This wording chooses between versions by the "Category" attribute of the node this stage is about, but one of its versions is for an option that no longer exists.',
           }),
         ]);
       }
@@ -308,13 +319,13 @@ describe('dynamic values in stage text', () => {
       expect(
         issuesOf(
           askingInAlterForm(
-            `{${NICKNAME}, select, bob {Bob?} other {{${NICKNAME}, select, missing {Them?} other {{${NICKNAME}}?}}}}`,
+            `{${NICKNAME}, select, missing {Them?} bob {Bob?} other {{${NICKNAME}}?}}`,
           ),
         ),
       ).toEqual([
         expect.objectContaining({
           message:
-            'This text chooses its wording by each answer of the "Nickname" attribute of the node this stage is about, but only a categorical, ordinal or yes/no attribute can have a different version for each answer.',
+            'This wording chooses between versions by each answer of the "Nickname" attribute of the node this stage is about, but only a categorical, ordinal or yes/no attribute can have a different version for each answer.',
         }),
       ]);
     });
@@ -322,14 +333,14 @@ describe('dynamic values in stage text', () => {
     it('reads "other" only for an option the text gives no version for', () => {
       // With a version for every option, an answer always chooses one of
       // them, so words only in "other" are never shown.
-      const everyOption = `{${CATEGORY}, select, missing {} ${FRIEND} {} ${FAMILY} {} other {Shown to nobody.}}`;
+      const everyOption = `{${CATEGORY}, select, missing {} ${FRIEND} {} ${FAMILY} {} other {${FIELD}}}`;
       expect(issuesOf(askingInAlterForm(everyOption))).toEqual([
         expect.objectContaining({
           message: expect.stringContaining('blank in every version'),
         }),
       ]);
       // With a version for only some, the others read "other".
-      const someOptions = `{${CATEGORY}, select, missing {} ${FRIEND} {} other {Shown for family.}}`;
+      const someOptions = `{${CATEGORY}, select, missing {} ${FRIEND} {} other {${FIELD}}}`;
       expect(issuesOf(askingInAlterForm(someOptions))).toEqual([]);
     });
   });
@@ -340,7 +351,7 @@ describe('dynamic values in stage text', () => {
       (protocol.codebook.node as Record<string, { variables: Variables }>)[
         testTypeId('person')
       ]!.variables;
-    const UNLABELLED = `The "Flag" attribute of the node this stage is about cannot be shown as words. "Flag" is a yes/no attribute without labels for both of its answers. Add a label for yes and for no to "Flag", or give the text a different wording for each answer.`;
+    const UNLABELLED = `The "Flag" attribute of the node this stage is about cannot be shown as words. "Flag" is a yes/no attribute without labels for both of its answers. Add a label for yes and for no to "Flag", or give the wording a different version for each answer.`;
 
     it('shows a yes/no attribute with a label for each answer', () => {
       expect(issuesOf(askingInAlterForm(guarded(FLAG)))).toEqual([]);
@@ -348,12 +359,12 @@ describe('dynamic values in stage text', () => {
 
     it('refuses text whose words are only in the version no answer reaches', () => {
       const protocol = askingInAlterForm(
-        `{${FLAG}, select, missing {} true {} false {} other {Shown to nobody.}}`,
+        `{${FLAG}, select, missing {} true {} false {} other {${FIELD}}}`,
       );
       const index = stageIndex(protocol, 'alterForm');
       expect(issuesOf(protocol)).toEqual([
         expect.objectContaining({
-          path: `stages.${index}.form.fields.0.prompt.en`,
+          path: `stages.${index}.form.content.en`,
           message: expect.stringContaining('blank in every version'),
         }),
       ]);
@@ -361,7 +372,7 @@ describe('dynamic values in stage text', () => {
       expect(
         issuesOf(
           askingInAlterForm(
-            `{${FLAG}, select, missing {} true {} other {Shown for no.}}`,
+            `{${FLAG}, select, missing {} true {} other {${FIELD}}}`,
           ),
         ),
       ).toEqual([]);
@@ -371,13 +382,13 @@ describe('dynamic values in stage text', () => {
       expect(
         issuesOf(
           askingInAlterForm(
-            `{${FLAG}, select, yes {Tell us why.} other {Anything else?}}`,
+            `{${FLAG}, select, missing {Anything else?} yes {Tell us why.} other {Anything else?}}`,
           ),
         ),
       ).toEqual([
         expect.objectContaining({
           message:
-            'This text chooses its wording by the "Flag" attribute of the node this stage is about, but one of its versions is neither for yes nor for no.',
+            'This wording chooses between versions by the "Flag" attribute of the node this stage is about, but one of its versions is neither for yes nor for no.',
         }),
       ]);
     });
@@ -388,7 +399,7 @@ describe('dynamic values in stage text', () => {
       const index = stageIndex(protocol, 'alterForm');
       expect(issuesOf(protocol)).toEqual([
         {
-          path: `stages.${index}.form.fields.0.prompt.en`,
+          path: `stages.${index}.form.content.en`,
           message: UNLABELLED,
         },
       ]);
@@ -616,31 +627,21 @@ describe('dynamic values in stage text', () => {
         ).toEqual([]);
       });
 
-      it('needs a missing version for the label of the node a bin is placing, which is gone once every node is placed', () => {
-        const prompted = (text: string) =>
-          editing('ordinalBin', (stage) => {
-            stage.behaviours = { interactionMode: 'select' };
-            (stage.prompts as Stage[])[0]!.text = { en: text };
-          });
-        expect(issuesOf(prompted(`How close is {${NODE_LABEL}}?`))).toEqual([
-          expect.objectContaining({
-            path: expect.stringContaining('prompts.0.text.en'),
-          }),
-        ]);
-        expect(
-          issuesOf(
-            prompted(
-              `{${NODE_LABEL}, select, missing {Everyone is placed.} other {How close is {${NODE_LABEL}}?}}`,
-            ),
-          ),
-        ).toEqual([]);
+      it('shows the label of the node a bin is placing, which shows nothing once every node is placed', () => {
+        const protocol = editing('ordinalBin', (stage) => {
+          stage.behaviours = { interactionMode: 'select' };
+          (stage.prompts as Stage[])[0]!.text = {
+            en: `How close is {${NODE_LABEL}}?`,
+          };
+        });
+        expect(issuesOf(protocol)).toEqual([]);
       });
 
       it('keeps the node a bin is placing out of the "other" bin\'s label', () => {
         const edited = editing('categoricalBin', (stage) => {
           stage.behaviours = { interactionMode: 'select' };
           (stage.prompts as Stage[])[0]!.otherOptionLabel = {
-            en: guarded(NODE_LABEL),
+            en: `Not like {${NODE_LABEL}}`,
           };
         });
         // Placing by tapping also shows the bin's Place here button.
@@ -651,7 +652,7 @@ describe('dynamic values in stage text', () => {
         expect(issuesOf(protocol)).toEqual([
           expect.objectContaining({
             message:
-              'This text cannot use the label of the node this stage is about, because the text does not refer to that node.',
+              'This wording cannot use the label of the node this stage is about, because the wording does not refer to that node.',
           }),
         ]);
       });
@@ -696,7 +697,7 @@ describe('dynamic values in stage text', () => {
         expect(issuesOf(misplaced)).toEqual([
           expect.objectContaining({
             message: expect.stringContaining(
-              'This text cannot use the label of the node this stage is about, because the text does not refer to that node.',
+              'This wording cannot use the label of the node this stage is about, because the wording does not refer to that node.',
             ),
           }),
         ]);
@@ -749,15 +750,27 @@ describe('dynamic values in stage text', () => {
       });
 
       it('refuses cases on a label', () => {
+        const protocol = askingInAlterForm(
+          `{${NODE_LABEL}, select, missing {Who?} bob {Is it Bob?} other {Who is it?}}`,
+        );
+        expect(issuesOf(protocol)).toEqual([
+          expect.objectContaining({
+            message:
+              'This wording chooses between versions by each value of the label of the node this stage is about, but only a categorical, ordinal or yes/no attribute can have a different version for each answer.',
+          }),
+        ]);
+      });
+
+      it('refuses a choice inside a sentence', () => {
         const protocol = editing('dyadCensus', (stage) => {
           (stage.prompts as Stage[])[0]!.text = {
-            en: `{${FIRST_LABEL}, select, bob {Is it Bob?} other {Do they know each other?}}`,
+            en: `Do they know {${FIRST_LABEL}, select, missing {} other {{${FIRST_LABEL}}}}?`,
           };
         });
         expect(issuesOf(protocol)).toEqual([
           expect.objectContaining({
             message:
-              'This text chooses its wording by each value of the label of the first node of the pair, but only a categorical, ordinal or yes/no attribute can have a different version for each answer.',
+              'This wording chooses between versions inside a sentence. Use a dynamic attribute instead.',
           }),
         ]);
       });
@@ -765,10 +778,10 @@ describe('dynamic values in stage text', () => {
 
     describe('whether the node is the participant', () => {
       const choosing = `{${IS_PARTICIPANT}, select, true {What year were you born?} other {What year were they born?}}`;
-      const personForm = (prompt: string) =>
+      const personForm = (text: string) =>
         editing('familyPedigree', (stage) => {
-          (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
-            en: prompt,
+          (stage.form as { content: unknown }).content = {
+            en: formText(text),
           };
         });
 
@@ -779,18 +792,18 @@ describe('dynamic values in stage text', () => {
           argumentsAt(
             protocol,
             'familyPedigree',
-            ['form', 'fields', 0, 'prompt'],
+            ['form', 'content'],
             'formField',
             [IS_PARTICIPANT],
           ),
         ).toEqual([IS_PARTICIPANT]);
       });
 
-      it('needs no missing version, since it is never missing, nor an other version once both answers have one', () => {
+      it('needs no missing version, since it is never missing, and is written with one version for the participant and one for anyone else', () => {
         expect(
           issuesOf(
             personForm(
-              `{${IS_PARTICIPANT}, select, true {Your birth year?} false {Their birth year?} other {}}`,
+              `{${IS_PARTICIPANT}, select, true {Your birth year?} other {Their birth year?}}`,
             ),
           ),
         ).toEqual([]);
@@ -802,7 +815,7 @@ describe('dynamic values in stage text', () => {
           ),
         ).toEqual([
           expect.objectContaining({
-            message: expect.stringContaining('blank in every version'),
+            message: expect.stringContaining('is not a logic block'),
           }),
         ]);
       });
@@ -813,7 +826,7 @@ describe('dynamic values in stage text', () => {
         ).toEqual([
           expect.objectContaining({
             message:
-              'Whether the node is the participant cannot be shown as words. It chooses which version of the text is shown. Give the text a version for the participant and a version for everyone else.',
+              'Whether the node is the participant cannot be shown as words. It chooses which version of the wording is shown. Give the wording a version for the participant and a version for everyone else.',
           }),
         ]);
       });
@@ -847,9 +860,8 @@ describe('dynamic values in stage text', () => {
             path:
               'stages.' +
               String(stageIndex(protocol, 'familyPedigree')) +
-              '.form.fields.0.prompt.en',
-            message:
-              'This text chooses its wording by whether the node is the participant, but one of its versions is neither for the participant nor for everyone else.',
+              '.form.content.en',
+            message: expect.stringContaining('is not a logic block'),
           }),
         ]);
       });
@@ -857,12 +869,14 @@ describe('dynamic values in stage text', () => {
 
     it('reports a value used where it is not available', () => {
       const protocol = editing('sociogram', (stage) => {
-        (stage.prompts as Stage[])[0]!.text = { en: guarded(THEM) };
+        (stage.prompts as Stage[])[0]!.text = {
+          en: `Tell us about {${THEM}}.`,
+        };
       });
       expect(issuesOf(protocol)).toEqual([
         expect.objectContaining({
           message:
-            'This text cannot use the "Nickname" attribute of the node this stage is about, because the text does not refer to that node.',
+            'This wording cannot use the "Nickname" attribute of the node this stage is about, because the wording does not refer to that node.',
         }),
       ]);
     });
@@ -881,7 +895,7 @@ describe('dynamic values in stage text', () => {
         expect.arrayContaining([
           expect.objectContaining({
             message:
-              'This text cannot use the "Name" attribute of the node this stage is about, because the attribute is encrypted.',
+              'This wording cannot use the "Name" attribute of the node this stage is about, because the attribute is encrypted.',
           }),
         ]),
       );
@@ -952,17 +966,17 @@ describe('dynamic values in stage text', () => {
     });
 
     it('still checks each translation on its own', () => {
-      // A value that can be missing, shown without a version for when it is.
+      // A choice of versions inside a sentence.
       expect(
         contentIssues({
           en: guarded(EGO_NAME),
-          fr: `Parlez-nous de {${EGO_NAME}}.`,
+          fr: `Parlez-nous {${EGO_NAME}, select, missing {d’eux} other {de {${EGO_NAME}}}}.`,
         }),
       ).toEqual([
         expect.objectContaining({
           path: expect.stringMatching(/content\.fr$/),
           message:
-            'The "EgoName" attribute of the participant can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.',
+            'This wording chooses between versions inside a sentence. Use a dynamic attribute instead.',
         }),
       ]);
       // A name that refers to nothing.
@@ -1015,7 +1029,7 @@ describe('dynamic values in stage text', () => {
         `${guarded(EGO_NAME)} {${CATEGORY}, select, ${FRIEND} {Friend} other {{now}}}`,
       );
       const index = stageIndex(protocol, 'alterForm');
-      const path = ['stages', index, 'form', 'fields', 0, 'prompt', 'en'];
+      const path = ['stages', index, 'form', 'content', 'en'];
       const hits = collectEntityAttributeReferences(protocol).filter(
         (hit) => hit.inMessage !== undefined,
       );
@@ -1069,10 +1083,18 @@ describe('dynamic values in stage text', () => {
     // variant, so a site the complete protocol happens not to fill (a hint,
     // a scale's labels) is inventoried too.
     const allSites = schemaDynamicValueSites();
-    // The one site outside stages is a node type's own label, which shows
-    // values about the node it is on (`findNodeLabelProblems`).
+    // The sites outside stages are a node type's own label, which shows
+    // values about the node it is on, and the wording of its dynamic
+    // attributes (`findNodeLabelProblems`).
     const sites = allSites.filter((site) => site.startsWith('stages '));
     expect(allSites.filter((site) => !site.startsWith('stages '))).toEqual([
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.answers.#.wording dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.cases.#.wording dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.missing dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.other dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.otherwise dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.participant dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.wording dynamicAttribute',
       'codebook.node.*.dynamicLabel.text nodeLabel',
     ]);
     const inventory = sites.map((site) => site.slice('stages '.length));

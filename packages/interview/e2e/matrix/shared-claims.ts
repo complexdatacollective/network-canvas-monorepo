@@ -91,6 +91,38 @@ const conditionsClaims = [
 ].map((iface) => `${iface}:conditions`);
 
 /**
+ * `dynamicAttributes` (wording that logic chooses, shown where a stage's
+ * text names it) is shared as `conditions` is, and by the same path: the
+ * Shell gives every stage its dynamic attributes with its values
+ * (`StageDynamicValues`), and the one text resolver chooses each one's
+ * version whatever the stage's type. dynamicValues/__tests__/
+ * dynamicAttributes.test.tsx proves every kind of logic, the wording's
+ * language and a number's wording through that resolver.
+ */
+const dynamicAttributesClaims = [
+  'AlterEdgeForm',
+  'AlterForm',
+  'Anonymisation',
+  'CategoricalBin',
+  'DyadCensus',
+  'EgoForm',
+  'FamilyPedigree',
+  'FinishSession',
+  'Geospatial',
+  'Information',
+  'NameGenerator',
+  'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
+  'Narrative',
+  'NarrativePedigree',
+  'NetworkComposer',
+  'OneToManyDyadCensus',
+  'OrdinalBin',
+  'Sociogram',
+  'TieStrengthCensus',
+].map((iface) => `${iface}:dynamicAttributes`);
+
+/**
  * Family Pedigree options proved by a Storybook interaction test or a unit
  * test, not by an e2e scenario. Each was once claimed by a scenario that
  * repeated that test step for step (the stories run the real Shell and read the
@@ -120,6 +152,7 @@ const familyPedigreeStoryClaims = [
 
 export const sharedSuiteClaims: readonly string[] = [
   ...conditionsClaims,
+  ...dynamicAttributesClaims,
   ...dynamicValuesClaims,
   ...familyPedigreeStoryClaims,
   'AlterEdgeForm:skipLogic',

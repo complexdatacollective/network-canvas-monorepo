@@ -17,6 +17,7 @@ import {
   type Form as TForm,
   type Variable,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -63,13 +64,13 @@ const UNIQUE_ERROR = 'Must be unique.';
 
 const form: TForm = {
   title: { en: 'Add a person' },
-  fields: [
+  ...formOf([
     {
       id: testId('field-1'),
       variable: asEntityAttributeReference(VARIABLE),
       prompt: { en: FIELD_LABEL },
     },
-  ],
+  ]),
 };
 
 type NameGeneratorStage = StageProps<'NameGenerator'>['stage'];

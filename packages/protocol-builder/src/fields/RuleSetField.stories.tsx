@@ -263,6 +263,59 @@ export const AddingARule: Story = {
 };
 
 /**
+ * After a rule is deleted, focus goes to the Delete button of the rule that
+ * takes its place: the next rule, or the one before it when the last rule
+ * was deleted. When no rules are left, it goes to the button that adds one.
+ */
+export const FocusAfterDeletingARule: Story = {
+  args: {
+    seedEdit: holdingSkipLogic(
+      [OLDER_THAN_65, KNOWS_SOMEBODY, NAME_UNANSWERED],
+      'AND',
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+    const deleteButtons = () =>
+      canvas.queryAllByRole('button', { name: /^Delete rule:/ });
+    const deleteRule = async (index: number, left: number) => {
+      const button = deleteButtons()[index];
+      if (button === undefined) throw new Error(`No rule ${index + 1}`);
+      await userEvent.click(button);
+      const question = await screen.findByRole('dialog', {
+        name: 'Are you sure?',
+      });
+      await userEvent.click(
+        within(question).getByRole('button', { name: 'Delete' }),
+      );
+      await waitFor(() => expect(deleteButtons()).toHaveLength(left));
+    };
+    await expect(
+      await canvas.findAllByRole('button', { name: /^Delete rule:/ }),
+    ).toHaveLength(3);
+
+    // The second of three: on to the rule that was third.
+    const third = deleteButtons()[2];
+    await deleteRule(1, 2);
+    await waitFor(() => expect(document.activeElement).toBe(third));
+
+    // The last: back to the rule before it.
+    const first = deleteButtons()[0];
+    await deleteRule(1, 1);
+    await waitFor(() => expect(document.activeElement).toBe(first));
+
+    // The only one: to the button that adds a rule.
+    await deleteRule(0, 0);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        canvas.getByRole('button', { name: 'Add new skip logic rule' }),
+      ),
+    );
+  },
+};
+
+/**
  * Held elsewhere: every rule is there to read, and none of them can be opened,
  * reordered or deleted. The rows stay rather than being replaced by a summary
  * — what the rules SAY is the thing a spectator came to read.

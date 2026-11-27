@@ -19,11 +19,11 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
 
   // AlterEdgeForm's subject is an edge type
   // (`subjectPicker({ entity: 'edge', filter: true })`, the "Edge type"
-  // section), and the "Form fields" section stays disabled until one is
+  // section), and the "Form" section stays disabled until one is
   // chosen — same reasoning as alter-form.spec.ts.
   await selectOrCreateEdgeType(architectPage, 'knows');
 
-  await addFormField(editor.section('Form configuration'), {
+  await addFormField(editor.section('Form'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',

@@ -1,6 +1,5 @@
 import type { VariableValue } from '@codaco/shared-consts';
-
-import { readOwnProperty } from '../../../utils/ownProperty';
+import { readOwnProperty } from '@codaco/shared-consts';
 
 export type Status =
   | 'affected'

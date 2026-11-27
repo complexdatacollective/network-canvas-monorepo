@@ -70,4 +70,62 @@ describe('getComparisonValue', () => {
       ).toEqual(prototypeDescriptor);
     },
   );
+
+  describe('a variable that the form asks', () => {
+    const context = (
+      entity: 'ego' | 'node',
+    ): Parameters<typeof getComparisonValue>[2] => ({
+      stageSubject: entity === 'ego' ? { entity } : { entity, type: 'person' },
+      codebook: {},
+      network: {
+        ego: { _uid: 'ego', attributes: { hidden: 'stored', other: 'kept' } },
+        nodes: [
+          {
+            _uid: 'node-1',
+            type: 'person',
+            attributes: { hidden: 'stored', other: 'kept' },
+          },
+        ],
+        edges: [],
+      },
+      currentEntityId: 'node-1',
+      currentEntityAttributes: { pending: 'pending' },
+      formVariables: ['hidden', 'shown', 'pending', 'aliased'],
+      formValueAliases: { aliased: 'alias-key' },
+    });
+
+    it.each(['ego', 'node'] as const)(
+      'has no answer on a %s form while its field is not mounted, whatever is stored',
+      (entity) => {
+        expect(getComparisonValue({}, 'hidden', context(entity))).toEqual({
+          present: false,
+          value: undefined,
+        });
+        expect(getComparisonValue({}, 'pending', context(entity))).toEqual({
+          present: false,
+          value: undefined,
+        });
+      },
+    );
+
+    it('reads the form’s value while its field is mounted', () => {
+      expect(
+        getComparisonValue(
+          { 'shown': 'typed', 'alias-key': 'aliased' },
+          'shown',
+          context('ego'),
+        ),
+      ).toEqual({ present: true, value: 'typed' });
+      expect(
+        getComparisonValue({ 'alias-key': 'typed' }, 'aliased', context('ego')),
+      ).toEqual({ present: true, value: 'typed' });
+    });
+
+    it('leaves a variable that the form does not ask to what is stored', () => {
+      expect(getComparisonValue({}, 'other', context('node'))).toEqual({
+        present: true,
+        value: 'kept',
+      });
+    });
+  });
 });

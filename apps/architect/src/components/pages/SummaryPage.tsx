@@ -72,7 +72,10 @@ const SummaryPage = () => {
             )}
           />
         </div>
-        <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8] rtl:[&_.variable-pill]:origin-right">
+        {/* Attribute pills, each alone in a table cell, are drawn smaller. A
+          pill in a line of text is left alone: it is already sized to the
+          text, and a transform would leave its full width blank beside it. */}
+        <div className="protocol-summary-surface mt-6 [&_.variable-pill:not([data-variable-pill-size=inline])]:origin-left [&_.variable-pill:not([data-variable-pill-size=inline])]:scale-[0.8] rtl:[&_.variable-pill:not([data-variable-pill-size=inline])]:origin-right">
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}

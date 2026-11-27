@@ -225,8 +225,7 @@ type ComposerFormScope = Readonly<{
    *
    * Reported by the open row at every commit and held outside state: the save
    * reads it in the middle of an await, from a closure made before it, and
-   * needs the row the researcher is looking at then. The same seam
-   * `FormFieldsSection` reads its own row through, and for the same reason.
+   * needs the row the researcher is looking at then.
    */
   reportRowUnderEdit: (variable: string | undefined) => void;
   /** The list as it stands now, so a row can see its own siblings. */

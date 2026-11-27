@@ -1,13 +1,6 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { type ContextType, useContext } from 'react';
-import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { act, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-import FormStoreProvider, {
-  FormStoreContext,
-} from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { testOptionId } from '@codaco/protocol-builder/testing/testId';
 import {
   asEntityAttributeReference,
@@ -17,8 +10,6 @@ import {
   createProtocolObjectId,
 } from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
-import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 import { BUNDLED_TEMPLATES } from '~/templates';
 import {
@@ -26,7 +17,11 @@ import {
   templateVariableId,
 } from '~/templates/__tests__/templateCodebookIds';
 
-import TranslationTable from '../TranslationTable';
+import { cellValue } from '../cellNames';
+import {
+  type RenderedTable,
+  renderTranslationTable,
+} from './renderTranslationTable';
 
 const template = BUNDLED_TEMPLATES.find(
   ({ id }) => id === 'eco-genetic-relationship-maps',
@@ -86,40 +81,7 @@ const bilingual = (): CurrentProtocol => {
   return protocol;
 };
 
-type TableForm = NonNullable<ContextType<typeof FormStoreContext>>;
-
-const renderTable = (protocol: CurrentProtocol) => {
-  const store = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  store.dispatch(setActiveProtocol(protocol));
-  const onSaved = vi.fn();
-  const forms: TableForm[] = [];
-  const FormProbe = () => {
-    const form = useContext(FormStoreContext);
-    if (form && !forms.includes(form)) forms.push(form);
-    return null;
-  };
-  render(
-    <Provider store={store}>
-      <FormStoreProvider>
-        <FormProbe />
-        <TranslationTable onSaved={onSaved} onCancel={vi.fn()} />
-      </FormStoreProvider>
-    </Provider>,
-  );
-  /** The table's form, which holds each edited cell's text. */
-  const form = () => {
-    const [only] = forms;
-    if (!only) throw new Error('No form');
-    return only;
-  };
-  return { store, onSaved, form, user: userEvent.setup() };
-};
-
-type Rendered = ReturnType<typeof renderTable>;
+type Rendered = RenderedTable;
 
 const disease = (position: number, language: string) =>
   screen.getByRole('textbox', {
@@ -178,7 +140,7 @@ describe('TranslationTable: the rules a field shares with its neighbours', () =>
   });
 
   it('refuses a disease name another disease has, and says so in its cell', async () => {
-    const { store, onSaved, user } = renderTable(bilingual());
+    const { store, onSaved, user } = renderTranslationTable(bilingual());
     const before = getProtocol(store.getState());
 
     await retype(user, disease(2, 'English'), 'cancer');
@@ -200,7 +162,7 @@ describe('TranslationTable: the rules a field shares with its neighbours', () =>
   });
 
   it('refuses a name that repeats another disease’s only where it is not translated, and shows the cell whatever hid it', async () => {
-    const { store, onSaved, user } = renderTable(bilingual());
+    const { store, onSaved, user } = renderTranslationTable(bilingual());
     const before = getProtocol(store.getState());
 
     // The second disease has no Spanish name, so Spanish readers see its
@@ -240,7 +202,7 @@ describe('TranslationTable: the rules a field shares with its neighbours', () =>
   });
 
   it('refuses an option label another option of the attribute has in a language other than the default', async () => {
-    const { store, onSaved, user } = renderTable(bilingual());
+    const { store, onSaved, user } = renderTranslationTable(bilingual());
     const before = getProtocol(store.getState());
 
     await openOptionLabel(user, 2, 'Spanish');
@@ -265,7 +227,7 @@ describe('TranslationTable: the rules a field shares with its neighbours', () =>
   });
 
   it('writes a save the rules allow once, which one undo takes back', async () => {
-    const { store, onSaved, user } = renderTable(bilingual());
+    const { store, onSaved, user } = renderTranslationTable(bilingual());
     const before = getProtocol(store.getState());
     let writes = 0;
     let held = before;
@@ -304,7 +266,7 @@ const stageName = (language: string) =>
 
 describe('TranslationTable: a stage’s name', () => {
   it(`refuses a name longer than ${STAGE_LABEL_MAX_LENGTH} characters in its cell, and saves one that long`, async () => {
-    const { store, onSaved, user } = renderTable(bilingual());
+    const { store, onSaved, user } = renderTranslationTable(bilingual());
     const before = getProtocol(store.getState());
     const longest = 'x'.repeat(STAGE_LABEL_MAX_LENGTH);
 
@@ -342,7 +304,7 @@ describe('TranslationTable: a stage’s name', () => {
   // Typing or pasting one becomes a space, so this is the rule behind that:
   // the name's declaration, which is one line, refuses the text in the cell.
   it('refuses a line break the cell holds, saying so in the cell', async () => {
-    const { store, onSaved, form, user } = renderTable(bilingual());
+    const { store, onSaved, form, user } = renderTranslationTable(bilingual());
     const before = getProtocol(store.getState());
 
     await user.type(stageName('Spanish'), 'Bienvenida');
@@ -350,7 +312,7 @@ describe('TranslationTable: a stage’s name', () => {
     if (name === undefined) throw new Error('The cell has no field');
     act(() => {
       const state = form().getState();
-      state.setFieldValue(name, 'Bienvenida\ny consentimiento');
+      state.setFieldValue(name, cellValue('Bienvenida\ny consentimiento'));
       state.setFieldBlurred(name);
       void state.validateField(name);
     });
@@ -361,7 +323,7 @@ describe('TranslationTable: a stage’s name', () => {
     );
     expect(
       within(cellOf(refused)).getByText(
-        'The protocol cannot hold this text as it is written. Details: Text cannot contain a line break.',
+        'This translation breaks a rule of the protocol, so it cannot be saved as it is written. Details: This wording cannot contain a line break.',
       ),
     ).toBeInTheDocument();
     await save(user);

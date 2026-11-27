@@ -31,8 +31,8 @@ function DyadCensusGuidance() {
         The participant sees two nodes side by side and answers yes or no, so
         write the question about that pair and phrase it so that yes and no are
         both sensible answers. To show the two nodes’ labels in the question,
-        insert “First node: label” and “Second node: label” with the syringe
-        button in the toolbar.
+        choose “First node: label” and “Second node: label” from the Attribute
+        menu in the toolbar.
       </AlertDescription>
     </Alert>
   );

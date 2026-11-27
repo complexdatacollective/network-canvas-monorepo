@@ -1,4 +1,13 @@
 import {
+  buildConnectivityIndex,
+  type ConnectivityIndex,
+} from '@codaco/network-query';
+import type {
+  DynamicValueRole,
+  Stage,
+  Variable,
+} from '@codaco/protocol-validation';
+import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -21,6 +30,12 @@ import type {
 } from './context.ts';
 import { createEdgesForPairs } from './edges.ts';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering.ts';
+import {
+  type FormReading,
+  type FormSubjects,
+  hiddenFormVariables,
+  readForm,
+} from './formAnswers.ts';
 import { createNodesForStage, type RosterDraw } from './nodes.ts';
 import { getSubjectType } from './subject.ts';
 
@@ -38,7 +53,44 @@ export function handleNameGenerators(
   };
 
   // A stage form needs no fill pass of its own: `createNodesForStage` fills the
-  // variables this creating stage collects as it builds each node.
+  // variables this creating stage collects as it builds each node, and the
+  // form then clears the answers to the fields that it does not ask or that
+  // its logic hides. A value that the node was given rather than drawn (a
+  // roster row's, a prompt's) is the interface's, not the form's, and stays.
+  const reading =
+    stage.type === 'NameGenerator'
+      ? readForm(stage.form, ctx.formLanguage, ctx.formLocalization)
+      : undefined;
+  const nodeType = getSubjectType(stage.subject, 'node');
+  const settleAttributes =
+    reading === undefined
+      ? undefined
+      : (
+          attributes: Record<string, VariableValue>,
+          fixed: Readonly<Record<string, VariableValue>>,
+        ) => {
+          const unanswered = new Set([
+            ...reading.unasked,
+            ...hiddenFormVariables(reading, attributes, {
+              ...formSubjectsBase(draft, stage),
+              answers: 'node',
+              attributes: { ego: draft.egoAttributes, node: attributes },
+              variablesFor: variablesOf(ctx, {
+                node:
+                  nodeType === undefined
+                    ? undefined
+                    : ctx.codebook.node?.[nodeType]?.variables,
+              }),
+              // A node not saved yet has no edges.
+              entityIds: {},
+              ...(nodeType === undefined ? {} : { nodeType }),
+            }),
+          ]);
+          for (const variable of unanswered) {
+            if (!Object.hasOwn(fixed, variable)) delete attributes[variable];
+          }
+        };
+
   let stageNodeCount = 0;
   for (const prompt of stage.prompts) {
     const newNodes = createNodesForStage(
@@ -48,6 +100,7 @@ export function handleNameGenerators(
       draft.nodes.length,
       stageNodeCount,
       roster,
+      settleAttributes,
     );
     stageNodeCount += newNodes.length;
     draft.nodes.push(...newNodes);
@@ -454,14 +507,103 @@ export function handleCategoricalBin(
   }
 }
 
+/**
+ * Answers an Ego Form as the interview submits one
+ * (`formValuesToAttributePatch`): it writes the fields that its document asks
+ * in the participant's language, clears those of them that its logic hides,
+ * and leaves every other ego attribute as an earlier form stored it. A later
+ * Ego Form therefore never answers a field that only an earlier form asks,
+ * nor clears one, whether the earlier form showed it or hid it.
+ */
 export function handleEgoForm(
   ctx: GenerationContext,
   draft: NetworkDraft,
+  stage: StageOfType<'EgoForm'>,
 ): void {
+  const reading = readForm(stage.form, ctx.formLanguage, ctx.formLocalization);
+  const formVarIds = new Set(reading.fieldVariables.values());
+  if (formVarIds.size === 0) return;
   Object.assign(
     draft.egoAttributes,
-    generateAttributesForEntity(ctx, { entity: 'ego' }, 0),
+    generateAttributesForEntity(ctx, { entity: 'ego' }, 0, {
+      existing: draft.egoAttributes,
+      only: formVarIds,
+    }),
   );
+  clearHiddenAnswers(draft.egoAttributes, reading, {
+    ...formSubjectsBase(draft, stage),
+    answers: 'ego',
+    attributes: { ego: draft.egoAttributes },
+    variablesFor: variablesOf(ctx, {}),
+    entityIds: {},
+  });
+}
+
+/**
+ * How the network's nodes are connected, for the conditions that a form's
+ * logic reads. The nodes and edges are indexed only when a condition first
+ * asks about edges, and the index is then kept, so ask for it again once
+ * nodes or edges are added.
+ */
+const connectivityOf = (draft: NetworkDraft): ConnectivityIndex => {
+  let index: ConnectivityIndex | undefined;
+  const built = () =>
+    (index ??= buildConnectivityIndex(draft.nodes, draft.edges));
+  return {
+    edgesOf: (nodeId) => built().edgesOf(nodeId),
+    degree: (nodeId, edgeType) => built().degree(nodeId, edgeType),
+    extremes: (nodeType, edgeType) => built().extremes(nodeType, edgeType),
+  };
+};
+
+/** What every form's logic can read: the stage's conditions and the network. */
+const formSubjectsBase = (
+  draft: NetworkDraft,
+  stage: Stage,
+): Pick<FormSubjects, 'conditions' | 'connectivity'> => ({
+  conditions: stage.conditions,
+  connectivity: connectivityOf(draft),
+});
+
+type RoleVariables = Readonly<
+  Partial<Record<DynamicValueRole, Readonly<Record<string, Variable>>>>
+>;
+
+/**
+ * The codebook variables of each entity that a form describes, by role, with
+ * the participant's.
+ */
+const variablesOf = (
+  ctx: GenerationContext,
+  byRole: Readonly<
+    Partial<
+      Record<DynamicValueRole, Readonly<Record<string, Variable>> | undefined>
+    >
+  >,
+): NonNullable<FormSubjects['variablesFor']> => {
+  const variables: RoleVariables = {
+    ...(ctx.codebook.ego?.variables === undefined
+      ? {}
+      : { ego: ctx.codebook.ego.variables }),
+    ...byRole,
+  };
+  return (role) => variables[role];
+};
+
+/**
+ * Removes from `attributes` the answers to the fields that `reading` asks but
+ * whose logic hides them for this entity, as the interview clears them when
+ * the form is submitted. A field that the document does not place keeps the
+ * value that is stored for it.
+ */
+function clearHiddenAnswers(
+  attributes: Record<string, VariableValue>,
+  reading: FormReading,
+  subjects: FormSubjects,
+): void {
+  for (const variable of hiddenFormVariables(reading, attributes, subjects)) {
+    delete attributes[variable];
+  }
 }
 
 /**
@@ -517,12 +659,16 @@ export function handleAlterForm(
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
-  const formVarIds = new Set(form.fields.map((field) => field.variable));
+  // Only the fields that the form's document places are asked.
+  const reading = readForm(form, ctx.formLanguage, ctx.formLocalization);
+  const formVarIds = new Set(reading.fieldVariables.values());
+  const base = formSubjectsBase(draft, stage);
 
   for (let nodeIndex = 0; nodeIndex < subjectNodes.length; nodeIndex++) {
     const node = subjectNodes[nodeIndex]!;
+    const attributes = node[entityAttributesProperty];
     Object.assign(
-      node[entityAttributesProperty],
+      attributes,
       generateAttributesForEntity(
         ctx,
         { entity: 'node', type: subjectType },
@@ -534,6 +680,16 @@ export function handleAlterForm(
       ),
     );
     clearOutOfBandWrites(node, formVarIds);
+    clearHiddenAnswers(attributes, reading, {
+      ...base,
+      answers: 'node',
+      attributes: { ego: draft.egoAttributes, node: attributes },
+      variablesFor: variablesOf(ctx, {
+        node: ctx.codebook.node?.[subjectType]?.variables,
+      }),
+      entityIds: { node: node[entityPrimaryKeyProperty] },
+      nodeType: subjectType,
+    });
   }
 }
 
@@ -549,10 +705,17 @@ export function handleAlterEdgeForm(
   if (subjectType === undefined) return;
 
   const subjectEdges = getStageFilteredEdges(ctx, draft, stage, subjectType);
-  const formVarIds = new Set(form.fields.map((field) => field.variable));
+  // Only the fields that the form's document places are asked.
+  const reading = readForm(form, ctx.formLanguage, ctx.formLocalization);
+  const formVarIds = new Set(reading.fieldVariables.values());
+  const base = formSubjectsBase(draft, stage);
+  const nodeById = new Map(
+    draft.nodes.map((node) => [node[entityPrimaryKeyProperty], node]),
+  );
 
   for (let edgeIndex = 0; edgeIndex < subjectEdges.length; edgeIndex++) {
-    const attrs = subjectEdges[edgeIndex]![entityAttributesProperty];
+    const edge = subjectEdges[edgeIndex]!;
+    const attrs = edge[entityAttributesProperty];
     Object.assign(
       attrs,
       generateAttributesForEntity(
@@ -562,6 +725,36 @@ export function handleAlterEdgeForm(
         { existing: attrs, only: formVarIds },
       ),
     );
+    const from = nodeById.get(edge.from);
+    const to = nodeById.get(edge.to);
+    clearHiddenAnswers(attrs, reading, {
+      ...base,
+      answers: 'edge',
+      attributes: {
+        ego: draft.egoAttributes,
+        edge: attrs,
+        ...(from === undefined
+          ? {}
+          : { edgeFrom: from[entityAttributesProperty] }),
+        ...(to === undefined ? {} : { edgeTo: to[entityAttributesProperty] }),
+      },
+      variablesFor: variablesOf(ctx, {
+        edge: ctx.codebook.edge?.[subjectType]?.variables,
+        edgeFrom:
+          from === undefined
+            ? undefined
+            : ctx.codebook.node?.[from.type]?.variables,
+        edgeTo:
+          to === undefined
+            ? undefined
+            : ctx.codebook.node?.[to.type]?.variables,
+      }),
+      entityIds: {
+        edge: edge[entityPrimaryKeyProperty],
+        edgeFrom: edge.from,
+        edgeTo: edge.to,
+      },
+    });
   }
 }
 

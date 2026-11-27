@@ -4,6 +4,7 @@ import type { AdditionalAttributes, Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  isUnanswered,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
@@ -588,19 +589,6 @@ export type BrokenFixedRule = {
 type FixedVariableValue = VariableValue | null;
 
 /**
- * Whether the interview would read a value as no answer at all. Mirrors the
- * runtime's `required` validator: a null, a blank string, a `NaN` number and an
- * empty selection are each what an untouched field holds.
- */
-function isUnanswered(value: FixedVariableValue): boolean {
-  if (value === null) return true;
-  if (typeof value === 'string') return value.trim().length === 0;
-  if (typeof value === 'number') return Number.isNaN(value);
-  if (Array.isArray(value)) return value.length === 0;
-  return false;
-}
-
-/**
  * Whether an option list offers a value.
  *
  * A categorical answer is the set of options ticked, so it is judged member by
@@ -1000,6 +988,15 @@ export function createNodesForStage(
   existingNodeCount: number,
   stageNodeCount: number,
   roster: RosterDraw,
+  /**
+   * Settles each new node's attributes before the node is built, given the
+   * values that the node was given rather than drawn: a name generator's
+   * form clears the answers that its logic hides (`formAnswers.ts`).
+   */
+  settleAttributes?: (
+    attributes: Record<string, VariableValue>,
+    fixed: Readonly<Record<string, VariableValue>>,
+  ) => void,
 ): NcNode[] {
   const nodeType = getSubjectType(stage.subject, 'node');
   if (nodeType === undefined) return [];
@@ -1193,6 +1190,7 @@ export function createNodesForStage(
       ...definedFixed,
     };
     if (hasFixed) claimFixedValues(ctx, scope, definedFixed);
+    settleAttributes?.(attrs, definedFixed);
 
     const node: NcNode = {
       [entityPrimaryKeyProperty]: primaryKey,

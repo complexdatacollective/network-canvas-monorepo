@@ -296,15 +296,15 @@ describe('Protocol Summary family pedigree', () => {
       expect.stringMatching(/Add your parents$/),
       expect.stringMatching(/Parents of Name$/),
     ]);
-    expect(document.querySelector('[data-token="isYou"]')).toBeNull();
     // A placeholder is a pill inside the line, so each line is found by the
     // words it reads as.
     const line = (text: string) =>
       screen.getAllByText(
         (_, element) =>
           element?.textContent === text &&
-          element.querySelector('[data-token="name"]') !== null &&
-          [...element.children].every((child) => child.tagName === 'SPAN'),
+          element.querySelector('data[data-attribute-type="placeholder"]') !==
+            null &&
+          [...element.children].every((child) => child.tagName === 'DATA'),
       )[0];
     expect(line('About Name')).toBeInTheDocument();
     expect(screen.queryByText(/isYou/)).toBeNull();

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -19,8 +19,6 @@ const attributes = assetBlockAttributes;
 
 const IMAGE_DESCRIPTION_HINT =
   'This is read aloud to participants who use screen reader technology. Leave it blank if the image is decorative.';
-const SIZE_HINT =
-  'How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.';
 const FILE_HINT =
   'The file shown here. Choosing another keeps the description and other settings.';
 
@@ -70,14 +68,26 @@ const FileField = ({
   </div>
 );
 
+const SETTINGS_NAMES = {
+  image: 'Image settings',
+  audio: 'Audio settings',
+  video: 'Video settings',
+} as const;
+
+const settingsButton = (kind: RichTextAssetBlockKind = 'image') =>
+  screen.queryByRole('button', { name: SETTINGS_NAMES[kind] });
+
 const setup = ({
   kind = 'image',
   known,
   textDirection,
   withFileField = false,
+  openSettings = true,
   ...props
 }: {
   kind?: RichTextAssetBlockKind;
+  /** Whether to open the settings from their button, where it is shown. */
+  openSettings?: boolean;
   /** The direction of the text the block sits in, where it states one. */
   textDirection?: 'ltr' | 'rtl';
   /** `null`: the protocol holds no such file. */
@@ -104,15 +114,21 @@ const setup = ({
   const update = vi.fn<RichTextAssetBlockViewProps['update']>();
   const remove = vi.fn<RichTextAssetBlockViewProps['remove']>();
   const returnToText = vi.fn<RichTextAssetBlockViewProps['returnToText']>();
+  const selectKeepingFocus =
+    vi.fn<RichTextAssetBlockViewProps['selectKeepingFocus']>();
   const user = userEvent.setup();
   const viewProps: ComponentProps<typeof View> = {
     attributes: attributes(),
     selected: true,
+    hovered: false,
     editable: true,
     active: true,
     update,
+    resizeHandle: null,
+    resizing: undefined,
     remove,
     returnToText,
+    selectKeepingFocus,
     ...props,
   };
   const drawn = (shown: ComponentProps<typeof View>) =>
@@ -124,39 +140,94 @@ const setup = ({
       </div>
     );
   const { rerender } = render(drawn(viewProps));
+  const button =
+    found === undefined
+      ? screen.queryByRole('button', { name: 'Block settings' })
+      : settingsButton(found.kind);
+  if (openSettings && button !== null) {
+    act(() => {
+      fireEvent.click(button);
+    });
+  }
   return {
     user,
     update,
     remove,
     returnToText,
+    selectKeepingFocus,
     /** Draws the view again, with `changes` to what it was given. */
     redraw: (changes: Partial<RichTextAssetBlockViewProps>) =>
       rerender(drawn({ ...viewProps, ...changes })),
   };
 };
 
-const sizeButton = (name: string) => screen.getByRole('button', { name });
 const description = () => screen.queryByRole('textbox');
-const deleteButton = () => screen.queryByRole('button', { name: 'Delete' });
+// Named for what it deletes ("Delete image"), or "Delete" for a file that
+// the page cannot show.
+const deleteButton = () =>
+  screen.queryByRole('button', { name: /^Delete( image| audio| video)?$/ });
 const fileField = (name: string) => screen.queryByRole('group', { name });
 
-describe('the settings of a block', () => {
+describe('the settings button of a block', () => {
   it.each([
     ['not selected', { selected: false }],
     ['selected in a field that cannot be edited', { editable: false }],
     ['selected in a field focus has left', { active: false }],
-  ])('are not shown when the block is %s', (_kind, props) => {
-    setup(props);
-    expect(description()).toBeNull();
-    expect(deleteButton()).toBeNull();
+  ])('is not shown when the block is %s', (_kind, props) => {
+    setup({ ...props, openSettings: false });
+    expect(settingsButton()).toBeNull();
     // The file itself is still drawn.
     expect(screen.getByTestId('preview')).toBeInTheDocument();
   });
 
-  it('are shown when the block is selected and can be edited', () => {
-    setup();
+  it('is shown while the pointer is over the block, selected or not', () => {
+    setup({
+      selected: false,
+      active: false,
+      hovered: true,
+      openSettings: false,
+    });
+    expect(settingsButton()).toBeInTheDocument();
+  });
+
+  it('is not shown over a block in a field that cannot be edited', () => {
+    setup({ editable: false, hovered: true, openSettings: false });
+    expect(settingsButton()).toBeNull();
+  });
+
+  it('is the action of the block’s tab, which Enter on the selected block presses', () => {
+    setup({ openSettings: false });
+    const button = settingsButton();
+    expect(button).toHaveAttribute('data-block-action');
+    expect(button?.closest('[data-block-tab]')).not.toBeNull();
+  });
+});
+
+describe('the settings of a block', () => {
+  it('are not open until their button is pressed, however the block is selected', () => {
+    setup({ openSettings: false });
+    expect(description()).toBeNull();
+    expect(deleteButton()).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('open from their button, and select the block as they do', () => {
+    const { returnToText, selectKeepingFocus } = setup({
+      selected: false,
+      active: false,
+      hovered: true,
+      openSettings: false,
+    });
+    act(() => {
+      fireEvent.click(settingsButton() as HTMLElement);
+    });
     expect(description()).toBeInTheDocument();
     expect(deleteButton()).toBeInTheDocument();
+    expect(settingsButton()).toHaveAttribute('aria-expanded', 'true');
+    // Selected, with focus left for the settings to take: not put back in
+    // the text, which would take it from them.
+    expect(selectKeepingFocus).toHaveBeenCalledTimes(1);
+    expect(returnToText).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -169,99 +240,56 @@ describe('the settings of a block', () => {
     expect(settings).toContainElement(description());
   });
 
-  it('are where the block says they are, for Enter on the block to reach', () => {
-    setup();
-    const named = document
-      .querySelector('[data-asset-block-controls-id]')
-      ?.getAttribute('data-asset-block-controls-id');
-    expect(named).toBeTruthy();
-    expect(
-      screen.getByRole('dialog', { name: 'Image settings' }),
-    ).toHaveAttribute('id', named);
-  });
-
-  it('do not take focus as they appear', () => {
-    setup();
-    expect(
-      screen.getByRole('dialog', { name: 'Image settings' }),
-    ).not.toContainElement(
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null,
-    );
+  it('close as the block stops being selected', () => {
+    const { redraw } = setup();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    redraw({ selected: false, active: false, hovered: true });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Selected again, they stay closed until their button is pressed.
+    redraw({ selected: true, active: true });
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   describe('for an image', () => {
-    it('offers a description and a size, and no playback', () => {
-      setup({ kind: 'image' });
-      expect(description()).toHaveAccessibleName('Description');
-      expect(sizeButton('Full size')).toBeInTheDocument();
-      expect(screen.queryByRole('switch')).toBeNull();
-    });
-
-    it('labels each setting, and says what the description and size are for', () => {
+    it('offers a description, and no size, alignment or playback', () => {
       setup({ kind: 'image', attributes: attributes({ size: 'small' }) });
+      expect(description()).toHaveAccessibleName('Description');
       // Shown, as a form's fields are, and not only read out (the popup
       // fades in, which jsdom never finishes: the story looks at it drawn).
-      const shown = (text: string) =>
-        expect(screen.getByText(text)).not.toHaveClass('sr-only');
-      shown('Description');
-      shown(IMAGE_DESCRIPTION_HINT);
-      shown('Display size');
-      shown(SIZE_HINT);
-      shown('Alignment');
-      expect(description()).toHaveAccessibleDescription(IMAGE_DESCRIPTION_HINT);
-      const size = screen.getByRole('group', { name: 'Display size' });
-      expect(size).toHaveAccessibleDescription(SIZE_HINT);
-      expect(size).toContainElement(sizeButton('Small'));
-      const align = screen.getByRole('group', { name: 'Alignment' });
-      expect(align).toContainElement(
-        screen.getByRole('button', { name: 'Align to the end' }),
+      expect(screen.getByText(IMAGE_DESCRIPTION_HINT)).not.toHaveClass(
+        'sr-only',
       );
-    });
-
-    it('offers alignment only once a size is set', () => {
-      setup({ kind: 'image', attributes: attributes({ size: null }) });
-      expect(
-        screen.queryByRole('button', { name: 'Align to the end' }),
-      ).toBeNull();
-    });
-
-    it('offers alignment when a size is set', () => {
-      setup({ kind: 'image', attributes: attributes({ size: 'small' }) });
-      expect(
-        screen.getByRole('button', { name: 'Align to the end' }),
-      ).toBeInTheDocument();
+      expect(description()).toHaveAccessibleDescription(IMAGE_DESCRIPTION_HINT);
+      // Its size is set by dragging its corner; where it sits is not
+      // something Markdown can say.
+      expect(screen.queryByRole('group', { name: 'Display size' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Alignment' })).toBeNull();
+      expect(screen.queryByRole('switch')).toBeNull();
     });
   });
 
   describe('for a video', () => {
-    it('offers a size and both playback settings', () => {
+    it('offers both playback settings, and no size or alignment', () => {
       setup({ kind: 'video' });
-      expect(sizeButton('Full size')).toBeInTheDocument();
       expect(
         screen.getByRole('switch', { name: 'Start playing automatically' }),
       ).toBeInTheDocument();
       expect(
         screen.getByRole('switch', { name: 'Repeat when it ends' }),
       ).toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: 'Align to the end' }),
-      ).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Display size' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Alignment' })).toBeNull();
     });
   });
 
   describe('for audio', () => {
-    it('offers alignment and both playback settings, and no size', () => {
+    it('offers both playback settings, and no size or alignment', () => {
       setup({ kind: 'audio' });
-      expect(
-        screen.getByRole('button', { name: 'Align to the end' }),
-      ).toBeInTheDocument();
       expect(
         screen.getByRole('switch', { name: 'Start playing automatically' }),
       ).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Full size' })).toBeNull();
       expect(screen.queryByRole('group', { name: 'Display size' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Alignment' })).toBeNull();
     });
   });
 
@@ -270,30 +298,6 @@ describe('the settings of a block', () => {
       const { user, update } = setup();
       await user.type(screen.getByRole('textbox'), 'A');
       expect(update).toHaveBeenLastCalledWith({ description: 'A' });
-    });
-
-    it('updates the size, and clears it for full size', async () => {
-      const { user, update } = setup({
-        attributes: attributes({ size: 'small' }),
-      });
-      await user.click(sizeButton('Large'));
-      expect(update).toHaveBeenLastCalledWith({ size: 'large' });
-      await user.click(sizeButton('Full size'));
-      expect(update).toHaveBeenLastCalledWith({ size: null });
-    });
-
-    it('updates the alignment', async () => {
-      const { user, update } = setup({
-        kind: 'audio',
-      });
-      await user.click(
-        screen.getByRole('button', { name: 'Align to the end' }),
-      );
-      expect(update).toHaveBeenLastCalledWith({ align: 'end' });
-      await user.click(
-        screen.getByRole('button', { name: 'Align to the start' }),
-      );
-      expect(update).toHaveBeenLastCalledWith({ align: 'start' });
     });
 
     it('updates autoplay and loop', async () => {
@@ -323,7 +327,7 @@ describe('the settings of a block', () => {
 
     it('removes the block', async () => {
       const { user, remove, update } = setup();
-      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      await user.click(screen.getByRole('button', { name: 'Delete image' }));
       expect(remove).toHaveBeenCalledTimes(1);
       expect(update).not.toHaveBeenCalled();
     });
@@ -367,11 +371,13 @@ describe('the settings of a block', () => {
     it('stay while the file field’s browser is open, wherever focus is', async () => {
       const { user, redraw } = setup({ withFileField: true });
       await user.click(screen.getByRole('button', { name: 'Browse' }));
-      // Focus leaves the field as the settings are hidden for the browser,
-      // before the browser takes it: the browser is the settings', and stays.
-      redraw({ active: false });
+      // The block stops being selected as the settings are hidden for the
+      // browser, before the browser takes focus: the browser is the
+      // settings', and stays.
+      redraw({ selected: false, active: false });
       expect(fileField('Image')).toBeInTheDocument();
-      // Closed, with focus nowhere in the field, it takes the settings with it.
+      // Closed, with the block no longer selected, it takes the settings
+      // with it.
       await user.click(screen.getByRole('button', { name: 'Stop browsing' }));
       expect(fileField('Image')).toBeNull();
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -391,18 +397,19 @@ describe('the settings of a block', () => {
       expect(screen.queryByRole('group')).toBeNull();
     });
 
-    it('returns to the text on Escape from a control', async () => {
-      const { user, returnToText } = setup();
+    it('close on Escape from a control, and give focus back to their button', async () => {
+      const { user } = setup();
       await user.click(screen.getByRole('textbox'));
       await user.keyboard('{Escape}');
-      expect(returnToText).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(settingsButton()).toHaveFocus();
     });
 
-    it('does not return to the text on another key', async () => {
-      const { user, returnToText } = setup();
+    it('stay open on another key', async () => {
+      const { user } = setup();
       await user.click(screen.getByRole('textbox'));
       await user.keyboard('x{Enter}');
-      expect(returnToText).not.toHaveBeenCalled();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
   });
 });
@@ -440,34 +447,23 @@ describe('the drawing of a block', () => {
   it('offers only removal for a file it cannot show', () => {
     setup({ known: null });
     expect(description()).toBeNull();
-    expect(screen.getByRole('button')).toHaveAccessibleName('Delete');
+    expect(deleteButton()).toHaveAccessibleName('Delete');
+    expect(
+      screen.getByRole('dialog', { name: 'Block settings' }),
+    ).toContainElement(deleteButton());
+    expect(
+      screen
+        .getAllByRole('button')
+        .map(
+          (button) => button.getAttribute('aria-label') ?? button.textContent,
+        ),
+    ).toEqual(['Block settings', 'Delete']);
   });
 });
 
-describe('the alignment icons', () => {
-  const iconOf = (name: string) =>
-    screen
-      .getByRole('button', { name })
-      .querySelector('svg')
-      ?.getAttribute('class');
-
-  const icons = (textDirection: 'ltr' | 'rtl') => {
-    setup({ textDirection, attributes: attributes({ size: 'small' }) });
-    const found = {
-      start: iconOf('Align to the start'),
-      end: iconOf('Align to the end'),
-    };
-    cleanup();
-    return found;
-  };
-
-  it('point where the file will sit in the direction the text runs, whatever the interface’s', () => {
-    const leftToRight = icons('ltr');
-    const rightToLeft = icons('rtl');
-
-    expect(leftToRight.start).toBeTruthy();
-    expect(leftToRight.start).not.toBe(leftToRight.end);
-    expect(rightToLeft.start).toBe(leftToRight.end);
-    expect(rightToLeft.end).toBe(leftToRight.start);
+describe('the description', () => {
+  it('is typed in the direction of the text, whatever the interface’s', () => {
+    setup({ textDirection: 'rtl' });
+    expect(description()).toHaveAttribute('dir', 'rtl');
   });
 });

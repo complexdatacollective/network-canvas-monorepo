@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '@codaco/protocol-validation';
 import type { NcEdge } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../__tests__/englishForms.ts';
 import { generateNetwork } from '../../generateNetwork.ts';
 
 /**
@@ -90,6 +91,7 @@ function pairKeys(edges: NcEdge[]): string[] {
 describe('edge reuse across stages', () => {
   it('leaves one edge per pair when two census stages share an edge type', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [threePeople(), dyadCensus('census-a'), dyadCensus('census-b')],
@@ -106,6 +108,7 @@ describe('edge reuse across stages', () => {
     const both = { min: 1, max: 1 };
 
     const censusFirst = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [threePeople(), dyadCensus('census'), sociogram('sociogram')],
@@ -116,6 +119,7 @@ describe('edge reuse across stages', () => {
     });
 
     const sociogramFirst = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [threePeople(), sociogram('sociogram'), dyadCensus('census')],
@@ -138,6 +142,7 @@ describe('edge reuse across stages', () => {
     // positive answer — and the edge stays put, which is where the generator
     // deliberately parts company with the interface's delete-on-'No'.
     const { network, stageMetadata } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [threePeople(), sociogram('sociogram'), dyadCensus('census')],
@@ -178,6 +183,7 @@ describe('edge reuse across stages', () => {
     } as unknown as Stage;
 
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [composer],

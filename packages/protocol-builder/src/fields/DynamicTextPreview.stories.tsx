@@ -23,7 +23,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'How text a participant reads shows in a collapsed row of a stage editor: in the editing language, with markdown rendered as the participant will read it, each value the interview fills in shown as the pill the editor shows, and each set of versions as the pill of the value it is on, as the editor shows it folded.',
+          'How text a participant reads shows in a collapsed row of a stage editor: in the editing language, with markdown rendered as the participant will read it, and each value the interview fills in shown as the pill that the editor shows.',
       },
     },
   },
@@ -49,33 +49,9 @@ export const PlainText: Story = {
     const shown = await canvas.findByTestId('preview');
     await expect(shown).toHaveTextContent('Please answer every question.');
     await expect(shown.querySelector('strong')).toHaveTextContent('every');
-    await expect(shown.querySelector('[data-token]')).toBeNull();
-  },
-};
-
-/**
- * Text with a version for each case of a value shows only the value's pill:
- * what it says in each case is written, and read, in the editor.
- */
-export const VersionsShowAsTheirPill: Story = {
-  args: {
-    children: preview({
-      en: 'Welcome.{now, select, missing {} other { Today is {now}.}}',
-    }),
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    const shown = await canvas.findByTestId('preview');
-    // The pill names the value; its first word is held beside its icon.
-    await waitFor(async () => {
-      await expect(shown.querySelector('[data-token="now"]')).toHaveTextContent(
-        'Today’s date',
-      );
-    });
-    await expect(shown.querySelectorAll('[data-token]')).toHaveLength(1);
-    await expect(shown).not.toHaveTextContent('Today is');
+    await expect(
+      shown.querySelector('data[data-variable-pill-size]'),
+    ).toBeNull();
   },
 };
 
@@ -91,9 +67,9 @@ export const ShowingAValue: Story = {
     const shown = await canvas.findByTestId('preview');
     // The pill names the value; its first word is held beside its icon.
     await waitFor(async () => {
-      await expect(shown.querySelector('[data-token="now"]')).toHaveTextContent(
-        'Today’s date',
-      );
+      await expect(
+        shown.querySelector('data[value="Today’s date"]'),
+      ).toBeInTheDocument();
     });
     await expect(shown).toHaveTextContent(/^Welcome\. Today is .+\.$/);
   },

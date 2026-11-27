@@ -19,14 +19,12 @@ test('creates a valid AlterForm stage from scratch', async ({
 
   // AlterForm's subject is a node type (`@codaco/protocol-builder`'s
   // `subjectPicker({ entity: 'node', filter: true })`, the "Node type"
-  // section), and the "Form fields" section stays disabled until one is
-  // chosen: `FormFieldsSection` reads the subject through `useStageSubject`
-  // and, with no type to collect into, renders itself disabled — its add
-  // button is present but not clickable, and its description reads "Choose
-  // what this stage works with before writing its form." So this runs first.
+  // section), and the "Form" section stays disabled until one is chosen:
+  // `FormDocumentSection` reads the subject and, with no type to collect
+  // into, renders itself disabled. So this runs first.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  await addFormField(editor.section('Form configuration'), {
+  await addFormField(editor.section('Form'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text Input',

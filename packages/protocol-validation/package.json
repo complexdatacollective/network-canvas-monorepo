@@ -20,6 +20,7 @@
     "./messages": "./src/messages.ts",
     "./locales": "./src/locales/catalogs.ts",
     "./schema-version": "./src/schemaVersion.ts",
+    "./testing": "./src/testing/fixtures.ts",
     "./testing/information-pages": "./src/testing/informationPages.ts"
   },
   "publishConfig": {

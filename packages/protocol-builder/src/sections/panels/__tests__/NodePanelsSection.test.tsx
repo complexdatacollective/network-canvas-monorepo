@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { type Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { fieldBlockMarkdown } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -72,6 +73,7 @@ const nameGeneratorWith = (configured: SectionDoc[]) => ({
     subject: { entity: 'node', type: PERSON },
     form: {
       title: en('Add a person'),
+      content: en(fieldBlockMarkdown(testId('field-1'))),
       fields: [
         {
           id: testId('field-1'),
@@ -571,6 +573,7 @@ describe('the side panels a name generator shows', () => {
           label: en('Name Generator'),
           form: {
             title: en('Add a person'),
+            content: en(fieldBlockMarkdown(testId('field-1'))),
             fields: [
               {
                 id: testId('field-1'),

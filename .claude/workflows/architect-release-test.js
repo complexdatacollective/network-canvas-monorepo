@@ -460,8 +460,9 @@ const reportingDiscipline = `
 `;
 
 // The schema 8 protocol the upgrade check opens. Small enough to travel inline,
-// and shaped to show what the 8 to 9 migration does: the Ego Form keeps its
-// introduction panel, and the interview gains its finish stage.
+// and shaped to show what the 8 to 9 migration does: the Ego Form's
+// introduction panel becomes the heading and text at the top of its form, and
+// the interview gains its finish stage.
 const legacyProtocol = (name) => ({
   name,
   description: 'Schema 8 protocol opened by the Architect release test.',
@@ -916,9 +917,11 @@ imports. This deployment sends to ${interviewerOrigin}. You may use the
 Interviewer tab the app opens, and there you may delete only the protocol
 named "${name}".
 1. "create": Create your protocol. Use "Add new stage", choose
-   "Information", name the stage "Welcome", set its page heading to "Sent
-   from Architect", add one text item with any short text, and save
-   ("Finished Editing"). Confirm the timeline reads "Welcome", "Finish
+   "Information" and name the stage "Welcome". Its page is one rich text:
+   click into the "Rich Text" text box of its "Content" section, make the
+   first line a Heading 1 (the toolbar's "Text style" menu, then "Heading
+   1", or type "# " at the start of the line), type "Sent from Architect",
+   press Enter, type any short sentence, and save ("Finished Editing"). Confirm the timeline reads "Welcome", "Finish
    Interview".
 2. "send": Press "Send to Interviewer". Confirm a new tab opens at
    ${interviewerOrigin} (its address may still carry "?from=architect"), and
@@ -944,60 +947,72 @@ named "${name}".
     browser: 'playwright',
     expected: [
       'seed',
-      'insert-menu',
-      'versions',
-      'pill',
+      'attribute-menu',
+      'dynamic-attribute',
       'persist',
       'preview',
       'cleanup',
     ],
     checklist: `
-Stage text can show values the interview fills in ("piped text"). Each text
-field that can hold them has an insert button in its toolbar (a syringe icon)
-whose accessible name and tooltip is "Inject piped text from interview
-metadata or a network attribute". It works on the field holding the caret, so
-click into the field first.
+Text that participants read can show values that the interview fills in
+("piped text"). Each such text field has an "Attribute" button in its
+toolbar, which opens a searchable menu (a dialog named "Insert an attribute",
+whose search box is named "Find an attribute") and inserts the chosen value
+at the caret as a pill. It works on the field that has the caret, so click
+into the field first. The menu's "Dynamic attributes" group has a "Create
+dynamic attribute" row: a dynamic attribute is a word or phrase with
+versions, and its logic decides which version is shown.
 1. "seed": Create your protocol. Open the "Codebook" page through its link in
    the project navigation. In the "Ego attributes" section press "Add
    attribute"; in the "Create New Attribute" dialog set "Attribute name" to
    "nickname", choose "Text" in the "Attribute type" box, and press "Save and
    Close". Confirm "nickname" is listed under the ego attributes, then return
    to the stages.
-2. "insert-menu": Use "Add new stage" and choose "Information". Name the stage
-   "Values". Click into the "Page heading" field, type "Hello " (with the
-   trailing space), then press the field's insert button. Confirm a searchable
-   menu opens (its search box is named "Search") holding a group "Ego
-   Attributes" that lists "nickname" and a group "Interview Attributes" that
-   lists "Today’s date", and that it has NO "Contextual Attributes" group (an
-   Information stage shows no node, so offering one would be a defect).
-   Choose "nickname".
-3. "versions": A nickname can be unanswered, so it arrives as versions of the
-   text rather than a bare value. Confirm two text boxes named "If known" and
-   "If not known" appear where it was inserted. Click into "If not known" and
-   type "there". Click outside the field (e.g. into "Stage name") and confirm
-   the versions fold into a single pill in the heading reading "nickname".
-   Click the pill and confirm "If known" and "If not known" open again, with
-   "there" kept.
-4. "pill": Press "Create new content item", choose "Text", click into its
-   "Content" field, type "Today is " and use that field's insert button to
-   insert "Today’s date". Confirm it shows among the words as a pill reading
-   "Today’s date" — not as braces, a raw code or an empty gap — then press
-   "Add". Save the stage ("Finished Editing") and confirm the timeline lists
+2. "attribute-menu": Use "Add new stage" and choose "Information". Name the
+   stage "Values". Click into the page's text editor (its text box is named
+   "Rich Text", in the "Content" section), type "Today is " (with the
+   trailing space), then press the field's "Attribute" button. Confirm the
+   menu opens with a group "Ego attributes" that lists "nickname", a group
+   "Dynamic attributes" that lists "Create dynamic attribute", and a group
+   "Interview attributes" that lists "Today’s date", and that it has NO "Node
+   attributes" group (an Information stage shows no node, so offering one
+   would be a defect). Choose "Today’s date" and confirm it shows among the
+   words as a pill reading "Today’s date", not as braces, a raw code or an
+   empty gap. Type ". Your nickname is " and insert "nickname" the same way;
+   confirm a pill reading "nickname".
+3. "dynamic-attribute": Press Enter for a new paragraph and type "Hello "
+   (with the trailing space). Press "Attribute" and choose "Create dynamic
+   attribute". Confirm a dialog named "Create a dynamic attribute" opens. In
+   its "Logic" box choose "If … else". Press "Add new rule"; in the
+   "Construct a Rule" dialog choose the "Participant" option, choose the
+   attribute "nickname", choose "is exactly" as the "Operator", type "Sam" in
+   "Attribute value", and press "Finish and Close". Confirm the dialog now
+   shows one rule and two version boxes under "Wording for each case": the
+   first labelled "If: " followed by the rule, the second "Otherwise". Type
+   "Sam" in the first and "there" in "Otherwise", then press "Create dynamic
+   attribute". Confirm the dialog closes and the text shows one new pill
+   that reads "Sam / there" (a dynamic attribute's pill shows its versions).
+   Save the stage ("Finished Editing") and confirm the timeline lists
    "Values".
-5. "persist": Reopen "Values" with its "Edit stage" control. Confirm the page
-   heading still holds "Hello " followed by the "nickname" pill (whose "If not
-   known" version still reads "there"), that the text item still contains the
-   "Today’s date" pill, and that the editor's "Stage sections" outline reports
-   no section with a problem. Stay in the editor.
-6. "preview": Open "Preview settings" and switch "Start preview with example
+4. "persist": Reopen "Values" with its "Edit stage" control. Confirm the text
+   still reads "Today is " with the "Today’s date" pill, ". Your nickname is "
+   with the "nickname" pill, and "Hello " with the "Sam / there" pill. Click
+   the "Sam / there" pill: confirm a popover named "Dynamic attribute" opens
+   with "If … else" in "Logic", the rule about "nickname", and the versions
+   "Sam" and "there". Close it with Escape without changing anything. Confirm
+   the editor's "Stage sections" outline reports no section with a problem.
+   Stay in the editor.
+5. "preview": Open "Preview settings" and switch "Start preview with example
    data" off, so the preview has no made-up nickname, and close the settings.
    Press the editor's "Preview" button. Confirm a new tab opens at /preview/
-   and shows the heading "Hello there" (the preview has no nickname, so the
-   "If not known" version shows) and today's date after "Today is". Fail if
-   no preview tab opens, or if either shows a placeholder, braces, the word
-   "nickname" or nothing. Close the preview tab, select the editor's tab
-   again, and switch "Start preview with example data" back on.
-7. "cleanup": Leave the editor (discarding nothing you need), then delete your
+   and shows today's date after "Today is", nothing after "Your nickname
+   is" (an attribute with no answer shows nothing), and "Hello there" (the
+   preview has no nickname, so the rule is not met and the "Otherwise"
+   version shows). Fail if no preview tab opens, or if the page shows a
+   placeholder, braces, a raw code, the word "nickname" or "Sam / there".
+   Close the preview tab, select the editor's tab again, and switch "Start
+   preview with example data" back on.
+6. "cleanup": Leave the editor (discarding nothing you need), then delete your
    protocol from the start screen.`,
   },
   {
@@ -1035,8 +1050,11 @@ computer { action: "key" }. Refusal dialogs close with their "OK" button.
    Heading 1. Name it "Screened out", choose "Ineligible" under "Outcome",
    and save. Confirm the timeline reads "Finish Interview", "Screened out", in
    that order — a new finish stage goes after the existing ones.
-4. "finish-order": Add an "Information" stage named "Before finish" with a
-   page heading and one text item, and save it. Confirm the timeline reads
+4. "finish-order": Add an "Information" stage named "Before finish". Its
+   page is one rich text: click into the "Rich Text" text box of its
+   "Content" section, make the first line a Heading 1 (the toolbar's "Text
+   style" menu, then "Heading 1", or type "# " at the start of the line),
+   type a heading, press Enter, type a short sentence, and save it. Confirm the timeline reads
    "Before finish", "Finish Interview", "Screened out" — the app never places
    another kind of stage after a finish stage. Focus "Screened out" and press
    ArrowUp: confirm it swaps with "Finish Interview" with no dialog (finish
@@ -1118,7 +1136,7 @@ saved with "Save entity"); confirm any "Choose the node type" prompt.
       'open-template',
       'family-pedigree',
       'narrative-pedigree',
-      'no-intro-panels',
+      'form-introduction',
       'schema8-upgrade',
       'cleanup',
     ],
@@ -1127,10 +1145,13 @@ This slice opens two protocols: a template, named exactly "${name}", and an
 upgraded schema 8 protocol, which arrives already named "${name} legacy"
 (it begins with your name, so it is yours too).
 Before schema 9, form and census stages opened with an introduction panel
-(its editor section is titled "Task introduction", with "Title" and
-"Introduction text" fields). An Ego Form keeps it; on the Per Alter Form,
-Per Alter Edge Form, Dyad Census and Tie-Strength Census those panels are
-now Information stages.
+(its editor section was titled "Task introduction", with "Title" and
+"Introduction text" fields). No stage editor has that section now. An Ego
+Form's introduction is the heading and text at the top of its form: the
+stage's "Form" section is one text editor (its text box is named "Form
+content") in which each question is a field block among the text. On the Per
+Alter Form, Per Alter Edge Form, Dyad Census and Tie-Strength Census those
+panels are now Information stages.
 1. "open-template": On the start screen open the "Templates" tab and open the
    template "Colored Eco-Genetic Relationship Map (CEGRM)" from its card (or
    its card menu > Open). It asks for a name first: enter "${name}" exactly
@@ -1149,9 +1170,13 @@ now Information stages.
    control: confirm a "Cannot delete stage" dialog refuses (another stage
    reads this pedigree), press "OK", and confirm the timeline still has 16
    stages.
-4. "no-intro-panels": Open the Ego Form "About you" and confirm it has a
-   "Task introduction" section whose "Title" reads "A little about you" and
-   no "Form title" field; leave without saving. Then, for each of "Per Alter Form", "Per Alter Edge Form", "Dyad
+4. "form-introduction": Open the Ego Form "About you" and confirm it has no
+   "Task introduction" section and no "Form title" field, and that its "Form
+   content" begins with the heading "A little about you" (with the caret in
+   it, the toolbar's "Heading 1" button shows active), followed by the text
+   "A few short questions before we start on the map." and then two field
+   blocks, asking "How old are you?" and "What is the highest level of
+   education you have completed?". Leave without saving. Then, for each of "Per Alter Form", "Per Alter Edge Form", "Dyad
    Census" and "Tie-Strength Census": use "Add new stage", choose it, confirm
    its "Stage sections" outline and page have no introduction section, and
    leave without saving ("Cancel", discarding if asked). Confirm the timeline
@@ -1170,13 +1195,17 @@ ${legacyUpgradeScript(`${name} legacy`)}
    not changed. It offers "Upgrade to schema 9", "Keep editing as schema 8"
    (this build bundles Architect 8) and "Cancel", and under "Changes in
    schema version 9:" lists what the upgrade will do, including that the
-   introduction panels of stages other than the Ego Form move to new
+   introduction panel of an Ego Form becomes the heading and text at the top
+   of its form, and that the introduction panels of other stages move to new
    Information stages. Press "Upgrade to schema 9" (never "Keep editing as
    schema 8", which leaves for Architect 8). Confirm the editor opens
    "${name} legacy" with exactly these stages in order: "Welcome", "About
-   you" (an Ego Form whose "Task introduction" has the title "Legacy
-   introduction" and the text "Legacy introduction text."), and "Finish
-   Interview". Fail if no dialog follows a dispatched file, if the upgrade
+   you", and "Finish Interview". Open "About you" and confirm it has no
+   "Task introduction" section, and that its "Form content" begins with the
+   heading "Legacy introduction" (the toolbar's "Heading 1" button shows
+   active with the caret in it), followed by the text "Legacy introduction
+   text." and then one field block asking "What is your name?". Leave without
+   saving. Fail if no dialog follows a dispatched file, if the upgrade
    reports an error, or if the stages differ; blocked only if the script
    cannot run or the start screen has no file input.
 6. "cleanup": Delete both protocols whose names begin with "${name}" from the

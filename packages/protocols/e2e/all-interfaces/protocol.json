@@ -380,15 +380,10 @@
       "label": {
         "en-US": "Ego Form"
       },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction"
-        },
-        "text": {
-          "en-US": "There are a few questions about you before we begin."
-        }
-      },
       "form": {
+        "content": {
+          "en-US": "# Introduction\n\nThere are a few questions about you before we begin.\n\n![](field:2893e491-8b03-5f25-8d6f-d859e78da8d7)"
+        },
         "fields": [
           {
             "id": "2893e491-8b03-5f25-8d6f-d859e78da8d7",
@@ -423,6 +418,9 @@
       "form": {
         "title": {
           "en-US": "Add a person"
+        },
+        "content": {
+          "en-US": "![](field:07514def-8157-561e-a846-464893211399)"
         },
         "fields": [
           {
@@ -709,6 +707,9 @@
         "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "form": {
+        "content": {
+          "en-US": "![](field:cdc8f988-8bce-5f7e-a82a-ff1ae5c54fc4)\n\n![](field:36a57d13-dcda-5a7a-9fb9-dab86378e41e)"
+        },
         "fields": [
           {
             "id": "cdc8f988-8bce-5f7e-a82a-ff1ae5c54fc4",
@@ -738,6 +739,9 @@
         "type": "be546dd6-d6dc-5f85-b821-974abd0845e5"
       },
       "form": {
+        "content": {
+          "en-US": "![](field:8d5f881e-f920-5245-b5b1-edff6559e538)"
+        },
         "fields": [
           {
             "id": "8d5f881e-f920-5245-b5b1-edff6559e538",

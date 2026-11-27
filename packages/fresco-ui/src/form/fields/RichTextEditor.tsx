@@ -3,12 +3,9 @@
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import {
   type AnyExtension,
-  createNodeFromContent,
   type Editor,
   Extension,
   getSchema,
-  isProseMirrorFragment,
-  mergeAttributes,
   Node as TiptapNode,
 } from '@tiptap/core';
 import { BulletList } from '@tiptap/extension-bullet-list';
@@ -16,13 +13,8 @@ import { Heading } from '@tiptap/extension-heading';
 import { OrderedList } from '@tiptap/extension-ordered-list';
 import { Paragraph } from '@tiptap/extension-paragraph';
 import { Placeholder } from '@tiptap/extension-placeholder';
-import {
-  type DOMOutputSpec,
-  Fragment,
-  type Node as ProseMirrorNode,
-  type Schema,
-  Slice,
-} from '@tiptap/pm/model';
+import { redoDepth, undoDepth } from '@tiptap/pm/history';
+import { type DOMOutputSpec, Fragment, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey, Selection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
 import {
@@ -32,7 +24,6 @@ import {
   useEditorState,
 } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
-import { isEqual } from 'es-toolkit';
 import {
   Bold,
   Check,
@@ -42,20 +33,19 @@ import {
   List,
   ListOrdered,
   Minus,
-  Plus,
   Redo,
   Smile,
-  Split,
-  Syringe,
   Trash2,
   Undo,
   Video,
   Volume2,
 } from 'lucide-react';
 import {
+  Fragment as ReactFragment,
+  type Ref,
   useCallback,
   useEffect,
-  useId,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -63,14 +53,13 @@ import {
 } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
-import { linesOf } from '@codaco/shared-consts';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
-import { buttonVariants, Button } from '../../Button';
+import { Button } from '../../Button';
+import { useFocusWithin } from '../../hooks/useFocusWithin';
 import Surface from '../../layout/Surface';
 import { LINK_ADDRESS_PATTERN, linkAddress } from '../../linkAddress';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
-import { presentationalTextValue } from '../../PresentationalText';
 import {
   controlVariants,
   inputControlVariants,
@@ -78,18 +67,12 @@ import {
   multilineContentVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import {
-  type TokenPillLabel,
-  tokenPillClasses,
-  tokenPillContentSpec,
-  tokenPillLanguage,
-} from '../../TokenPill';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import { useEnclosingHeadingLevel } from '../../typography/EnclosingHeadingLevel';
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
+import { listVariants } from '../../typography/UnorderedList';
 import { cva, cx } from '../../utils/cva';
-import { isRecord } from '../../utils/isRecord';
 import type { CreateFormFieldProps } from '../Field/types';
 import { textEntryDirection } from '../textEntryDirection';
 import { getInputState } from '../utils/getInputState';
@@ -105,6 +88,11 @@ import {
   type RichTextAssetBlockViewProps,
 } from './richText/assetBlockNode';
 import {
+  BlockFrameLayer,
+  BlockFramesContext,
+  createBlockFrameStore,
+} from './richText/blockFrames';
+import {
   EditorToolbar,
   ToolbarButton,
   toolbarButtonStyles,
@@ -119,31 +107,62 @@ import {
   suggestEmoji,
   typedEmojiName,
 } from './richText/emojiMenu';
-import { setEmojiSuggestionsShowing } from './richText/emojiSuggestionState';
-import { documentInSchema, marksInSchema } from './richText/fitToSchema';
 import {
-  InsertMenuList,
-  type RichTextInsertMenu,
-  type RichTextInsertMenuItem,
-} from './richText/InsertMenu';
+  EmojiMenuList,
+  type RichTextEmojiMenu,
+  type RichTextEmojiMenuItem,
+} from './richText/EmojiMenuList';
+import { setEmojiSuggestionsShowing } from './richText/emojiSuggestionState';
+import {
+  createFieldBlockNodes,
+  type FieldBlocksSource,
+  FieldBlocksContext,
+  newFieldBlock,
+  type RichTextFieldBlocks,
+  type RichTextFieldBlockText,
+} from './richText/fieldBlockNode';
+import { documentInSchema } from './richText/fitToSchema';
+import { GapCaret } from './richText/gapCaret';
+import {
+  createInlineValueNode,
+  INLINE_VALUE_NODE,
+  type InlineValuesSource,
+  redrawInlineValues,
+  type RichTextInlineValues,
+} from './richText/inlineValueNode';
+import {
+  INSERT_TRIGGER,
+  type RichTextCommands,
+  type RichTextInsertState,
+  type RichTextInsertTools,
+} from './richText/insertTools';
+import {
+  createLogicBlockNodes,
+  insertLogicBlock,
+  LogicBlocksContext,
+  type LogicBlocksSource,
+  type RichTextLogicBlocks,
+} from './richText/logicBlockNode';
+import {
+  asOneLine,
+  oneLineContentOf,
+  oneLineDocumentOf,
+} from './richText/oneLine';
+import {
+  DocumentBlocks,
+  insertSection,
+  SECTION_GROUP,
+} from './richText/sectionBlocks';
 import { type HeadingLevel, TextStyleMenu } from './richText/TextStyleMenu';
 import {
   hasVersionRowBeside,
   NestedEditingContext,
-  type RichTextVersionsActionEvent,
   VERSIONS_NODE,
   VersionsNode,
-  versionsIn,
   versionPlaceOf,
 } from './richText/versionsNode';
 
 const messages = defineMessages({
-  insertMenuRequiredMissing: {
-    id: 'frescoUi.richTextEditor.insertMenuRequiredMissing',
-    defaultMessage: 'Something this text requires is not in it yet',
-    description:
-      'Second line of the tooltip, and part of the accessible name, of the toolbar button that opens the rich text editor’s insert menu, while the menu offers something, such as a person’s name, that the text being written must include and does not include yet.',
-  },
   emojiMenu: {
     id: 'frescoUi.richTextEditor.emojiMenu',
     defaultMessage: 'Insert emoji',
@@ -204,413 +223,51 @@ const SingleLineDocument = TiptapNode.create({
 });
 
 /**
- * A placeholder the field can hold among its text, such as a person's name
- * filled in later. `id` is what the value records; `label` is what the field
- * shows, on the pill in the text and on the button that inserts it. A
- * `required` placeholder is one the text must include: while it does not,
- * the button that inserts it says so.
+ * A document whose blocks can include sections: a form's fields and logic
+ * blocks, which stand among the document's own blocks but never inside a
+ * list item, a heading or a paragraph.
  */
-export type RichTextEditorToken = Readonly<{
-  id: string;
-  /**
-   * The interface's words for it, or `{ text, dir: 'auto' }` for a name
-   * someone wrote (an attribute's), which reads in its own direction.
-   */
-  label: TokenPillLabel;
-  required?: boolean;
-  /**
-   * How the placeholder is written as text, such as `{name}`. Pasted text
-   * that holds it arrives as the placeholder rather than as those characters.
-   */
-  text?: string;
-  /**
-   * Whether the toolbar offers a button for it. A placeholder offered only
-   * through the insert menu, or only inside a piece of text the field
-   * builds, is held and shown without one. Defaults to true.
-   */
-  inToolbar?: boolean;
-}>;
+const SectionDocument = TiptapNode.create({
+  name: 'doc',
+  topNode: true,
+  content: `(block | ${SECTION_GROUP})+`,
+});
 
-/** The node type a token is held as: `{ type: 'token', attrs: { id } }`. */
-const TOKEN_NODE = 'token';
-
-/** The ids of the tokens `doc` holds, one per line, for the toolbar to compare. */
-const placedTokenIds = (doc: ProseMirrorNode): string => {
-  const ids = new Set<string>();
-  // A version's text is held in its element's attributes, as JSON.
-  const collect = (content: unknown) => {
-    if (!Array.isArray(content)) return;
-    for (const node of content) {
-      if (!isRecord(node)) continue;
-      const attrs = isRecord(node.attrs) ? node.attrs : undefined;
-      if (node.type === TOKEN_NODE && typeof attrs?.id === 'string') {
-        ids.add(attrs.id);
-      }
-      collect(node.content);
-      collectVersions(attrs?.versions);
-    }
-  };
-  const collectVersions = (versions: unknown) => {
-    for (const version of versionsIn(versions)) collect(version.content);
-  };
-  doc.descendants((node) => {
-    const tokenId: unknown = node.attrs.id;
-    if (node.type.name === TOKEN_NODE && typeof tokenId === 'string') {
-      ids.add(tokenId);
-    }
-    if (node.type.name === VERSIONS_NODE) collectVersions(node.attrs.versions);
-  });
-  return [...ids].toSorted().join('\n');
-};
-
-/**
- * A token, held as one character of the line: the caret steps over it,
- * Backspace removes it whole, and it is copied and pasted between fields that
- * offer it. A pasted token a field does not offer arrives as its label, as
- * text: the field cannot hold it, and the words are what was meant.
- */
-type InterfaceLanguage = Readonly<{ lang: string; dir: 'ltr' | 'rtl' }>;
-
-const createTokenNode = (
-  tokens: readonly RichTextEditorToken[],
-  interfaceLanguage: InterfaceLanguage,
-) => {
-  const labels = new Map(tokens.map(({ id, label }) => [id, label]));
-  // A token the field does not offer shows the name the text records for it,
-  // as it was written.
-  const labelOf = (id: unknown): TokenPillLabel =>
-    typeof id === 'string' ? (labels.get(id) ?? { text: id, dir: 'auto' }) : '';
-
-  return TiptapNode.create({
-    name: TOKEN_NODE,
-    group: 'inline',
-    inline: true,
-    atom: true,
-    selectable: true,
-    draggable: true,
-
-    addAttributes() {
-      return {
-        id: {
-          default: null,
-          parseHTML: (element) => element.getAttribute('data-token'),
-          renderHTML: (attributes) => ({ 'data-token': attributes.id }),
-        },
-      };
-    },
-
-    parseHTML() {
-      return [
-        {
-          tag: 'span[data-token]',
-          getAttrs: (element) =>
-            labels.has(element.getAttribute('data-token') ?? '') ? null : false,
-        },
-      ];
-    },
-
-    // Drawn with the classes `TokenPill` draws a placeholder with in text
-    // that is only read, so the two look alike. Plain DOM, not a React node
-    // view, which draws a render late.
-    renderHTML({ node, HTMLAttributes }): DOMOutputSpec {
-      return [
-        'span',
-        mergeAttributes(HTMLAttributes, {
-          // A pointer, not the text cursor: the pill is one object.
-          class: tokenPillClasses('cursor-pointer'),
-          contenteditable: 'false',
-          // The interface's words in the interface's language, whatever
-          // language the text around it is in; a name in its own direction.
-          ...tokenPillLanguage(labelOf(node.attrs.id), interfaceLanguage),
-        }),
-        ...tokenPillContentSpec(labelOf(node.attrs.id)),
-      ];
-    },
-
-    renderText({ node }) {
-      return presentationalTextValue(labelOf(node.attrs.id));
-    },
-
-    addProseMirrorPlugins() {
-      const written = tokens.flatMap(({ id, text }) =>
-        text === undefined || text === '' ? [] : [{ id, text }],
-      );
-      if (written.length === 0) return [];
-      const { schema } = this.editor;
-      return [
-        new Plugin({
-          key: new PluginKey('tokenPaste'),
-          props: {
-            transformPasted: (slice: Slice) =>
-              new Slice(
-                withWrittenTokens(slice.content, written, schema),
-                slice.openStart,
-                slice.openEnd,
-              ),
-          },
-        }),
-      ];
-    },
-  });
-};
-
-/**
- * Pasted text with each placeholder written in it, such as `{name}`, turned
- * into the placeholder. Text keeps its marks on both sides of one.
- */
-const withWrittenTokens = (
-  fragment: Fragment,
-  written: readonly Readonly<{ id: string; text: string }>[],
-  schema: Schema,
-): Fragment => {
-  const tokenType = schema.nodes[TOKEN_NODE];
-  if (tokenType === undefined) return fragment;
-  const nodes: ProseMirrorNode[] = [];
-  fragment.forEach((node) => {
-    if (!node.isText) {
-      nodes.push(
-        node.isLeaf
-          ? node
-          : node.copy(withWrittenTokens(node.content, written, schema)),
-      );
-      return;
-    }
-    let rest = node.text ?? '';
-    while (rest !== '') {
-      let first: { at: number; id: string; text: string } | undefined;
-      for (const token of written) {
-        const at = rest.indexOf(token.text);
-        if (at !== -1 && (first === undefined || at < first.at)) {
-          first = { at, ...token };
-        }
-      }
-      if (first === undefined) {
-        nodes.push(schema.text(rest, node.marks));
-        break;
-      }
-      if (first.at > 0) {
-        nodes.push(schema.text(rest.slice(0, first.at), node.marks));
-      }
-      nodes.push(tokenType.create({ id: first.id }, null, node.marks));
-      rest = rest.slice(first.at + first.text.length);
-    }
-  });
-  return Fragment.fromArray(nodes);
-};
-
-/** The line being collected, and whether a break is owed before its next text. */
-type OneLineRun = {
-  collected: JSONContent[];
-  breakPending: boolean;
-};
-
-const SPACE = ' ';
-
-/**
- * Adds text to the line, joining it to the run before it when they carry the
- * same marks. That is what ProseMirror itself holds, so a flattened value
- * compares equal to the document the editor makes of it.
- */
-const pushRun = (
-  run: OneLineRun,
-  text: string,
-  marks: JSONContent['marks'],
-) => {
-  const carried = marks && marks.length > 0 ? marks : undefined;
-  const previous = run.collected.at(-1);
-
-  if (previous?.type === 'text' && isEqual(previous.marks, carried)) {
-    previous.text = `${previous.text ?? ''}${text}`;
-    return;
-  }
-
-  run.collected.push(
-    carried === undefined
-      ? { type: 'text', text }
-      : { type: 'text', marks: carried, text },
-  );
-};
-
-/**
- * Adds a text node to the line, spelling any break owed before it as one
- * space. The space carries no marks of its own: a bold space would serialise
- * as part of the bold run, and markdown will not open emphasis on a space.
- */
-const addText = (
-  run: OneLineRun,
-  text: string,
-  marks: JSONContent['marks'],
-) => {
-  if (run.breakPending && run.collected.length > 0) {
-    pushRun(run, SPACE, undefined);
-  }
-
-  run.breakPending = false;
-  pushRun(run, text, marks);
-};
-
-/**
- * Adds a token to the line, after the space any break before it is owed. A
- * token says something, as text does, so it is never a break itself.
- */
-/** Adds an inline atom: a token, or a set of versions, kept whole. */
-const addAtom = (run: OneLineRun, atom: JSONContent) => {
-  if (run.breakPending && run.collected.length > 0) {
-    pushRun(run, SPACE, undefined);
-  }
-
-  run.breakPending = false;
-  run.collected.push(atom);
-};
-
-/**
- * Adds a text node, treating the line breaks INSIDE it as breaks like any
- * other: newlines however a platform spells them, and Unicode's line and
- * paragraph separators, which the schema refuses in one-line text just the
- * same (`linesOf`, the one definition of a line break).
- *
- * A line break can live inside the text itself, where no schema was ever going
- * to refuse it: markdown's own soft break parses to one text node with the
- * newline still in it, and the editor renders with `white-space: pre-wrap`, so
- * the field showed two lines while reporting `aria-multiline="false"` — and
- * saved the break back into the label a participant reads.
- */
-const addTextLines = (
-  run: OneLineRun,
-  text: string,
-  marks: JSONContent['marks'],
-) => {
-  for (const [index, line] of linesOf(text).entries()) {
-    if (index > 0) {
-      run.breakPending = true;
-    }
-
-    if (line !== '') {
-      addText(run, line, marks);
-    }
-  }
-};
-
-/**
- * Every line of a document, run together as the inline content of one.
- *
- * This works on the JSON rather than on a parsed document, because on the way
- * IN there is nothing parsed yet — and for a single-line field there cannot
- * be. Its schema has no heading, list or rule in it, `Node.fromJSON` throws on
- * a node type it does not know, and TipTap answers that by handing back an
- * EMPTY document. So a stored heading did not arrive flattened; it arrived as
- * nothing at all, and the next edit saved that emptiness over the researcher's
- * words. Reading the value first is the very thing that fails, so the shape is
- * changed before anything reads it.
- *
- * Text keeps its marks, so a formatted phrase keeps its bold and italic runs:
- * the line loses its line breaks, not its formatting.
- *
- * Every other node is a BREAK in the line — a block boundary, a hard break, an
- * atom this field has no room for, a newline inside the text itself — and
- * however many of them fall together
- * they spell ONE space, and only between text that says something on both
- * sides. Spelling each break separately put one in twice wherever blocks nest
- * (a pasted list arrived as "One  Two"), put one beside an empty paragraph
- * that has nothing on the other side of it, and left the saved line ending in
- * one. Architect's markdown adapter reduces its own blocks by this same rule.
- */
-const collectOneLine = (
-  content: JSONContent[] | null | undefined,
-  run: OneLineRun,
-  schema: Schema,
-) => {
-  for (const node of content ?? []) {
-    if (node.type === 'text') {
-      if (node.text) {
-        addTextLines(run, node.text, marksInSchema(node.marks, schema));
-      }
-      continue;
-    }
-
-    if (node.type === TOKEN_NODE && Object.hasOwn(schema.nodes, TOKEN_NODE)) {
-      const marks = marksInSchema(node.marks, schema);
-      addAtom(run, {
-        type: TOKEN_NODE,
-        attrs: { id: node.attrs?.id },
-        ...(marks !== undefined && marks.length > 0 && { marks }),
-      });
-      continue;
-    }
-
-    // Its versions live in its attributes, not its content, so it is kept
-    // whole rather than read through.
-    if (
-      node.type === VERSIONS_NODE &&
-      Object.hasOwn(schema.nodes, VERSIONS_NODE)
-    ) {
-      addAtom(run, documentInSchema(node, schema));
-      continue;
-    }
-
-    // Owed on both sides of whatever this node holds: the text after a block
-    // is on a new line, and so is the text after the block ends.
-    run.breakPending = true;
-    collectOneLine(node.content, run, schema);
-    run.breakPending = true;
-  }
-};
-
-/** The inline content a document's lines make when run together as one. */
-const oneLineContentOf = (
-  content: JSONContent[] | null | undefined,
-  schema: Schema,
-): JSONContent[] => {
-  const run: OneLineRun = { collected: [], breakPending: false };
-  collectOneLine(content, run, schema);
-  return run.collected;
-};
-
-/**
- * The one-paragraph document a value makes.
- *
- * An empty paragraph carries no `content` at all, which is how ProseMirror
- * writes one: the flattened value has to be comparable to the document the
- * editor holds, key for key.
- */
-const oneLineDocumentOf = (value: JSONContent, schema: Schema): JSONContent => {
-  const content = oneLineContentOf(value.content, schema);
-
-  return {
-    type: 'doc',
-    content: [
-      content.length > 0
-        ? { type: 'paragraph', content }
-        : { type: 'paragraph' },
-    ],
-  };
-};
-
-/**
- * The flattened value as the editor will hold it.
- *
- * Only the comparison in the sync effect needs this: reading the flattened
- * document through the schema fills in the mark attributes a stored value can
- * leave out, so a host echoing its own value back settles instead of having
- * the document replaced on every pass. The document is a paragraph of text by
- * then, and the marks are the ones this schema has, so the read cannot fail
- * on a type it does not know. `createNodeFromContent` is the reader TipTap's
- * own `content` option uses, so both ways in agree.
- */
-const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
-  const flattened = oneLineDocumentOf(value, schema);
-  const parsed = createNodeFromContent(flattened, schema, { slice: false });
-
-  // A fragment only comes back from that reader's own empty-content fallback.
-  if (isProseMirrorFragment(parsed)) return flattened;
-
-  // ProseMirror types `toJSON()` as `any`; a node's JSON is the JSONContent
-  // shape by construction.
-  const json: JSONContent = parsed.toJSON();
-  return json;
-};
-
-export type { RichTextInsertMenu, RichTextInsertMenuItem };
+export type { RichTextInlineValues, RichTextFieldBlocks, RichTextLogicBlocks };
+export type { RichTextInlineValueContent } from './richText/inlineValueNode';
+export { INLINE_VALUE_NODE };
+export type {
+  RichTextFieldBlockAttributes,
+  RichTextFieldBlockContent,
+  RichTextFieldBlockInsertEvent,
+  RichTextFieldBlockText,
+  RichTextFieldBlockViewProps,
+} from './richText/fieldBlockNode';
+export {
+  FIELD_BLOCK_NODE,
+  FIELD_HINT_NODE,
+  FIELD_LABEL_NODE,
+} from './richText/fieldBlockNode';
+export type {
+  RichTextLogicBlockContent,
+  RichTextLogicBlockFieldScope,
+  RichTextLogicBlockViewProps,
+  RichTextLogicBranch,
+  RichTextLogicBranchContent,
+  RichTextLogicBranchLabelProps,
+} from './richText/logicBlockNode';
+export { LOGIC_BLOCK_NODE, LOGIC_BRANCH_NODE } from './richText/logicBlockNode';
+export type {
+  RichTextCommands,
+  RichTextInsertState,
+  RichTextInsertTools,
+  RichTextInsertTrigger,
+} from './richText/insertTools';
+export {
+  ToolbarButton,
+  toolbarButtonStyles,
+  toolbarLabelledButtonStyles,
+} from './richText/EditorToolbar';
 export type {
   RichTextAssetBlockAttributes,
   RichTextAssetBlockContent,
@@ -619,12 +276,22 @@ export type {
   RichTextAssetBlockViewProps,
 };
 export {
-  ASSET_BLOCK_OUTLINE_OFFSET,
-  ASSET_BLOCK_OUTLINE_WIDTH,
-  assetBlockControlsAt,
   assetBlockControlsProps,
-  assetBlockFrameVariants,
+  assetBlockFileProps,
+  AssetBlockResizeHandle,
+  firstSettingsControlIn,
 } from './richText/assetBlockNode';
+export {
+  BLOCK_FRAME_OFFSET,
+  BLOCK_FRAME_WIDTH,
+  blockActionProps,
+  blockBoxProps,
+  BlockTab,
+} from './richText/blockFrames';
+export {
+  BlockDeleteButton,
+  BlockSettingsButton,
+} from './richText/blockButtons';
 
 // The toolbar's buttons for putting in a file, one for each kind of file.
 const ASSET_BLOCK_BUTTONS = [
@@ -634,14 +301,20 @@ const ASSET_BLOCK_BUTTONS = [
 ] as const;
 export type {
   RichTextVersion,
-  RichTextVersionsAction,
-  RichTextVersionsActionEvent,
+  RichTextVersionPlace,
   RichTextVersionsAttributes,
 } from './richText/versionsNode';
 export { versionsPreview } from './richText/versionsNode';
 export { hasVersionRowBeside, VERSIONS_NODE };
 
 const swallowKeystroke = () => true;
+
+/** The element a node at `position` is drawn as, for anchoring to. */
+const elementAt = (into: Editor, position: number | null) => {
+  if (position === null) return null;
+  const element = into.view.nodeDOM(position);
+  return element instanceof HTMLElement ? element : null;
+};
 
 // `Array.isArray` does not narrow a `readonly` array out of a union.
 const isContentList = (
@@ -718,22 +391,37 @@ type ExtensionOptions = {
    * looks, and states its place below the enclosing heading as `aria-level`.
    */
   enclosingHeadingDepth: number;
+  /**
+   * Whether the text can be bold, and italic: the schema has the mark, so its
+   * keyboard shortcut and typing shortcut work, only where the toolbar
+   * offers its button (`ToolbarOptions.bold`, `ToolbarOptions.italic`).
+   */
+  enableBold: boolean;
+  enableItalic: boolean;
   enableBulletList: boolean;
   enableOrderedList: boolean;
   enableLinks: boolean;
   enableThematicBreak: boolean;
   singleLine: boolean;
-  placeholder?: string;
-  tokens: readonly RichTextEditorToken[];
+  /**
+   * The placeholder of `editor`, read each time it is drawn, so that new
+   * words for it need no new editor. Absent when the field has none.
+   */
+  placeholder?: (editor: Editor) => string;
+  /** Where the field's inline values come from, when it holds any. */
+  inlineValues?: InlineValuesSource;
+  /** Where the field's form fields come from, when it holds any. */
+  fieldBlocks?: FieldBlocksSource;
+  /** Whether those fields' blocks contain their text (`RichTextFieldBlocks.text`). */
+  fieldBlockText?: RichTextFieldBlockText;
+  /** Where the field's logic blocks come from, when it holds any. */
+  logicBlocks?: LogicBlocksSource;
   /** Whether the text can hold files as blocks (see `AssetBlockNode`). */
   assetBlocks?: boolean;
-  /**
-   * The interface's language: a placeholder's pill names it in the
-   * interface's words, inside text that may be in another language.
-   */
-  interfaceLanguage: InterfaceLanguage;
+  /** The interface's language, which a placeholder is written in. */
+  interfaceLang: string;
   versions: boolean;
-  /** Typing this character opens the insert menu. */
+  /** Typing this character asks the insert tools for a value. */
   trigger?: string;
   /** Told when the trigger is typed, and where it now sits. */
   onTrigger: (editor: Editor, position: number) => void;
@@ -803,26 +491,26 @@ const createSharedHistoryKeys = (history: SharedHistory) =>
   });
 
 /**
- * Opens the insert menu when its trigger character is typed. The character
- * is typed as usual, so dismissing the menu keeps it; choosing an item
- * replaces it.
+ * Tells the insert tools when their trigger character is typed. The
+ * character is typed as usual, so dismissing the tools keeps it; inserting
+ * something replaces it.
  */
 const createInsertTrigger = (
   trigger: string,
   onTrigger: (editor: Editor, position: number) => void,
 ) =>
   Extension.create({
-    name: 'insertMenuTrigger',
+    name: 'insertTrigger',
     addProseMirrorPlugins() {
       const { editor } = this;
       return [
         new Plugin({
-          key: new PluginKey('insertMenuTrigger'),
+          key: new PluginKey('insertTrigger'),
           props: {
             handleTextInput: (_view, from, _to, text) => {
               if (text !== trigger) return false;
-              // After the character is in: the menu replaces it if an item
-              // is chosen.
+              // After the character is in: what is inserted next replaces
+              // it.
               queueMicrotask(() => onTrigger(editor, from));
               return false;
             },
@@ -921,6 +609,18 @@ const createEmojiSuggestions = (hooks: EmojiSuggestionHooks) =>
     },
   });
 
+/**
+ * The placeholder that `editor`'s field gives it now (`data-placeholder`
+ * among its attributes), which the editor's options take on as the field
+ * draws again, or nothing.
+ */
+const placeholderOf = (editor: Editor): string => {
+  const { attributes } = editor.options.editorProps;
+  const text =
+    typeof attributes === 'object' ? attributes['data-placeholder'] : undefined;
+  return text ?? '';
+};
+
 // Factory function to create custom extensions with typography classes
 const PLACEHOLDER_LANGUAGE = new PluginKey('placeholderLanguage');
 
@@ -933,10 +633,14 @@ const PLACEHOLDER_LANGUAGE = new PluginKey('placeholderLanguage');
  * typed is in the region's. Its direction is its own (`unicode-bidi:
  * plaintext` on the placeholder), so the caret stays where the text starts.
  */
-const createPlaceholderLanguage = (lang: string) =>
+const createPlaceholderLanguage = (
+  lang: string,
+  placeholder: (editor: Editor) => string,
+) =>
   Extension.create({
     name: 'placeholderLanguage',
     addProseMirrorPlugins() {
+      const { editor } = this;
       return [
         new Plugin({
           key: PLACEHOLDER_LANGUAGE,
@@ -947,7 +651,8 @@ const createPlaceholderLanguage = (lang: string) =>
                 doc.childCount !== 1 ||
                 only === null ||
                 only.type.name !== 'paragraph' ||
-                only.content.size !== 0
+                only.content.size !== 0 ||
+                placeholder(editor) === ''
               ) {
                 return DecorationSet.empty;
               }
@@ -961,18 +666,81 @@ const createPlaceholderLanguage = (lang: string) =>
     },
   });
 
+/**
+ * A key acts on the selection the page shows, even when the page selected
+ * the text a moment before the key was pressed.
+ *
+ * ProseMirror hears of a selection that the page made (rather than one it
+ * made itself) from the browser's `selectionchange` event, which the browser
+ * queues as an ordinary task. Chrome can handle a key that arrives while it
+ * draws a frame before that task runs, and ProseMirror then applies the key
+ * to the selection it had before. A test driver, a screen reader or a script
+ * that selects the whole text and presses Delete deleted nothing: the key
+ * acted on the caret. Before ProseMirror handles a key, this sends the
+ * document a `selectionchange` event of its own, so ProseMirror reads the
+ * page's selection now, by its own rules: it takes the selection only if the
+ * page's selection has changed since ProseMirror last read or set it. When
+ * the browser's queued event runs, ProseMirror finds nothing new. Other
+ * listeners on the page hear the event too; the ones in use here (other
+ * editors and React's `onSelect`) compare the selection with the one they
+ * last saw, so they act only on a real change, and only earlier. Keys of a
+ * composition are left alone, as ProseMirror leaves them.
+ *
+ * ProseMirror offers no public way to read a pending selection change
+ * (`domObserver` is internal), so this uses the event that ProseMirror
+ * already listens for. The story `DeleteStraightAfterSelectingEverything`
+ * fails if ProseMirror stops reading the selection on that event.
+ */
+const ReadSelectionBeforeKeys = Extension.create({
+  name: 'readSelectionBeforeKeys',
+  // Before every other handler of a key, so that none of them reads the old
+  // selection.
+  priority: 10_000,
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('readSelectionBeforeKeys'),
+        props: {
+          handleDOMEvents: {
+            keydown: (view, event) => {
+              if (
+                view.composing ||
+                event.isComposing ||
+                event.keyCode === 229
+              ) {
+                return false;
+              }
+              view.dom.ownerDocument.dispatchEvent(
+                new Event('selectionchange'),
+              );
+              // ProseMirror goes on to handle the key itself.
+              return false;
+            },
+          },
+        },
+      }),
+    ];
+  },
+});
+
 function createCustomExtensions({
   headingLevels,
   enclosingHeadingDepth,
+  enableBold,
+  enableItalic,
   enableBulletList,
   enableOrderedList,
   enableLinks,
   enableThematicBreak,
   singleLine,
   placeholder,
-  tokens,
+  inlineValues,
+  fieldBlocks,
+  fieldBlockText = 'editable',
+  logicBlocks,
   assetBlocks = false,
-  interfaceLanguage,
+  interfaceLang,
   versions,
   trigger,
   onTrigger,
@@ -980,6 +748,9 @@ function createCustomExtensions({
   history,
   placeholderWhenReadOnly = false,
 }: ExtensionOptions): AnyExtension[] {
+  // A section needs other blocks to sit among, which one line does not have.
+  const holdsSections =
+    !singleLine && (fieldBlocks !== undefined || logicBlocks !== undefined);
   const CustomParagraph = Paragraph.extend({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
       return ['p', { ...HTMLAttributes, class: paragraphClasses }, 0];
@@ -1009,11 +780,16 @@ function createCustomExtensions({
     },
   });
 
+  // Spaced as the interview spaces a list (`listVariants`), with the room
+  // for the markers inside the list, so that its frame takes them in.
   const CustomBulletList = BulletList.extend({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
       return [
         'ul',
-        { ...HTMLAttributes, class: 'ms-8 list-disc [&>li]:not-last:mb-2' },
+        {
+          ...HTMLAttributes,
+          class: listVariants({ kind: 'bullet', indent: 'padding' }),
+        },
         0,
       ];
     },
@@ -1023,7 +799,10 @@ function createCustomExtensions({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
       return [
         'ol',
-        { ...HTMLAttributes, class: 'ms-8 list-decimal [&>li]:not-last:mb-2' },
+        {
+          ...HTMLAttributes,
+          class: listVariants({ kind: 'ordered', indent: 'padding' }),
+        },
         0,
       ];
     },
@@ -1032,6 +811,13 @@ function createCustomExtensions({
   const extensions: AnyExtension[] = [
     StarterKit.configure({
       blockquote: false,
+      // Drawn as an empty line with a text caret instead (see `GapCaret`).
+      gapcursor: false,
+      // A mark the toolbar does not offer is not in the schema at all, so no
+      // keyboard shortcut (Mod-B, Mod-I) or typing shortcut (`**`, `*`) can
+      // make one, and a value or a paste that holds one loses it.
+      ...(!enableBold && { bold: false as const }),
+      ...(!enableItalic && { italic: false as const }),
       // Replaced below, so the schema's top node holds one paragraph rather
       // than any run of blocks.
       ...(singleLine ? { document: false as const } : {}),
@@ -1068,9 +854,34 @@ function createCustomExtensions({
       // brings one with it.
       trailingNode: false,
       ...(history !== undefined && { undoRedo: false as const }),
+      // Replaced below by one whose blocks can include sections.
+      ...(holdsSections && { document: false as const }),
     }),
     CustomParagraph,
+    ReadSelectionBeforeKeys,
+    GapCaret,
   ];
+
+  // Blocks have frames and handles (see `BlockFrameLayer`) in a document
+  // that holds sections or files: the text of a form or a page.
+  if (holdsSections || (assetBlocks && !singleLine)) {
+    extensions.push(DocumentBlocks);
+  }
+
+  if (holdsSections) {
+    extensions.push(SectionDocument);
+    if (fieldBlocks !== undefined) {
+      extensions.push(
+        ...createFieldBlockNodes(fieldBlocks, {
+          inlineValues: inlineValues !== undefined,
+          text: fieldBlockText,
+        }),
+      );
+    }
+    if (logicBlocks !== undefined) {
+      extensions.push(...createLogicBlockNodes(logicBlocks));
+    }
+  }
 
   if (history !== undefined) {
     extensions.push(createSharedHistoryKeys(history));
@@ -1080,8 +891,8 @@ function createCustomExtensions({
     extensions.push(SingleLineDocument, SingleLineInput);
   }
 
-  if (tokens.length > 0) {
-    extensions.push(createTokenNode(tokens, interfaceLanguage));
+  if (inlineValues !== undefined) {
+    extensions.push(createInlineValueNode(inlineValues));
   }
 
   if (versions) {
@@ -1117,13 +928,13 @@ function createCustomExtensions({
     extensions.push(CustomOrderedList);
   }
 
-  if (placeholder) {
+  if (placeholder !== undefined) {
     extensions.push(
       Placeholder.configure({
-        placeholder,
+        placeholder: ({ editor }) => placeholder(editor),
         showOnlyWhenEditable: !placeholderWhenReadOnly,
       }),
-      createPlaceholderLanguage(interfaceLanguage.lang),
+      createPlaceholderLanguage(interfaceLang, placeholder),
     );
   }
 
@@ -1146,14 +957,6 @@ const editorContainerVariants = cva({
     interactiveStateVariants,
     editorContainerOwnVariants,
   ],
-});
-
-const toolbarTokenButtonStyles = buttonVariants({
-  size: 'sm',
-  color: 'dynamic',
-  variant: 'text',
-  textStyle: 'default',
-  className: 'h-10 gap-1 px-3 text-sm [&>.lucide]:size-4',
 });
 
 /**
@@ -1183,11 +986,36 @@ const selectInsertedVersions = (
   if (found !== undefined) editor.chain().focus().setNodeSelection(found).run();
 };
 
+/**
+ * Shows the document the host holds (or, given null, an empty one) in place
+ * of the editor's, without reporting it back as a change. It is not an edit
+ * made in the editor, so it is kept out of the editor's history: undone, it
+ * would put back the document the host replaced and report that as the
+ * person's edit. When the host's value first arrives, that is the whole text
+ * gone at the first Undo after opening. The edits made before it were to a
+ * document no longer shown, so the history starts again from it, and Undo is
+ * unavailable until the next edit.
+ */
+const showHostDocument = (editor: Editor, content: JSONContent | null) => {
+  const replace = editor.chain().setMeta('addToHistory', false);
+  if (content === null) replace.clearContent(false).run();
+  else replace.setContent(content, { emitUpdate: false }).run();
+  if (undoDepth(editor.state) === 0 && redoDepth(editor.state) === 0) return;
+  const { plugins } = editor.state;
+  // Taken out and put back, the history starts again empty; every other
+  // plugin keeps its state.
+  if (editor.unregisterPlugin('history') === undefined) return;
+  editor.view.updateState(editor.state.reconfigure({ plugins }));
+  // Tells what reads the editor's state from its transactions (the toolbar's
+  // Undo and Redo) that it changed.
+  editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false));
+};
+
 const editorContentVariants = cva({
   base: cx(
     // Named for the rows of versions inside it, which stack when it is narrow.
     // Not the field itself: a container is a containing block for fixed
-    // elements, and the field holds the insert menu's caret anchor.
+    // elements, and the field holds the insert tools' caret anchor.
     '@container/rich-text order-2 flex-1',
     'outline-none',
     '[&_.tiptap]:outline-none',
@@ -1219,9 +1047,22 @@ const editorContentVariants = cva({
       ),
       false: cx(multilineContentVariants(), '[&>.tiptap]:min-h-[120px]'),
     },
+    // Text whose blocks have frames leaves a gutter at its start for their
+    // drag handles (see `BlockFrameLayer`).
+    blockFrames: {
+      true: 'ps-13',
+      false: '',
+    },
   },
+  defaultVariants: { blockFrames: false },
 });
 
+/**
+ * What the text can hold and the toolbar offers. Each option is one setting
+ * for both: `bold: false` takes away the Bold button AND bold itself, so
+ * Mod-B, typing `**`, and a pasted or given bold word make nothing bold.
+ * The same goes for italic, links, headings, lists and rules.
+ */
 type ToolbarOptions = {
   bold?: boolean;
   italic?: boolean;
@@ -1252,12 +1093,14 @@ type EditorSelectionRange = {
 };
 
 /**
- * The editor's blocks, each laid out by its own first letter. The utility
- * goes on every block, not on the editor: `unicode-bidi` is not inherited,
- * so a paragraph inside an element that has it still takes the interface's
+ * The editor's lines of text, each laid out by its own first letter: its
+ * paragraphs and headings, and a field's question and hint. The utility goes
+ * on every line, not on the editor: `unicode-bidi` is not inherited, so a
+ * paragraph inside an element that has it still takes the interface's
  * direction.
  */
-const OWN_DIRECTION_BLOCKS = '[&_:is(p,h1,h2,h3,h4,h5,h6)]:text-own-direction';
+const OWN_DIRECTION_BLOCKS =
+  '[&_:is(p,h1,h2,h3,h4,h5,h6,[data-field-label],[data-field-hint])]:text-own-direction';
 
 type RichTextEditorFieldProps = CreateFormFieldProps<
   JSONContent,
@@ -1266,6 +1109,12 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
     'toolbarOptions'?: ToolbarOptions;
     'changeMode'?: ChangeMode;
     'autoFocus'?: boolean;
+    /**
+     * Shown while the field is empty. Changing it redraws it in the same
+     * editor; giving or taking away a placeholder builds a new one, so a
+     * field whose placeholder comes and goes while it is written passes an
+     * empty string, which shows nothing, while it has none.
+     */
     'placeholder'?: string;
     /**
      * Holds the value to one line: the document is a single paragraph, Enter
@@ -1280,35 +1129,58 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      */
     'singleLine'?: boolean;
     /**
-     * Placeholders the text can hold, such as a person's name filled in
-     * later. Each shows as a chip in the text, and the toolbar offers a
-     * button to insert each at the caret. The value holds one as
-     * `{ type: 'token', attrs: { id } }` among the paragraph's text.
+     * Values the text can hold among its words, such as an attribute the
+     * interview fills in: drawn by the consumer, and moved, copied and pasted
+     * as one character of the line. The value holds one as
+     * `{ type: 'inlineValue', attrs: { id } }` (see `RichTextInlineValues`).
+     * The consumer offers them, usually through `insertTools`.
      */
-    'tokens'?: readonly RichTextEditorToken[];
+    'inlineValues'?: RichTextInlineValues;
+    /**
+     * Lets the text hold a form's fields as blocks, each with its label and
+     * hint typed in the block, drawn by the consumer (see
+     * `RichTextFieldBlocks`). The value holds one as
+     * `{ type: 'fieldBlock', attrs, content: [fieldLabel, fieldHint] }`, or
+     * without `content` where the blocks contain no text
+     * (`RichTextFieldBlocks.text`). Mod-Shift-F puts in a new one at the
+     * caret. Not for a single-line field.
+     */
+    'fieldBlocks'?: RichTextFieldBlocks;
+    /**
+     * Lets the text hold logic blocks: content shown only in some cases, one
+     * branch for each, drawn by the consumer (see `RichTextLogicBlocks`). The
+     * value holds one as `{ type: 'logicBlock', attrs: { meta }, content:
+     * [logicBranch…] }`. Not for a single-line field.
+     */
+    'logicBlocks'?: RichTextLogicBlocks;
+    /**
+     * The consumer's tools for putting things in the text (values, fields,
+     * logic blocks), drawn as a group of the toolbar after the formatting
+     * groups and before the buttons for files (see `RichTextInsertTools`).
+     * Typing `{` asks them for a value at the caret.
+     */
+    'insertTools'?: RichTextInsertTools;
+    /**
+     * Given the field's commands (see `RichTextCommands`), for a consumer
+     * that changes the text from outside the toolbar, such as from a value's
+     * own settings. The same object for as long as the field is mounted; the
+     * insert tools are given it too (`RichTextInsertState.commands`).
+     */
+    'commandsRef'?: Ref<RichTextCommands>;
     /**
      * Whether the text can hold versions: a piece of text that reads
      * differently in different cases, each case edited in place (see
      * `RichTextVersionsAttributes`). The consumer builds them, usually through
-     * the insert menu.
+     * its insert tools. For wording that Network Canvas supplies, whose
+     * versions are grammatical (a plural, a choice it declares).
+     *
+     * When the whole text is one set of versions and nothing else (a message
+     * that is a plural or a choice and no more), the versions are shown
+     * permanently open, one labelled row each: a pill that opens would hide
+     * every word of such a field at rest. Versions inside a sentence, or
+     * inside another version, fold to a pill.
      */
     'versions'?: boolean;
-    /**
-     * Shows the versions permanently open, one labelled row each, when the
-     * whole text is one set of versions and nothing else: a message that is
-     * a plural or a choice and no more. A pill that opens would hide every
-     * word of such a field at rest. Versions inside a sentence, or inside
-     * another version, still fold to a pill. Needs `versions`.
-     */
-    'openWholeMessageVersions'?: boolean;
-    /** A searchable menu of things to insert at the caret. */
-    'insertMenu'?: RichTextInsertMenu;
-    /**
-     * A second menu, of logic to insert at the caret (versions chosen by a
-     * test), behind a toolbar button of its own beside the first. It has no
-     * trigger character.
-     */
-    'logicMenu'?: RichTextInsertMenu;
     /**
      * Whether the editor offers emoji: suggested beside the caret as a colon
      * and the start of an emoji's name are typed (`:sm`), and from a menu in
@@ -1325,12 +1197,6 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * has no blocks.
      */
     'assetBlocks'?: RichTextAssetBlocks;
-    /**
-     * Carries out what a set of versions asks of its consumer: editing or
-     * removing one of its versions, or one of its own actions (see
-     * `RichTextVersionsActionEvent`).
-     */
-    'onVersionsAction'?: (event: RichTextVersionsActionEvent) => void;
     'id': string;
     'name': string;
     'aria-describedby'?: string;
@@ -1384,36 +1250,32 @@ export default function RichTextEditorField({
   autoFocus = false,
   placeholder,
   singleLine = false,
-  tokens: tokensProp,
+  inlineValues: inlineValuesProp,
+  fieldBlocks: fieldBlocksProp,
+  logicBlocks: logicBlocksProp,
+  insertTools,
+  commandsRef,
   versions = false,
-  openWholeMessageVersions = false,
-  insertMenu,
-  logicMenu,
   emojiMenu: offersEmoji = true,
   assetBlocks,
-  onVersionsAction,
   className,
   onFocus,
   onBlur,
   ...props
 }: RichTextEditorFieldProps) {
   const intl = useAppIntl();
-  const menuDescriptionId = useId();
   const onChangeRef = useRef(onChange);
-  // Where the insert menu was opened by typing its trigger: the editor, and
-  // where the character sits. Null while it is closed or opened from the
-  // toolbar.
+  // Where the insert trigger was typed: the editor, and where the character
+  // sits. Null until it is typed, and again once the insert tools are done.
   const [triggered, setTriggered] = useState<{
     editor: Editor;
     position: number;
-    /** What was typed to open the menu, which a pick replaces. */
+    /** What was typed, which an insertion replaces. */
     typed: string;
     anchor: { left: number; top: number; height: number };
   } | null>(null);
-  // Which of the menus is open: the one of values, of logic, or of emoji.
-  const [openMenu, setOpenMenu] = useState<'values' | 'logic' | 'emoji' | null>(
-    null,
-  );
+  // Whether the emoji menu is open.
+  const [openMenu, setOpenMenu] = useState<'emoji' | null>(null);
   // The emoji, once they have been asked for: the list is loaded then.
   const [emojiList, setEmojiList] = useState<readonly EmojiSuggestion[] | null>(
     null,
@@ -1506,20 +1368,19 @@ export default function RichTextEditorField({
     },
     onKey: (event) => emojiKeys.current(event),
   }));
-  const setIsInsertMenuOpen = useCallback(
-    (open: boolean) => setOpenMenu(open ? 'values' : null),
-    [setOpenMenu],
-  );
-  // The editor closing the insert menu hands the caret back to: the one an
-  // item from it was just put into, so the next key, Undo included, acts on
-  // the text the item went into rather than on the button that opened the
-  // menu, or else the one it was opened by typing in. Null when it was
+  // The editor closing the emoji menu hands the caret back to: the one an
+  // item was just put into, so the next key, Undo included, acts on the text
+  // the item went into rather than on the button that opened the menu, or
+  // else the one the insert trigger was typed in. Null when the menu was
   // opened from the toolbar and nothing has been picked. Set afresh whenever
-  // the menu is asked to open, however it was opened — including an open
-  // that lands in the same render as a pick's close, and so never shows the
-  // menu as closed.
+  // the menu is asked to open — including an open that lands in the same
+  // render as a pick's close, and so never shows the menu as closed.
   const [caretReturnsTo, setCaretReturnsTo] = useState<Editor | null>(null);
-  const triggerCharacter = insertMenu?.trigger ?? '';
+  // Typed, the trigger asks the insert tools for a value at the caret.
+  // Read apart, so that drawing them does not read as a change to the props.
+  const renderInsertTools = insertTools?.render;
+  const insertToolsGroupLabel = insertTools?.label ?? '';
+  const triggerCharacter = insertTools === undefined ? '' : INSERT_TRIGGER;
   const onTrigger = useCallback(
     (typedIn: Editor, position: number) => {
       const coords = typedIn.view.coordsAtPos(position);
@@ -1534,9 +1395,8 @@ export default function RichTextEditorField({
         },
       });
       setCaretReturnsTo(typedIn);
-      setIsInsertMenuOpen(true);
     },
-    [setTriggered, setIsInsertMenuOpen, setCaretReturnsTo, triggerCharacter],
+    [setTriggered, setCaretReturnsTo, triggerCharacter],
   );
   const emojiSuggestions = offersEmoji ? emojiHooks : undefined;
   // The version being written, when the caret is in one: the toolbar acts on
@@ -1551,21 +1411,15 @@ export default function RichTextEditorField({
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   // Whether the researcher is working in the field: its text, a version's
-  // own editor, its toolbar, or a menu the toolbar opened. Followed through
-  // React's focus events, which reach the field from a menu drawn elsewhere
-  // in the page, and settled a task later, since focus moving between two of
-  // these blurs one before it focuses the other. Expanded versions fold back
-  // to their pill once it is false.
-  const [isActive, setIsActive] = useState(false);
-  const inactiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (inactiveTimerRef.current !== null) {
-        clearTimeout(inactiveTimerRef.current);
-      }
-    },
-    [],
-  );
+  // own editor, its toolbar, or a menu the toolbar opened. Expanded versions
+  // fold back to their pill once it is false. Leaving, the version folds but
+  // stays mounted, so the toolbar would go on acting on its hidden text the
+  // next time it is used directly: it acts on the field's line again.
+  const {
+    focusWithin: isActive,
+    onFocus: activeOnFocus,
+    onBlur: activeOnBlur,
+  } = useFocusWithin(() => setVersionEditor(null));
   const options = normalizeToolbarOptions(toolbarOptions, singleLine);
   const holdsAssetBlocks = assetBlocks !== undefined && !singleLine;
   // What a block's view is told of the field around it.
@@ -1577,31 +1431,51 @@ export default function RichTextEditorField({
     }),
     [assetBlocks, disabled, readOnly, isActive],
   );
-  // By what they say rather than by identity or order: a host passing a
-  // fresh array on every render, or the same placeholders in another order,
-  // would otherwise rebuild the editor, and a rebuilt editor starts its undo
-  // history again. Inserting a value from the menu reorders the host's list
-  // as the value is bound, so Undo found nothing to undo. The editor holds
-  // only what a pill shows; which are required is the toolbar's.
-  const tokensKey = JSON.stringify(
-    (tokensProp ?? [])
-      .map(({ id: tokenId, label, text }) => ({
-        id: tokenId,
-        label,
-        ...(text !== undefined && { text }),
-      }))
-      .toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
+  // What the consumer gives for values, fields and logic blocks, read by the
+  // editor's extensions whenever they need it. The extensions are made once
+  // for the editor's life: the consumer passing a new object must not rebuild
+  // the editor, which would start its history again. Only whether the field
+  // offers each at all changes the schema.
+  const inlineValuesRef = useRef(inlineValuesProp);
+  const fieldBlocksRef = useRef(fieldBlocksProp);
+  const logicBlocksRef = useRef(logicBlocksProp);
+  useLayoutEffect(() => {
+    inlineValuesRef.current = inlineValuesProp;
+    fieldBlocksRef.current = fieldBlocksProp;
+    logicBlocksRef.current = logicBlocksProp;
+  });
+  const [sources] = useState(() => ({
+    inlineValues: { current: () => inlineValuesRef.current },
+    fieldBlocks: { current: () => fieldBlocksRef.current },
+    logicBlocks: { current: () => logicBlocksRef.current },
+  }));
+  const offersInlineValues = inlineValuesProp !== undefined;
+  const offersFieldBlocks = fieldBlocksProp !== undefined && !singleLine;
+  // Part of the schema, so changing it makes the editor again.
+  const fieldBlockText = fieldBlocksProp?.text ?? 'editable';
+  const offersLogicBlocks = logicBlocksProp !== undefined && !singleLine;
+  // Blocks have frames, a handle and (for those with settings) a tab in a
+  // document that holds sections or files (see `BlockFrameLayer`).
+  const showsBlockFrames =
+    offersFieldBlocks || offersLogicBlocks || holdsAssetBlocks;
+  // What the pointer is over, read by the frames and by the blocks' views.
+  const [blockFrames] = useState(createBlockFrameStore);
+  // What a field or logic block's view is told of the field around it.
+  const fieldBlocksField = useMemo(
+    () => ({
+      blocks: fieldBlocksProp ?? null,
+      editable: !disabled && !readOnly,
+      active: isActive,
+    }),
+    [fieldBlocksProp, disabled, readOnly, isActive],
   );
-  const tokens = useMemo(
-    (): readonly RichTextEditorToken[] =>
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tokensKey is the JSON.stringify of the normalised tokens built just above, so it parses back to that same shape
-      JSON.parse(tokensKey) as RichTextEditorToken[],
-    [tokensKey],
-  );
-  const requiredTokens = new Set(
-    (tokensProp ?? []).flatMap((token) =>
-      token.required === true ? [token.id] : [],
-    ),
+  const logicBlocksField = useMemo(
+    () => ({
+      blocks: logicBlocksProp ?? null,
+      editable: !disabled && !readOnly,
+      active: isActive,
+    }),
+    [logicBlocksProp, disabled, readOnly, isActive],
   );
   const editorId = id ?? name ?? 'rich-text-editor';
   const editorName = name ?? editorId;
@@ -1719,44 +1593,55 @@ export default function RichTextEditorField({
   const enclosingHeadingLevel = useEnclosingHeadingLevel();
   const enclosingHeadingDepth =
     enclosingHeadingLevel === null ? 0 : Number(enclosingHeadingLevel.slice(1));
-  const interfaceDirection = useAppDirection();
-  const interfaceLanguage = useMemo(
-    () => ({ lang: intl.locale, dir: interfaceDirection }),
-    [intl.locale, interfaceDirection],
-  );
+  // New words for the placeholder are drawn by the editor there is, which is
+  // rebuilt only when the field gains or loses a placeholder: rebuilding it
+  // as the researcher types (a version that says it shows nothing until a
+  // word is written in it) took the caret out of the text after one letter.
+  const hasPlaceholder = placeholder !== undefined;
   const editorExtensions = useMemo(
     () =>
       createCustomExtensions({
         headingLevels,
         enclosingHeadingDepth,
+        enableBold: options.bold,
+        enableItalic: options.italic,
         enableBulletList: options.lists.bullet,
         enableOrderedList: options.lists.ordered,
         enableLinks: options.links,
         enableThematicBreak: options.thematicBreak,
         singleLine,
-        placeholder,
-        tokens,
+        placeholder: hasPlaceholder ? placeholderOf : undefined,
+        inlineValues: offersInlineValues ? sources.inlineValues : undefined,
+        fieldBlocks: offersFieldBlocks ? sources.fieldBlocks : undefined,
+        fieldBlockText,
+        logicBlocks: offersLogicBlocks ? sources.logicBlocks : undefined,
         assetBlocks: holdsAssetBlocks,
-        interfaceLanguage,
+        interfaceLang: intl.locale,
         versions,
-        trigger: insertMenu?.trigger,
+        trigger: triggerCharacter,
         onTrigger,
         emojiSuggestions,
       }),
     [
       holdsAssetBlocks,
-      interfaceLanguage,
+      intl.locale,
+      offersInlineValues,
+      offersFieldBlocks,
+      fieldBlockText,
+      offersLogicBlocks,
+      sources,
       headingLevels,
       enclosingHeadingDepth,
+      options.bold,
+      options.italic,
       options.lists.bullet,
       options.lists.ordered,
       options.links,
       options.thematicBreak,
       singleLine,
-      placeholder,
-      tokens,
+      hasPlaceholder,
       versions,
-      insertMenu?.trigger,
+      triggerCharacter,
       onTrigger,
       emojiSuggestions,
     ],
@@ -1777,28 +1662,35 @@ export default function RichTextEditorField({
             headingLevels: [],
             // A version holds no headings, so none needs re-levelling.
             enclosingHeadingDepth: 0,
+            // The field's toolbar acts on the version being written, with
+            // the same buttons.
+            enableBold: options.bold,
+            enableItalic: options.italic,
             enableBulletList: false,
             enableOrderedList: false,
             enableLinks: options.links,
             enableThematicBreak: false,
             singleLine: true,
-            placeholder: emptyVersionText,
+            placeholder: () => emptyVersionText,
             placeholderWhenReadOnly: true,
-            tokens,
-            interfaceLanguage,
+            inlineValues: offersInlineValues ? sources.inlineValues : undefined,
+            interfaceLang: intl.locale,
             versions,
-            trigger: insertMenu?.trigger,
+            trigger: triggerCharacter,
             onTrigger,
             emojiSuggestions,
             history: sharedHistory,
           })
         : [],
     [
-      interfaceLanguage,
+      intl.locale,
+      options.bold,
+      options.italic,
       options.links,
-      tokens,
+      offersInlineValues,
+      sources,
       versions,
-      insertMenu?.trigger,
+      triggerCharacter,
       onTrigger,
       emojiSuggestions,
       sharedHistory,
@@ -1806,31 +1698,20 @@ export default function RichTextEditorField({
     ],
   );
   const caretAnchorRef = useRef<HTMLSpanElement>(null);
-  // What each placeholder is called, for the preview a folded set of
-  // versions shows of what it holds.
-  const tokenLabel = useMemo(() => {
-    const labels = new Map(
-      (tokens ?? []).map((token) => [
-        token.id,
-        presentationalTextValue(token.label),
-      ]),
-    );
-    return (tokenId: string) => labels.get(tokenId);
-  }, [tokens]);
-  const onVersionsActionRef = useRef(onVersionsAction);
-  useLayoutEffect(() => {
-    onVersionsActionRef.current = onVersionsAction;
-  });
+  // What each value is called, for the preview a folded set of versions
+  // shows of what it holds.
+  const inlineValueText = inlineValuesProp?.text;
+  const tokenLabel = useMemo(
+    () => (valueId: string) => inlineValueText?.(valueId),
+    [inlineValueText],
+  );
   const nestedEditing = useMemo(
     () => ({
       extensions: versionExtensions,
       editable: !disabled && !readOnly,
       onFocusEditor: setVersionEditor,
       active: isActive,
-      openWholeMessage: openWholeMessageVersions,
       tokenLabel,
-      onVersionsAction: (event: RichTextVersionsActionEvent) =>
-        onVersionsActionRef.current?.(event),
     }),
     [
       versionExtensions,
@@ -1838,7 +1719,6 @@ export default function RichTextEditorField({
       readOnly,
       setVersionEditor,
       isActive,
-      openWholeMessageVersions,
       tokenLabel,
     ],
   );
@@ -1944,6 +1824,14 @@ export default function RichTextEditorField({
     },
     [autoFocus, editorExtensions],
   );
+  // Every value is drawn again when what the consumer draws them as changes.
+  const inlineValuesVersion = inlineValuesProp?.version;
+  const drawnVersionRef = useRef(inlineValuesVersion);
+  useLayoutEffect(() => {
+    if (drawnVersionRef.current === inlineValuesVersion) return;
+    drawnVersionRef.current = inlineValuesVersion;
+    redrawInlineValues(sources.inlineValues);
+  });
   useLayoutEffect(() => {
     sharedHistory.attach(editor);
   }, [sharedHistory, editor]);
@@ -1966,7 +1854,6 @@ export default function RichTextEditorField({
       isLink: e?.isActive('link') ?? false,
       isBulletList: e?.isActive('bulletList') ?? false,
       isOrderedList: e?.isActive('orderedList') ?? false,
-      placedTokens: editor === null ? '' : placedTokenIds(editor.state.doc),
     }),
   });
   // The field's editor keeps the history, of edits in its versions too.
@@ -1977,7 +1864,6 @@ export default function RichTextEditorField({
       canRedo: e?.can().redo() ?? false,
     }),
   });
-  const placedTokens = new Set(editorState.placedTokens.split('\n'));
 
   useEffect(() => {
     // A destroyed editor keeps its last document but nothing to change it
@@ -2002,9 +1888,7 @@ export default function RichTextEditorField({
     }
 
     if (value === undefined) {
-      if (!editor.isEmpty) {
-        editor.commands.clearContent(false);
-      }
+      if (!editor.isEmpty) showHostDocument(editor, null);
       return;
     }
 
@@ -2030,9 +1914,7 @@ export default function RichTextEditorField({
       : documentInSchema(value, editor.schema);
     const currentContent = JSON.stringify(editor.getJSON());
     const newContent = JSON.stringify(incoming);
-    if (currentContent !== newContent) {
-      editor.commands.setContent(incoming, { emitUpdate: false });
-    }
+    if (currentContent !== newContent) showHostDocument(editor, incoming);
   }, [editor, value, isFocused, singleLine]);
 
   // A LAYOUT effect: the editable flag lives in the DOM as `contenteditable`,
@@ -2081,6 +1963,195 @@ export default function RichTextEditorField({
   useLayoutEffect(() => {
     latestEditor.current = editor;
   });
+
+  const insertItem = (item: RichTextEmojiMenuItem) => {
+    // Where the caret is now: the editor picked in may have been replaced
+    // by one holding the same document while the menu was open.
+    const opened = triggered;
+    const picked = target;
+    if (picked === null) return;
+    const pickedRange = {
+      from: picked.state.selection.from,
+      to: picked.state.selection.to,
+    };
+    const pickedInField = picked === editor;
+    const insert = (given: JSONContent | readonly JSONContent[]) => {
+      const content = isContentList(given) ? [...given] : given;
+      if (opened !== null && !opened.editor.isDestroyed) {
+        const { editor: into, position } = opened;
+        // The trigger that was typed is replaced, if it is still there.
+        const typed =
+          opened.typed.length > 0 &&
+          into.state.doc.textBetween(
+            position,
+            Math.min(
+              position + opened.typed.length,
+              into.state.doc.content.size,
+            ),
+          ) === opened.typed;
+        const length = opened.typed.length;
+        const sizeBefore = into.state.doc.content.size;
+        into
+          .chain()
+          .focus()
+          .insertContentAt(
+            typed ? { from: position, to: position + length } : position,
+            content,
+          )
+          .run();
+        selectInsertedVersions(into, position, sizeBefore, typed ? length : 0);
+        setCaretReturnsTo(into);
+        return;
+      }
+      // The field's editor as it is now: the one picked in may have been
+      // replaced since, without yet knowing it.
+      const into =
+        pickedInField || picked.isDestroyed ? latestEditor.current : picked;
+      if (into === null || into.isDestroyed) return;
+      // The same place in the editor that took the picked one's place, when
+      // that was the field's own; otherwise wherever its caret is.
+      const size = into.state.doc.content.size;
+      const range =
+        into === picked || pickedInField
+          ? {
+              from: Math.min(pickedRange.from, size),
+              to: Math.min(pickedRange.to, size),
+            }
+          : { from: into.state.selection.from, to: into.state.selection.to };
+      into.chain().focus().insertContentAt(range, content).run();
+      selectInsertedVersions(into, range.from, size, range.to - range.from);
+      setCaretReturnsTo(into);
+    };
+    setTriggered(null);
+    setOpenMenu(null);
+    insert(item.content);
+  };
+  // Where the keyboard goes as a menu over the text closes, for the menu's
+  // `finalFocus`: to the text an item from it was just put into, or else the
+  // text the insert trigger was typed in. False once that is done, true to
+  // leave focus to the menu.
+  const handCaretBack = () => {
+    // Focus already back in this text stays where it is: a click into the
+    // line that closed the menu, or into a version of the value just
+    // inserted, put the caret there, and moving it would send what is typed
+    // next somewhere else.
+    const root = editor?.isDestroyed ? null : editor;
+    const active = root?.view.dom.ownerDocument.activeElement;
+    if (
+      root != null &&
+      active instanceof Node &&
+      root.view.dom.contains(active)
+    ) {
+      return false;
+    }
+    const into = caretReturnsTo;
+    if (into === null || into.isDestroyed) return true;
+    // Through the editor, rather than by naming its element for Base UI to
+    // focus: focused that way, the browser puts the caret at the start of the
+    // text, and ProseMirror moves it back only if it notices within 200 ms
+    // and the text was not clicked just before, so what was typed next could
+    // go in at the start. The editor puts its own caret back as it takes
+    // focus. A microtask later, as Base UI would have moved focus.
+    queueMicrotask(() => {
+      if (!into.isDestroyed) into.view.focus();
+    });
+    return false;
+  };
+
+  // The commands the consumer is given (`commandsRef`, and the insert tools'
+  // `commands`): one object for the field's life, whose commands act through
+  // what was last drawn, on the field's own editor as it is when they run
+  // (it may have been rebuilt since).
+  const drawnCommands = useRef<RichTextCommands | null>(null);
+  const currentEditor = () => {
+    const into = latestEditor.current;
+    return into === null || into.isDestroyed || !into.isEditable ? null : into;
+  };
+  useLayoutEffect(() => {
+    drawnCommands.current = {
+      insertInlineValue: (valueId) => {
+        if (!offersInlineValues || isDisabled) return;
+        insertItem({
+          id: valueId,
+          label: valueId,
+          content: { type: INLINE_VALUE_NODE, attrs: { id: valueId } },
+        });
+      },
+      insertContent: (content) => {
+        if (isDisabled) return;
+        insertItem({ id: 'content', label: '', content });
+      },
+      insertFieldBlock: (attrs) => {
+        const into = currentEditor();
+        if (into === null || !offersFieldBlocks) return null;
+        return elementAt(
+          into,
+          insertSection(into, newFieldBlock(attrs, fieldBlockText), 'text'),
+        );
+      },
+      insertLogicBlock: (meta, branches) => {
+        const into = currentEditor();
+        if (into === null || !offersLogicBlocks) return null;
+        return elementAt(into, insertLogicBlock(into, meta, branches));
+      },
+      removeInlineValues: (valueId) => {
+        const into = currentEditor();
+        if (into === null) return;
+        const ranges: { from: number; to: number }[] = [];
+        into.state.doc.descendants((node, position) => {
+          if (
+            node.type.name === INLINE_VALUE_NODE &&
+            node.attrs.id === valueId
+          ) {
+            ranges.push({ from: position, to: position + node.nodeSize });
+          }
+          return true;
+        });
+        if (ranges.length === 0) return;
+        into
+          .chain()
+          .focus()
+          .command(({ tr }) => {
+            // From the end, so each range is still where it was found.
+            for (const range of ranges.toReversed()) {
+              tr.delete(range.from, range.to);
+            }
+            return true;
+          })
+          .run();
+      },
+      focus: () => {
+        if (target === null || target.isDestroyed) return;
+        // Here and now, not through the focus command, which waits for the
+        // next frame: a menu or list that has just closed took focus with
+        // it, and keys typed before that frame reached no element at all.
+        target.view.focus();
+        if (target.view.hasFocus()) {
+          target.commands.scrollIntoView();
+          return;
+        }
+        // Behind a modal dialog that is still closing, the page is inert and
+        // the text cannot take focus yet: the focus command tries again on
+        // the next frame.
+        target.commands.focus();
+      },
+      returnFocus: handCaretBack,
+    };
+  });
+  const [commands] = useState((): RichTextCommands => ({
+    insertInlineValue: (valueId) =>
+      drawnCommands.current?.insertInlineValue(valueId),
+    insertContent: (content) => drawnCommands.current?.insertContent(content),
+    insertFieldBlock: (attrs) =>
+      drawnCommands.current?.insertFieldBlock(attrs) ?? null,
+    insertLogicBlock: (meta, branches) =>
+      drawnCommands.current?.insertLogicBlock(meta, branches) ?? null,
+    removeInlineValues: (valueId) =>
+      drawnCommands.current?.removeInlineValues(valueId),
+    focus: () => drawnCommands.current?.focus(),
+    returnFocus: () => drawnCommands.current?.returnFocus() ?? true,
+  }));
+  useImperativeHandle(commandsRef, () => commands, [commands]);
 
   if (!editor) {
     return null;
@@ -2185,9 +2256,6 @@ export default function RichTextEditorField({
 
   const showHeadings = headingLevels.length > 0;
   const showThematicBreak = options.thematicBreak;
-  const toolbarTokens = (tokensProp ?? []).filter(
-    ({ inToolbar }) => inToolbar !== false,
-  );
   // How a file is chosen, where the text can hold files as blocks.
   const pickAsset = holdsAssetBlocks ? assetBlocks?.pick : undefined;
   // A file is chosen in the consumer's picker, which takes focus and time,
@@ -2207,103 +2275,22 @@ export default function RichTextEditorField({
     });
     insertAssetBlock(into, assetId);
   };
-  const emojiMenuContents: RichTextInsertMenu = {
+  const emojiMenuContents: RichTextEmojiMenu = {
     label: intl.formatMessage(messages.emojiMenu),
     items: emojiMenuList,
   };
   const highlighted =
     typedEmoji === null ? undefined : suggestions[typedEmoji.index];
 
-  const insertItem = (item: RichTextInsertMenuItem) => {
-    if (item.disabled === true) return;
-    // Where the caret is now, for content that arrives later: by then the
-    // editor may have been replaced by one holding the same document.
-    const opened = triggered;
-    const picked = actOn;
-    const pickedRange = {
-      from: picked.state.selection.from,
-      to: picked.state.selection.to,
-    };
-    const pickedInField = picked === editor;
-    const insert = (given: JSONContent | readonly JSONContent[]) => {
-      const content = isContentList(given) ? [...given] : given;
-      if (opened !== null && !opened.editor.isDestroyed) {
-        const { editor: into, position } = opened;
-        // What the menu was opened by typing is replaced, if it is still
-        // there.
-        const typed =
-          opened.typed.length > 0 &&
-          into.state.doc.textBetween(
-            position,
-            Math.min(
-              position + opened.typed.length,
-              into.state.doc.content.size,
-            ),
-          ) === opened.typed;
-        const length = opened.typed.length;
-        const sizeBefore = into.state.doc.content.size;
-        into
-          .chain()
-          .focus()
-          .insertContentAt(
-            typed ? { from: position, to: position + length } : position,
-            content,
-          )
-          .run();
-        selectInsertedVersions(into, position, sizeBefore, typed ? length : 0);
-        setCaretReturnsTo(into);
-        return;
-      }
-      // The field's editor as it is now: the one picked in may have been
-      // replaced since, without yet knowing it.
-      const into =
-        pickedInField || picked.isDestroyed ? latestEditor.current : picked;
-      if (into === null || into.isDestroyed) return;
-      // The same place in the editor that took the picked one's place, when
-      // that was the field's own; otherwise wherever its caret is.
-      const size = into.state.doc.content.size;
-      const range =
-        into === picked || pickedInField
-          ? {
-              from: Math.min(pickedRange.from, size),
-              to: Math.min(pickedRange.to, size),
-            }
-          : { from: into.state.selection.from, to: into.state.selection.to };
-      into.chain().focus().insertContentAt(range, content).run();
-      selectInsertedVersions(into, range.from, size, range.to - range.from);
-      setCaretReturnsTo(into);
-    };
-    setTriggered(null);
-    setOpenMenu(null);
-    if (item.request === undefined) insert(item.content);
-    else item.request(insert);
-  };
-  // One of the two menus, behind its toolbar button: the values to insert
-  // (also opened by typing the trigger), or the logic.
-  const renderMenu = (
-    menu: RichTextInsertMenu,
-    kind: 'values' | 'logic' | 'emoji',
-    Icon: typeof Syringe,
-  ) => {
-    // Judged where the text goes: the version the menu was opened in by
-    // typing, or the one the toolbar acts on.
-    const place = versionPlaceOf(triggered?.editor ?? actOn);
-    const required = new Set(
-      menu.items.flatMap((item) =>
-        item.required?.(place) === true ? [item.id] : [],
-      ),
-    );
-    const missing = required.size > 0;
-    const missingText = intl.formatMessage(messages.insertMenuRequiredMissing);
-    // The button keeps its name; what is missing is its description.
-    const missingId = `${menuDescriptionId}-${kind}`;
+  // The emoji menu, behind its toolbar button.
+  const renderEmojiMenu = (menu: RichTextEmojiMenu) => {
     return (
       <Popover
-        key={kind}
-        open={openMenu === kind && !isDisabled}
+        key="emoji"
+        open={openMenu === 'emoji' && !isDisabled}
         onOpenChange={(open) => {
-          if (open && kind === 'emoji') askForEmoji();
-          setOpenMenu(open ? kind : null);
+          if (open) askForEmoji();
+          setOpenMenu(open ? 'emoji' : null);
           if (open) setCaretReturnsTo(null);
           if (!open) setTriggered(null);
         }}
@@ -2313,35 +2300,17 @@ export default function RichTextEditorField({
             <TooltipTrigger
               render={
                 <ToolbarButton
-                  className={cx(toolbarButtonStyles, missing && 'relative')}
+                  className={toolbarButtonStyles}
                   disabled={isDisabled}
                   aria-label={menu.label}
-                  aria-describedby={missing ? missingId : undefined}
-                  data-missing={missing || undefined}
                   onMouseDown={() => setTriggered(null)}
                 >
-                  <Icon aria-hidden />
-                  {missing && (
-                    <>
-                      <span
-                        aria-hidden
-                        className="bg-warning absolute inset-e-1 top-1 size-2 rounded-full"
-                      />
-                      <span id={missingId} hidden>
-                        {missingText}
-                      </span>
-                    </>
-                  )}
+                  <Smile aria-hidden />
                 </ToolbarButton>
               }
             />
           </PopoverTrigger>
-          <TooltipContent>
-            {menu.label}
-            {missing && (
-              <span className="block font-normal">{missingText}</span>
-            )}
-          </TooltipContent>
+          <TooltipContent>{menu.label}</TooltipContent>
         </Tooltip>
         <PopoverContent
           align="start"
@@ -2351,44 +2320,13 @@ export default function RichTextEditorField({
           spacing="xs"
           anchor={triggered === null ? undefined : caretAnchorRef}
           // Closed by a pick, the menu hands the caret to the text
-          // the item went into; opened by typing, back to the
-          // text it was typed in.
-          finalFocus={() => {
-            // Focus already back in this text stays where it is:
-            // a click into the line that closed the menu, or into
-            // a version of the value just inserted, put the caret
-            // there, and moving it would send what is typed next
-            // somewhere else.
-            const root = editor?.isDestroyed ? null : editor;
-            const active = root?.view.dom.ownerDocument.activeElement;
-            if (
-              root != null &&
-              active instanceof Node &&
-              root.view.dom.contains(active)
-            ) {
-              return false;
-            }
-            const into = caretReturnsTo;
-            if (into === null || into.isDestroyed) return true;
-            // Through the editor, rather than by naming its
-            // element for Base UI to focus: focused that way, the
-            // browser puts the caret at the start of the text, and
-            // ProseMirror moves it back only if it notices within
-            // 200 ms and the text was not clicked just before, so
-            // what was typed next could go in at the start. The
-            // editor puts its own caret back as it takes focus. A
-            // microtask later, as Base UI would have moved focus.
-            queueMicrotask(() => {
-              if (!into.isDestroyed) into.view.focus();
-            });
-            return false;
-          }}
+          // the item went into.
+          finalFocus={handCaretBack}
         >
-          <InsertMenuList
+          <EmojiMenuList
             menu={menu}
             onPick={insertItem}
-            required={required}
-            {...(kind === 'emoji' && { limit: EMOJI_MENU_LIMIT })}
+            limit={EMOJI_MENU_LIMIT}
           />
         </PopoverContent>
       </Popover>
@@ -2408,9 +2346,10 @@ export default function RichTextEditorField({
 
   // The toolbar's groups, in the order they are shown: what was done and can
   // be undone; what kind of block the line is; how its words are marked;
-  // lists; what can be put in at the caret; the files a text can hold; and
-  // last what is particular to this field, the values and logic its text can
-  // show. Each lists what it has to offer, and one with nothing is not drawn.
+  // lists; what any text can have put in at the caret (a link, a break, an
+  // emoji); what is particular to this field, the consumer's insert tools
+  // (values, fields, logic blocks); and last the files a text can hold. Each
+  // lists what it has to offer, and one with nothing is not drawn.
   const historyItems = showHistory
     ? [
         <ToolbarButton
@@ -2646,7 +2585,7 @@ export default function RichTextEditorField({
         <Minus />
       </ToolbarButton>
     ),
-    offersEmoji && renderMenu(emojiMenuContents, 'emoji', Smile),
+    offersEmoji && renderEmojiMenu(emojiMenuContents),
   ];
 
   // The files the text can hold as blocks.
@@ -2666,49 +2605,26 @@ export default function RichTextEditorField({
           </ToolbarButton>
         ));
 
-  const dynamicContentItems = [
-    insertMenu !== undefined && renderMenu(insertMenu, 'values', Syringe),
-    logicMenu !== undefined && renderMenu(logicMenu, 'logic', Split),
-    ...toolbarTokens.map((token) => {
-      const missing =
-        requiredTokens.has(token.id) && !placedTokens.has(token.id);
-      return (
-        <ToolbarButton
-          key={token.id}
-          className={toolbarTokenButtonStyles}
-          disabled={isDisabled}
-          data-missing={missing || undefined}
-          aria-label={
-            missing
-              ? `Insert “${presentationalTextValue(token.label)}” (required in this text)`
-              : `Insert “${presentationalTextValue(token.label)}”`
-          }
-          onClick={() =>
-            actOn
-              .chain()
-              .focus()
-              .insertContent({
-                type: TOKEN_NODE,
-                attrs: { id: token.id },
-              })
-              .run()
-          }
-        >
-          <Plus aria-hidden />
-          {/* Named as its pill is, in the interface's language: the toolbar
-              sits in the region of the text's own. */}
-          <span {...tokenPillLanguage(token.label, interfaceLanguage)}>
-            {presentationalTextValue(token.label)}
-          </span>
-          {missing && (
-            <span
-              aria-hidden
-              className="bg-warning size-2 shrink-0 rounded-full"
-            />
-          )}
-        </ToolbarButton>
-      );
-    }),
+  // What the consumer's insert tools are drawn with.
+  const insertState: RichTextInsertState = {
+    commands,
+    canInsertSections:
+      !isDisabled && (offersFieldBlocks || offersLogicBlocks) && blocksEditable,
+    editable: !isDisabled,
+    trigger:
+      triggered === null
+        ? null
+        : { anchor: caretAnchorRef, dismiss: () => setTriggered(null) },
+    versionPlace: versionPlaceOf(triggered?.editor ?? actOn),
+  };
+
+  // The consumer's tools for putting things in the text.
+  const insertToolItems = [
+    renderInsertTools !== undefined && (
+      <ReactFragment key="insertTools">
+        {renderInsertTools(insertState)}
+      </ReactFragment>
+    ),
   ];
 
   const toolbarGroups: readonly ToolbarGroup[] = [
@@ -2767,41 +2683,36 @@ export default function RichTextEditorField({
         />
       ),
     },
-    { key: 'insert', label: 'Insert', items: insertItems },
-    { key: 'media', label: 'Insert a file', items: mediaItems },
     {
-      key: 'dynamicContent',
-      label: 'Insert a placeholder',
-      items: dynamicContentItems,
+      key: 'insert',
+      label: 'Insert a link, break or emoji',
+      items: insertItems,
     },
+    {
+      key: 'insertTools',
+      label: insertToolsGroupLabel,
+      items: insertToolItems,
+      // The consumer's tools are one entry, however many controls they draw.
+      named: true,
+    },
+    { key: 'media', label: 'Insert a file', items: mediaItems },
   ];
 
   return (
     <div
       className={editorContainerVariants({
         state: inputState,
-        className,
+        // The frames are placed over the editor, from its corner.
+        className: cx(showsBlockFrames && 'relative', className),
       })}
+      data-block-frames-host={showsBlockFrames || undefined}
       onFocus={(event) => {
-        if (inactiveTimerRef.current !== null) {
-          clearTimeout(inactiveTimerRef.current);
-          inactiveTimerRef.current = null;
-        }
-        setIsActive(true);
+        activeOnFocus();
         setIsFocused(true);
         onFocus?.(event);
       }}
       onBlur={(event) => {
-        if (inactiveTimerRef.current !== null) {
-          clearTimeout(inactiveTimerRef.current);
-        }
-        inactiveTimerRef.current = setTimeout(() => {
-          inactiveTimerRef.current = null;
-          setIsActive(false);
-          // The version folds but stays mounted, so the toolbar would go on
-          // acting on its hidden text the next time it is used directly.
-          setVersionEditor(null);
-        }, 0);
+        activeOnBlur(event);
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
           return;
         }
@@ -2819,15 +2730,33 @@ export default function RichTextEditorField({
       }}
     >
       <NestedEditingContext.Provider value={nestedEditing}>
-        <AssetBlockFieldContext.Provider value={assetBlockField}>
-          <EditorContent
-            editor={editor}
-            className={editorContentVariants({ singleLine })}
-          />
-        </AssetBlockFieldContext.Provider>
+        <BlockFramesContext.Provider
+          value={showsBlockFrames ? blockFrames : null}
+        >
+          <AssetBlockFieldContext.Provider value={assetBlockField}>
+            <FieldBlocksContext.Provider value={fieldBlocksField}>
+              <LogicBlocksContext.Provider value={logicBlocksField}>
+                <EditorContent
+                  editor={editor}
+                  className={editorContentVariants({
+                    singleLine,
+                    blockFrames: showsBlockFrames,
+                  })}
+                />
+              </LogicBlocksContext.Provider>
+            </FieldBlocksContext.Provider>
+          </AssetBlockFieldContext.Provider>
+        </BlockFramesContext.Provider>
       </NestedEditingContext.Provider>
+      {showsBlockFrames && editor !== null && !isDisabled && (
+        <BlockFrameLayer
+          editor={editor}
+          store={blockFrames}
+          active={isActive}
+        />
+      )}
       {triggered !== null && (
-        // Where the trigger was typed, for the insert menu to open beside.
+        // Where the trigger was typed, for the insert tools to open beside.
         <span
           ref={caretAnchorRef}
           aria-hidden

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  HIDDEN_FIELD_BLOCK,
+  withFieldIdsHidden,
+} from '../../../__tests__/fieldBlocks.ts';
+import {
   testId,
   withOriginalCodebookKeys,
 } from '../../../__tests__/testIds.ts';
@@ -285,6 +289,7 @@ const introductionOf = (document: Fields): Fields => {
 
 // The migration replaces every id that is not a UUID, so a readable schema 8
 // id does not survive it.
+// A field block names its field by id, so its address is left out as well.
 const withoutIds = (value: unknown): unknown =>
   Array.isArray(value)
     ? value.map(withoutIds)
@@ -294,7 +299,15 @@ const withoutIds = (value: unknown): unknown =>
             .filter(([key]) => key !== 'id')
             .map(([key, child]) => [key, withoutIds(child)]),
         )
-      : value;
+      : typeof value === 'string'
+        ? withFieldIdsHidden(value)
+        : value;
+
+// The document of a form that places `count` fields and nothing else, as the
+// migration writes a form's fields (see `withoutIds`).
+const fieldsDocument = (count: number) => ({
+  en: Array.from({ length: count }, () => HIDDEN_FIELD_BLOCK).join('\n\n'),
+});
 
 /**
  * Options as the migration writes them: localized, each with the id the
@@ -338,6 +351,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         relativesNotRecordedAttribute: 'relativesNotRecorded',
       },
       form: {
+        content: fieldsDocument(2),
         fields: [
           {
             variable: 'age',
@@ -844,6 +858,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       ];
       const migrated = migrateValid(schema8Protocol([pedigree]));
       expect(withoutIds(pedigreeOf(migrated).form)).toEqual({
+        content: fieldsDocument(1),
         fields: [{ variable: 'living', prompt: en('Living?') }],
       });
     });
@@ -898,6 +913,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         withControls(schema8Protocol(pedigreeCollecting(['name']))),
       );
       expect(withoutIds(pedigreeOf(migrated).form)).toEqual({
+        content: fieldsDocument(1),
         fields: [AGE_FIELD],
       });
     });
@@ -927,6 +943,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         withControls(schema8Protocol(pedigreeCollecting(['biologicalSex']))),
       );
       expect(withoutIds(pedigreeOf(migrated).form)).toEqual({
+        content: fieldsDocument(1),
         fields: [AGE_FIELD],
       });
     });
@@ -948,6 +965,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         schema8Protocol(pedigreeCollecting(['hasCondition'])),
       );
       expect(withoutIds(pedigreeOf(migrateStep(document)).form)).toEqual({
+        content: fieldsDocument(2),
         fields: [
           AGE_FIELD,
           {

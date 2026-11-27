@@ -2,19 +2,24 @@ import { describe, expect, it } from 'vitest';
 
 import { suppliedStageText } from '@codaco/interview/supplied-wording';
 import {
-  anonymisationStage,
+  dynamicValueNameFor,
+  fieldBlockMarkdown,
   messageStructure,
+  optionCaseKey,
   printMessageStructure,
+  readContentDocument,
 } from '@codaco/protocol-validation';
 
+import type { RichTextContent } from '../../markdown/markdownAdapter';
 import {
   countTokenId,
+  documentToMessage,
   documentToMessageNodes,
-  type IfBlockLabels,
-  ifBlockAttributes,
-  ifBlockRowsIn,
+  fieldBlockNodeOf,
+  type FieldText,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
+  MessageDocumentProblem,
   messageToDocument,
 } from '../messageDocument';
 
@@ -24,7 +29,11 @@ const labels: MessageDocumentLabels = {
   versionLabel: (node, key) => `${node.argument} ${key}`,
 };
 
-const MARKDOWN: MessageDocumentFormat = { markdown: true, singleLine: false };
+const DOCUMENT: MessageDocumentFormat = {
+  markdown: true,
+  singleLine: false,
+  assetBlocks: true,
+};
 const MARKDOWN_LINE: MessageDocumentFormat = {
   markdown: true,
   singleLine: true,
@@ -33,35 +42,74 @@ const PLAIN: MessageDocumentFormat = { markdown: false, singleLine: true };
 
 const ast = (message: string) => messageStructure(message);
 
-const roundTrip = (message: string, format: MessageDocumentFormat) => {
-  const structure = messageStructure(message);
-  if (!('nodes' in structure)) throw new Error('unreadable');
-  const document = messageToDocument(structure.nodes, format, labels);
-  return printMessageStructure(documentToMessageNodes(document, format));
+/** The message, through the editor and back, as researcher text. */
+const roundTrip = (
+  message: string,
+  format: MessageDocumentFormat,
+  fieldText?: (fieldId: string) => FieldText | undefined,
+) =>
+  documentToMessage(
+    messageToDocument(message, format, {
+      ...(fieldText !== undefined && { fieldText }),
+    }),
+    format,
+  );
+
+/** The message, through the editor and back, as supplied wording. */
+const suppliedRoundTrip = (message: string, format: MessageDocumentFormat) =>
+  printMessageStructure(
+    documentToMessageNodes(
+      messageToDocument(message, format, { versions: labels }),
+      format,
+    ),
+  );
+
+const problemOf = (message: string, format: MessageDocumentFormat) => {
+  try {
+    messageToDocument(message, format);
+  } catch (error) {
+    if (error instanceof MessageDocumentProblem) return error.kind;
+    throw error;
+  }
+  return undefined;
 };
 
-describe('messageToDocument', () => {
-  it('reads text starting a version as part of the line', () => {
-    const structure = messageStructure(
-      'A {kind, select, a {# one} other {- two}}',
-    );
-    if (!('nodes' in structure)) throw new Error('unreadable');
-    const document = messageToDocument(structure.nodes, MARKDOWN_LINE, labels);
-    const versions = document.content?.[0]?.content?.[1]?.attrs?.versions as {
-      content: unknown;
-    }[];
-    expect(versions.map((version) => version.content)).toEqual([
-      [{ type: 'text', text: '# one' }],
-      [{ type: 'text', text: '- two' }],
-    ]);
-  });
+const COND_A = '11111111-1111-4111-8111-111111111111';
+const COND_B = '22222222-2222-4222-8222-222222222222';
+/** The names that text uses for the conditions `COND_A` and `COND_B`. */
+const CONDITION_A = dynamicValueNameFor({
+  kind: 'condition',
+  conditionId: COND_A,
+});
+const CONDITION_B = dynamicValueNameFor({
+  kind: 'condition',
+  conditionId: COND_B,
+});
+const DYNAMIC_A = dynamicValueNameFor({ kind: 'dynamicAttribute', id: COND_A });
+const GENDER = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: '33333333-3333-4333-8333-333333333333',
+});
+const AGE = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: '44444444-4444-4444-8444-444444444444',
+});
+const IS_PARTICIPANT = dynamicValueNameFor({
+  kind: 'participant',
+  role: 'node',
+});
+const WOMAN = optionCaseKey('55555555-5555-4555-8555-555555555555');
+const MAN = optionCaseKey('66666666-6666-4666-8666-666666666666');
+const FIELD_1 = '77777777-7777-4777-8777-777777777777';
+const FIELD_2 = '88888888-8888-4888-8888-888888888888';
 
-  it('shows values as placeholders and switches as versions', () => {
-    const structure = messageStructure(
-      'Tell us about **{name, select, missing {this person} other {{name}}}**.',
-    );
-    if (!('nodes' in structure)) throw new Error('unreadable');
-    expect(messageToDocument(structure.nodes, MARKDOWN_LINE, labels)).toEqual({
+describe('researcher text of one line', () => {
+  it('shows each value as an inline value', () => {
+    expect(
+      messageToDocument('Tell us about **{name}**.', MARKDOWN_LINE),
+    ).toEqual({
       type: 'doc',
       content: [
         {
@@ -69,27 +117,9 @@ describe('messageToDocument', () => {
           content: [
             { type: 'text', text: 'Tell us about ' },
             {
-              type: 'versions',
+              type: 'inlineValue',
+              attrs: { id: 'name' },
               marks: [{ type: 'bold' }],
-              attrs: {
-                label: 'By name',
-                summary: 'name',
-                meta: { argument: 'name', type: 'select' },
-                // The version that shows the value comes first, the one for
-                // when it is missing last.
-                versions: [
-                  {
-                    key: 'other',
-                    label: 'name other',
-                    content: [{ type: 'token', attrs: { id: 'name' } }],
-                  },
-                  {
-                    key: 'missing',
-                    label: 'name missing',
-                    content: [{ type: 'text', text: 'this person' }],
-                  },
-                ],
-              },
             },
             { type: 'text', text: '.' },
           ],
@@ -98,134 +128,236 @@ describe('messageToDocument', () => {
     });
   });
 
-  it('shows the version for a missing value last, after each answer’s, and records it first', () => {
-    const message =
-      'Hi{kind, select, missing {} a {, A} b {, B} other {, someone}}!';
-    const structure = messageStructure(message);
-    if (!('nodes' in structure)) throw new Error('unreadable');
-    const document = messageToDocument(structure.nodes, PLAIN, labels);
-    const versions = document.content?.[0]?.content?.[1]?.attrs?.versions as {
-      key: string;
-    }[];
-    expect(versions.map(({ key }) => key)).toEqual([
-      'a',
-      'b',
-      'other',
-      'missing',
-    ]);
-    // Written back as the message had it, so opening a text never reorders
-    // what it says.
-    expect(roundTrip(message, PLAIN)).toBe(message);
-  });
-
-  // What validation says of `message` as formatted stage text, read through
-  // a stage's own schema.
-  const refusalsOf = (message: string): string[] => {
-    const result = anonymisationStage.shape.explanationText.safeParse({
-      en: message,
-    });
-    return result.success
-      ? []
-      : result.error.issues.map((issue) => issue.message);
-  };
-
-  it.each([
-    '{kind, select, a {First paragraph\n\nSecond paragraph} other {none}}',
-    '{kind, select, a {Some\n- one\n- two} other {none}}',
-    'Intro\n\n{n, plural, one {## One} other {Many\n\n## Heading}}',
-  ])(
-    'refuses a version of markdown that runs over more than one line: %s',
-    (message) => {
-      const structure = messageStructure(message);
-      if (!('nodes' in structure)) throw new Error('unreadable');
-      expect(() =>
-        messageToDocument(structure.nodes, MARKDOWN, labels),
-      ).toThrow(expect.objectContaining({ kind: 'linesInVersion' }));
-      expect(refusalsOf(message)).toEqual([
-        expect.stringMatching(/cannot contain a line break/),
-      ]);
-    },
-  );
-
-  it.each([
-    '[Your page](https://example.com/{name})',
-    '[Your page](https://example.com "For {name}")',
-    '{kind, select, a {[you](https://example.com/{name})} other {none}}',
-    '[Your page](https://example.com/{kind, select, a {one} other {two}})',
-    // A version is read without the spaces at its ends, so an indent does
-    // not hide the link.
-    '{kind, select, a {    [you](https://example.com/{name})} other {none}}',
-    '{kind, select, a {\t[you](https://example.com/{name})} other {none}}',
-  ])(
-    'refuses a value inside a link address, as validation does: %s',
-    (message) => {
-      const structure = messageStructure(message);
-      if (!('nodes' in structure)) throw new Error('unreadable');
-      expect(() =>
-        messageToDocument(structure.nodes, MARKDOWN, labels),
-      ).toThrow(expect.objectContaining({ kind: 'valueInLinkAddress' }));
-      expect(refusalsOf(message)).toEqual([
-        expect.stringMatching(/link address cannot contain a value/),
-      ]);
-    },
-  );
-
-  it.each([
-    '[Page for {name}](https://example.com) and {name}',
-    'Hello\n\n{kind, select, a {**one**} other {[two](https://example.com)}}',
-    // Raw HTML is shown as the characters typed, so what looks like a link
-    // inside it is words.
-    '<span title="[you](https://example.com/{name})">',
-    '<div>\n[you](https://example.com/{name})\n</div>',
-  ])('holds a text validation accepts: %s', (message) => {
-    const structure = messageStructure(message);
-    if (!('nodes' in structure)) throw new Error('unreadable');
-    expect(refusalsOf(message)).toEqual([]);
-    expect(() =>
-      messageToDocument(structure.nodes, MARKDOWN, labels),
-    ).not.toThrow();
-  });
-
-  it('still reads a markdown document whose versions are one line each', () => {
-    const message =
-      '# Title\n\n{kind, select, a {**one**} other {two}}\n\n- item';
-    expect(ast(roundTrip(message, MARKDOWN))).toEqual(ast(message));
-  });
-});
-
-describe('a message through the editor and back', () => {
   it.each([
     'Plain words',
     'Hello {name}, welcome back.',
-    // Written as the editor writes markdown, so the text compares equal.
     '**Hello {name}**, and _you_.',
     "Braces '{like this}' and it's {name}'s",
-    'Tell us about {name, select, missing {this person} other {{name}}}.',
-    '{name, select, missing {Welcome} other {Welcome, **{name}**}}',
-    'We{n, plural, one { have # friend} other { have # friends}} here',
-    '{n, plural, offset:1 =0 {nobody} one {just you} other {you and # others}}',
-    '{kind, select, a {{n, plural, one {# {name}} other {# people}}} other {none}}',
     'A [link](https://example.com) beside {name}',
-    // Text starting a version is mid-line, not a heading or a list.
-    '{kind, select, a {\\# 1. **first**} other {\\- none}}',
+    `Ask about {${DYNAMIC_A}} work`,
   ])('keeps the markdown message %s', (message) => {
-    expect(ast(roundTrip(message, MARKDOWN_LINE))).toEqual(ast(message));
+    expect(ast(roundTrip(message, MARKDOWN_LINE).message ?? '')).toEqual(
+      ast(message),
+    );
   });
 
-  it('keeps a markdown document with blocks', () => {
-    const message =
-      '# Hello {name}\n\n- one {n, plural, one {#} other {# more}}\n- two';
-    expect(ast(roundTrip(message, MARKDOWN))).toEqual(ast(message));
+  it('keeps plain text', () => {
+    const message = "A *plain* title for {name} with braces '{'";
+    expect(ast(roundTrip(message, PLAIN).message ?? '')).toEqual(ast(message));
   });
 
+  it('refuses a choice of versions inside the line', () => {
+    expect(
+      problemOf(
+        'Tell us about {name, select, missing {this person} other {{name}}}.',
+        MARKDOWN_LINE,
+      ),
+    ).toBe('inlineChoice');
+  });
+
+  it('writes an empty line as no message', () => {
+    expect(
+      documentToMessage(
+        { type: 'doc', content: [{ type: 'paragraph' }] },
+        MARKDOWN_LINE,
+      ).message,
+    ).toBeUndefined();
+  });
+});
+
+describe('researcher text of several lines', () => {
   it.each([
-    'A *plain* title for {name}',
-    "Plain {name, select, missing {nobody} other {{name}'s}} braces '{'",
-    // Markdown would write a `#` before a space as `\#`, which reads the
-    // same; plain text keeps it, so the ICU quoting is what is compared.
-    "{n, plural, one {'#' means # ''} other {'{'#'}'}}",
-  ])('keeps the plain message %s', (message) => {
-    expect(ast(roundTrip(message, PLAIN))).toEqual(ast(message));
+    ['blocks with values', '# Hello {name}\n\n- one\n- two {name}'],
+    [
+      'a conditions logic block',
+      `Before\n\n{${CONDITION_A}, select, true {Shown when met} other {Otherwise this}}\n\nAfter`,
+    ],
+    [
+      'an "If not" logic block',
+      `{${CONDITION_A}, select, false {Not met} other {Met}}`,
+    ],
+    [
+      'else-if rows',
+      `{${CONDITION_A}, select, true {First} other {{${CONDITION_B}, select, false {Second} other {Third}}}}`,
+    ],
+    [
+      'an answers logic block',
+      `{${GENDER}, select, missing {Unknown} ${WOMAN} {# Her\n\nwords} ${MAN} {His} other {Theirs}}`,
+    ],
+    [
+      'a number logic block',
+      `{${AGE}, select, missing {No age} other {{${AGE}, plural, one {One year} other {{${AGE}} years}}}}`,
+    ],
+    [
+      'a participant logic block',
+      `{${IS_PARTICIPANT}, select, true {You} other {Them}}`,
+    ],
+    [
+      'a logic block nested in a branch',
+      `{${CONDITION_A}, select, true {Outer\n\n{${IS_PARTICIPANT}, select, true {You} other {Them}}} other {}}`,
+    ],
+    ['empty branches', `{${CONDITION_A}, select, true {} other {}}\n\nAfter`],
+    [
+      'an asset block in a branch',
+      `{${CONDITION_A}, select, true {![A map](asset:a1)} other {Words}}`,
+    ],
+  ])('keeps %s', (_name, message) => {
+    expect(roundTrip(message, DOCUMENT).message).toBe(message);
+  });
+
+  it('reads a logic block as a block with a branch for each version', () => {
+    const document = messageToDocument(
+      `{${CONDITION_A}, select, true {Met} other {{${CONDITION_B}, select, false {Not B} other {}}}}`,
+      DOCUMENT,
+    );
+    expect(document.content).toEqual([
+      {
+        type: 'logicBlock',
+        attrs: { meta: { kind: 'conditions' } },
+        content: [
+          {
+            type: 'logicBranch',
+            attrs: {
+              key: `row:${COND_A}`,
+              meta: { conditionId: COND_A, when: 'met' },
+            },
+            content: [
+              { type: 'paragraph', content: [{ type: 'text', text: 'Met' }] },
+            ],
+          },
+          {
+            type: 'logicBranch',
+            attrs: {
+              key: `row:${COND_B}`,
+              meta: { conditionId: COND_B, when: 'notMet' },
+            },
+            content: [
+              {
+                type: 'paragraph',
+                content: [{ type: 'text', text: 'Not B' }],
+              },
+            ],
+          },
+          {
+            type: 'logicBranch',
+            attrs: { key: 'otherwise', meta: null },
+            content: [{ type: 'paragraph' }],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('keeps a literal # in a number branch, as text', () => {
+    const message = `{${AGE}, select, missing {} other {{${AGE}, plural, one {'#' Heading} other {Many}}}}`;
+    const { message: written } = roundTrip(message, DOCUMENT);
+    expect(written).toBe(message);
+    const reading = readContentDocument(written ?? '');
+    expect(reading.problems).toEqual([]);
+  });
+
+  it('shows the count of a number branch as the value it is on', () => {
+    const document = messageToDocument(
+      `{${AGE}, select, missing {} other {{${AGE}, plural, other {# years}}}}`,
+      DOCUMENT,
+    );
+    const branch = document.content?.[0]?.content?.[1];
+    expect(branch?.content?.[0]?.content?.[0]).toEqual({
+      type: 'inlineValue',
+      attrs: { id: AGE },
+    });
+    expect(roundTrip(messageStructureText(document), DOCUMENT).message).toBe(
+      `{${AGE}, select, missing {} other {{${AGE}, plural, other {{${AGE}} years}}}}`,
+    );
+  });
+
+  it('refuses a choice inside a sentence', () => {
+    expect(
+      problemOf(`Hello {${CONDITION_A}, select, true {a} other {b}}`, DOCUMENT),
+    ).toBe('inlineChoice');
+  });
+
+  it('refuses a whole-block choice of no logic shape', () => {
+    expect(problemOf('{kind, select, a {A} other {B}}', DOCUMENT)).toBe(
+      'unreadableDocument',
+    );
+  });
+
+  it('writes a document of nothing as no message', () => {
+    expect(
+      documentToMessage(
+        { type: 'doc', content: [{ type: 'paragraph' }] },
+        DOCUMENT,
+      ).message,
+    ).toBeUndefined();
+  });
+});
+
+describe('a form document', () => {
+  const fields: Record<string, FieldText> = {
+    [FIELD_1]: {
+      variable: 'v1',
+      showValidationHints: true,
+      prompt: 'How old is **{node_label}**?',
+      hint: 'In years',
+    },
+    [FIELD_2]: { variable: 'v2', showValidationHints: false },
+  };
+  const fieldText = (fieldId: string) => fields[fieldId];
+  const message = [
+    '# About you',
+    fieldBlockMarkdown(FIELD_1),
+    `{${CONDITION_A}, select, true {${fieldBlockMarkdown(FIELD_2)}} other {}}`,
+  ].join('\n\n');
+
+  it('shows each field as a block with its question and hint', () => {
+    const document = messageToDocument(message, DOCUMENT, { fieldText });
+    expect(document.content?.[1]).toEqual({
+      type: 'fieldBlock',
+      attrs: { fieldId: FIELD_1, variable: 'v1', showValidationHints: true },
+      content: [
+        {
+          type: 'fieldLabel',
+          content: [
+            { type: 'text', text: 'How old is ' },
+            {
+              type: 'inlineValue',
+              attrs: { id: 'node_label' },
+              marks: [{ type: 'bold' }],
+            },
+            { type: 'text', text: '?' },
+          ],
+        },
+        { type: 'fieldHint', content: [{ type: 'text', text: 'In years' }] },
+      ],
+    });
+  });
+
+  it('gives the block of one field, as the document shows it', () => {
+    const field = fieldText(FIELD_1);
+    expect(field).toBeDefined();
+    expect(field && fieldBlockNodeOf(FIELD_1, field)).toEqual(
+      messageToDocument(message, DOCUMENT, { fieldText }).content?.[1],
+    );
+  });
+
+  it('writes the document back, with the text of each field beside it', () => {
+    const written = roundTrip(message, DOCUMENT, fieldText);
+    expect(written.message).toBe(message);
+    expect(Object.fromEntries(written.fieldTexts)).toEqual(fields);
+  });
+
+  it('shows a field that the form does not list as an indeterminate block', () => {
+    const document = messageToDocument(
+      fieldBlockMarkdown(FIELD_2),
+      DOCUMENT,
+      {},
+    );
+    expect(document.content?.[0]?.attrs).toEqual({
+      fieldId: FIELD_2,
+      variable: '',
+      showValidationHints: false,
+    });
   });
 });
 
@@ -242,7 +374,7 @@ describe('the wording Network Canvas supplies, through the editor and back', () 
     'zh-Hans',
     'zh-Hant',
   ];
-  // The stages whose supplied wording holds placeholders and versions,
+  // The stages whose supplied wording contains placeholders and versions,
   // which the stage editor edits one line at a time.
   const texts = [
     'FamilyPedigree',
@@ -264,38 +396,51 @@ describe('the wording Network Canvas supplies, through the editor and back', () 
     ),
   );
 
-  it('finds the texts with versions', () => {
+  it('finds the translatable strings with versions', () => {
     expect(texts.length).toBeGreaterThan(400);
   });
 
   it('keeps every one as it is written', () => {
     const changed = texts
       .filter(({ message }) => {
-        const kept = ast(roundTrip(message, PLAIN));
+        const kept = ast(suppliedRoundTrip(message, PLAIN));
         return JSON.stringify(kept) !== JSON.stringify(ast(message));
       })
       .map(({ name }) => name);
     expect(changed).toEqual([]);
   });
+
+  it('shows the version for a missing value last, and records it first', () => {
+    const message =
+      'Hi{kind, select, missing {} a {, A} b {, B} other {, someone}}!';
+    const document = messageToDocument(message, PLAIN, { versions: labels });
+    const versions = document.content?.[0]?.content?.[1]?.attrs?.versions as {
+      key: string;
+    }[];
+    expect(versions.map(({ key }) => key)).toEqual([
+      'a',
+      'b',
+      'other',
+      'missing',
+    ]);
+    expect(suppliedRoundTrip(message, PLAIN)).toBe(message);
+  });
 });
 
-describe('a count pill outside its plural', () => {
-  // ICU reads `#` as the number only directly inside a plural's version: at
-  // the top level, or inside a select (even one within that plural), it is
-  // literal text. A count pill pasted there keeps its value instead.
+describe('a count pill of supplied wording outside its plural', () => {
   const countPill = (argument: string) => ({
-    type: 'token',
+    type: 'inlineValue',
     attrs: { id: countTokenId(argument) },
   });
-  const line = (...content: Record<string, unknown>[]) => ({
+  const line = (...content: RichTextContent[]): RichTextContent => ({
     type: 'doc',
     content: [{ type: 'paragraph', content }],
   });
   const versionsOf = (
     argument: string,
     type: 'select' | 'plural',
-    versions: Record<string, readonly Record<string, unknown>[]>,
-  ) => ({
+    versions: Record<string, readonly RichTextContent[]>,
+  ): RichTextContent => ({
     type: 'versions',
     attrs: {
       label: argument,
@@ -315,22 +460,14 @@ describe('a count pill outside its plural', () => {
     ).toBe('You have {n}');
   });
 
-  it('prints a pill in a select within the plural as the value', () => {
+  it('prints a pill directly in its own plural as #', () => {
     const document = line(
       versionsOf('n', 'plural', {
-        other: [
-          versionsOf('kind', 'select', {
-            a: [countPill('n')],
-            other: [{ type: 'text', text: 'none' }],
-          }),
-        ],
+        other: [countPill('n'), { type: 'text', text: ' friends' }],
       }),
     );
-    const printed = printMessageStructure(
-      documentToMessageNodes(document, PLAIN),
-    );
-    expect(ast(printed)).toEqual(
-      ast('{n, plural, other {{kind, select, a {{n}} other {none}}}}'),
+    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
+      '{n, plural, other {# friends}}',
     );
   });
 
@@ -342,175 +479,9 @@ describe('a count pill outside its plural', () => {
       ast(printMessageStructure(documentToMessageNodes(document, PLAIN))),
     ).toEqual(ast('{m, plural, other {{n}}}'));
   });
-
-  it('prints a pill directly in its own plural as #', () => {
-    const document = line(
-      versionsOf('n', 'plural', {
-        other: [countPill('n'), { type: 'text', text: ' friends' }],
-      }),
-    );
-    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
-      '{n, plural, other {# friends}}',
-    );
-  });
 });
 
-describe('an "If" on a condition', () => {
-  const block: IfBlockLabels = {
-    is: (node) =>
-      node.type === 'select' &&
-      node.argument.startsWith('if') &&
-      node.versions.length === 2,
-    label: (rows) => `If ${rows[0]?.argument}`,
-    summary: (rows) => `If ${rows[0]?.argument}`,
-    rowLabel: (row, index) =>
-      `${index === 0 ? 'If' : 'Else if'} ${row.argument} ${row.key}`,
-    otherwiseLabel: 'Otherwise',
-    rowAction: 'Edit rules',
-    rowRemovable: 'Remove',
-    actions: [{ id: 'addElseIf', label: 'Add else if' }],
-  };
-  const withIf: MessageDocumentLabels = { ...labels, ifBlock: block };
-  const versionsOf = (message: string) => {
-    const structure = messageStructure(message);
-    if (!('nodes' in structure)) throw new Error('unreadable');
-    const document = messageToDocument(structure.nodes, PLAIN, withIf);
-    const element = document.content?.[0]?.content?.find(
-      (node) => node.type === 'versions',
-    );
-    const attrs = element?.attrs;
-    const listed: unknown = attrs?.versions;
-    const versions = (Array.isArray(listed) ? listed : []).filter(isVersion);
-    return { document, attrs, versions };
-  };
-  const isVersion = (
-    value: unknown,
-  ): value is {
-    key: string;
-    label: string;
-    content: Record<string, unknown>[];
-    removable?: string;
-  } =>
-    typeof value === 'object' &&
-    value !== null &&
-    'key' in value &&
-    typeof value.key === 'string' &&
-    'label' in value &&
-    typeof value.label === 'string' &&
-    'content' in value &&
-    Array.isArray(value.content);
-  const CHAIN =
-    'A {if1, select, yes {one} other {{if2, select, no {two} other {three}}}} B';
-
-  it('lists each "else if" the text nests as a row of the one "If"', () => {
-    const { attrs, versions } = versionsOf(CHAIN);
-    expect(
-      versions.map((version) => `${version.key}=${version.label}`),
-    ).toEqual([
-      'if:if1:yes=If if1 yes',
-      'if:if2:no=Else if if2 no',
-      'other=Otherwise',
-    ]);
-    expect(attrs?.variant).toBe('logic');
-    expect(attrs?.actions).toEqual([{ id: 'addElseIf', label: 'Add else if' }]);
-  });
-
-  it('writes the rows back as the nesting they were read from', () => {
-    const { document } = versionsOf(CHAIN);
-    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
-      CHAIN,
-    );
-  });
-
-  it('keeps an "If" inside a version as an "If" of its own, not a row', () => {
-    const nested =
-      '{if1, select, yes {x {if2, select, yes {y} other {z}}} other {w}}';
-    const { document, versions } = versionsOf(nested);
-    expect(versions).toHaveLength(2);
-    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
-      nested,
-    );
-  });
-
-  it('offers to remove a row only while another row would be left', () => {
-    const one = versionsOf('{if1, select, yes {a} other {b}}').versions;
-    expect(one[0]).not.toHaveProperty('removable');
-    expect(versionsOf(CHAIN).versions[0]).toHaveProperty('removable', 'Remove');
-  });
-
-  it('rewrites the element when a row is removed, renaming the rows left', () => {
-    const { versions } = versionsOf(CHAIN);
-    const { rows, otherwise } = ifBlockRowsIn({ versions });
-    const rewritten = ifBlockAttributes(rows.slice(1), otherwise, block);
-    expect(rewritten.versions.map((version) => version.label)).toEqual([
-      'If if2 no',
-      'Otherwise',
-    ]);
-    expect(
-      printMessageStructure(
-        documentToMessageNodes(
-          {
-            type: 'doc',
-            content: [
-              {
-                type: 'paragraph',
-                content: [{ type: 'versions', attrs: rewritten }],
-              },
-            ],
-          },
-          PLAIN,
-        ),
-      ),
-    ).toBe('{if2, select, no {two} other {three}}');
-  });
-
-  // An "If" is a select, and ICU reads `#` as a plural's number only
-  // directly inside that plural's version: a count pill pasted into a row
-  // of an "If" within the plural keeps its value.
-  it('prints a count pill in a row of an "If" within its plural as the value', () => {
-    const inIf = ifBlockAttributes(
-      [
-        {
-          argument: 'if1',
-          key: 'yes',
-          content: [{ type: 'token', attrs: { id: countTokenId('n') } }],
-        },
-      ],
-      [{ type: 'text', text: 'none' }],
-      block,
-    );
-    const document = {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [
-            {
-              type: 'versions',
-              attrs: {
-                label: 'n',
-                meta: { argument: 'n', type: 'plural' },
-                versions: [
-                  {
-                    key: 'other',
-                    label: 'other',
-                    content: [{ type: 'versions', attrs: inIf }],
-                  },
-                ],
-              },
-            },
-          ],
-        },
-      ],
-    };
-    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
-      '{n, plural, other {{if1, select, yes {{n}} other {none}}}}',
-    );
-  });
-
-  it('leaves a switch that is not an "If" as the versions it has', () => {
-    const { attrs, versions } = versionsOf('{kind, select, a {x} other {y}}');
-    expect(versions.map((version) => version.key)).toEqual(['a', 'other']);
-    expect(attrs?.variant).toBeUndefined();
-  });
-});
+/** The message a document writes, for a second trip through the editor. */
+function messageStructureText(document: RichTextContent): string {
+  return documentToMessage(document, DOCUMENT).message ?? '';
+}

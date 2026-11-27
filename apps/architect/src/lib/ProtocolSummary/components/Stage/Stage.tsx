@@ -15,6 +15,7 @@ import {
   stageDynamicValueContext,
   suppliedStageSettingApplies,
 } from '@codaco/protocol-validation';
+import { isRecord } from '@codaco/shared-consts';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
@@ -42,7 +43,6 @@ import Filter from './Filter';
 import FinishScreen from './FinishScreen';
 import Form from './Form';
 import InterviewScript from './InterviewScript';
-import IntroductionPanel from './IntroductionPanel';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
 import NarrativePedigree from './NarrativePedigree';
@@ -73,7 +73,9 @@ const messages = defineMessages({
 });
 
 type FormFieldType = {
+  id: string;
   prompt: LocalizedString;
+  hint?: LocalizedString;
   variable: string;
   [key: string]: unknown;
 };
@@ -124,13 +126,16 @@ export type StageConfiguration = {
   subject?: { type: string; entity: string };
   filter?: FilterType;
   skipLogic?: Record<string, unknown>;
-  introductionPanel?: { title: LocalizedString; text?: LocalizedString };
   dataSource?: string;
   panelTitle?: LocalizedString;
   quickAdd?: string;
   panels?: Panel[];
   prompts?: PromptType[];
-  form?: { title?: LocalizedString; fields?: FormFieldType[] };
+  form?: {
+    title?: LocalizedString;
+    content?: LocalizedString;
+    fields?: FormFieldType[];
+  };
   behaviours?: Record<string, unknown>;
   presets?: {
     id: string;
@@ -227,7 +232,6 @@ const StageContent = ({
     subject,
     filter,
     skipLogic,
-    introductionPanel,
     dataSource,
     panelTitle,
     quickAdd,
@@ -394,7 +398,6 @@ const StageContent = ({
           <SkipLogic skipLogic={skipLogic} />
         </SectionFrame>
       )}
-      <IntroductionPanel introductionPanel={introductionPanel ?? null} />
       <MapOptions mapOptions={mapOptions ?? null} />
       <DataSource dataSource={dataSource ?? null} />
       <RosterPanel panelTitle={panelTitle ?? null} />
@@ -456,9 +459,6 @@ const StageContent = ({
     </div>
   );
 };
-const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 /**
  * A stage, and what its text that shows values can show: every value its
  * prompts or its form's fields could, so each value in its text reads as
@@ -470,6 +470,10 @@ const Stage = (props: StageProps) => {
   const site = useMemo(() => {
     const conditions: unknown =
       'conditions' in configuration ? configuration.conditions : undefined;
+    const dynamicAttributes: unknown =
+      'dynamicAttributes' in configuration
+        ? configuration.dynamicAttributes
+        : undefined;
     return {
       context: stageDynamicValueContext({
         codebook: protocol.codebook,
@@ -482,6 +486,10 @@ const Stage = (props: StageProps) => {
         codebook: protocol.codebook,
         subject: undefined,
         allowEgoRules: true,
+      },
+      // The stage's dynamic attributes, drawn as pills listing their values.
+      dynamicAttributes: {
+        values: isRecord(dynamicAttributes) ? dynamicAttributes : {},
       },
     };
   }, [configuration, type, protocol.codebook]);

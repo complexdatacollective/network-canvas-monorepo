@@ -36,9 +36,9 @@ const messages = defineMessages({
   guidance: {
     id: 'protocolBuilder.censusPrompts.oneToManyGuidance',
     defaultMessage:
-      'The participant sees one node alongside the other nodes and selects each of the others that the question applies to, so write the question about that one node and the other nodes as a group rather than about a single pair. To show that node’s label in the question, insert “Node label” with the syringe button in the toolbar.',
+      'The participant sees one node alongside the other nodes and selects each of the others that the question applies to, so write the question about that one node and the other nodes as a group rather than about a single pair. To show that node’s label in the question, choose “Node label” from the Attribute menu in the toolbar.',
     description:
-      'Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The quoted name is an entry in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match that entry’s own translation.',
+      'Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The quoted name is an entry in the list that the Attribute button in the toolbar opens, and must match that entry’s own translation. “Attribute” is that button’s label, and must match its own translation.',
   },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.oneToManyPlaceholder',

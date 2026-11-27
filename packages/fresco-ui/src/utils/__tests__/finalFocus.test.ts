@@ -8,6 +8,7 @@ import {
   asFinalFocusTarget,
   holdsFocus,
   isUsableFinalFocusTarget,
+  resolveFinalFocus,
 } from '../finalFocus';
 
 /**
@@ -130,6 +131,20 @@ describe('asFinalFocusTarget — the DESTINATION question', () => {
     expect(asFinalFocusTarget(document.body)).toBeNull();
     expect(asFinalFocusTarget(document.documentElement)).toBeNull();
     expect(asFinalFocusTarget(document.createElement('button'))).toBeNull();
+  });
+
+  it('refuses an element inside an inert subtree, which cannot take focus', () => {
+    // A list's row on its way out: still in the document, and inert.
+    const row = document.createElement('li');
+    row.setAttribute('inert', '');
+    const remove = document.createElement('button');
+    row.append(remove);
+    const add = document.createElement('button');
+    document.body.append(row, add);
+
+    expect(asFinalFocusTarget(remove)).toBeNull();
+    // A dialog opened from it hands focus to its fallback instead.
+    expect(resolveFinalFocus(remove, () => add)).toBe(add);
   });
 
   it('accepts an HTML element from another document', () => {

@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { createInitialNetwork } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
+  dynamicValueNameFor,
+  validateProtocol,
+} from '@codaco/protocol-validation';
+import {
   encryptedNetwork,
   schema8EncryptedNetwork,
 } from '~/lib/__tests__/encryptedNetworks';
@@ -73,7 +77,8 @@ function makeSource(
 
 function mapReady(source: Source) {
   const result = mapInterviewPayload(source);
-  if (!result.success) throw new Error('Expected a readable interview');
+  if (!result.success)
+    throw new Error(`Expected a readable interview: ${String(result.error)}`);
   return result;
 }
 
@@ -475,7 +480,8 @@ function viewReady(
   viewer: Parameters<typeof mapInterviewForViewer>[1],
 ) {
   const result = mapInterviewForViewer(source, viewer);
-  if (!result.success) throw new Error('Expected a readable interview');
+  if (!result.success)
+    throw new Error(`Expected a readable interview: ${String(result.error)}`);
   return result;
 }
 
@@ -566,14 +572,13 @@ describe('mapInterviewForViewer', () => {
   );
 
   it('keeps only the ego values the finished screen it ended on shows', () => {
-    // Text names an ego attribute as `ego_<variable id>`, its id's hyphens
-    // written as underscores.
     const AGE = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c01';
     const TOWN = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c02';
     const CLOSING = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c03';
     const OTHER = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c04';
     const NODE_NAME = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c05';
-    const ego = (id: string) => `{ego_${id.replaceAll('-', '_')}}`;
+    const ego = (variableId: string) =>
+      `{${dynamicValueNameFor({ kind: 'attribute', role: 'ego', variableId })}}`;
     const finishStage = (id: string, finishedText: string) => ({
       id,
       type: 'FinishSession',
@@ -595,7 +600,7 @@ describe('mapInterviewForViewer', () => {
         stages: [
           finishStage(
             FINISH_STAGE_ID,
-            `# Done at ${ego(AGE)}, {node_${NODE_NAME.replaceAll('-', '_')}} {ego_constructor}`,
+            `# Done at ${ego(AGE)}, {${dynamicValueNameFor({ kind: 'attribute', role: 'node', variableId: NODE_NAME })}} {ego_constructor}`,
           ),
           finishStage(OTHER_FINISH_STAGE_ID, `# Done ${ego(OTHER)}`),
         ],
@@ -635,6 +640,245 @@ describe('mapInterviewForViewer', () => {
       expect(sent).not.toContain(marker);
     }
   });
+
+  it('keeps the ego values that the finished screen’s logic blocks and dynamic attributes read', () => {
+    const STATUS = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c11';
+    const AGE = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c12';
+    const CHILDREN = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c13';
+    const UNREAD = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c14';
+    const ADULT = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c21';
+    const UNUSED_CONDITION = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c22';
+    const KIDS = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c31';
+    const egoName = (variableId: string) =>
+      dynamicValueNameFor({ kind: 'attribute', role: 'ego', variableId });
+    const ageRule = (attribute: string, ruleId: string) => ({
+      rules: [
+        {
+          type: 'ego',
+          id: ruleId,
+          options: { attribute, operator: 'GREATER_THAN', value: 17 },
+        },
+      ],
+    });
+    const finished = makeFinishedSource();
+    const source: Source = {
+      ...finished,
+      protocol: {
+        ...finished.protocol,
+        stages: [
+          {
+            id: FINISH_STAGE_ID,
+            type: 'FinishSession',
+            mode: 'confirmation',
+            label: { en: 'Finish' },
+            content: { en: '# Thank you' },
+            finishedContent: {
+              en: [
+                `{${egoName(STATUS)}, select, missing {} other {Thanks.}}`,
+                `{${dynamicValueNameFor({ kind: 'condition', conditionId: ADULT })}, select, true {You have {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: KIDS })}}.} other {}}`,
+              ].join('\n\n'),
+            },
+            finishLabel: { en: 'Finish' },
+            finishConfirmation: { en: 'Finish this interview?' },
+            finishFailed: { en: 'The interview could not be finished.' },
+            outcome: 'completed',
+            conditions: {
+              [ADULT]: ageRule(AGE, '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c41'),
+              [UNUSED_CONDITION]: ageRule(
+                UNREAD,
+                '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c42',
+              ),
+            },
+            dynamicAttributes: {
+              [KIDS]: {
+                logic: 'number',
+                value: egoName(CHILDREN),
+                missing: { en: 'children' },
+                wording: {
+                  en: '{count, plural, one {# child} other {# children}}',
+                },
+              },
+            },
+          },
+        ],
+      },
+      network: {
+        nodes: [],
+        edges: [],
+        ego: {
+          _uid: 'ego-1',
+          attributes: {
+            [STATUS]: 'STATUS_ANSWER',
+            [AGE]: 40,
+            [CHILDREN]: 2,
+            [UNREAD]: 'UNREAD_ANSWER',
+          },
+        },
+      },
+    };
+
+    const result = viewReady(source, {
+      researcher: false,
+      freezeCompletedInterviews: true,
+    });
+
+    // The value a logic block reads, the one a condition's rule reads, and
+    // the one a dynamic attribute reads; not one only an unused condition
+    // reads.
+    expect(result.payload.session.network.ego.attributes).toStrictEqual({
+      [STATUS]: 'STATUS_ANSWER',
+      [AGE]: 40,
+      [CHILDREN]: 2,
+    });
+  });
+
+  it('keeps the ego values that the wording of a dynamic attribute shows, through the dynamic attributes it shows in turn', () => {
+    const CHILDREN = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c61';
+    const NAME = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c62';
+    const CITY = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c63';
+    const UNREAD = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c64';
+    const KIDS = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c71';
+    const NAMED = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c72';
+    const egoName = (variableId: string) =>
+      `{${dynamicValueNameFor({ kind: 'attribute', role: 'ego', variableId })}}`;
+    const shows = (id: string) =>
+      `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id })}}`;
+    const finished = makeFinishedSource();
+    const source: Source = {
+      ...finished,
+      protocol: {
+        ...finished.protocol,
+        stages: [
+          {
+            id: FINISH_STAGE_ID,
+            type: 'FinishSession',
+            mode: 'confirmation',
+            label: { en: 'Finish' },
+            content: { en: '# Thank you' },
+            finishedContent: {
+              en: `Thanks for telling us about ${shows(KIDS)}.`,
+            },
+            finishLabel: { en: 'Finish' },
+            finishConfirmation: { en: 'Finish this interview?' },
+            finishFailed: { en: 'The interview could not be finished.' },
+            outcome: 'completed',
+            dynamicAttributes: {
+              [KIDS]: {
+                logic: 'number',
+                value: dynamicValueNameFor({
+                  kind: 'attribute',
+                  role: 'ego',
+                  variableId: CHILDREN,
+                }),
+                missing: { en: `the children of ${shows(NAMED)}` },
+                wording: {
+                  en: `{count, plural, one {# child of ${egoName(NAME)}} other {# children}}`,
+                },
+              },
+              // Shows the first again: wording that never finishes still
+              // ends the walk.
+              [NAMED]: {
+                logic: 'number',
+                value: dynamicValueNameFor({
+                  kind: 'attribute',
+                  role: 'ego',
+                  variableId: CHILDREN,
+                }),
+                missing: { en: `**${egoName(CITY)}** ${shows(KIDS)}` },
+                wording: { en: '{count, plural, other {#}}' },
+              },
+            },
+          },
+        ],
+      },
+      network: {
+        nodes: [],
+        edges: [],
+        ego: {
+          _uid: 'ego-1',
+          attributes: {
+            [CHILDREN]: 1,
+            [NAME]: 'NAME_ANSWER',
+            [CITY]: 'CITY_ANSWER',
+            [UNREAD]: 'UNREAD_ANSWER',
+          },
+        },
+      },
+    };
+
+    const result = viewReady(source, {
+      researcher: false,
+      freezeCompletedInterviews: true,
+    });
+
+    expect(result.payload.session.network.ego.attributes).toStrictEqual({
+      [CHILDREN]: 1,
+      [NAME]: 'NAME_ANSWER',
+      [CITY]: 'CITY_ANSWER',
+    });
+  });
+
+  // The completed state's network is empty, so its logic can only be judged
+  // as the participant saw it while every condition of a finished screen
+  // reads the participant's attributes alone, which are kept above. A rule
+  // about the network (a node's edges, say) must be about a node or edge on
+  // screen, and a finish stage shows none: validation refuses it. Should
+  // that change, the server must judge such conditions on the stored network.
+  it.each([
+    {
+      about: 'node',
+      rule: { type: 'edge', options: { count: 'GREATER_THAN', value: 0 } },
+    },
+    {
+      about: 'edge',
+      rule: { type: 'edge', options: { attribute: 'x', operator: 'EXISTS' } },
+    },
+  ])(
+    'relies on a finish stage holding no condition about the network ($about)',
+    async ({ about, rule }) => {
+      const condition = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c51';
+      const result = await validateProtocol(
+        {
+          name: 'Protocol',
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          codebook: { node: {}, edge: {}, ego: { variables: {} } },
+          stages: [
+            {
+              id: FINISH_STAGE_ID,
+              type: 'FinishSession',
+              mode: 'confirmation',
+              label: { en: 'Finish' },
+              content: { en: '# Thank you' },
+              finishedContent: {
+                en: `{${dynamicValueNameFor({ kind: 'condition', conditionId: condition })}, select, true {You named someone.} other {Thanks.}}`,
+              },
+              finishLabel: { en: 'Finish' },
+              finishConfirmation: { en: 'Finish this interview?' },
+              finishFailed: { en: 'The interview could not be finished.' },
+              outcome: 'completed',
+              conditions: {
+                [condition]: {
+                  about,
+                  rules: [
+                    { id: '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c52', ...rule },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+        { draft: true },
+      );
+
+      expect(result.success).toBe(false);
+      expect(
+        result.success ? [] : result.error.issues.map(({ message }) => message),
+      ).toContain(
+        `This condition is about ${about === 'node' ? 'a node' : 'an edge'}, but the wording that uses it does not refer to ${about === 'node' ? 'a node' : 'an edge'}.`,
+      );
+    },
+  );
 
   it('sends a researcher the whole finished interview to change while freezing is off', () => {
     const source = makeFinishedSource();

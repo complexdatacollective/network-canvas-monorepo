@@ -1,25 +1,31 @@
+import { Autocomplete } from '@base-ui/react/autocomplete';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/react';
-import { type ComponentProps, useState } from 'react';
+import { Braces } from 'lucide-react';
+import { type ComponentProps, useRef, useState } from 'react';
 import { action } from 'storybook/actions';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { z } from 'zod/mini';
 
+import { Popover, PopoverContent } from '../../Popover';
+import { inlineValuesFor } from '../../testing/inlineValues';
 import { withMod } from '../../testing/modKey';
-import { TokenizedText } from '../../TokenPill';
 import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
 import {
-  ASSET_BLOCK_OUTLINE_OFFSET,
-  ASSET_BLOCK_OUTLINE_WIDTH,
   assetBlockControlsProps,
   type RichTextAssetBlockViewProps,
   type RichTextAssetBlocks,
 } from './richText/assetBlockNode';
-import type { RichTextInsertMenu } from './richText/InsertMenu';
+import { BLOCK_FRAME_OFFSET, BLOCK_FRAME_WIDTH } from './richText/blockFrames';
+import type {
+  RichTextInsertState,
+  RichTextInsertTools,
+} from './richText/insertTools';
 import RichTextEditorField, {
-  type RichTextEditorToken,
+  ToolbarButton,
+  toolbarLabelledButtonStyles,
 } from './RichTextEditor';
 
 const meta: Meta<typeof RichTextEditorField> = {
@@ -615,176 +621,6 @@ export const SingleLineWrapped: Story = {
   },
 };
 
-const tokenLine: JSONContent = {
-  type: 'doc',
-  content: [
-    {
-      type: 'paragraph',
-      content: [
-        { type: 'text', text: 'Add parents for ' },
-        { type: 'token', attrs: { id: 'name' } },
-      ],
-    },
-  ],
-};
-
-/**
- * `tokens` lets the text hold placeholders that are filled in later, such as
- * a person's name. Each shows as a chip, the caret steps over it, Backspace
- * removes it whole, and the toolbar has a button to insert each one.
- *
- * ```tsx
- * <RichTextEditorField
- *   singleLine
- *   toolbarOptions={{ bold: false, italic: false, history: false }}
- *   tokens={[{ id: 'name', label: 'Name' }]}
- *   value={value}
- *   onChange={setValue}
- * />
- * ```
- *
- * The value holds a token as `{ type: 'token', attrs: { id } }` in the
- * paragraph's content.
- */
-export const WithTokens: Story = {
-  render: (args) => (
-    <div className="flex w-[480px] flex-col gap-4">
-      <div data-testid="editor">
-        <RichTextEditorField
-          {...args}
-          singleLine
-          toolbarOptions={{ bold: false, italic: false, history: false }}
-          tokens={[
-            { id: 'name', label: 'Name' },
-            { id: '#', label: 'Number' },
-          ]}
-          changeMode="input"
-          value={tokenLine}
-          onChange={action('onChange')}
-        />
-      </div>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const editor = await canvas.findByRole('textbox');
-    await expect(editor.querySelectorAll('[data-token]')).toHaveLength(1);
-
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Insert “Number”' }),
-    );
-
-    await waitFor(() =>
-      expect(editor.querySelector('[data-token="#"]')).not.toBeNull(),
-    );
-  },
-};
-
-const tokenButtons = [
-  { id: 'name', label: 'Name', required: true },
-  { id: '#', label: 'Number', required: true },
-];
-
-/**
- * A `required` token is one the text must include. While the text leaves it
- * out, its button carries a warning dot and says so in its name; placing the
- * token takes the dot away.
- *
- * ```tsx
- * <RichTextEditorField
- *   tokens={[{ id: 'name', label: 'Name', required: true }]}
- *   value={value}
- *   onChange={setValue}
- * />
- * ```
- */
-export const WithRequiredTokenNotPlaced: Story = {
-  render: (args) => (
-    <div className="flex w-[480px] flex-col gap-4">
-      <div data-testid="editor">
-        <RichTextEditorField
-          {...args}
-          singleLine
-          toolbarOptions={{ bold: false, italic: false, history: false }}
-          tokens={tokenButtons}
-          changeMode="input"
-          value={tokenLine}
-          onChange={action('onChange')}
-        />
-      </div>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const editor = await canvas.findByRole('textbox');
-
-    // The name is in the text; the number is not.
-    await expect(
-      canvas.getByRole('button', { name: 'Insert “Name”' }),
-    ).not.toHaveAttribute('data-missing');
-    const number = canvas.getByRole('button', {
-      name: 'Insert “Number” (required in this text)',
-    });
-    await expect(number).toHaveAttribute('data-missing', 'true');
-
-    await userEvent.click(editor);
-    await userEvent.click(number);
-
-    await expect(
-      await canvas.findByRole('button', { name: 'Insert “Number”' }),
-    ).not.toHaveAttribute('data-missing');
-  },
-};
-
-const tokensInText: JSONContent = {
-  type: 'doc',
-  content: [
-    {
-      type: 'paragraph',
-      content: [
-        { type: 'text', text: 'Add ' },
-        { type: 'token', attrs: { id: 'name' } },
-        { type: 'text', text: '’s ' },
-        { type: 'token', attrs: { id: '#' } },
-        { type: 'text', text: ' parents' },
-      ],
-    },
-  ],
-};
-
-/**
- * A document that already holds every token it must: each one shows as a pill
- * among the words, and no button warns that a token is missing.
- */
-export const WithTokensInTheText: Story = {
-  render: (args) => (
-    <div className="flex w-[480px] flex-col gap-4">
-      <div data-testid="editor">
-        <RichTextEditorField
-          {...args}
-          singleLine
-          toolbarOptions={{ bold: false, italic: false, history: false }}
-          tokens={tokenButtons}
-          changeMode="input"
-          value={tokensInText}
-          onChange={action('onChange')}
-        />
-      </div>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const editor = await canvas.findByRole('textbox');
-
-    await expect(editor.querySelectorAll('[data-token]')).toHaveLength(2);
-    for (const name of ['Insert “Name”', 'Insert “Number”']) {
-      await expect(canvas.getByRole('button', { name })).not.toHaveAttribute(
-        'data-missing',
-      );
-    }
-  },
-};
-
 const plainLine: JSONContent = {
   type: 'doc',
   content: [
@@ -792,27 +628,28 @@ const plainLine: JSONContent = {
   ],
 };
 
-const oneTokenLine: JSONContent = {
+const oneValueLine: JSONContent = {
   type: 'doc',
   content: [
     {
       type: 'paragraph',
       content: [
         { type: 'text', text: 'Add ' },
-        { type: 'token', attrs: { id: 'name' } },
+        { type: 'inlineValue', attrs: { id: 'name' } },
         { type: 'text', text: ' parents' },
       ],
     },
   ],
 };
 
-function TokenEditor({
+function InlineValueEditor({
   label,
-  tokens,
+  labels,
   initial,
 }: {
   label: string;
-  tokens: RichTextEditorToken[];
+  /** The values it holds, by id; none at all where absent. */
+  labels?: Record<string, string>;
   initial: JSONContent;
 }) {
   const [value, setValue] = useState<JSONContent | undefined>(initial);
@@ -824,7 +661,9 @@ function TokenEditor({
         aria-label={label}
         singleLine
         toolbarOptions={{ bold: false, italic: false }}
-        tokens={tokens}
+        inlineValues={
+          labels === undefined ? undefined : inlineValuesFor(labels)
+        }
         changeMode="input"
         value={value}
         onChange={setValue}
@@ -842,9 +681,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const childrenOf = (node: unknown): readonly unknown[] =>
   isRecord(node) && Array.isArray(node.content) ? node.content : [];
 
-/** The paragraph's parts in order: a run of words, or `{id}` for a token. */
+/** The paragraph's parts in order: a run of words, or `{id}` for a value. */
 const namePill = (editor: Element): HTMLElement => {
-  const found = editor.querySelector('[data-token="name"]');
+  const found = editor.querySelector('[data-inline-value="name"]');
   if (!(found instanceof HTMLElement)) throw new Error('No pill');
   return found;
 };
@@ -856,7 +695,7 @@ const partsOf = (canvasElement: HTMLElement, label: string): string[] => {
   const paragraph = childrenOf(value)[0];
   return childrenOf(paragraph).map((node) => {
     if (!isRecord(node)) return '';
-    if (node.type !== 'token') {
+    if (node.type !== 'inlineValue') {
       return typeof node.text === 'string' ? node.text : '';
     }
     return `{${isRecord(node.attrs) ? String(node.attrs.id) : ''}}`;
@@ -868,12 +707,12 @@ const partsOf = (canvasElement: HTMLElement, label: string): string[] => {
  * step once it is selected, Backspace takes all of it, and undo puts it
  * back.
  */
-export const TokensFromTheKeyboard: Story = {
+export const InlineValuesFromTheKeyboard: Story = {
   render: () => (
-    <TokenEditor
+    <InlineValueEditor
       label="Question"
-      tokens={[{ id: 'name', label: 'Name' }]}
-      initial={oneTokenLine}
+      labels={{ name: 'Name' }}
+      initial={oneValueLine}
     />
   ),
   play: async ({ canvasElement }) => {
@@ -1002,26 +841,26 @@ const dragPill = (pill: HTMLElement, onto: HTMLElement) => {
 };
 
 /**
- * A pill can be dragged to another place in the text, and it arrives whole.
- * Dropped into a field that does not offer it, it becomes what pasting it
- * there makes: its words, with no placeholder.
+ * A value can be dragged to another place in the text, and it arrives whole.
+ * Dropped into a field that holds no values, it becomes what pasting it there
+ * makes: its words.
  */
-export const DraggingATokenPill: Story = {
+export const DraggingAnInlineValue: Story = {
   render: () => (
     <div className="flex flex-col gap-6">
-      <TokenEditor
+      <InlineValueEditor
         label="Question"
-        tokens={[{ id: 'name', label: 'Name' }]}
-        initial={oneTokenLine}
+        labels={{ name: 'Name' }}
+        initial={oneValueLine}
       />
-      <TokenEditor
+      <InlineValueEditor
         label="Dropped into"
-        tokens={[{ id: 'age', label: 'Age' }]}
+        labels={undefined}
         initial={plainLine}
       />
-      <TokenEditor
+      <InlineValueEditor
         label="Pasted into"
-        tokens={[{ id: 'age', label: 'Age' }]}
+        labels={undefined}
         initial={plainLine}
       />
     </div>
@@ -1071,45 +910,15 @@ export const DraggingATokenPill: Story = {
   },
 };
 
-/**
- * Text that is only read shows its placeholders as the same pills the editor
- * shows. `TokenizedText` takes the text as parts, each a run of words or a
- * token, and the labels of the tokens it may hold. A pill's words are its
- * label, so a screen reader reads the sentence through.
- *
- * ```tsx
- * import { TokenizedText } from '@codaco/fresco-ui/TokenPill';
- *
- * <TokenizedText
- *   parts={['Add ', { token: 'name' }, '’s parents']}
- *   tokens={[{ id: 'name', label: 'Name' }]}
- * />
- * ```
- */
-export const ReadOnlyTokens: Story = {
-  render: () => (
-    <div className="flex w-[480px] flex-col gap-4">
-      <p data-testid="read-only">
-        <TokenizedText
-          parts={['Add ', { token: 'name' }, '’s ', { token: '#' }, ' parents']}
-          tokens={tokenButtons}
-        />
-      </p>
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const text = await canvas.findByTestId('read-only');
-
-    await expect(text).toHaveTextContent('Add Name’s Number parents');
-    await expect(text.querySelectorAll('[data-token]')).toHaveLength(2);
+const offeredValues = inlineValuesFor(
+  { name: 'Name', age: 'Age' },
+  {
+    written: [
+      { id: 'name', text: '{name}' },
+      { id: 'age', text: '{age}' },
+    ],
   },
-};
-
-const offeredTokens: RichTextEditorToken[] = [
-  { id: 'name', label: 'Name', text: '{name}', inToolbar: false },
-  { id: 'age', label: 'Age', text: '{age}', inToolbar: false },
-];
+);
 
 const nameVersions: JSONContent = {
   type: 'versions',
@@ -1120,54 +929,125 @@ const nameVersions: JSONContent = {
       {
         key: 'other',
         label: 'When Name is known',
-        content: [{ type: 'token', attrs: { id: 'name' } }],
+        content: [{ type: 'inlineValue', attrs: { id: 'name' } }],
       },
       { key: 'missing', label: 'When Name is missing', content: [] },
     ],
   },
 };
 
-const INSERT_LABEL =
-  'Inject piped text from interview metadata or a network attribute';
+const INSERT_LABEL = 'Insert a value';
 
-const insertMenu: RichTextInsertMenu = {
-  label: INSERT_LABEL,
-  trigger: '{',
-  items: [
-    {
-      id: 'name',
-      label: 'Name',
-      group: 'About the participant',
-      description: 'Text',
-      content: nameVersions,
-    },
-    {
-      id: 'age',
-      label: 'Age',
-      group: 'About the participant',
-      description: 'Number',
-      content: { type: 'token', attrs: { id: 'age' } },
-    },
-    {
-      id: 'smokes',
-      label: 'Smokes',
-      group: 'About the participant',
-      description: 'Give its answers labels first',
-      disabled: true,
-      content: { type: 'token', attrs: { id: 'smokes' } },
-    },
-  ],
+type OfferedValue = Readonly<{
+  id: string;
+  label: string;
+  content: JSONContent;
+}>;
+
+const OFFERED: readonly OfferedValue[] = [
+  { id: 'name', label: 'Name', content: nameVersions },
+  {
+    id: 'age',
+    label: 'Age',
+    content: { type: 'inlineValue', attrs: { id: 'age' } },
+  },
+];
+
+/**
+ * The consumer's own list of values: a search box, with the first match
+ * highlighted so Enter inserts it.
+ */
+function ValueList({ onPick }: { onPick: (value: OfferedValue) => void }) {
+  return (
+    <Autocomplete.Root
+      items={OFFERED}
+      inline
+      open
+      autoHighlight="always"
+      itemToStringValue={(item: OfferedValue) => item.label}
+    >
+      <div className="flex w-72 flex-col gap-2">
+        <Autocomplete.Input
+          autoFocus
+          aria-label="Search"
+          placeholder="Search"
+          className="focusable h-10 rounded-sm border border-current/20 px-3 text-sm"
+        />
+        <Autocomplete.List aria-label={INSERT_LABEL}>
+          {(item: OfferedValue) => (
+            <Autocomplete.Item
+              key={item.id}
+              value={item}
+              onClick={() => onPick(item)}
+              className="data-highlighted:bg-primary data-highlighted:text-primary-contrast rounded-sm px-2 py-1.5 text-sm"
+            >
+              {item.label}
+            </Autocomplete.Item>
+          )}
+        </Autocomplete.List>
+      </div>
+    </Autocomplete.Root>
+  );
+}
+
+/**
+ * A consumer's insert tools: a toolbar button that opens a searchable list
+ * of values, which also opens where `{` is typed. A pick goes in through
+ * `insert.commands.insertContent`, in place of the brace.
+ */
+function ValueMenu({ insert }: { insert: RichTextInsertState }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const { trigger, commands } = insert;
+  const open = menuOpen || trigger !== null;
+  const close = () => {
+    setMenuOpen(false);
+    trigger?.dismiss();
+  };
+  const pick = (item: OfferedValue) => {
+    setMenuOpen(false);
+    commands.insertContent(item.content);
+  };
+  return (
+    <>
+      <ToolbarButton
+        ref={button}
+        className={toolbarLabelledButtonStyles}
+        disabled={!insert.editable}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setMenuOpen((was) => !was)}
+      >
+        <Braces aria-hidden />
+        Value
+      </ToolbarButton>
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) close();
+        }}
+      >
+        <PopoverContent
+          anchor={trigger?.anchor ?? button}
+          side="bottom"
+          align="start"
+          spacing="xs"
+          aria-label={INSERT_LABEL}
+          finalFocus={commands.returnFocus}
+        >
+          <ValueList onPick={pick} />
+        </PopoverContent>
+      </Popover>
+    </>
+  );
+}
+
+const valueMenu: RichTextInsertTools = {
+  label: 'Insert a value',
+  render: (insert: RichTextInsertState) => <ValueMenu insert={insert} />,
 };
 
-function EditorWithValue({
-  initial,
-  openWholeMessageVersions = false,
-  menuFor = () => insertMenu,
-}: {
-  initial: JSONContent | undefined;
-  openWholeMessageVersions?: boolean;
-  menuFor?: (value: JSONContent | undefined) => RichTextInsertMenu;
-}) {
+function EditorWithValue({ initial }: { initial: JSONContent | undefined }) {
   const [value, setValue] = useState(initial);
   return (
     <div className="flex w-[560px] flex-col gap-4">
@@ -1177,10 +1057,9 @@ function EditorWithValue({
         aria-label="Question"
         singleLine
         toolbarOptions={{ headings: false, lists: false }}
-        tokens={offeredTokens}
+        inlineValues={offeredValues}
         versions
-        openWholeMessageVersions={openWholeMessageVersions}
-        insertMenu={menuFor(value)}
+        insertTools={valueMenu}
         changeMode="input"
         value={value}
         onChange={setValue}
@@ -1198,23 +1077,28 @@ const valueOf = (canvasElement: HTMLElement): JSONContent =>
   ) as JSONContent;
 
 /**
- * A consumer offers things to insert through a searchable menu, opened from
- * the toolbar or by typing `{`. An item inserts whatever content the consumer
- * gives it: here a placeholder, or **versions** of a piece of text, which
- * read differently in different cases. Each version is written in place in
- * an editor of its own, and the versions are one element of the line.
+ * A consumer offers things to insert through insert tools of its own in the
+ * toolbar, here a searchable menu that also opens where `{` is typed. The
+ * tools insert whatever content the consumer gives them
+ * (`commands.insertContent`): here a placeholder, or **versions** of a piece of
+ * text, which read differently in different cases. Each version is written
+ * in place in an editor of its own, and the versions are one element of the
+ * line.
  *
  * ```tsx
  * <RichTextEditorField
- *   tokens={[{ id: 'name', label: 'Name', text: '{name}', inToolbar: false }]}
+ *   inlineValues={{ spec, text, version, written: [{ id: 'name', text: '{name}' }] }}
  *   versions
- *   insertMenu={{ label: 'Inject piped text…', trigger: '{', items }}
+ *   insertTools={{
+ *     label: 'Insert a value',
+ *     render: (insert) => <ValueMenu insert={insert} />,
+ *   }}
  *   value={value}
  *   onChange={setValue}
  * />
  * ```
  */
-export const WithVersionsAndInsertMenu: Story = {
+export const WithVersionsAndInsertTools: Story = {
   render: () => (
     <EditorWithValue
       initial={{
@@ -1235,7 +1119,7 @@ export const WithVersionsAndInsertMenu: Story = {
     await userEvent.click(editor);
 
     // Inserted from the toolbar, by searching and choosing.
-    await userEvent.click(canvas.getByRole('button', { name: INSERT_LABEL }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Value' }));
     const search = await body.findByRole('combobox', { name: 'Search' });
     await userEvent.type(search, 'nam');
     await userEvent.keyboard('{Enter}');
@@ -1326,19 +1210,18 @@ export const WithVersionsAndInsertMenu: Story = {
 
 /**
  * A field whose whole text is one set of versions, such as a message that is
- * a plural or a choice and nothing more, with `openWholeMessageVersions`:
- * the versions are listed open, one labelled row each, with no pill to open
- * and nothing that folds when the field is left. Words typed beside them make
- * the text a sentence with versions in it, which folds to a pill as before.
+ * a plural or a choice and nothing more: the versions are listed open, one
+ * labelled row each, with no pill to open and nothing that folds when the
+ * field is left. Words typed beside them make the text a sentence with
+ * versions in it, which folds to a pill as before.
  *
  * ```tsx
- * <RichTextEditorField versions openWholeMessageVersions … />
+ * <RichTextEditorField versions … />
  * ```
  */
 export const WholeMessageVersionsOpen: Story = {
   render: () => (
     <EditorWithValue
-      openWholeMessageVersions
       initial={{
         type: 'doc',
         content: [{ type: 'paragraph', content: [nameVersions] }],
@@ -1408,13 +1291,12 @@ export const WholeMessageVersionsOpen: Story = {
 };
 
 /**
- * The same versions in a sentence fold to a pill, whichever way the field is
- * set: only a text that is nothing but the versions lists them open.
+ * The same versions in a sentence fold to a pill: only a text that is nothing
+ * but the versions lists them open.
  */
 export const VersionsInASentenceStayFolded: Story = {
   render: () => (
     <EditorWithValue
-      openWholeMessageVersions
       initial={{
         type: 'doc',
         content: [
@@ -1443,7 +1325,7 @@ export const VersionsInASentenceStayFolded: Story = {
 };
 
 /**
- * Waits until the open insert menu's search box holds focus, as someone
+ * Waits until the open value menu's search box holds focus, as someone
  * typing into it would. Keys pressed before then go wherever focus still is:
  * in CI the first letter of a search has landed in the text instead.
  */
@@ -1452,7 +1334,7 @@ const searchHasFocus = async (body: ReturnType<typeof within>) => {
   await waitFor(() => expect(search).toHaveFocus());
 };
 
-const typeIntoTheInsertMenu = async (canvasElement: HTMLElement) => {
+const typeIntoTheValueMenu = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   const body = within(canvasElement.ownerDocument.body);
   const editor = await canvas.findByRole('textbox', { name: 'Question' });
@@ -1463,7 +1345,9 @@ const typeIntoTheInsertMenu = async (canvasElement: HTMLElement) => {
   await userEvent.keyboard('age{Enter}');
   // Waited for as text, so a failure shows where the typing went.
   await waitFor(() => expect(editor).toHaveTextContent(/^Aged Age$/));
-  await expect(editor.querySelector('[data-token="age"]')).not.toBeNull();
+  await expect(
+    editor.querySelector('[data-inline-value="age"]'),
+  ).not.toBeNull();
 
   // Typed where the pick left the caret: after the item.
   await userEvent.keyboard(' {{');
@@ -1474,20 +1358,23 @@ const typeIntoTheInsertMenu = async (canvasElement: HTMLElement) => {
   // Pasted where Escape left the caret: after the brace.
   await userEvent.paste(' and {age}');
   await waitFor(() =>
-    expect(editor.querySelectorAll('[data-token="age"]')).toHaveLength(2),
+    expect(editor.querySelectorAll('[data-inline-value="age"]')).toHaveLength(
+      2,
+    ),
   );
   await expect(editor).toHaveTextContent(/^Aged Age \{ and Age$/);
 };
 
 /**
- * Typing `{` opens the menu at the caret. Choosing an item replaces the brace;
- * Escape closes the menu and keeps it as text. Either way the caret comes back
- * where it was. Pasting a placeholder written as text, such as `{age}`, makes
- * the placeholder.
+ * Typing `{` (`INSERT_TRIGGER`) tells the insert tools where it was typed
+ * (`insert.trigger`), and these open their menu there. Choosing an item replaces
+ * the brace; Escape closes the menu and keeps it as text (`trigger.dismiss`).
+ * Either way the caret comes back where it was. Pasting a placeholder written
+ * as text, such as `{age}`, makes the placeholder.
  */
-export const InsertMenuFromTheKeyboard: Story = {
+export const InsertToolsFromTheKeyboard: Story = {
   render: () => <EditorWithValue initial={undefined} />,
-  play: ({ canvasElement }) => typeIntoTheInsertMenu(canvasElement),
+  play: ({ canvasElement }) => typeIntoTheValueMenu(canvasElement),
 };
 
 /**
@@ -1533,102 +1420,17 @@ const runAsASlowDevice = (win: Window) => {
  * than at the start of the text where the browser puts it as the editor takes
  * focus.
  */
-export const InsertMenuFromTheKeyboardOnASlowDevice: Story = {
+export const InsertToolsFromTheKeyboardOnASlowDevice: Story = {
   render: () => <EditorWithValue initial={undefined} />,
   play: async ({ canvasElement }) => {
     const restore = runAsASlowDevice(
       canvasElement.ownerDocument.defaultView ?? window,
     );
     try {
-      await typeIntoTheInsertMenu(canvasElement);
+      await typeIntoTheValueMenu(canvasElement);
     } finally {
       restore();
     }
-  },
-};
-
-/**
- * An item can be listed but not insertable (`disabled`), with its
- * description saying why. Choosing it inserts nothing.
- */
-export const InsertMenuWithAnUnavailableItem: Story = {
-  render: () => <EditorWithValue initial={undefined} />,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const body = within(canvasElement.ownerDocument.body);
-    const editor = await canvas.findByRole('textbox', { name: 'Question' });
-    await userEvent.click(editor);
-
-    await userEvent.click(canvas.getByRole('button', { name: INSERT_LABEL }));
-    const unavailable = await body.findByRole('option', { name: /Smokes/ });
-    await expect(unavailable).toHaveAttribute('aria-disabled', 'true');
-    await expect(unavailable).toHaveTextContent(
-      'Give its answers labels first',
-    );
-    await userEvent.click(unavailable);
-    await userEvent.keyboard('{Escape}');
-    await expect(editor.querySelector('[data-token="smokes"]')).toBeNull();
-
-    // An available item still inserts.
-    await userEvent.click(canvas.getByRole('button', { name: INSERT_LABEL }));
-    await userEvent.click(await body.findByRole('option', { name: /Age/ }));
-    await waitFor(() =>
-      expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
-    );
-  },
-};
-
-const containsToken = (content: JSONContent | undefined, id: string): boolean =>
-  content !== undefined &&
-  ((content.type === 'token' && content.attrs?.id === id) ||
-    (content.content ?? []).some((child) => containsToken(child, id)));
-
-/**
- * An item can be `required`: the consumer says, for the version being
- * edited, whether the text must include it and does not yet. The item is
- * marked "Required in this text" in the menu, and the menu's button carries a
- * dot and says that something the text requires is not in it yet. Both marks
- * go once the item is in the text.
- */
-export const InsertMenuWithARequiredItem: Story = {
-  render: () => (
-    <EditorWithValue
-      initial={undefined}
-      menuFor={(value) => ({
-        ...insertMenu,
-        items: insertMenu.items.map((item) =>
-          item.id === 'age'
-            ? { ...item, required: () => !containsToken(value, 'age') }
-            : item,
-        ),
-      })}
-    />
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const body = within(canvasElement.ownerDocument.body);
-    const editor = await canvas.findByRole('textbox', { name: 'Question' });
-    await userEvent.click(editor);
-
-    const button = canvas.getByRole('button', { name: INSERT_LABEL });
-    await expect(button).toHaveAccessibleDescription(
-      'Something this text requires is not in it yet',
-    );
-    await userEvent.click(button);
-    const age = await body.findByRole('option', {
-      name: 'Age, Number, Required in this text',
-    });
-    await expect(age).toHaveAttribute('data-required', 'true');
-    await expect(
-      body.getByRole('option', { name: /^Name/ }),
-    ).not.toHaveAttribute('data-required');
-
-    await userEvent.click(age);
-    await waitFor(() =>
-      expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
-    );
-    await waitFor(() => expect(button).not.toHaveAttribute('data-missing'));
-    await expect(button).not.toHaveAccessibleDescription();
   },
 };
 
@@ -1687,8 +1489,7 @@ function StoryAssetBlockView({
   return (
     <div className="bg-surface-1 rounded-sm border p-3">
       <p data-testid="asset-block-summary">
-        {attributes.assetId}, size {attributes.size ?? 'full'}, aligned{' '}
-        {attributes.align}
+        {attributes.assetId}, size {attributes.size ?? 'full'}
       </p>
       {selected && editable && (
         <div {...assetBlockControlsProps} className="mt-2 flex gap-2">
@@ -1733,8 +1534,8 @@ function PageContentField({
 /**
  * A field whose text can hold files as blocks among its paragraphs. The
  * consumer chooses a file (`pick`) and draws a block (`View`); the toolbar
- * offers one button for each kind of file. A block is one whole thing: arrow
- * to it, press Enter to reach its controls, Escape to come back out.
+ * offers one button for each kind of file. A block is one whole thing,
+ * selected with a frame drawn round it (see `BlockFrameLayer`).
  */
 export const WithAssetBlocks: Story = {
   render: (args) => (
@@ -1758,17 +1559,28 @@ export const WithAssetBlocks: Story = {
     await userEvent.click(editor);
     await userEvent.click(canvas.getByRole('button', { name: 'Insert image' }));
     const summary = await canvas.findByTestId('asset-block-summary');
-    await expect(summary).toHaveTextContent(
-      'image-1, size full, aligned center',
-    );
-    // The block just placed is selected, and outlined as its consumer is told
-    // it is: a consumer places things on that outline by these numbers.
+    await expect(summary).toHaveTextContent('image-1, size full');
+    // The block just placed is selected, and framed as its consumer is told
+    // it is: a consumer places things on that frame by these numbers.
     const block = summary.closest('[data-asset-block]');
     if (block === null) throw new Error('No block around the view');
     await waitFor(() => expect(block).toHaveAttribute('data-selected'));
-    const outline = getComputedStyle(block);
-    await expect(outline.outlineWidth).toBe(`${ASSET_BLOCK_OUTLINE_WIDTH}px`);
-    await expect(outline.outlineOffset).toBe(`${ASSET_BLOCK_OUTLINE_OFFSET}px`);
+    const frame = await waitFor(() => {
+      const found = editor
+        .closest('[data-block-frames-host]')
+        ?.querySelector('[data-block-frame="selected"]');
+      if (!(found instanceof HTMLElement)) throw new Error('No frame');
+      return found;
+    });
+    await expect(getComputedStyle(frame).borderTopWidth).toBe(
+      `${BLOCK_FRAME_WIDTH}px`,
+    );
+    const box = block.getBoundingClientRect();
+    const drawn = frame.getBoundingClientRect();
+    await expect(box.left - drawn.left).toBeCloseTo(BLOCK_FRAME_OFFSET, 0);
+    await expect(box.top - drawn.top).toBeCloseTo(BLOCK_FRAME_OFFSET, 0);
+    await expect(drawn.right - box.right).toBeCloseTo(BLOCK_FRAME_OFFSET, 0);
+    await expect(drawn.bottom - box.bottom).toBeCloseTo(BLOCK_FRAME_OFFSET, 0);
   },
 };
 
@@ -1894,7 +1706,7 @@ export const InterfaceWordsInTextOfAnotherLanguage: Story = {
 /**
  * Text selected across a block: the block is covered in the colour of the
  * selected text around it, as it is copied, cut or typed over with it. A
- * block selected by itself is outlined instead (`WithAssetBlocks`).
+ * block selected by itself is framed instead (`WithAssetBlocks`).
  */
 export const SelectionAcrossAnAssetBlock: Story = {
   render: (args) => (
@@ -1932,7 +1744,7 @@ export const SelectionAcrossAnAssetBlock: Story = {
     // text, and is covered as the text is.
     await userEvent.keyboard(withMod('a'));
     await waitFor(() => expect(block).toHaveAttribute('data-in-selected-text'));
-    // Part of the selection, not the selection itself: no outline.
+    // Part of the selection, not the selection itself: no frame.
     await expect(block).not.toHaveAttribute('data-selected');
     await expect(getComputedStyle(block, '::after').content).not.toBe('none');
 
@@ -1946,5 +1758,106 @@ export const SelectionAcrossAnAssetBlock: Story = {
     // And left selected, to be seen.
     await userEvent.keyboard(withMod('a'));
     await waitFor(() => expect(block).toHaveAttribute('data-in-selected-text'));
+  },
+};
+
+/**
+ * Selects all of the editor's text the way a test driver or another tool
+ * does, by changing the page's selection, then focuses the editor and presses
+ * Delete, all in one task: the browser's `selectionchange` event, which is
+ * how the editor hears of the new selection, has not run yet.
+ */
+const selectEverythingAndDelete = (editor: HTMLElement) => {
+  const selection = editor.ownerDocument.getSelection();
+  if (selection === null) throw new Error('The page has no selection');
+  const range = editor.ownerDocument.createRange();
+  range.selectNodeContents(editor);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  editor.focus();
+  editor.dispatchEvent(
+    new KeyboardEvent('keydown', {
+      key: 'Delete',
+      code: 'Delete',
+      keyCode: 46,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );
+};
+
+/**
+ * A key pressed straight after the page's selection changes acts on the new
+ * selection. The browser tells the editor of a selection a moment after it
+ * changes, and a key can arrive first: a test driver, a screen reader or a
+ * script that selects the text and presses Delete would otherwise delete
+ * nothing, because the key would act on the caret the editor had before.
+ */
+export const DeleteStraightAfterSelectingEverything: Story = {
+  render: (args) => (
+    <PageContentField
+      {...args}
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'heading',
+            attrs: { level: 1 },
+            content: [{ type: 'text', text: 'Welcome' }],
+          },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Welcome to this interview.' }],
+          },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    await expect(editor).toHaveTextContent('Welcome to this interview.');
+
+    // The editor takes focus as the text is selected.
+    selectEverythingAndDelete(editor);
+    await waitFor(() => expect(editor.textContent).toBe(''));
+
+    // And it already has focus, with a caret of its own.
+    await userEvent.keyboard('Thank you');
+    await expect(editor).toHaveTextContent('Thank you');
+    selectEverythingAndDelete(editor);
+    await waitFor(() => expect(editor.textContent).toBe(''));
+  },
+};
+
+/**
+ * Text that the editor itself selected is replaced by the next key. Reading
+ * the page's selection before a key (see the story above) must not put back
+ * an older selection: the select-all and the typing are one keyboard call, so
+ * each key arrives straight after the one before it.
+ */
+export const TypeOverTextTheEditorSelected: Story = {
+  render: (args) => (
+    <PageContentField
+      {...args}
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Welcome to this interview.' }],
+          },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    await expect(editor).toHaveTextContent('Welcome to this interview.');
+
+    await userEvent.click(editor);
+    await userEvent.keyboard(`${withMod('a')}Thank you`);
+    await waitFor(() => expect(editor.textContent).toBe('Thank you'));
   },
 };

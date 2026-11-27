@@ -85,33 +85,6 @@ describe('interface words in the toolbar of text in another language', () => {
     const prefix = within(textStyleLabel().trigger).getByText('Text style:');
     expect(prefix).toHaveAttribute('lang', 'en');
   });
-
-  it('names a placeholder’s button in the interface’s language', async () => {
-    renderIn('ar', ENGLISH_TEXT, {
-      tokens: [{ id: 'name', label: 'Name' }],
-    });
-    await screen.findByRole('textbox', { name: 'Content' });
-
-    const button = toolbar().getByRole('button', { name: 'Insert “Name”' });
-    expect(languageOf(within(button).getByText('Name'))).toEqual({
-      lang: 'ar',
-      dir: 'rtl',
-    });
-  });
-
-  it('leaves a name someone wrote on a placeholder’s button in its own direction', async () => {
-    renderIn('ar', ENGLISH_TEXT, {
-      tokens: [{ id: 'team', label: { text: 'team-b!', dir: 'auto' } }],
-    });
-    await screen.findByRole('textbox', { name: 'Content' });
-
-    const button = toolbar().getByRole('button', {
-      name: 'Insert “team-b!”',
-    });
-    const label = within(button).getByText('team-b!');
-    expect(label).toHaveAttribute('dir', 'auto');
-    expect(label).not.toHaveAttribute('lang');
-  });
 });
 
 describe('the placeholder of text in another language', () => {

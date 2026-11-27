@@ -1,6 +1,10 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
-import type { CurrentProtocol, StageType } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  type LocaleTag,
+  type StageType,
+} from '@codaco/protocol-validation';
 
 import { variableValuesMessages } from '../codebook/codebookMessages.ts';
 import { booleanAnswerFieldMessages } from '../codebook/components/VariableBooleanAnswerFields.tsx';
@@ -24,12 +28,13 @@ import { narrativeWordingMessages } from '../editors/narrative/sections/wording/
 import { composerMessages } from '../editors/network-composer/sections/composerMessages.ts';
 import { sociogramPromptMessages } from '../editors/sociogram/sections/prompts/sociogramPromptMessages.ts';
 import { tieStrengthPromptMessages } from '../editors/tie-strength-census/sections/TieStrengthCensusPromptsSection.tsx';
+import { attributeGroupMessages } from '../fields/attributeGroups.ts';
+import { asDynamicAttribute } from '../fields/dynamicText/valueNaming.ts';
 import { geospatialMessages } from '../fields/geospatial/geospatialMessages.ts';
 import { stageNameMessages } from '../naming/stageNameInternals.ts';
 import { binBehavioursMessages } from '../sections/bin-behaviours/binBehavioursMessages.ts';
+import { formDocumentMessages } from '../sections/form-document/formDocumentMessages.ts';
 import { composerFormFieldMessages } from '../sections/form-fields/composerFormFieldMessages.ts';
-import { formFieldsMessages } from '../sections/form-fields/FormFieldsSection.tsx';
-import { introductionMessages } from '../sections/introduction/IntroductionSection.tsx';
 import { nameGeneratorPromptMessages } from '../sections/name-generator-prompts/NameGeneratorPromptsSection.tsx';
 import { nameGeneratorWordingMessages } from '../sections/name-generator-wording/nameGeneratorWording.tsx';
 import { pageContentMessages } from '../sections/page-content/PageContentSection.tsx';
@@ -38,9 +43,15 @@ import { promptsSectionMessages } from '../sections/PromptsSection.tsx';
 import { stageWordingMessages } from '../sections/supplied-wording/stageWordingMessages.ts';
 import { isStageType } from '../stage-types.ts';
 import {
+  dynamicAttributeNameMessages,
+  dynamicAttributeVersionLabel,
+  dynamicAttributeWordingsName,
+} from './dynamicAttributeNames.ts';
+import {
   nameInterfaceText,
   nameInterfaceTextGroup,
 } from './interfaceTextNames.ts';
+import type { ProtocolLocalization } from './localizedText.ts';
 
 const messages = defineMessages({
   dynamicLabelSection: {
@@ -94,7 +105,10 @@ const messages = defineMessages({
 });
 
 export type LocalizedTextStep = Readonly<{
-  /** The path segments this step names, from the start of the place, JSON-encoded: identifies the step among its siblings. */
+  /**
+   * The path segments this step names, from the start of the place,
+   * JSON-encoded: identifies the step among its siblings.
+   */
   key: string;
   /** What the editor calls it, in the reader's language. */
   label: string;
@@ -111,6 +125,13 @@ type Subject = Readonly<
 type NamingContext = Readonly<{
   intl: IntlShape;
   codebook: Codebook;
+  /** The protocol's languages, which a dynamic attribute is named in. */
+  localization: ProtocolLocalization | undefined;
+  /**
+   * The language that a dynamic attribute is named in: the language being
+   * edited, or the protocol's default language when it is unset.
+   */
+  locale: LocaleTag | undefined;
   /** The stage, or the codebook definition, the path starts in. */
   place: unknown;
   /** The segments a step names, from the start of the place. */
@@ -266,33 +287,88 @@ const promptText = (textLabel: MessageDescriptor): Rule =>
 const NAME_GENERATOR_PROMPT = promptText(nameGeneratorPromptMessages.textLabel);
 const CENSUS_PROMPT = promptText(censusMessages.promptTextLabel);
 
-const INTRODUCTION: Step = [1, words(introductionMessages.title)];
-const INTRODUCTION_RULES: readonly Rule[] = [
-  rule('introductionPanel.title', INTRODUCTION, [
-    2,
-    words(introductionMessages.headingLabel),
-  ]),
-  rule('introductionPanel.text', INTRODUCTION, [
-    2,
-    words(introductionMessages.textLabel),
-  ]),
-];
+const FORM: Step = [1, words(formDocumentMessages.title)];
 
-const FORM: Step = [1, words(formFieldsMessages.title)];
-
-const formFieldRules = (subjectOf: SubjectOf): readonly Rule[] => {
+/**
+ * A form's documents, and its fields' questions and hints, each field named
+ * by the attribute it collects. `form` names the form's section.
+ */
+const formRules = (
+  subjectOf: SubjectOf,
+  form: Step = FORM,
+): readonly Rule[] => {
   const field: Step = [3, attributeOr(messages.fieldPosition, subjectOf)];
   return [
-    rule('form.fields.#.prompt', FORM, field, [
+    rule('form.content', form),
+    rule('form.fields.#.prompt', form, field, [
       4,
-      words(formFieldsMessages.promptLabel),
+      words(formDocumentMessages.questionName),
     ]),
-    rule('form.fields.#.hint', FORM, field, [
+    rule('form.fields.#.hint', form, field, [
       4,
-      words(formFieldsMessages.hintLabel),
+      words(formDocumentMessages.hintName),
     ]),
   ];
 };
+
+/** Names a dynamic attribute by its wordings, as its pill shows it. */
+const dynamicAttributeName: Label = (context) => {
+  const name = dynamicAttributeWordingsName(
+    asDynamicAttribute(valueAt(context.place, context.at)),
+    context.localization,
+    context.locale,
+    {
+      intl: context.intl,
+      codebook: context.codebook,
+      dynamicAttributes: valueAt(context.place, context.at.slice(0, -1)),
+    },
+  );
+  return name === ''
+    ? context.intl.formatMessage(dynamicAttributeNameMessages.dynamicAttribute)
+    : name;
+};
+
+/**
+ * The versions of the dynamic attributes declared after `prefix` (a stage's,
+ * or a node type label's), each named by the dynamic attribute, then by the
+ * version, as the dynamic attribute's settings name them.
+ */
+const dynamicAttributeRules = (
+  prefix: readonly string[],
+  sections: readonly Step[],
+): readonly Rule[] => {
+  const depth = prefix.length;
+  const owner = prefix.slice(0, -1);
+  const attribute: Step = [depth + 1, dynamicAttributeName];
+  const versionLabel: Label = ({ intl, codebook, place, at }) =>
+    dynamicAttributeVersionLabel(intl, {
+      codebook,
+      conditions: valueAt(place, [...owner, 'conditions']),
+      dynamicAttribute: asDynamicAttribute(
+        valueAt(place, at.slice(0, depth + 1)),
+      ),
+      versionPath: at.slice(depth + 1),
+    });
+  const version = (pattern: string, covers: number): Rule =>
+    rule([...prefix, '*', pattern].join('.'), ...sections, attribute, [
+      depth + covers,
+      versionLabel,
+    ]);
+  return [
+    version('cases.#.wording', 3),
+    version('answers.#.wording', 3),
+    version('otherwise', 2),
+    version('missing', 2),
+    version('other', 2),
+    version('participant', 2),
+    version('wording', 2),
+  ];
+};
+
+const STAGE_DYNAMIC_ATTRIBUTES = dynamicAttributeRules(
+  ['dynamicAttributes'],
+  [[1, words(attributeGroupMessages.dynamic)]],
+);
 
 const PANEL_RULES: readonly Rule[] = [
   rule(
@@ -373,10 +449,6 @@ const PEDIGREE_PERSON_FORM: Step = [
 const PEDIGREE_PEOPLE: Step = [
   0,
   words(familyPedigreeMessages.nodeConfigurationTitle),
-];
-const PEDIGREE_PERSON_FIELD: Step = [
-  3,
-  attributeOr(messages.fieldPosition, stageSubject),
 ];
 
 /**
@@ -470,8 +542,8 @@ const UNPLACED_NODES_NOTICE = wordingRule(
 );
 
 const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
-  AlterEdgeForm: formFieldRules(stageSubject),
-  AlterForm: formFieldRules(stageSubject),
+  AlterEdgeForm: formRules(stageSubject),
+  AlterForm: formRules(stageSubject),
   Anonymisation: [
     rule(
       'explanationText',
@@ -492,21 +564,14 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ]),
   ],
   DyadCensus: [CENSUS_PROMPT],
-  EgoForm: [...INTRODUCTION_RULES, ...formFieldRules(egoSubject)],
+  EgoForm: formRules(egoSubject),
   FamilyPedigree: [
     rule(
       'prompt',
       [0, words(familyPedigreeMessages.promptTitle)],
       [1, words(familyPedigreeMessages.promptLabel)],
     ),
-    rule('form.fields.#.prompt', PEDIGREE_PERSON_FORM, PEDIGREE_PERSON_FIELD, [
-      4,
-      words(formFieldsMessages.promptLabel),
-    ]),
-    rule('form.fields.#.hint', PEDIGREE_PERSON_FORM, PEDIGREE_PERSON_FIELD, [
-      4,
-      words(formFieldsMessages.hintLabel),
-    ]),
+    ...formRules(stageSubject, PEDIGREE_PERSON_FORM),
     rule(
       'nominationPrompts.#.text',
       [1, words(familyPedigreeMessages.nominationTitle)],
@@ -553,8 +618,8 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     NAME_GENERATOR_PROMPT,
     ...PANEL_RULES,
     ...NAME_GENERATOR_LIMIT_RULES,
-    rule('form.title', FORM, [2, words(formFieldsMessages.formTitleLabel)]),
-    ...formFieldRules(stageSubject),
+    rule('form.title', FORM, [2, words(formDocumentMessages.dialogTitleLabel)]),
+    ...formRules(stageSubject),
   ],
   NameGeneratorQuickAdd: [
     NAME_GENERATOR_PROMPT,
@@ -714,6 +779,13 @@ const ENTITY_RULES: Readonly<Record<'node' | 'edge', readonly Rule[]>> = {
       [1, words(messages.dynamicLabelSection)],
       [2, words(messages.dynamicLabelText)],
     ),
+    ...dynamicAttributeRules(
+      ['dynamicLabel', 'dynamicAttributes'],
+      [
+        [1, words(messages.dynamicLabelSection)],
+        [2, words(attributeGroupMessages.dynamic)],
+      ],
+    ),
   ],
   edge: VARIABLE_RULES,
 };
@@ -750,7 +822,11 @@ const locate = (protocol: CurrentProtocol, path: Path): Located | undefined => {
     if (!stage || !isStageType(stage.type)) return undefined;
     return {
       place: stage,
-      rules: [STAGE_NAME, ...STAGE_RULES[stage.type]],
+      rules: [
+        STAGE_NAME,
+        ...STAGE_DYNAMIC_ATTRIBUTES,
+        ...STAGE_RULES[stage.type],
+      ],
       rest: inScope,
     };
   }
@@ -789,7 +865,14 @@ export function nameLocalizedText(
     const at = rest.slice(0, covers);
     return {
       key: JSON.stringify(at),
-      label: label({ intl, codebook: protocol.codebook, place, at }),
+      label: label({
+        intl,
+        codebook: protocol.codebook,
+        localization: protocol.localization,
+        locale: undefined,
+        place,
+        at,
+      }),
     };
   });
 }

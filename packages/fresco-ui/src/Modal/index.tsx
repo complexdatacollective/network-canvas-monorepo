@@ -10,7 +10,11 @@ import {
   type ReactNode,
 } from 'react';
 
-import { PortalContainerScope, usePortalContainer } from '../PortalContainer';
+import {
+  PortalContainerScope,
+  useDrawnOnTopWhenOpened,
+  usePortalContainer,
+} from '../PortalContainer';
 import { asFinalFocusTarget } from '../utils/finalFocus';
 import { inertOthers } from '../utils/inertOthers';
 import { ModalBackdrop } from './ModalBackdrop';
@@ -159,6 +163,9 @@ export default function Modal({
     return inertOthers([portalNode]);
   }, [open, portalNode]);
 
+  // A modal reopened while it is still leaving keeps its portal node.
+  useDrawnOnTopWhenOpened(open, portalNode);
+
   return (
     <ModalOpenerContext.Provider value={openerRef}>
       <BaseDialog.Root
@@ -188,6 +195,11 @@ export default function Modal({
               ref={setPortalNode}
               container={portalContainer ?? undefined}
               keepMounted
+              // On the popup layer, so that it is drawn over every popup opened
+              // before it, among them the popover it may be opened from, and
+              // under every popup opened after it (see
+              // `PortalContainerProvider`).
+              className="relative z-3000"
             >
               {/*
                 Everything that portals from inside this modal goes into this

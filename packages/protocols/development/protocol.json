@@ -34,17 +34,25 @@
         "en": "Ego Form",
         "es": "Formulario de ego"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "Introduction to the ego form",
-          "es": "Introducción al formulario de ego"
-        },
-        "text": {
-          "en": "There are multiple ways to describe **you**.",
-          "es": "Hay muchas maneras de describirte **a ti**."
+      "conditions": {
+        "79fecbfc-ecb6-5def-b2aa-ec763df73022": {
+          "rules": [
+            {
+              "id": "137ef1ac-d1c6-5c1e-973c-fd57ad11b6f9",
+              "type": "ego",
+              "options": {
+                "attribute": "9c47f32e-b72f-4b1b-93a2-e29766dc3012",
+                "operator": "EXISTS"
+              }
+            }
+          ]
         }
       },
       "form": {
+        "content": {
+          "en": "# Introduction to the ego form\n\nThere are multiple ways to describe **you**.\n\n![](field:b868df32-7146-57be-8162-40f6008d07a5)\n\n![](field:a15e46cc-3a66-5ef0-82dd-f339a65f9b9b)\n\n![](field:2bdd67fe-8f73-5549-a298-6c9053257384)\n\n![](field:2a45fd1c-705b-588b-ad4f-88d81dd13295)\n\n![](field:aaae5717-3d22-59ff-8ad8-f8e382a68452)\n\n![](field:22c2ed83-e3e0-502b-908e-ac68e03e32b8)\n\n![](field:c7432c0c-062d-5cd3-9c93-68272b723aa0)\n\n![](field:ed2f38fa-a745-59ac-9323-3670b8ba490a)\n\n![](field:6f766e45-9740-5a6e-8d7c-c688cfee2936)\n\n![](field:cf77194f-64ac-5342-9d6e-314f45d09b0e)\n\n![](field:4b5b82bc-41a9-5325-87fb-f79cdd6178ad)\n\n{condition_79fecbfc_ecb6_5def_b2aa_ec763df73022, select, true {![](field:896f55cd-0d93-5b0a-9f02-6d9e363efc97)} other {}}",
+          "es": "# Introducción al formulario de ego\n\nHay muchas maneras de describirte **a ti**.\n\n![](field:b868df32-7146-57be-8162-40f6008d07a5)\n\n![](field:a15e46cc-3a66-5ef0-82dd-f339a65f9b9b)\n\n![](field:2bdd67fe-8f73-5549-a298-6c9053257384)\n\n![](field:2a45fd1c-705b-588b-ad4f-88d81dd13295)\n\n![](field:aaae5717-3d22-59ff-8ad8-f8e382a68452)\n\n![](field:22c2ed83-e3e0-502b-908e-ac68e03e32b8)\n\n![](field:c7432c0c-062d-5cd3-9c93-68272b723aa0)\n\n![](field:ed2f38fa-a745-59ac-9323-3670b8ba490a)\n\n![](field:cf77194f-64ac-5342-9d6e-314f45d09b0e)\n\n![](field:4b5b82bc-41a9-5325-87fb-f79cdd6178ad)\n\n{condition_79fecbfc_ecb6_5def_b2aa_ec763df73022, select, true {![](field:896f55cd-0d93-5b0a-9f02-6d9e363efc97)} other {}}"
+        },
         "fields": [
           {
             "id": "b868df32-7146-57be-8162-40f6008d07a5",
@@ -219,6 +227,20 @@
         "en": "Ego name contains",
         "es": "El nombre de ego contiene"
       },
+      "conditions": {
+        "1404edf1-8e38-5f6f-8d6a-82af6c2e0130": {
+          "rules": [
+            {
+              "id": "ae07b2c3-58d2-50bd-9b4d-add605cf7723",
+              "type": "ego",
+              "options": {
+                "attribute": "3377af3f-3c79-41da-9b0b-6570fb519b93",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
       "type": "Information",
       "skipLogic": {
         "action": "SHOW",
@@ -238,8 +260,8 @@
       },
       "id": "4f2b11a0-3046-11ed-a33e-959cc32d37ee",
       "content": {
-        "en": "# Ego name contains Josh\n\n{ego_3377af3f_3c79_41da_9b0b_6570fb519b93, select, missing {Hello!} other {Hello fellow {ego_3377af3f_3c79_41da_9b0b_6570fb519b93}!}}\n",
-        "es": "# El nombre de ego contiene Josh\n\n{ego_3377af3f_3c79_41da_9b0b_6570fb519b93, select, missing {¡Hola!} other {¡Hola, colega {ego_3377af3f_3c79_41da_9b0b_6570fb519b93}!}}\n"
+        "en": "# Ego name contains Josh\n\n{condition_1404edf1_8e38_5f6f_8d6a_82af6c2e0130, select, true {Hello fellow {ego_3377af3f_3c79_41da_9b0b_6570fb519b93}!} other {Hello!}}",
+        "es": "# El nombre de ego contiene Josh\n\n{condition_1404edf1_8e38_5f6f_8d6a_82af6c2e0130, select, true {¡Hola, colega {ego_3377af3f_3c79_41da_9b0b_6570fb519b93}!} other {¡Hola!}}"
       }
     },
     {
@@ -250,10 +272,44 @@
         "en": "NG with external data",
         "es": "GN con datos externos"
       },
+      "dynamicAttributes": {
+        "b2b84ae0-d561-545c-8ded-5bf6e168af2f": {
+          "logic": "answers",
+          "value": "ego_67fefac9_561f_454a_8f78_81bd9470efaa",
+          "missing": {
+            "en": "not set",
+            "es": "sin definir"
+          },
+          "answers": [
+            {
+              "answer": "true",
+              "wording": {
+                "en": "on",
+                "es": "encendido"
+              }
+            },
+            {
+              "answer": "false",
+              "wording": {
+                "en": "off",
+                "es": "apagado"
+              }
+            }
+          ],
+          "other": {
+            "en": "not set",
+            "es": "sin definir"
+          }
+        }
+      },
       "form": {
         "title": {
           "en": "Add A Person",
           "es": "Añadir una persona"
+        },
+        "content": {
+          "en": "![](field:b037eb5e-71ef-5717-890d-fd961faff321)\n\n![](field:ff4738bd-1a90-5421-a3ae-94a5c022e5cf)\n\n![](field:8f7289a2-7b3a-5088-95f4-3500567ff371)",
+          "es": "![](field:b037eb5e-71ef-5717-890d-fd961faff321)\n\n![](field:ff4738bd-1a90-5421-a3ae-94a5c022e5cf)\n\n![](field:8f7289a2-7b3a-5088-95f4-3500567ff371)"
         },
         "fields": [
           {
@@ -363,8 +419,8 @@
         {
           "id": "37f0f2ca-acfb-5614-93c9-3c28834c273a",
           "text": {
-            "en": "Second prompt with no additional attributes",
-            "es": "Segunda instrucción sin atributos adicionales"
+            "en": "Second prompt with no additional attributes. The switch on the Ego Form was {dynamic_b2b84ae0_d561_545c_8ded_5bf6e168af2f}.",
+            "es": "Segunda instrucción sin atributos adicionales. El interruptor en el «Formulario de ego» estaba {dynamic_b2b84ae0_d561_545c_8ded_5bf6e168af2f}."
           }
         }
       ]
@@ -380,6 +436,10 @@
         "title": {
           "en": "Add A Person",
           "es": "Añadir una persona"
+        },
+        "content": {
+          "en": "![](field:1f31326b-e401-555d-bd4c-861d16b5fcae)\n\n![](field:eba8a12e-a188-5480-9562-71c00fbecea2)\n\n![](field:39bb32da-a415-53e3-a006-088a18a9f356)",
+          "es": "![](field:1f31326b-e401-555d-bd4c-861d16b5fcae)\n\n![](field:eba8a12e-a188-5480-9562-71c00fbecea2)\n\n![](field:39bb32da-a415-53e3-a006-088a18a9f356)"
         },
         "fields": [
           {
@@ -778,6 +838,10 @@
         "title": {
           "en": "Test for form input controls",
           "es": "Prueba de los controles de los formularios"
+        },
+        "content": {
+          "en": "![](field:8ea3de97-6b50-56ff-97dc-6d356a53a666)\n\n![](field:cf33ac87-f3d2-5ca8-9335-d2eb1cb64038)\n\n![](field:a45b14fb-fffb-5671-bcb8-40bc313270c3)\n\n![](field:55f34900-0197-5c87-85ff-d4bf934b9eb4)\n\n![](field:a63a5e15-8382-57be-98aa-feb3b2f0c3e4)\n\n![](field:0c02a894-07c7-5570-9cc0-32ed639903dc)\n\n![](field:7310f72a-6db2-5591-9c66-3dc68b3ecde0)\n\n![](field:5db3ce62-765e-5c6d-aae7-41624ca4e72f)\n\n![](field:12ddafe3-e13b-5409-b7f1-5b75fc42a234)",
+          "es": "![](field:8ea3de97-6b50-56ff-97dc-6d356a53a666)\n\n![](field:cf33ac87-f3d2-5ca8-9335-d2eb1cb64038)\n\n![](field:a45b14fb-fffb-5671-bcb8-40bc313270c3)\n\n![](field:55f34900-0197-5c87-85ff-d4bf934b9eb4)\n\n![](field:a63a5e15-8382-57be-98aa-feb3b2f0c3e4)\n\n![](field:0c02a894-07c7-5570-9cc0-32ed639903dc)\n\n![](field:7310f72a-6db2-5591-9c66-3dc68b3ecde0)\n\n![](field:5db3ce62-765e-5c6d-aae7-41624ca4e72f)\n\n![](field:12ddafe3-e13b-5409-b7f1-5b75fc42a234)"
         },
         "fields": [
           {
@@ -1275,6 +1339,10 @@
         "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "form": {
+        "content": {
+          "en": "![](field:0cdcb996-9dde-5621-aba3-a6c82021f027)\n\n![](field:b3bcf42a-80ec-5dd2-b603-68718bde992b)\n\n![](field:c57ac100-388c-5467-aec8-3f98e05819d2)",
+          "es": "![](field:0cdcb996-9dde-5621-aba3-a6c82021f027)\n\n![](field:b3bcf42a-80ec-5dd2-b603-68718bde992b)\n\n![](field:c57ac100-388c-5467-aec8-3f98e05819d2)"
+        },
         "fields": [
           {
             "id": "0cdcb996-9dde-5621-aba3-a6c82021f027",
@@ -1345,6 +1413,10 @@
         "type": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
       },
       "form": {
+        "content": {
+          "en": "![](field:c64e6933-b2ca-596b-90c8-b431f066e626)\n\n![](field:2703f99a-c594-596e-b9fc-75daff68143e)\n\n![](field:3c24d3fd-52e1-5179-99af-dedf6baf5f0a)",
+          "es": "![](field:c64e6933-b2ca-596b-90c8-b431f066e626)\n\n![](field:2703f99a-c594-596e-b9fc-75daff68143e)\n\n![](field:3c24d3fd-52e1-5179-99af-dedf6baf5f0a)"
+        },
         "fields": [
           {
             "id": "c64e6933-b2ca-596b-90c8-b431f066e626",
@@ -1420,6 +1492,10 @@
         "type": "01e58147-1429-5f19-93fc-52b08cd0685a"
       },
       "form": {
+        "content": {
+          "en": "![](field:87a2b3b2-c5f5-5d49-a1b3-bda4fe8f08b5)",
+          "es": "![](field:87a2b3b2-c5f5-5d49-a1b3-bda4fe8f08b5)"
+        },
         "fields": [
           {
             "id": "87a2b3b2-c5f5-5d49-a1b3-bda4fe8f08b5",
@@ -1540,8 +1616,8 @@
       },
       "type": "Information",
       "content": {
-        "en": "# Title for the screen\n\n![](asset:click_the_thing?align=start&loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)",
-        "es": "# Título de la pantalla\n\n![](asset:click_the_thing?align=start&loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)"
+        "en": "# Title for the screen\n\n![](asset:click_the_thing?loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)",
+        "es": "# Título de la pantalla\n\n![](asset:click_the_thing?loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)"
       }
     },
     {

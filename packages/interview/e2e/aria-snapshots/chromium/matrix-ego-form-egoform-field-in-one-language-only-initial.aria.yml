@@ -1,0 +1,16 @@
+- main:
+  - heading "About you" [level=1]
+  - text: What is your name?
+  - textbox "What is your name?"
+  - text: How old are you?
+  - button "Decrease value"
+  - spinbutton "How old are you?"
+  - button "Increase value"
+  - navigation:
+    - button "Text size"
+    - 'combobox "Interview language: American English"'
+    - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
+    - button "Next Step"
+    - status: You can continue to the next step.
+  - region "Interview notifications"

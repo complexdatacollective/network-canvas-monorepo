@@ -2,6 +2,7 @@ import {
   familyPedigreeWordingIn,
   interfaceTextAsShown,
 } from '../../../__tests__/suppliedWording.ts';
+import { formOf } from '../../../testing/fixtures.ts';
 import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
@@ -260,12 +261,8 @@ const protocolDocument = () => ({
       id: 'egoForm',
       type: 'EgoForm',
       label: localized('About you'),
-      introductionPanel: {
-        title: localized('About you title'),
-        text: localized('About you text'),
-      },
-      form: {
-        fields: [
+      form: formOf(
+        [
           {
             id: 'field-1',
             variable: 'egoName',
@@ -273,7 +270,8 @@ const protocolDocument = () => ({
             hint: localized('First name is fine'),
           },
         ],
-      },
+        { before: '# About you title\n\nAbout you text' },
+      ),
     },
     {
       id: 'nameGenerator',
@@ -282,9 +280,9 @@ const protocolDocument = () => ({
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add a person'),
-        fields: [
+        ...formOf([
           { id: 'field-1', variable: 'name', prompt: localized('Their name') },
-        ],
+        ]),
       },
       behaviours: { minNodes: 1, maxNodes: 5 },
       minNodesNotice: localized(
@@ -411,26 +409,22 @@ const protocolDocument = () => ({
       type: 'AlterForm',
       label: localized('About them'),
       subject: { entity: 'node', type: 'person' },
-      form: {
-        fields: [
-          {
-            id: 'field-1',
-            variable: 'nickname',
-            prompt: localized('Nickname'),
-          },
-        ],
-      },
+      form: formOf([
+        {
+          id: 'field-1',
+          variable: 'nickname',
+          prompt: localized('Nickname'),
+        },
+      ]),
     },
     {
       id: 'alterEdgeForm',
       type: 'AlterEdgeForm',
       label: localized('About ties'),
       subject: { entity: 'edge', type: 'knows' },
-      form: {
-        fields: [
-          { id: 'field-1', variable: 'note', prompt: localized('Note') },
-        ],
-      },
+      form: formOf([
+        { id: 'field-1', variable: 'note', prompt: localized('Note') },
+      ]),
     },
     {
       id: 'dyadCensus',
@@ -581,16 +575,14 @@ const protocolDocument = () => ({
         relativesNotRecordedAttribute: 'relativesNotRecorded',
         ...pedigreeCompletenessText(),
       },
-      form: {
-        fields: [
-          {
-            id: 'field-1',
-            variable: 'birthYear',
-            prompt: localized('Birth year?'),
-            hint: localized('Approximate is fine'),
-          },
-        ],
-      },
+      form: formOf([
+        {
+          id: 'field-1',
+          variable: 'birthYear',
+          prompt: localized('Birth year?'),
+          hint: localized('Approximate is fine'),
+        },
+      ]),
       nominationPrompts: [
         {
           id: 'n1',

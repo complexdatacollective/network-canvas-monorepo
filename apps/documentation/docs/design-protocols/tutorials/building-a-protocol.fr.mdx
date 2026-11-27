@@ -2,7 +2,7 @@
 navOrder: 1
 title: Construire un protocole
 toc: true
-translatedFrom: 3c654f34f268fd81f17a6b3ef03a825c19e18d44
+translatedFrom: bc97865a5bf9cbc68cd597331293ea2634edb3c3
 ---
 
 <SummaryCard duration="2 heures">
@@ -249,13 +249,19 @@ Cette section vous permet de définir les champs qui s’afficheront dans le for
 
 Les champs recueillent des données sur les alters ou sur l’ego (la personne participante, au centre de son réseau), et c’est dans ces champs que l’on définit chacun des attributs recueillis.
 
-Commencez par créer un titre pour le formulaire, afin d’indiquer à la personne participante quelles informations vous souhaitez recueillir. Saisissez le titre « Add a Clinic or Health Care Provider. » (ajoutez un établissement ou un professionnel de santé).
-
 <AppOnly app="current">
 
-Définissez ensuite les champs du formulaire. Cliquez sur **Créer un champ de formulaire** dans la section **Champs du formulaire**. Une boîte de dialogue s’ouvre, avec à gauche les paramètres du champ : vous y choisissez un attribut pour le champ, rédigez la question, choisissez une commande de saisie (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…) et définissez la validation que vous souhaitez inclure. À droite figure un aperçu en direct de la question telle que la personne participante la verra, qui se met à jour pendant que vous travaillez. Sur un écran étroit, l’aperçu s’affiche plutôt sous les paramètres.
+Commencez par donner un titre au formulaire, afin d’indiquer à la personne participante quelles informations vous souhaitez recueillir. Dans le champ **Titre de la boîte de dialogue**, saisissez « Add a Clinic or Health Care Provider. » (ajoutez un établissement ou un professionnel de santé). La personne participante le voit comme titre de la boîte de dialogue dans laquelle elle ajoute un établissement.
 
-Pour le premier champ, vous voulez connaître le nom de l’établissement de santé que la personne participante cite. Sous **Sélection de l’attribut**, cliquez sur **Sélectionnez un attribut** et choisissez « name » dans la liste ou, si le type de nœud « Clinic » n’a pas encore d’attribut « name », saisissez « name » et choisissez **Créer « name »**. Ensuite, sous **Configuration du champ**, saisissez le **Texte de la question**. Dans cet exemple, utilisez la question « What is the name of this clinic? » (comment s’appelle cet établissement de santé ?).
+Définissez ensuite les champs du formulaire. Le formulaire se rédige dans l’éditeur **Contenu du formulaire**, sous la forme d’un seul texte dans lequel chaque question est un champ. Placez le curseur dans l’éditeur et choisissez **Champ** dans sa barre d’outils. Un nouveau champ apparaît dans le texte, avec un contour en pointillés, et une liste d’attributs s’ouvre près du bouton **Champ**.
+
+Pour le premier champ, vous voulez connaître le nom de l’établissement de santé que la personne participante cite. Choisissez « name » dans la liste ou, si le type de nœud « Clinic » n’a pas encore d’attribut « name », saisissez « name » dans le champ de recherche, choisissez **Créer « name »**, puis choisissez **Texte** comme type. Saisissez ensuite la question à l’endroit où le champ affiche **Saisissez la question**. Dans cet exemple, utilisez la question « What is the name of this clinic? » (comment s’appelle cet établissement de santé ?).
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Commencez par créer un titre pour le formulaire, afin d’indiquer à la personne participante quelles informations vous souhaitez recueillir. Saisissez le titre « Add a Clinic or Health Care Provider. » (ajoutez un établissement ou un professionnel de santé).
 
 </AppOnly>
 
@@ -271,7 +277,7 @@ Pour le premier champ, vous voulez connaître le nom de l’établissement de sa
 
 <AppOnly app="current">
 
-Dans Architect, chaque champ de formulaire peut comporter une **indication** facultative : une courte note, mise en forme en markdown, affichée sous la question pour guider la personne participante dans sa réponse.
+Dans Architect, chaque champ de formulaire peut comporter une **indication** facultative : une courte note affichée sous la question pour guider la personne participante dans sa réponse. Saisissez-la à l’endroit où le champ affiche **Ajoutez une indication (facultatif)**.
 
 </AppOnly>
 
@@ -303,7 +309,17 @@ Sinon, cliquez sur une variable existante dans la liste.
 
 </AppOnly>
 
+<AppOnly app="current">
+
+Sélectionnez ensuite le champ pour ouvrir ses paramètres : cliquez sur son contour ou sur sa commande de saisie. Les paramètres s’ouvrent à côté du champ. Sous **Commande de saisie**, choisissez la commande de saisie qui s’affichera pour recueillir cet attribut.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Enfin, choisissez la commande de saisie qui s’affichera pour recueillir cet attribut.
+
+</AppOnly>
 
 <KeyConcept title="Concept clé : les commandes de saisie">
 
@@ -317,11 +333,11 @@ Comme vous demandez le nom de l’établissement de santé (un simple attribut d
 
 <AppOnly app="current">
 
-![Le sélecteur Commande de saisie et l’aperçu en direct dans Architect.](/assets/img/architect-guide/input-control.png)
+![Les paramètres d’un champ de formulaire dans Architect, avec la liste Commande de saisie.](/assets/img/architect-guide/input-control.png)
 
 </AppOnly>
 
-Enfin, définissez les exigences de validation de ce champ. Indiquez que ce champ de texte est obligatoire. Les options de validation disponibles varient selon le type d’attribut. Si vous ajoutez une validation « obligatoire », la personne participante doit renseigner ce champ avant de pouvoir continuer. Pour en savoir plus, consultez le [guide de validation des champs](/fr/design-protocols/key-concepts/field-validation).
+Enfin, définissez les exigences de validation de ce champ<AppOnly app="current"> sous **Validation**, dans les paramètres du champ</AppOnly>. Indiquez que ce champ de texte est obligatoire. Les options de validation disponibles varient selon le type d’attribut. Si vous ajoutez une validation « obligatoire », la personne participante doit renseigner ce champ avant de pouvoir continuer. Pour en savoir plus, consultez le [guide de validation des champs](/fr/design-protocols/key-concepts/field-validation).
 
 <Screenshot axis="architect" name="validation"></Screenshot>
 
@@ -329,13 +345,19 @@ Enfin, définissez les exigences de validation de ce champ. Indiquez que ce cham
 
 Architect propose aussi l’option **Afficher les indications de validation**. Lorsqu’elle est activée, elle montre automatiquement aux personnes participantes une indication tirée des règles de validation du champ, pour qu’elles comprennent ce qui est attendu de leur réponse.
 
-Pour essayer le champ, répondez à la question dans l’aperçu et cliquez sur **Vérifier la réponse**. L’aperçu applique les règles que l’attribut porte déjà dans le livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) et vous montre ce qui serait indiqué à une personne participante. Répondre dans l’aperçu ne modifie pas votre protocole. Tant qu’un champ crée un nouvel attribut, comme c’est le cas ici, les règles que vous définissez en même temps ne figurent pas encore dans le livre de codes : **Vérifier la réponse** accepte donc n’importe quelle réponse jusqu’à ce que vous cliquiez sur **Ajouter** ; rouvrez ensuite le champ pour essayer ces règles.
+La commande de saisie, les options et la validation appartiennent à l’attribut : elles s’appliquent donc partout où cet attribut est recueilli. Elles sont enregistrées avec l’étape, lorsque vous l’enregistrez. Pour revenir à la rédaction du formulaire, cliquez de nouveau dans le texte.
+
+En suivant la procédure que vous venez d’apprendre, créez maintenant les deux autres champs de ce formulaire. Placez le curseur après le premier champ avant de choisir **Champ**, pour que les champs se suivent.
 
 </AppOnly>
 
-Cliquez sur <AppOnly app="current">**Ajouter**</AppOnly><AppOnly app="classic">**Save and Close** (enregistrer et fermer)</AppOnly> pour créer votre premier champ de formulaire.
+<AppOnly app="classic">
+
+Cliquez sur **Save and Close** (enregistrer et fermer) pour créer votre premier champ de formulaire.
 
 En suivant la procédure que vous venez d’apprendre, créez maintenant les deux autres champs de ce formulaire.
+
+</AppOnly>
 
 Créez les champs suivants, avec les commandes de saisie, les questions et les options adaptées :
 
@@ -394,13 +416,25 @@ Nous recueillerons des données sur chacune de ces universités à l’aide du t
 
 L’étape suivante de ce protocole d’exemple utilise l’interface « Formulaire ego ». Nous créons l’étape « Formulaire ego » et lui donnons un nom, comme pour les interfaces précédentes.
 
+<AppOnly app="current">
+
+### Présenter le formulaire {#introducing-the-form}
+
+Commencez le formulaire en le présentant à la personne participante. Vous pouvez expliquer quelles données vous demandez, et pourquoi. Dans l’éditeur **Contenu du formulaire**, saisissez un titre, appliquez-lui le style **Titre 1** dans la liste des styles de texte de la barre d’outils, puis rédigez un paragraphe en dessous. Dans notre cas, nous expliquons à quoi sert l’interface « Formulaire ego ».
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 ### Panneau d’introduction {#introduction-panel}
 
 Le panneau d’introduction est une fonctionnalité de l’interface « Formulaire ego » qui vous permet de présenter le formulaire à la personne participante. Vous pouvez l’utiliser pour expliquer quelles données vous demandez, et pourquoi. Dans notre cas, nous expliquons à quoi sert l’interface « Formulaire ego ».
 
+</AppOnly>
+
 <Screenshot axis="architect" name="ego-form"></Screenshot>
 
-Créons maintenant une série de champs pour notre formulaire ego, comme nous l’avons fait en configurant le générateur de noms avec formulaires. Si vous ne vous souvenez plus de la procédure, reportez-vous à la section correspondante plus haut.
+Créons maintenant une série de champs pour notre formulaire ego, comme nous l’avons fait en configurant le générateur de noms avec formulaires. Si vous ne vous souvenez plus de la procédure, reportez-vous à la section correspondante plus haut.<AppOnly app="current"> Ajoutez les champs sous l’introduction, les uns après les autres.</AppOnly>
 
 Nous allons ensuite créer les champs suivants, avec leurs attributs, questions, commandes de saisie et validations (le cas échéant) :
 
@@ -449,9 +483,9 @@ Ajoutez seulement deux champs à ce formulaire. Voici les informations dont vous
 
 Les deux questions parlent de « this university » (cette université). La personne participante voit un formulaire pour chaque université qu’elle a sélectionnée : la question peut donc plutôt nommer l’université sur laquelle porte le formulaire. Architect le fait en insérant le libellé du nœud dans le texte de la question, une technique appelée texte dynamique (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte).
 
-Rouvrez le champ `visit_or_study`. Remplacez le texte de la question par « Did you visit » (suivi d’une espace), puis cliquez sur le bouton en forme de seringue dans la barre d’outils du **Texte de la question**, ou saisissez `{`. Un menu liste les valeurs que cette question peut afficher. Choisissez **Libellé du nœud**, la première entrée sous **Attributs contextuels**, et complétez la question avec « or study there? » (précédé d’une espace). La valeur apparaît dans la question sous la forme d’une pastille **Libellé du nœud**, et l’aperçu interactif affiche la question avec la même pastille. La question `overall_review` peut nommer l’université de la même façon.
+Dans le formulaire, remplacez la question du champ `visit_or_study` par « Did you visit » (suivi d’une espace), puis cliquez sur **Attribut** dans la barre d’outils de l’éditeur, ou saisissez `{`. Une liste présente les valeurs que cette question peut afficher. Choisissez **Libellé du nœud**, sous **Attributs du nœud**, et complétez la question avec « or study there? » (précédé d’une espace). La valeur apparaît dans la question sous la forme d’une pastille **Libellé du nœud**. La question `overall_review` peut nommer l’université de la même façon.
 
-![L’éditeur « Texte de la question », qui affiche « Did you visit [Libellé du nœud] or study there? » (avez-vous visité [Libellé du nœud] ou y avez-vous étudié ?), à côté de l’aperçu interactif du champ.](/assets/img/piped-text/value-in-question.png)
+![Un champ de formulaire dont la question est « Did you visit [Node label] or study there? » (Avez-vous visité [Libellé du nœud] ou y avez-vous étudié ?).](/assets/img/piped-text/value-in-question.png)
 
 Pendant l’entretien, la pastille est remplacée par le texte affiché sur chaque nœud d’université, qui, pour cette liste, est le nom de l’université : « Did you visit Universidad Francisco Marroquín or study there? ». Le protocole d’exemple à télécharger nomme ainsi l’université dans les deux questions.
 
@@ -460,9 +494,9 @@ Pendant l’entretien, la pastille est remplacée par le texte affiché sur chaq
 Le texte dynamique insère des informations déjà enregistrées pendant l’entretien dans le
 texte que lit une personne participante : le libellé d’un nœud, un attribut du nœud ou du lien sur
 lequel porte une question, un attribut de la personne participante ou la date du jour. Le libellé d’un
-nœud ne manque jamais : il peut donc être inséré seul. N’importe quel attribut peut être
-manquant au moment où la question s’affiche : Architect demande donc deux versions du
-texte qui l’entoure, l’une pour le cas où la valeur est connue, l’autre pour le cas où elle ne l’est pas.
+nœud ne manque jamais. N’importe quel attribut peut être manquant au moment où la
+question s’affiche, et une valeur manquante n’affiche rien : rédigez donc la question
+pour qu’elle se lise bien sans elle, ou utilisez la logique pour lui donner une autre version dans ce cas.
 Pour une présentation complète, consultez [Texte dynamique](/fr/design-protocols/key-concepts/piped-text).
 
 </KeyConcept>
@@ -578,7 +612,7 @@ Nous avons créé plus tôt, dans le sociogramme, deux types de liens que nous p
 
 <AppOnly app="current">
 
-Comme dans l’étape « Formulaire par alter », le texte dynamique permet à cette question de nommer les deux camarades sur lesquels elle porte. Écrivez « To the best of your knowledge, do » (suivi d’une espace), puis ouvrez le menu de la seringue et choisissez **Premier nœud : libellé**. Saisissez « and » (entouré d’espaces), choisissez **Second nœud : libellé**, et terminez par « spend time together outside of class? » (précédé d’une espace). Pour chaque paire, la personne participante lit alors une question comme « To the best of your knowledge, do Corbett and Rebecka spend time together outside of class? », avec les noms affichés sur les deux nœuds.
+Comme dans l’étape « Formulaire par alter », le texte dynamique permet à cette question de nommer les deux camarades sur lesquels elle porte. Écrivez « To the best of your knowledge, do » (suivi d’une espace), puis cliquez sur **Attribut** et choisissez **Premier nœud : libellé**. Saisissez « and » (entouré d’espaces), choisissez **Second nœud : libellé**, et terminez par « spend time together outside of class? » (précédé d’une espace). Pour chaque paire, la personne participante lit alors une question comme « To the best of your knowledge, do Corbett and Rebecka spend time together outside of class? », avec les noms affichés sur les deux nœuds.
 
 ![Le texte de la consigne de l’étape « Recensement des dyades », dont le texte est « To the best of your knowledge, do [Premier nœud : libellé] and [Second nœud : libellé] spend time together outside of class? » (à votre connaissance, est-ce que [Premier nœud : libellé] et [Second nœud : libellé] passent du temps ensemble en dehors des cours ?)](/assets/img/piped-text/pair-prompt.png)
 
@@ -778,7 +812,7 @@ L’espagnol apparaît maintenant à côté de l’anglais américain, avec un b
 
 Revenez à la liste des étapes, où une note indique désormais qu’une partie du contenu n’est pas encore traduite en espagnol, et ouvrez l’étape **Welcome**. Comme le protocole a deux langues, chaque champ de texte de l’éditeur d’étape possède un menu de langue. Choisissez **espagnol** dans le menu à côté de **Texte enrichi**. Tous les champs de l’éditeur passent ensemble à l’espagnol. Le texte de la page est vide, et une note en dessous explique que les personnes participantes qui utilisent l’espagnol verront le texte en anglais américain.
 
-![Le champ « Titre de la page » de l’étape « Welcome », avec l’espagnol choisi pour la modification, avant sa traduction.](/assets/img/architect/localization/editor-missing-translation.png)
+![Le champ « Texte enrichi » de l’étape « Welcome », avec l’espagnol choisi pour la modification, avant sa traduction.](/assets/img/architect/localization/editor-missing-translation.png)
 
 Saisissez « Bienvenida » comme nom de l’étape. Dans l’éditeur **Texte enrichi**, saisissez « Te damos la bienvenida al protocolo de ejemplo » et faites-en le titre de la page en choisissant **Titre 1**, comme vous l’avez fait en anglais américain. Cliquez ensuite sur **Modification terminée**.
 

@@ -3,16 +3,43 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
-import { egoFormStageEditor } from '../../editors/ego-form/EgoFormStageEditor.ts';
+import { networkComposerStageEditor } from '../../editors/network-composer/NetworkComposerStageEditor.ts';
 import StageEditor from '../../StageEditor.tsx';
 import {
   fixtureStageId,
   fixtureVariableId,
+  loadFixtureStage,
 } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { testId } from '../../testing/testId.ts';
 
-const EGO_NAME = fixtureVariableId('ego', 'ego_name');
+const PERSON_NAME = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'name',
+);
+
+/**
+ * The fixture's network composer, with a form for each new person.
+ *
+ * A composer's form is the one that is still edited a field at a time, in
+ * this dialog; the other forms are written as documents.
+ */
+const composerWithForm = (field: Record<string, unknown>) => ({
+  type: 'NetworkComposer' as const,
+  fields: {
+    ...loadFixtureStage('network-composer-1').fields,
+    nodeForm: {
+      fields: [
+        {
+          id: testId('field-1'),
+          variable: PERSON_NAME,
+          component: 'Text',
+          ...field,
+        },
+      ],
+    },
+  },
+});
 
 /**
  * The two panes, as a browser lays them out.
@@ -21,7 +48,7 @@ const EGO_NAME = fixtureVariableId('ego', 'ego_name');
  * cannot be asserted in the unit suite at all — which is the whole reason this
  * story exists. Everything else about the preview (what it renders, what it
  * reads, what it refuses to write) is held in `FieldPreviewPane.test.tsx` and
- * `__tests__/FormFieldsSection.test.tsx`.
+ * the network composer's own tests.
  *
  * The rule under test is a CONTAINER query on the dialog's own width
  * (`DialogForm`'s `@min-[60rem]`), not a viewport media query — so the lever
@@ -33,11 +60,14 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Form field preview',
   component: StageEditorStoryHost,
   args: {
-    stageId: fixtureStageId('ego-form-1'),
+    stageId: fixtureStageId('network-composer-1'),
+    stage: composerWithForm({
+      label: { 'en-US': 'What is their name?' },
+    }),
     renderEditor: ({ actions, ...editor }) => (
       <StageEditor
         {...editor}
-        registry={egoFormStageEditor}
+        registry={networkComposerStageEditor}
         actions={actions}
       />
     ),
@@ -71,7 +101,7 @@ type Story = StoryObj<typeof meta>;
 const openTheFieldDialog = async () => {
   await awaitPassiveEffects();
   await userEvent.click(
-    await screen.findByRole('button', { name: 'Edit field' }),
+    await screen.findByRole('button', { name: 'Edit form field' }),
   );
   const dialog = await screen.findByRole('dialog', { name: 'Edit form field' });
   await waitFor(async () => {
@@ -167,26 +197,13 @@ export const StackedWhenNarrow: Story = {
 export const SwitchingLanguage: Story = {
   args: {
     localization: { defaultLocale: 'en-US', locales: ['en-US', 'es'] },
-    stage: {
-      type: 'EgoForm',
-      fields: {
-        label: { 'en-US': 'Ego Form', 'es': 'Formulario' },
-        form: {
-          title: { 'en-US': 'About you' },
-          fields: [
-            {
-              id: testId('field-1'),
-              variable: EGO_NAME,
-              prompt: {
-                'en-US': 'What is your name?',
-                'es': '¿Cómo te llamas?',
-              },
-              hint: { 'en-US': 'Use the name you go by.' },
-            },
-          ],
-        },
+    stage: composerWithForm({
+      label: {
+        'en-US': 'What is your name?',
+        'es': '¿Cómo te llamas?',
       },
-    },
+      hint: { 'en-US': 'Use the name you go by.' },
+    }),
   },
   play: async () => {
     const dialog = await openTheFieldDialog();

@@ -168,7 +168,10 @@ function protocolWithoutSkipLogic(protocol: CurrentProtocol): CurrentProtocol {
   };
 }
 
-async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
+async function buildSession(
+  payload: PreviewPayload,
+  browserLanguages: readonly string[],
+): Promise<SessionPayload> {
   const now = new Date().toISOString();
   const base: SessionPayload = {
     id: uuid(),
@@ -195,6 +198,15 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     codebook: payload.protocol.codebook,
     stages: payload.protocol.stages,
     externalData,
+    // Forms are answered in the language that the preview starts in: the
+    // language that the interview chooses from the browser's languages, as
+    // a new preview states none.
+    formLanguage: resolveProtocolLocale(
+      null,
+      browserLanguages,
+      payload.protocol.localization,
+    ),
+    localization: payload.protocol.localization,
     // Leave the previewed stage partially complete so interaction-driven
     // interfaces (ordinal/categorical bins, sociogram) still have
     // unplaced nodes to work with.
@@ -272,7 +284,7 @@ export function PreviewHost() {
           id: uuid(),
           importedAt: new Date().toISOString(),
         });
-        const session = await buildSession(previewPayload);
+        const session = await buildSession(previewPayload, browserLanguages);
         if (cancelled) return;
         nextPayload = { protocol, session };
       } catch (error) {
@@ -333,7 +345,7 @@ export function PreviewHost() {
       clearTimeout(timeoutId);
     };
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `retryNonce` is bumped by Try again to run the handshake afresh; its value is not needed
-  }, [retryNonce]);
+  }, [retryNonce, browserLanguages]);
   // Nothing in a preview is saved, so there is no finish to record. Once this
   // resolves the interview shows its completed state, as it would for a
   // participant, and Finish cannot be confirmed a second time.

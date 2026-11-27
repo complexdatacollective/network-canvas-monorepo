@@ -320,7 +320,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
             <LanguageRow
               key={locale}
               entry={entry}
-              total={coverage.total}
+              total={entry.total}
               strandedCount={
                 removalImpacts.get(locale)?.strandedStrings.length ?? 0
               }

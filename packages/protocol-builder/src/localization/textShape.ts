@@ -81,3 +81,17 @@ export const richTextToolbarFor = (
   thematicBreak: !singleLine && !disallowed.includes('thematic_break'),
   history: !disallowed.includes('history'),
 });
+
+/**
+ * The toolbar of text that is plain words, with no formatting at all: only
+ * undo and redo, beside any insert tools.
+ */
+export const PLAIN_TEXT_TOOLBAR = Object.freeze({
+  bold: false,
+  italic: false,
+  links: false,
+  headings: false,
+  lists: false,
+  thematicBreak: false,
+  history: true,
+});

@@ -266,31 +266,28 @@ function buildBlockSettingsInterview() {
   });
   interview.addInformationStage({
     title: 'Block settings',
-    text: 'Each picture is held to a size and sits at the start, centre or end of the page. The recordings do not start by themselves and do not repeat.',
+    text: 'Each picture is held to a size and is centred on the page. The recordings do not start by themselves and do not repeat.',
     blocks: [
       {
         assetId: 'picture',
         size: 'small',
-        align: 'start',
-        description: 'A small picture at the start',
+        description: 'A small picture',
       },
       {
         assetId: 'picture',
         size: 'medium',
-        description: 'A medium picture in the centre',
+        description: 'A medium picture',
       },
       {
         assetId: 'picture',
         size: 'large',
-        align: 'end',
-        description: 'A large picture at the end',
+        description: 'A large picture',
       },
       {
         assetId: 'silence',
         autoplay: false,
         loop: false,
-        align: 'end',
-        description: 'A recording at the end that does not start or repeat',
+        description: 'A recording that does not start or repeat',
       },
     ],
   });
@@ -317,28 +314,26 @@ const BlockSettingsWrapper = () => {
 };
 
 /**
- * An image's size and alignment, and an audio recording's autoplay and loop
- * settings, as a researcher writes them in the page's text.
+ * An image's size, and an audio recording's autoplay and loop settings, as a
+ * researcher writes them in the page's text. Every block is centred.
  */
 export const BlockSettings: Story = {
   render: () => <BlockSettingsWrapper />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const small = await canvas.findByRole('img', {
-      name: 'A small picture at the start',
-    });
-    const large = await canvas.findByRole('img', {
-      name: 'A large picture at the end',
-    });
-    await expect(small).toHaveClass('max-h-48', 'object-left');
-    await expect(large).toHaveClass('max-h-[60vh]', 'object-right');
+    const small = await canvas.findByRole('img', { name: 'A small picture' });
+    const large = await canvas.findByRole('img', { name: 'A large picture' });
+    await expect(small).toHaveClass('max-h-48', 'object-contain');
+    await expect(large).toHaveClass('max-h-[60vh]', 'object-contain');
     await expect(
-      canvas.getByRole('img', { name: 'A medium picture in the centre' }),
+      canvas.getByRole('img', { name: 'A medium picture' }),
     ).toHaveClass('max-h-96');
 
     const recording = await canvas.findByLabelText(
-      'A recording at the end that does not start or repeat',
+      'A recording that does not start or repeat',
     );
+    // Centred on its line, as every block is.
+    await expect(recording.parentElement).toHaveClass('justify-center');
     await waitFor(() => expect(recording).toBeInstanceOf(HTMLAudioElement));
     if (!(recording instanceof HTMLAudioElement)) return;
     await expect(recording.autoplay).toBe(false);

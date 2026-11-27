@@ -409,11 +409,11 @@ function Segment({
           // Base UI's default overlaps the trigger so the selected item lands
           // on the trigger's value text. In a header that covers the header
           // the popup was opened from.
-          // `z-50`, as `form/fields/Select`'s positioner carries. Without a
-          // `PortalContainerProvider` this portals to `document.body`, where
+          // `z-3000`, the popup layer's (see `PortalContainerProvider`): without
+          // a `PortalContainerProvider` this portals to `document.body`, where
           // any positioned page content — a sticky table header at `z-10`, say
           // — would otherwise paint over the options and swallow their clicks.
-          className="z-50"
+          className="z-3000"
           alignItemWithTrigger={false}
           side="bottom"
           align="start"

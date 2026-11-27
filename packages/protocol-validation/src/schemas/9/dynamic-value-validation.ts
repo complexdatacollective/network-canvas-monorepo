@@ -1,10 +1,20 @@
 import {
+  CONTENT_DOCUMENT_PROBLEMS,
+  findContentDocumentTextProblem,
+} from '../../localization/contentDocumentProblems.ts';
+import {
+  type DynamicValueArgument,
   type DynamicValueLookup,
   dynamicValueCaseKeysIn,
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
 } from '../../localization/dynamicValueMessages.ts';
+import {
+  findDeclaredArgumentProblem,
+  type MessageArguments,
+} from '../../localization/messageArguments.ts';
 import type { StageSubject } from './common/subjects.ts';
+import { DynamicAttributeSchema } from './dynamic-attributes.ts';
 import {
   type DynamicValueForm,
   type DynamicValueRole,
@@ -124,6 +134,11 @@ export const dynamicValueContextFor = ({
   sitePath: readonly (string | number)[];
   site: DynamicValueSite;
 }): DynamicValueSiteContext => {
+  // A dynamic attribute's wording is shown wherever its stage's text shows
+  // the dynamic attribute.
+  if (site === 'dynamicAttribute') {
+    return stageDynamicValueContext({ codebook, stage });
+  }
   const stageSubject = stageSubjectOf(stage);
   const form =
     site === 'formField' ? formOf(stage, sitePath, stageSubject) : undefined;
@@ -135,6 +150,9 @@ export const dynamicValueContextFor = ({
     participantRoles: dynamicValueParticipantRolesAt(valueStage, site, form),
     conditions: conditionsContextOf(
       isRecord(stage) ? stage.conditions : undefined,
+    ),
+    dynamicAttributes: dynamicAttributesContextOf(
+      isRecord(stage) ? stage.dynamicAttributes : undefined,
     ),
     variablesFor: (role) => {
       if (role === 'ego') return variablesOf(codebook, { entity: 'ego' });
@@ -183,6 +201,19 @@ type SiteHit = Readonly<{
   path: Path;
   value: Readonly<Record<string, string>>;
   dynamicValues?: DynamicValueSite;
+  /**
+   * How the text is written (`collectLocalizedStrings` gives it). Without
+   * it, a message is not read as a document, and a choice that is not a
+   * logic block is checked as any other.
+   */
+  format?: 'plain' | 'markdown';
+  lines?: 'single' | 'multiple';
+  fieldBlocks?: true;
+  /**
+   * What the text may use besides dynamic values (see `localizedString`):
+   * the number of a dynamic attribute's number wording.
+   */
+  arguments?: MessageArguments;
 }>;
 
 /**
@@ -190,8 +221,8 @@ type SiteHit = Readonly<{
  * undefined when it can: the first name it uses that refers to nothing, is
  * not available there, or gives a version for a case it does not have, or
  * any other misuse `findDynamicValueProblem` finds, in the order the message
- * reads. `text` is how the problem names the text: "This text", "This
- * label". Each problem names a value as a researcher knows it (see
+ * reads. `text` is how the problem names the string: "This wording",
+ * "This label". Each problem names a value as a researcher knows it (see
  * `DynamicValueStatus`). Meant for messages `findDynamicMessageSyntaxProblem`
  * accepts.
  */
@@ -199,13 +230,28 @@ export const findSiteMessageProblem = (
   message: string,
   context: DynamicValueSiteContext,
   locale: string,
-  text = 'This text',
+  text = 'This wording',
+  declared: MessageArguments = {},
 ): string | undefined => {
   const caseKeys = dynamicValueCaseKeysIn(message);
   const looked = new Map<string, ReturnType<DynamicValueLookup>>();
   const argumentOf: DynamicValueLookup = (name) => {
     const known = looked.get(name);
     if (known !== undefined) return known;
+    // What the text declares besides its values: a number to choose a
+    // version by, shown where `#` is written in one of its versions.
+    if (Object.hasOwn(declared, name)) {
+      const number: DynamicValueArgument = {
+        description: 'the number',
+        cases: [],
+        numeric: true,
+        optional: false,
+        unshowable:
+          'Show it by writing “#” in a version of the wording for each number.',
+      };
+      looked.set(name, number);
+      return number;
+    }
     const status = dynamicValueStatus(
       parseDynamicValueName(name),
       context,
@@ -238,6 +284,23 @@ export const conditionsContextOf = (
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- raw protocol data; `ConditionSchema` holds `about` to its roles, and a role the text is not shown with is refused where the condition is used
         typeof about === 'string' ? { about: about as DynamicValueRole } : {},
       ];
+    }),
+  );
+};
+
+/**
+ * The dynamic attributes a stage or a node type's label declares, as a site
+ * sees them: by id. A definition that the schema refuses is left out; the
+ * schema reports it where it is declared.
+ */
+export const dynamicAttributesContextOf = (
+  dynamicAttributes: unknown,
+): DynamicValueSiteContext['dynamicAttributes'] => {
+  if (!isRecord(dynamicAttributes)) return undefined;
+  return new Map(
+    Object.entries(dynamicAttributes).flatMap(([id, definition]) => {
+      const parsed = DynamicAttributeSchema.safeParse(definition);
+      return parsed.success ? [[id, parsed.data] as const] : [];
     }),
   );
 };
@@ -276,9 +339,34 @@ export const findDynamicValueProblems = (
       site: hit.dynamicValues,
     });
     for (const [locale, message] of Object.entries(hit.value)) {
-      // The field's own check reports what needs no stage.
-      if (findDynamicMessageSyntaxProblem(message) !== undefined) continue;
-      const problem = findSiteMessageProblem(message, context, locale);
+      // The field's own check reports what needs no stage, and a choice
+      // that is not a logic block.
+      if (
+        findDynamicMessageSyntaxProblem(message) !== undefined ||
+        (hit.arguments !== undefined &&
+          findDeclaredArgumentProblem(
+            message,
+            hit.arguments,
+            CONTENT_DOCUMENT_PROBLEMS.inlineChoice,
+          ) !== undefined) ||
+        (hit.format !== undefined &&
+          hit.lines !== undefined &&
+          hit.arguments === undefined &&
+          findContentDocumentTextProblem(message, {
+            format: hit.format,
+            lines: hit.lines,
+            fieldBlocks: hit.fieldBlocks,
+          }) !== undefined)
+      ) {
+        continue;
+      }
+      const problem = findSiteMessageProblem(
+        message,
+        context,
+        locale,
+        undefined,
+        hit.arguments,
+      );
       if (problem !== undefined) {
         problems.push({ path: [...hit.path, locale], message: problem });
       }

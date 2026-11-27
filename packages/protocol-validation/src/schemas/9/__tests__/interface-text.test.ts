@@ -708,7 +708,7 @@ describe('the interface text a protocol shows', () => {
       {
         path: 'navigation.back.en',
         code: 'custom',
-        message: 'Text cannot be blank.',
+        message: 'This wording cannot be blank.',
       },
     ]);
     // The old group names are gone, and so are the groups that held only

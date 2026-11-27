@@ -13,7 +13,10 @@ import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
-import { DYNAMIC_VALUE_MARKER } from '@codaco/protocol-validation';
+import {
+  DYNAMIC_VALUE_MARKER,
+  inlineMarkdownText,
+} from '@codaco/protocol-validation';
 
 import {
   type DynamicTextPart,
@@ -44,7 +47,19 @@ function DynamicValue({ text }: { text: string }) {
 const partKey = (part: DynamicTextPart, index: number) =>
   typeof part === 'string' ? `text-${index}` : `value-${index}`;
 
-/** Resolved plain text, with each value it shows marked out. */
+/**
+ * A dynamic attribute's version in plain text: its words without markup,
+ * shown as the words around it, and each value it shows marked out.
+ */
+function PlainWording({ parts }: { parts: readonly DynamicTextPart[] }) {
+  return <DynamicTextParts parts={inlineMarkdownText(parts)} />;
+}
+
+/**
+ * Resolved plain text, with each value it shows marked out, and a dynamic
+ * attribute's wording shown as the words around it, without its bold or
+ * italics, which plain text cannot show.
+ */
 export function DynamicTextParts({
   parts,
 }: {
@@ -52,13 +67,17 @@ export function DynamicTextParts({
 }) {
   return (
     <>
-      {parts.map((part, index) =>
-        typeof part === 'string' ? (
-          <Fragment key={partKey(part, index)}>{part}</Fragment>
+      {parts.map((part, index) => {
+        const key = partKey(part, index);
+        if (typeof part === 'string') {
+          return <Fragment key={key}>{part}</Fragment>;
+        }
+        return part.wording === true ? (
+          <PlainWording key={key} parts={part.parts} />
         ) : (
-          <DynamicValue key={partKey(part, index)} text={part.text} />
-        ),
-      )}
+          <DynamicValue key={key} text={part.text} />
+        );
+      })}
     </>
   );
 }
@@ -145,7 +164,9 @@ const rehypeDynamicValues = () => (tree: unknown) => {
 };
 
 /** The values a `DynamicMarkdown` shows, by the index its markers carry. */
-const DynamicValuesContext = createContext<readonly string[]>([]);
+const DynamicValuesContext = createContext<
+  readonly Exclude<DynamicTextPart, string>[]
+>([]);
 
 /**
  * A span in resolved markdown: the value its marker names, or its contents.
@@ -163,7 +184,18 @@ function DynamicValueSpan({
   const index = node?.properties?.[VALUE_INDEX_PROPERTY];
   const value = typeof index === 'string' ? values[Number(index)] : undefined;
   // Any other span is unwrapped, as it was before spans were allowed.
-  return value === undefined ? <>{children}</> : <DynamicValue text={value} />;
+  if (value === undefined) return <>{children}</>;
+  // A dynamic attribute's version is markdown of its own, drawn in the value's
+  // place, so that its markup and the text's are never read as one.
+  return value.wording === true ? (
+    <DynamicMarkdown
+      parts={value.parts}
+      allowedElements={ALLOWED_MARKDOWN_LABEL_TAGS}
+      render={<Fragment />}
+    />
+  ) : (
+    <DynamicValue text={value.text} />
+  );
 }
 
 const DYNAMIC_MARKDOWN_COMPONENTS = { span: DynamicValueSpan };
@@ -175,7 +207,8 @@ type MarkdownOptions = Omit<
 >;
 
 /**
- * Resolved markdown, with each value it shows marked out. The message's
+ * Resolved markdown, with each value it shows marked out, and a dynamic
+ * attribute's wording shown as the words around it. The message's
  * words are rendered as markdown with each value replaced by a marker; the
  * values go in afterwards, as text.
  */
@@ -185,13 +218,13 @@ export function DynamicMarkdown({
   ...markdownOptions
 }: MarkdownOptions & { parts: readonly DynamicTextPart[] }) {
   const { markdown, values } = useMemo(() => {
-    const shown: string[] = [];
+    const shown: Exclude<DynamicTextPart, string>[] = [];
     const text = joinMarkdownParts(
       parts.map((part) =>
         typeof part === 'string' ? withoutMarkers(part) : part,
       ),
       (part) => {
-        shown.push(part.text);
+        shown.push(part);
         return `${MARKER}${shown.length - 1}${MARKER}`;
       },
     );

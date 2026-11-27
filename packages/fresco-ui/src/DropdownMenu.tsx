@@ -11,7 +11,7 @@ import {
   POPOVER_ARROW_PADDING,
 } from './popoverArrow';
 import { type PopupSide, usePhysicalSide } from './popupSide';
-import { usePortalContainer } from './PortalContainer';
+import { useDrawnOnTopWhenOpened, usePortalContainer } from './PortalContainer';
 import {
   dropdownItemVariants,
   proportionalLucideIconVariants,
@@ -66,7 +66,26 @@ const DropdownMenuTrigger = Menu.Trigger;
 
 const DropdownMenuGroup = Menu.Group;
 
-const DropdownMenuSub = Menu.SubmenuRoot;
+/** Whether the nested menu around is open, for its content. */
+const DropdownMenuSubContext = React.createContext<boolean | null>(null);
+
+function DropdownMenuSub({
+  onOpenChange,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Menu.SubmenuRoot>) {
+  const [open, setOpen] = React.useState(props.defaultOpen ?? false);
+  return (
+    <DropdownMenuSubContext.Provider value={props.open ?? open}>
+      <Menu.SubmenuRoot
+        {...props}
+        onOpenChange={(next, event) => {
+          setOpen(next);
+          onOpenChange?.(next, event);
+        }}
+      />
+    </DropdownMenuSubContext.Provider>
+  );
+}
 
 const DropdownMenuRadioGroup = Menu.RadioGroup;
 
@@ -99,16 +118,23 @@ const DropdownMenuSubContent = React.forwardRef<
   }
 >(({ className, sideOffset = 8, keepMounted = true, ...props }, ref) => {
   const { mounted } = useDropdownMenuContext();
+  const subOpen = React.useContext(DropdownMenuSubContext);
   const portalContainer = usePortalContainer();
+  const [portalNode, setPortalNode] = React.useState<HTMLDivElement | null>(
+    null,
+  );
+  useDrawnOnTopWhenOpened(subOpen ?? mounted, portalNode);
 
   return (
     <Menu.Portal
+      ref={setPortalNode}
       container={portalContainer ?? undefined}
       keepMounted={keepMounted}
     >
       <AnimatePresence>
         {mounted && (
           <Menu.Positioner
+            className="z-3000"
             sideOffset={sideOffset}
             arrowPadding={POPOVER_ARROW_PADDING}
           >
@@ -156,15 +182,21 @@ const DropdownMenuContent = React.forwardRef<
     const { mounted } = useDropdownMenuContext();
     const portalContainer = usePortalContainer();
     const physicalSide = usePhysicalSide(side);
+    const [portalNode, setPortalNode] = React.useState<HTMLDivElement | null>(
+      null,
+    );
+    useDrawnOnTopWhenOpened(mounted, portalNode);
 
     return (
       <Menu.Portal
+        ref={setPortalNode}
         container={portalContainer ?? undefined}
         keepMounted={keepMounted}
       >
         <AnimatePresence>
           {mounted && (
             <Menu.Positioner
+              className="z-3000"
               sideOffset={sideOffset}
               side={physicalSide}
               align={align}

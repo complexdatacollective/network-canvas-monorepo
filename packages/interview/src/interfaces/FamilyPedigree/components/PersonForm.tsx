@@ -28,6 +28,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type CompleteFamilyPedigreeWording,
   type FormField,
+  type TitlelessForm,
   type FramingId,
   type LocalizedString,
   type PedigreeParentKind,
@@ -38,6 +39,8 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  readOwnProperty,
+  writeOwnProperty,
 } from '@codaco/shared-consts';
 
 import PassphraseEntry from '../../../components/PassphraseEntry';
@@ -53,7 +56,6 @@ import {
   validationPropsFor,
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
-import { readOwnProperty, writeOwnProperty } from '../../../utils/ownProperty';
 import { interfaceMessages } from '../../messages';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
 import { formatOwnedLabel, parentTermFrom } from '../kinship';
@@ -237,6 +239,8 @@ const ROLE = {
   hasChildren: 'pedigreeHasChildren',
 } as const;
 
+const NO_FIELDS: readonly FormField[] = [];
+
 const NONE = '__none';
 const UNKNOWN = '__unknown';
 /** The sibling form's answer that a new sibling is a twin of the anchor who
@@ -291,7 +295,8 @@ type PersonFormProps = {
   /** The codebook's labels for the answers about sex assigned at birth and
    * the kinds of parent. */
   optionLabels: OwnedOptionLabels;
-  formFields: FormField[];
+  /** The researcher's form, asked after the built-in questions, if any. */
+  form: TitlelessForm | undefined;
   /** The stage's record of who holds a label it saved as their name, by
    * person id. Labels are given afresh, so a typed name may repeat one. */
   generatedLabels: Readonly<Record<string, string>>;
@@ -374,7 +379,7 @@ export default function PersonForm({
   framing,
   genderIdentityOptions,
   optionLabels,
-  formFields,
+  form,
   generatedLabels,
   decryptedNames,
   displayName,
@@ -414,6 +419,49 @@ export default function PersonForm({
   const { required: _required, ...nameValidationProps } = nameValidation
     ? validationPropsFor(nameValidation)
     : {};
+
+  const formFields = form?.fields ?? NO_FIELDS;
+
+  const initialResearcherValues = useMemo(() => {
+    if (!person) return undefined;
+    const values: Record<string, FieldValue> = {};
+    for (const field of formFields) {
+      const value = readOwnProperty(person.attributes, field.variable);
+      if (value !== null && value !== undefined) {
+        writeOwnProperty(values, field.variable, value);
+      }
+    }
+    return values;
+  }, [person, formFields]);
+
+  // The name, gender identity and sex questions come before the
+  // researcher's fields, whose text can show their answers as given.
+  const builtInVariables = useMemo(
+    () => [
+      ...(asksName ? [config.nameAttribute] : []),
+      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
+      config.sexAssignedAtBirthAttribute,
+    ],
+    [
+      asksName,
+      config.nameAttribute,
+      config.genderIdentity,
+      config.sexAssignedAtBirthAttribute,
+    ],
+  );
+
+  const { formContent, toAttributePatch, passphraseNeeded, formVariables } =
+    useProtocolForm({
+      form,
+      subject: { entity: 'node', type: config.personType },
+      initialValues: initialResearcherValues,
+      currentEntityId: person?.id,
+      unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
+      precedingVariables: builtInVariables,
+      labelNode,
+      isParticipant: isEgo,
+    });
+
   const baseValidationContext = useStageSelector(getValidationContext);
   const personId = person?.id;
   const nameValidationContext = useMemo<ValidationContext | undefined>(() => {
@@ -447,6 +495,9 @@ export default function PersonForm({
         }),
       },
       stageSubject,
+      // A rule naming one of the researcher's questions compares only with
+      // the answer on the form: a question that logic hides has none.
+      formVariables,
       ...(personId !== undefined ? { currentEntityId: personId } : {}),
     };
   }, [
@@ -455,47 +506,8 @@ export default function PersonForm({
     generatedLabels,
     decryptedNames,
     config.nameAttribute,
+    formVariables,
   ]);
-
-  const initialResearcherValues = useMemo(() => {
-    if (!person) return undefined;
-    const values: Record<string, FieldValue> = {};
-    for (const field of formFields) {
-      const value = readOwnProperty(person.attributes, field.variable);
-      if (value !== null && value !== undefined) {
-        writeOwnProperty(values, field.variable, value);
-      }
-    }
-    return values;
-  }, [person, formFields]);
-
-  // The name, gender identity and sex questions come before the
-  // researcher's fields, whose text can show their answers as given.
-  const builtInVariables = useMemo(
-    () => [
-      ...(asksName ? [config.nameAttribute] : []),
-      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
-      config.sexAssignedAtBirthAttribute,
-    ],
-    [
-      asksName,
-      config.nameAttribute,
-      config.genderIdentity,
-      config.sexAssignedAtBirthAttribute,
-    ],
-  );
-
-  const { fieldComponents, toAttributePatch, passphraseNeeded } =
-    useProtocolForm({
-      fields: formFields,
-      subject: { entity: 'node', type: config.personType },
-      initialValues: initialResearcherValues,
-      currentEntityId: person?.id,
-      unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
-      precedingVariables: builtInVariables,
-      labelNode,
-      isParticipant: isEgo,
-    });
 
   const handleSubmit: FormSubmitHandler = (values) => {
     const set: PersonDetails = readOwnDetails(values, config);
@@ -791,7 +803,7 @@ export default function PersonForm({
           {formFields.length > 0 && (
             <section data-question-step className="flex flex-col">
               <PassphraseEntry needed={passphraseNeeded} />
-              {fieldComponents}
+              {formContent}
             </section>
           )}
         </QuestionFlow>

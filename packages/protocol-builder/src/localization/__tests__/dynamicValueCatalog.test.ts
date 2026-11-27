@@ -10,14 +10,11 @@ import {
   type LabelledDynamicValueRole,
   nodeLabelValueContext,
   optionCaseKey,
+  parseDynamicValueName,
 } from '@codaco/protocol-validation';
 
 import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
-import {
-  dynamicValueChoices,
-  dynamicValueNamesUsedIn,
-  isFlagChoice,
-} from '../dynamicValueCatalog';
+import { dynamicValueChoices, isFlagChoice } from '../dynamicValueCatalog';
 
 const PERSON = testTypeId('person');
 const KNOWS = testTypeId('knows');
@@ -39,6 +36,11 @@ const IS_OLD = testId('condition/is-old');
 
 const attribute = (role: AttributeDynamicValueRole, variableId: string) =>
   dynamicValueNameFor({ kind: 'attribute', role, variableId });
+/** Whose value `name` is: the role it names, if it names one. */
+const roleOf = (name: string) => {
+  const parsed = parseDynamicValueName(name);
+  return parsed !== undefined && 'role' in parsed ? parsed.role : undefined;
+};
 const labelOf = (role: LabelledDynamicValueRole) =>
   dynamicValueNameFor({ kind: 'label', role });
 
@@ -106,7 +108,11 @@ describe('dynamicValueChoices', () => {
   });
 
   it('names each value as the text writes it, by its id', () => {
-    expect(attribute('ego', NAME)).toBe(`ego_${NAME.replaceAll('-', '_')}`);
+    expect(parseDynamicValueName(attribute('ego', NAME))).toEqual({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: NAME,
+    });
     expect(namesAt(contextFor('Information', 'stageText'))).toContain(
       attribute('ego', NAME),
     );
@@ -114,19 +120,23 @@ describe('dynamicValueChoices', () => {
 
   it('lists what the text is about first, then the participant, then the interview', () => {
     const names = namesAt(contextFor('DyadCensus', 'prompt'));
-    const firstEgo = names.findIndex((name) => name.startsWith('ego_'));
+    const firstEgo = names.findIndex((name) => roleOf(name) === 'ego');
     expect(
-      names.slice(0, firstEgo).every((name) => name.startsWith('dyad')),
+      names
+        .slice(0, firstEgo)
+        .every((name) => roleOf(name)?.startsWith('dyad') === true),
     ).toBe(true);
     expect(
-      names.slice(firstEgo, -1).every((name) => name.startsWith('ego_')),
+      names.slice(firstEgo, -1).every((name) => roleOf(name) === 'ego'),
     ).toBe(true);
     expect(names.at(-1)).toBe('now');
   });
 
   it('offers each node on screen by its label, before its attributes', () => {
     const names = namesAt(contextFor('DyadCensus', 'prompt'));
-    expect(names.filter((name) => name.startsWith('dyad'))).toEqual([
+    expect(
+      names.filter((name) => roleOf(name)?.startsWith('dyad') === true),
+    ).toEqual([
       labelOf('dyadSource'),
       attribute('dyadSource', NODE_NAME),
       attribute('dyadSource', CLOSENESS),
@@ -271,20 +281,6 @@ describe('dynamicValueChoices', () => {
       [attribute('ego', VAPES)]: 'switch',
       [attribute('ego', DRINKS)]: undefined,
     });
-  });
-});
-
-describe('dynamicValueNamesUsedIn', () => {
-  it('finds the names every text in a stage uses', () => {
-    expect(
-      [
-        ...dynamicValueNamesUsedIn({
-          title: { en: 'Hi {name, select, missing {there} other {{name}}}' },
-          prompts: [{ text: { en: 'Since {now}', fr: "Depuis '{now}'" } }],
-          label: 'Literal {braces} in a label',
-        }),
-      ].toSorted(),
-    ).toEqual(['braces', 'name', 'now']);
   });
 });
 

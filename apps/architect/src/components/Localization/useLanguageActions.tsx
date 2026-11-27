@@ -22,6 +22,7 @@ import {
 } from '~/ducks/modules/activeProtocol';
 import {
   getLocaleRemovalImpact,
+  textKeptAfterRemoval,
   type LocaleRemovalImpact,
   type LocalizedStringRewrite,
   movedLocale,
@@ -189,11 +190,22 @@ export const useLanguageActions = (
     return suppliedWordingIn({ ...protocol, stages });
   }, [draftStage, protocol]);
 
-  /** What removing `locale` would delete, unsaved stage text included. */
+  /**
+   * What removing `locale` would delete, unsaved stage text included, judged
+   * as the protocol and the open stage would be stored once it is removed
+   * (`textKeptAfterRemoval`).
+   */
   const removalImpact = useCallback(
     (locale: LocaleTag): LocaleRemovalImpact =>
-      getLocaleRemovalImpact(texts, locale, suppliedWording),
-    [suppliedWording, texts],
+      getLocaleRemovalImpact(
+        texts,
+        locale,
+        suppliedWording,
+        protocol === null
+          ? undefined
+          : () => textKeptAfterRemoval(protocol, locale, draftStage),
+      ),
+    [draftStage, protocol, suppliedWording, texts],
   );
 
   const declaredNow = useCallback(

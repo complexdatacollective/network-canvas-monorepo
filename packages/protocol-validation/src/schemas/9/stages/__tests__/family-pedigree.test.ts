@@ -4,6 +4,7 @@ import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
 import { testId, testVariableId } from '../../../../__tests__/testIds.ts';
+import { formOf } from '../../../../testing/fixtures.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import {
@@ -158,15 +159,13 @@ describe('familyPedigreeStage', () => {
     expect(
       familyPedigreeStage.safeParse({
         ...base,
-        form: {
-          fields: [
-            {
-              id: testId('field-1'),
-              variable: 'age',
-              prompt: localized('How old are they?'),
-            },
-          ],
-        },
+        form: formOf([
+          {
+            id: testId('field-1'),
+            variable: 'age',
+            prompt: localized('How old are they?'),
+          },
+        ]),
       }).success,
     ).toBe(true);
   });
@@ -312,7 +311,7 @@ describe('familyPedigreeStage', () => {
           path: 'completeness.itemText.parents.listItem.en',
           code: 'custom',
           message:
-            '"missing" cannot choose between versions of this text by number. This text can only use "isYou", "name".',
+            '"missing" cannot choose between versions of this wording by number. This wording can only use "isYou", "name".',
         },
       ]);
     });
@@ -335,7 +334,7 @@ describe('familyPedigreeStage', () => {
       );
       expect(result.success).toBe(false);
       expect(result.error?.issues[0]?.message).toBe(
-        'This text must include the attribute "{name}" in the "isYou: other" scenario.',
+        'This wording must include the attribute "{name}" in the "isYou: other" scenario.',
       );
     });
 
@@ -359,7 +358,7 @@ describe('familyPedigreeStage', () => {
       expect(result.error?.issues).toHaveLength(1);
       expect(result.error?.issues[0]?.path.at(-1)).toBe('es');
       expect(result.error?.issues[0]?.message).toBe(
-        'This text must include the attribute "{name}" in the "isYou: other" scenario.',
+        'This wording must include the attribute "{name}" in the "isYou: other" scenario.',
       );
     });
 
@@ -375,7 +374,7 @@ describe('familyPedigreeStage', () => {
           path: 'completeness.itemText.parents.listItem.en',
           code: 'custom',
           message:
-            '"{relative}" is not something this text can show. This text can only use "isYou", "name".',
+            '"{relative}" is not something this wording can show. This wording can only use "isYou", "name".',
         },
       ]);
       // No entry is told how many are missing.
@@ -401,7 +400,7 @@ describe('familyPedigreeStage', () => {
           path: 'completeness.itemText.details.listItem.en',
           code: 'custom',
           message:
-            '"missing" cannot choose between versions of this text by number. This text can only use "isYou", "name".',
+            '"missing" cannot choose between versions of this wording by number. This wording can only use "isYou", "name".',
         },
       ]);
     });
@@ -623,15 +622,13 @@ describe('FamilyPedigree in a whole protocol', () => {
         withFinishStage(
           protocolWith({
             ...base,
-            form: {
-              fields: [
-                {
-                  id: testId('field-1'),
-                  variable,
-                  prompt: localized('Tell us'),
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: testId('field-1'),
+                variable,
+                prompt: localized('Tell us'),
+              },
+            ]),
           }),
         ),
       );
@@ -669,11 +666,9 @@ describe('FamilyPedigree in a whole protocol', () => {
           nominationPrompts: [
             { id: testId('heart'), text: localized('Who?'), attribute: 'hd' },
           ],
-          form: {
-            fields: [
-              { id: testId('field-1'), variable, prompt: localized('Tell us') },
-            ],
-          },
+          form: formOf([
+            { id: testId('field-1'), variable, prompt: localized('Tell us') },
+          ]),
         }),
         ['stages', 0, 'form', 'fields', 0, 'variable'],
       );
@@ -783,15 +778,13 @@ describe('FamilyPedigree in a whole protocol', () => {
 
     it('refuses an additional person field, or another of the stage’s answers, on the same attribute', () => {
       const asField = withRelationship('rel', {
-        form: {
-          fields: [
-            {
-              id: testId('field-1'),
-              variable: 'rel',
-              prompt: localized('Who?'),
-            },
-          ],
-        },
+        form: formOf([
+          {
+            id: testId('field-1'),
+            variable: 'rel',
+            prompt: localized('Who?'),
+          },
+        ]),
       });
       expect(
         issuesAt(asField, ['stages', 0, 'form', 'fields', 0, 'variable']),
@@ -861,15 +854,13 @@ describe('FamilyPedigree in a whole protocol', () => {
   it('detects the participant marker being reused as a form field', () => {
     const stage = {
       ...base,
-      form: {
-        fields: [
-          {
-            id: testId('field-1'),
-            variable: 'isEgo',
-            prompt: localized('Are you the participant?'),
-          },
-        ],
-      },
+      form: formOf([
+        {
+          id: testId('field-1'),
+          variable: 'isEgo',
+          prompt: localized('Are you the participant?'),
+        },
+      ]),
     };
     const protocol = protocolWith(stage);
     const conflicts = findExclusiveVariableConflicts(protocol);

@@ -8,6 +8,10 @@ import {
   useFormHasValue,
   useFormValue,
 } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import {
+  type FormDocumentReading,
+  formShownFields,
+} from '@codaco/network-query';
 import type {
   DynamicValueRole,
   StageSubject,
@@ -21,12 +25,17 @@ import {
   type NcNode,
   type VariableValue,
   VariableValueSchema,
+  readOwnProperty,
+  writeOwnProperty,
 } from '@codaco/shared-consts';
 
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
 import type { RootState } from '../store/store';
-import { readOwnProperty, writeOwnProperty } from '../utils/ownProperty';
-import { DynamicValueEntity } from './DynamicValueScope';
+import {
+  DynamicValueEntity,
+  useDynamicValueSources,
+  withDynamicValueEntities,
+} from './DynamicValueScope';
 
 const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
 
@@ -93,6 +102,15 @@ export type LabelNode = (
  * An interface that shows the node by a label of its own passes `labelNode`,
  * so the form names the node as the interface shows it rather than by the
  * codebook's label rules.
+ *
+ * A form with a document (`document`) shows only the fields that its logic
+ * shows, and an answer to a field that logic hides is never read: not an
+ * answer given before the field was hidden, which the form keeps in case it
+ * is shown again, nor one that is stored (`formShownFields`). Its text, its
+ * logic, the fields shown and the node's label (and the label's own
+ * wording) all read the entity without those answers, as submitting saves
+ * it, so an answer to a hidden field is never shown and can never show
+ * another field.
  */
 export function FormDynamicValues({
   formSubject,
@@ -104,6 +122,7 @@ export function FormDynamicValues({
   coerce,
   labelNode,
   isParticipant,
+  document,
   children,
 }: {
   formSubject: StageSubject | null | undefined;
@@ -137,6 +156,11 @@ export function FormDynamicValues({
    * Ignored unless the form describes a node of the stage's own subject.
    */
   isParticipant?: boolean;
+  /**
+   * The form's document in the language shown, with the variable of each
+   * field that it places, for a form whose fields its logic shows.
+   */
+  document?: FormDocumentReading;
   children: ReactNode;
 }) {
   const describesStageSubject =
@@ -214,6 +238,67 @@ export function FormDynamicValues({
     coerce,
   ]);
 
+  const role = formSubject == null ? undefined : ROLES[formSubject.entity];
+  const ids = useMemo(
+    () =>
+      // A node or edge the form is adding is not in the network yet.
+      entityId === undefined || role === undefined ? {} : { [role]: entityId },
+    [entityId, role],
+  );
+  const participants = useMemo(
+    () =>
+      isParticipant === undefined ||
+      liveAttributes === undefined ||
+      formSubject?.entity !== 'node'
+        ? {}
+        : { node: isParticipant },
+    [isParticipant, liveAttributes, formSubject],
+  );
+  const fromLabel = useNodeLabel(fromNode);
+  const toLabel = useNodeLabel(toNode);
+
+  // The entity as the form shows it: without the answers of the fields that
+  // logic hides, which submitting clears. Logic reads the entity this way
+  // (`formShownFields`), and so does everything below that is worked out
+  // from the answers: the values its text shows, and the node's label.
+  //
+  // The node's label is worked out from these answers, so logic cannot be
+  // given it first: `formShownFields` gives logic the labels of the form's
+  // nodes, and today's date, as present, as it does for every reader of a
+  // form's logic.
+  const parentSources = useDynamicValueSources();
+  const shown = useMemo(() => {
+    if (
+      document === undefined ||
+      parentSources === null ||
+      liveAttributes === undefined ||
+      role === undefined
+    ) {
+      return undefined;
+    }
+    return formShownFields(
+      document,
+      withDynamicValueEntities(parentSources, {
+        attributes: { [role]: liveAttributes },
+        ids,
+        participants,
+      }),
+      role,
+    );
+  }, [document, parentSources, liveAttributes, role, ids, participants]);
+  const shownAttributes = shown?.attributes ?? liveAttributes;
+  // A question that logic hides has no answer, whatever is stored or was
+  // typed before it was hidden: the form decides it, as it does an answer.
+  const shownAnswered = useMemo(() => {
+    if (shown === undefined || document === undefined) return answered;
+    const showing = new Set(shown.shown);
+    const decided: Record<string, boolean> = { ...answered };
+    for (const [fieldId, variable] of document.fieldVariables) {
+      if (!showing.has(fieldId)) writeOwnProperty(decided, variable, true);
+    }
+    return decided;
+  }, [shown, document, answered]);
+
   // The node as it will be saved, which a new one is not yet. It is labelled
   // by the codebook's rules only when the interface has no label of its own
   // for it: those rules would otherwise ask for the passphrase, or report a
@@ -221,7 +306,7 @@ export function FormDynamicValues({
   const liveNode = useMemo((): NcNode | undefined => {
     if (
       labelNode !== undefined ||
-      liveAttributes === undefined ||
+      shownAttributes === undefined ||
       formSubject?.entity !== 'node'
     ) {
       return undefined;
@@ -230,55 +315,36 @@ export function FormDynamicValues({
       ...storedNode,
       [entityPrimaryKeyProperty]: entityId ?? '',
       type: formSubject.type,
-      [entityAttributesProperty]: storableAttributes(liveAttributes),
+      [entityAttributesProperty]: storableAttributes(shownAttributes),
     };
-  }, [labelNode, liveAttributes, formSubject, storedNode, entityId]);
+  }, [labelNode, shownAttributes, formSubject, storedNode, entityId]);
   const ruleLabel = useNodeLabel(liveNode);
   const ownLabel = useMemo(
     () =>
       labelNode === undefined ||
-      liveAttributes === undefined ||
+      shownAttributes === undefined ||
       formSubject?.entity !== 'node'
         ? undefined
-        : labelNode(liveAttributes, answered),
-    [labelNode, liveAttributes, answered, formSubject],
+        : labelNode(shownAttributes, shownAnswered),
+    [labelNode, shownAttributes, shownAnswered, formSubject],
   );
   const nodeLabel = labelNode === undefined ? ruleLabel : ownLabel;
-  const fromLabel = useNodeLabel(fromNode);
-  const toLabel = useNodeLabel(toNode);
 
   const entities = useMemo(
     () => ({
       attributes:
-        liveAttributes === undefined || formSubject == null
+        shownAttributes === undefined || role === undefined
           ? {}
-          : { [ROLES[formSubject.entity]]: liveAttributes },
-      // A node or edge the form is adding is not in the network yet.
-      ids:
-        entityId === undefined || formSubject == null
-          ? {}
-          : { [ROLES[formSubject.entity]]: entityId },
+          : { [role]: shownAttributes },
+      ids,
       labels: {
         ...(nodeLabel !== undefined && { node: nodeLabel }),
         ...(fromLabel !== undefined && { edgeFrom: fromLabel }),
         ...(toLabel !== undefined && { edgeTo: toLabel }),
       },
-      participants:
-        isParticipant === undefined ||
-        liveAttributes === undefined ||
-        formSubject?.entity !== 'node'
-          ? {}
-          : { node: isParticipant },
+      participants,
     }),
-    [
-      liveAttributes,
-      formSubject,
-      entityId,
-      nodeLabel,
-      fromLabel,
-      toLabel,
-      isParticipant,
-    ],
+    [shownAttributes, role, ids, nodeLabel, fromLabel, toLabel, participants],
   );
 
   return <DynamicValueEntity {...entities}>{children}</DynamicValueEntity>;

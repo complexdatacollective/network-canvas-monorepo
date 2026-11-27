@@ -72,6 +72,13 @@ type BaseDialog = {
   intent?: 'default' | 'destructive' | 'success' | 'info' | 'warning';
   children?: React.ReactNode;
   className?: string;
+  /**
+   * Data attributes for the dialog's popup, so that code which meets focus
+   * or an event in the dialog can tell where it came from: for example a
+   * form editor that the dialog was opened over, which the researcher has not
+   * left while they answer it.
+   */
+  dataAttributes?: Readonly<Record<`data-${string}`, string>>;
   size?: DialogSize;
   /**
    * Where focus goes if the control that opened this dialog is gone by the time
@@ -251,7 +258,8 @@ type ConfirmOptions = {
    * Where focus goes on the CONFIRM branch, where `onConfirm` has usually just
    * destroyed the control that opened this dialog. See `BaseDialog.finalFocus`.
    */
-  finalFocus?: FinalFocusTarget;
+  finalFocus?: FinalFocusTarget /** See `BaseDialog.dataAttributes`. */;
+  dataAttributes?: BaseDialog['dataAttributes'];
 };
 
 export type DialogContextType = {
@@ -353,6 +361,7 @@ function WizardDialogContent({
       dismissible={!wizardProps.isBusy}
       footer={wizardProps.footer}
       className={dialog.className}
+      {...dialog.dataAttributes}
       size={dialog.size ?? 'editor'}
     >
       {wizardProps.children}
@@ -453,6 +462,7 @@ function FormDialogContent({
         </>
       }
       className={dialog.className}
+      {...dialog.dataAttributes}
       size={dialog.size ?? 'editor'}
     >
       <FormWithoutProvider
@@ -710,6 +720,9 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         intent: options.intent ?? 'destructive',
         size: options.size,
         finalFocus: options.finalFocus,
+        ...(options.dataAttributes !== undefined && {
+          dataAttributes: options.dataAttributes,
+        }),
         actions: {
           primary: { label: options.confirmLabel, value: true },
           cancel: {
@@ -874,6 +887,8 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
         dismissible={!isConfirmHeldOpen(dialog)}
         footer={footer}
         className={dialog.className}
+
+        {...dialog.dataAttributes}
         size={dialog.size}
       >
         {dialog.children}

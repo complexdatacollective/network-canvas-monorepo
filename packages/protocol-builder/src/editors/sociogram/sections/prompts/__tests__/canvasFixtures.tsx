@@ -1,5 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 
+import { fieldBlockMarkdown } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -105,18 +106,33 @@ export const collectInAForm = (
   const stage = harness.protocolSections()[id];
   if (stage === undefined) throw new Error('the fixture has no alter form');
   const form = stage.form;
-  const held =
-    typeof form === 'object' && form !== null
-      ? Reflect.get(form, 'fields')
-      : undefined;
+  if (typeof form !== 'object' || form === null) {
+    throw new Error('the fixture alter form has no form');
+  }
+  const held: unknown = Reflect.get(form, 'fields');
   const fields: unknown[] = Array.isArray(held) ? held : [];
+  const content: unknown = Reflect.get(form, 'content');
+  if (typeof content !== 'object' || content === null) {
+    throw new Error('the fixture alter form has no document');
+  }
+  const fieldId = testId('field-added');
+  // A field the form collects is one its document places, so the new field
+  // goes at the end of every language's document, as the editor adds it.
+  const placed = Object.fromEntries(
+    Object.entries(content).map(([locale, text]) => [
+      locale,
+      `${String(text)}\n\n${fieldBlockMarkdown(fieldId)}`,
+    ]),
+  );
   const updated: SectionDoc = {
     ...stage,
     form: {
+      ...form,
+      content: placed,
       fields: [
         ...fields,
         {
-          id: testId('field-added'),
+          id: fieldId,
           variable: variableId,
           prompt: { 'en-US': 'Is this so?' },
         },

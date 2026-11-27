@@ -160,7 +160,7 @@ export const buildWordingRequest = (d: NormalizedDesign) => {
         slot('introduction title', 'introduction text');
         s.attributeIds.forEach((a) => q('ego', a, attr('ego', a).question));
         break;
-      // Schema 9 gives only an Ego Form an introduction panel.
+      // Schema 9 opens only an Ego Form's form with a heading and text.
       case 'alterForm':
         slot('none: return ""', 'none: return ""');
         s.attributeIds.forEach((a) =>

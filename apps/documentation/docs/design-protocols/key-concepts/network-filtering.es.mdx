@@ -1,7 +1,7 @@
 ---
 title: Filtrado de la red
 navOrder: 11
-translatedFrom: 4ca4dfdfdf36ebfa7dfe480ea752244219e98696
+translatedFrom: e3d2bb3cf61eebb556678bd72820d947db7ad2db
 ---
 
 <Definition>
@@ -41,6 +41,8 @@ Al igual que las reglas de la [lógica de salto](/es/design-protocols/key-concep
 - **Reglas de «atributo»**: permiten consultar el valor de una variable en un tipo de entidad determinado. Por ejemplo, puedes consultar el valor de una variable llamada `age` en un tipo de álter llamado «Person» (persona). Puedes evaluar el resultado con uno de varios operadores lógicos, que varían según el tipo de variable. Por ejemplo, las variables numéricas permiten hacer consultas con operadores como «mayor que» y «menor que».
 
 Los operadores disponibles para una regla de atributo dependen del tipo de la variable. Las variables numéricas ofrecen comparaciones como _es mayor que_ y _es menor que_; las variables de texto se pueden comparar con _es exactamente_, _no es_ y, en los protocolos del esquema 8 y posteriores, _contiene_ y _no contiene_, que comprueban si el texto almacenado incluye o no un valor. En las variables ordinales y categóricas, los operadores _incluye_ y _excluye_ admiten **varios** valores seleccionados, de modo que una sola regla puede coincidir con una entidad cuya variable contenga cualquiera de varias opciones.
+
+Para cualquier atributo, una regla también puede usar **existe** o **no existe** para comprobar si el atributo tiene respuesta. Un número igual a 0, o una respuesta de sí o no que sea «no», cuenta como respuesta. Una respuesta de texto vacía o que solo contiene espacios, y una respuesta categórica sin ninguna opción seleccionada, no cuentan como respuesta. Esta es la misma comprobación que determina si se ha respondido una pregunta obligatoria.
 
 A diferencia de las reglas de la lógica de salto (que se agregan en un único valor booleano general, `true` o `false`), las reglas de filtrado se aplican a cada nodo y a cada vínculo de la red, y no se agregan. En su lugar, los nodos que permanecen son los que cumplen las condiciones de las reglas.
 

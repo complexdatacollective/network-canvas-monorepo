@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import {
+  createDynamicAttributeId,
   dynamicValueNameFor,
   type FramingSetting,
   type PedigreeGenderWords,
@@ -1783,14 +1784,19 @@ function dynamicValuesWordedForParticipant(): ScenarioDefinition {
   const { synth, fp, person, relate, parents } = scaffold({
     askGenderIdentity: false,
   });
-  const isParticipant = dynamicValueNameFor({
-    kind: 'participant',
-    role: 'node',
-  });
+  // The question is a dynamic attribute worded for the participant.
+  const livingQuestion = createDynamicAttributeId();
+  fp.stageEntry.dynamicAttributes = {
+    [livingQuestion]: {
+      logic: 'participant',
+      participant: { 'en-US': 'Are you still living?' },
+      otherwise: { 'en-US': 'Is this person still living?' },
+    },
+  };
   fp.addFormField({
     component: 'Boolean',
     prompt: {
-      'en-US': `{${isParticipant}, select, true {Are you still living?} other {Is this person still living?}}`,
+      'en-US': `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: livingQuestion })}}`,
     },
   });
   person('ego', { sex: 'female', isEgo: true });

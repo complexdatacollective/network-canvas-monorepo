@@ -116,7 +116,7 @@ describe('editors shared between stages', () => {
     );
   });
 
-  it('FormFieldsSection: a form field’s prompt and hint', () => {
+  it('a form field’s question and hint', () => {
     for (const field of ['prompt', 'hint']) {
       agree(
         localizedTextShapeAt(FormFieldSchema, [field]),

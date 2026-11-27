@@ -500,15 +500,10 @@
         "en": "Welcome and consent"
       },
       "type": "EgoForm",
-      "introductionPanel": {
-        "title": {
-          "en": "About this interview"
-        },
-        "text": {
-          "en": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it before they are saved. In the study's data they cannot be read by anyone, including the researchers, and they cannot be recovered without your passphrase.\n\nThey do appear on screen while you take part, so anyone who can see the screen can read them.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About this interview\n\n## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it before they are saved. In the study's data they cannot be read by anyone, including the researchers, and they cannot be recovered without your passphrase.\n\nThey do appear on screen while you take part, so anyone who can see the screen can read them.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**\n\n![](field:e42efd79-a3eb-5260-98a4-278affbc1d30)"
+        },
         "fields": [
           {
             "id": "e42efd79-a3eb-5260-98a4-278affbc1d30",
@@ -561,15 +556,10 @@
         "en": "About you"
       },
       "type": "EgoForm",
-      "introductionPanel": {
-        "title": {
-          "en": "A few questions about you"
-        },
-        "text": {
-          "en": "Before we talk about the people around you, we would like to ask a few questions about **you**. These are not encrypted, so they do not include anyone's name. You may skip any question."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# A few questions about you\n\nBefore we talk about the people around you, we would like to ask a few questions about **you**. These are not encrypted, so they do not include anyone's name. You may skip any question.\n\n![](field:3abf0ee9-ed32-52b6-bba7-8d3c697310f2)\n\n![](field:2ac9f221-6ad4-52d9-b985-b42fe0b59ab3)\n\n![](field:27fd32d4-8e4a-55d6-bd42-c49b55f0ea8c)"
+        },
         "fields": [
           {
             "id": "3abf0ee9-ed32-52b6-bba7-8d3c697310f2",
@@ -605,6 +595,9 @@
       "form": {
         "title": {
           "en": "Add Person"
+        },
+        "content": {
+          "en": "![](field:599ec40c-9a29-5293-8a8f-8c62dad69e90)\n\n![](field:73b1d75f-6667-5b79-8050-f84f784db064)"
         },
         "fields": [
           {
@@ -698,6 +691,9 @@
         "title": {
           "en": "Add Service"
         },
+        "content": {
+          "en": "![](field:cb44ca23-e250-503c-bb02-db120ea543e7)\n\n![](field:ebb092a4-4dc8-54f5-9cda-6efc44a00e93)"
+        },
         "fields": [
           {
             "id": "cb44ca23-e250-503c-bb02-db120ea543e7",
@@ -775,6 +771,9 @@
         "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
       },
       "form": {
+        "content": {
+          "en": "![](field:bb705bbf-bd0c-5782-b003-708be221d4b0)\n\n![](field:47761e20-9fe9-5742-8586-9f044c8d58ac)\n\n![](field:64e4270a-e011-5290-a295-0018fda07ee9)"
+        },
         "fields": [
           {
             "id": "bb705bbf-bd0c-5782-b003-708be221d4b0",
@@ -839,6 +838,9 @@
         "type": "50b335d5-6cb8-5482-912c-95dbaa53fa6b"
       },
       "form": {
+        "content": {
+          "en": "![](field:62a51a89-6369-57ee-b1b6-f7dea2d23128)"
+        },
         "fields": [
           {
             "id": "62a51a89-6369-57ee-b1b6-f7dea2d23128",

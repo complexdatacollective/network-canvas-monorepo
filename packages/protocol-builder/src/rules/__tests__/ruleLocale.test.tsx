@@ -85,7 +85,7 @@ describe('a rule read in Spanish', () => {
     // reads: asserting `esIntl.formatMessage(...)` here would pass whatever
     // the catalog said, including nothing.
     expect(
-      screen.getByLabelText('Age (attribute type: number)'),
+      screen.getByLabelText('Age (attribute type: Number)'),
     ).toBeInTheDocument();
   });
 

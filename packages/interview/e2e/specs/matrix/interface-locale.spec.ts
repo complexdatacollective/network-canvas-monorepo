@@ -30,7 +30,13 @@ matrixTest(
     });
     const stage = synth.addStage('EgoForm', {
       label: 'Authored screen label',
-      introductionPanel: { title },
+      form: {
+        fields: [],
+        content: ({ fields, heading }) => ({
+          'en-US': [heading(title['en-US']), ...fields].join('\n\n'),
+          'es': [heading(title.es), ...fields].join('\n\n'),
+        }),
+      },
     });
     stage.addFormField({
       variable: field.id,

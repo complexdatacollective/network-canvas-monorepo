@@ -1,7 +1,10 @@
 import { cloneElement, type ReactElement, useContext } from 'react';
 
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
-import { type LocaleTag, messageStructure } from '@codaco/protocol-validation';
+import {
+  type LocaleTag,
+  messageShowsValues,
+} from '@codaco/protocol-validation';
 
 import { StageEditorFormContext } from '../form/stageEditorContext.ts';
 import {
@@ -9,16 +12,7 @@ import {
   useLocalizedText,
 } from '../localization/ProtocolLocalization.tsx';
 import { useStageDynamicValues } from '../localization/useDynamicValueSite.ts';
-import { DynamicMessageSummary } from './DynamicTextField.tsx';
-
-/** Whether `message` shows a value or chooses between versions by one. */
-export const showsValues = (message: string): boolean => {
-  if (!message.includes('{')) return false;
-  const structure = messageStructure(message);
-  return (
-    'nodes' in structure && structure.nodes.some((node) => node.kind !== 'text')
-  );
-};
+import { DynamicMessageSummary } from './dynamicText/DynamicMessageSummary.tsx';
 
 function StageMessage({
   message,
@@ -59,19 +53,19 @@ export function DynamicTextPreview({
   render?: ReactElement<{ lang?: string; dir?: string }>;
 }>) {
   const localize = useLocalizedText();
-  const { locale, localization } = useEditingLanguage();
+  const { editingLocale } = useEditingLanguage();
   const inStage = useContext(StageEditorFormContext) !== null;
   const shown = localize(value);
   const attributes = { lang: shown.lang, dir: shown.dir };
 
-  if (inStage && showsValues(shown.text)) {
+  if (inStage && messageShowsValues(shown.text)) {
     return cloneElement(
       render,
       attributes,
       <StageMessage
         message={shown.text}
         markdown={markdown}
-        locale={shown.lang ?? locale ?? localization?.defaultLocale ?? 'en'}
+        locale={shown.lang ?? editingLocale}
       />,
     );
   }

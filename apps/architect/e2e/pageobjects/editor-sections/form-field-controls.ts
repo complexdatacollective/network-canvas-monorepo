@@ -1,7 +1,7 @@
 import { expect, type Locator } from '@playwright/test';
 
-// Form-field dialog controls shared by the stage-editor specs. Drives
-// `@codaco/protocol-builder`'s `FormFieldsSection`.
+// Form field settings controls shared by the stage-editor specs. Drives
+// `@codaco/protocol-builder`'s `FieldSettingsPopover`.
 
 /**
  * Open the rules a participant's answer has to satisfy, for the attribute the

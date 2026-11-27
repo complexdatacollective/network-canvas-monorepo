@@ -10,7 +10,7 @@ import {
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
 import BuilderSection from '../BuilderSection.tsx';
-import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
+import FormDocumentSection from '../form-document/FormDocumentSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
@@ -66,9 +66,11 @@ const SURFACES: readonly Readonly<{
     ),
   },
   {
-    name: 'FormFieldsSection description',
+    name: 'FormDocumentSection description',
     stageId: 'alter-form-1',
-    sections: <FormFieldsSection subject="node" description={NEEDS_A_VALUE} />,
+    sections: (
+      <FormDocumentSection subject="node" description={NEEDS_A_VALUE} />
+    ),
   },
   {
     name: 'SectionCapability confirmClear',

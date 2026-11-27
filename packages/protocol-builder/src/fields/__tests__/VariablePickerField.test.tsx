@@ -553,9 +553,10 @@ describe('creating an attribute from the list', () => {
     expect(rows[0]).toBe(createRowOf(popup));
     expect(rows[0]).toHaveAccessibleName('Create “marr”');
     expect(rows[0]).toHaveAccessibleDescription('New Boolean attribute');
-    expect(
-      rows[0]?.querySelector('[data-attribute-type-mark]'),
-    ).toHaveAttribute('data-attribute-type-mark', 'boolean');
+    expect(rows[0]?.querySelector('[data-variable-kind-mark]')).toHaveAttribute(
+      'data-variable-kind-mark',
+      'boolean',
+    );
     expect(rows[1]).toHaveAccessibleName('married');
   });
 
@@ -568,7 +569,7 @@ describe('creating an attribute from the list', () => {
     await typeIn(control, popup, 'knows_ego');
 
     expect(createRowOf(popup)).toHaveAccessibleDescription('New attribute');
-    expect(createRowOf(popup).querySelector('[data-attribute-type-mark]')).toBe(
+    expect(createRowOf(popup).querySelector('[data-variable-kind-mark]')).toBe(
       null,
     );
   });

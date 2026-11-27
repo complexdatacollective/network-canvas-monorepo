@@ -3,7 +3,7 @@ import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown'
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 
 import { assetBlockImages } from '../../components/AssetBlock';
-import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
+import { ContentDocument } from '../../content/ContentDocument';
 import type { StageProps } from '../../types';
 
 type InformationProps = StageProps<'Information'>;
@@ -18,7 +18,7 @@ const Information = ({ stage: { content } }: InformationProps) => (
     {/* oxlint-disable-next-line tailwindcss/no-conflicting-classes -- min-h-full deliberately overrides the interface utility's min-h-0, so the stage fills the scroll area */}
     <div className="interface mx-auto min-h-full max-w-[80ch] select-text">
       <Surface className="grow-0" noContainer spacing="lg" shadow="lg">
-        <LocalizedMarkdown
+        <ContentDocument
           value={content}
           allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
           blockImages={assetBlockImages}

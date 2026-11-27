@@ -4,6 +4,7 @@ import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import { testId, testVariableId } from '../../../__tests__/testIds.ts';
+import { formOf } from '../../../testing/fixtures.ts';
 import { DUPLICATE_OBJECT_ID } from '../../../utils/protocolObjectIds.ts';
 import {
   createBaseProtocol,
@@ -55,7 +56,7 @@ const pedigreeStage = (form?: ReturnType<typeof field>[]) => ({
     gestationalCarrierAttribute: 'carrier',
     currentPartnerAttribute: 'current',
   },
-  ...(form ? { form: { fields: form } } : {}),
+  ...(form ? { form: formOf(form) } : {}),
 });
 
 const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
@@ -110,7 +111,7 @@ describe('form field variable uniqueness', () => {
     expect(
       FormSchema.safeParse({
         title: localized('Add a person'),
-        fields: [field('name', 'Name?'), field('age', 'Age?')],
+        ...formOf([field('name', 'Name?'), field('age', 'Age?')]),
       }).success,
     ).toBe(true);
   });
@@ -118,11 +119,11 @@ describe('form field variable uniqueness', () => {
   it('rejects a FormSchema form that names one variable twice', () => {
     const result = FormSchema.safeParse({
       title: localized('Add a person'),
-      fields: [
+      ...formOf([
         field('name', 'Name?'),
         field('age', 'Age?'),
         field('name', 'Name again?'),
-      ],
+      ]),
     });
     expect(result.success).toBe(false);
     // The path must land on the offending field's own `variable` so Architect's
@@ -136,7 +137,7 @@ describe('form field variable uniqueness', () => {
 
   it('rejects a TitlelessFormSchema form that names one variable twice', () => {
     const result = TitlelessFormSchema.safeParse({
-      fields: [field('name', 'Name?'), field('name', 'Name again?')],
+      ...formOf([field('name', 'Name?'), field('name', 'Name again?')]),
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
@@ -195,7 +196,7 @@ describe('form field variable uniqueness', () => {
             type: 'AlterForm',
             label: localized('Alter form'),
             subject: { entity: 'node', type: 'person' },
-            form: { fields: [field('name', 'Name?'), field('age', 'Age?')] },
+            form: formOf([field('name', 'Name?'), field('age', 'Age?')]),
           },
         ],
       }),
@@ -235,7 +236,7 @@ describe('form field variable uniqueness', () => {
             type: 'AlterForm',
             label: localized('Alter form'),
             subject: { entity: 'node', type: 'person' },
-            form: { fields: [field('name', 'Name?'), field('name', 'Again?')] },
+            form: formOf([field('name', 'Name?'), field('name', 'Again?')]),
           },
         ],
       }),
@@ -267,12 +268,12 @@ describe('form field id uniqueness', () => {
         : issue.message,
     );
 
-  const alterForm = (id: string, fields: unknown[]) => ({
+  const alterForm = (id: string, fields: object[]) => ({
     id: testId(id),
     type: 'AlterForm',
     label: localized('Alter form'),
     subject: { entity: 'node', type: 'person' },
-    form: { fields },
+    form: formOf(fields),
   });
 
   const composerField = (id: string, variable: string, component: string) => ({
@@ -285,7 +286,7 @@ describe('form field id uniqueness', () => {
   it('accepts a form whose fields each have a different id', () => {
     expect(
       TitlelessFormSchema.safeParse({
-        fields: [fieldWithId('a', 'name'), fieldWithId('b', 'age')],
+        ...formOf([fieldWithId('a', 'name'), fieldWithId('b', 'age')]),
       }).success,
     ).toBe(true);
   });
@@ -347,7 +348,7 @@ describe('form field id uniqueness', () => {
   ])('rejects a field whose id is %s', (_name, id) => {
     const { id: _id, ...rest } = fieldWithId('a', 'name');
     const result = TitlelessFormSchema.safeParse({
-      fields: [id === undefined ? rest : { ...rest, id }],
+      ...formOf([id === undefined ? rest : { ...rest, id }]),
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues.map(({ path }) => path)).toContainEqual([

@@ -308,7 +308,7 @@ describe('the emoji menu in the toolbar', () => {
 
     await waitFor(() => expect(editor).toHaveTextContent('🏥'));
     // The character itself, not an element standing for it.
-    expect(editor.querySelector('[data-token], img')).toBeNull();
+    expect(editor.querySelector('[data-inline-value], img')).toBeNull();
     await waitFor(() => expect(editor).toHaveFocus());
   });
 });

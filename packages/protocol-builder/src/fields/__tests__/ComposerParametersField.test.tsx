@@ -33,6 +33,7 @@ vi.mock('../../localization/useDynamicValueSite.ts', async (importActual) => {
       subject: undefined,
       allowEgoRules: true,
     },
+    dynamicAttributes: { values: {}, set: () => undefined },
     codebookRead: true,
   };
   return { ...actual, useDynamicValueSite: () => site };

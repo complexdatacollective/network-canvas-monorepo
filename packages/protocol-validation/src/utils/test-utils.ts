@@ -1,5 +1,6 @@
 import { testId } from '../__tests__/testIds.ts';
 import type { NodeDefinition } from '../schemas/9/codebook/definitions.ts';
+import { formOf } from '../testing/fixtures.ts';
 
 /** A localized string with one translation, in the base protocol's language. */
 export const localized = (text: string, locale = 'en') => ({ [locale]: text });
@@ -136,13 +137,13 @@ export const createBaseProtocol = () => ({
       },
       form: {
         title: localized('Add person'),
-        fields: [
+        ...formOf([
           {
             id: testId('field-name'),
             variable: 'name',
             prompt: localized('Enter name'),
           },
-        ],
+        ]),
       },
       prompts: [
         {

@@ -107,6 +107,10 @@ const formatters = (locale = 'en'): DynamicValueFormatters => ({
   format: contentFormatFor(locale),
   resolveLabel: (label: LocalizedString) => Object.values(label)[0] ?? '',
   booleanWords: { yes: 'Yes', no: 'No' },
+  versionOf: (wording) => {
+    const [found] = Object.entries(wording);
+    return { message: found?.[1] ?? '', locale: found?.[0] ?? locale };
+  },
 });
 
 const resolve = (

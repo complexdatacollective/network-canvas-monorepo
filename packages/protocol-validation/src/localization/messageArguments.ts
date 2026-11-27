@@ -34,11 +34,19 @@ export const EVERY_VERSION: RequiredPlacements = [{}];
  * A `text` or `plural` argument may be required in some versions (see
  * `RequiredPlacements` and `findMissingPlacement`). What a text requires is
  * its setting's to declare: it is not read from anyone's wording of it.
+ *
+ * A `plural` argument with `emptyVersions` may have an arm that is empty
+ * (`one {}`), which shows nothing for that number. An arm made only of
+ * spaces is still blank.
  */
 export type MessageArgument =
   | Readonly<{ kind: 'text'; required?: RequiredPlacements }>
   | Readonly<{ kind: 'select'; cases: readonly string[] }>
-  | Readonly<{ kind: 'plural'; required?: RequiredPlacements }>;
+  | Readonly<{
+      kind: 'plural';
+      required?: RequiredPlacements;
+      emptyVersions?: true;
+    }>;
 
 /** The arguments a localized message may use, by name. */
 export type MessageArguments = Readonly<Record<string, MessageArgument>>;
@@ -56,9 +64,9 @@ const PLURAL_CATEGORIES = [
   'other',
 ] as const;
 
-type PluralCategory = (typeof PLURAL_CATEGORIES)[number];
+export type PluralCategory = (typeof PLURAL_CATEGORIES)[number];
 
-const isPluralCategory = (key: string): key is PluralCategory =>
+export const isPluralCategory = (key: string): key is PluralCategory =>
   (PLURAL_CATEGORIES as readonly string[]).includes(key);
 
 // Whole numbers to try: every count to 1,000, then a few millions to
@@ -129,7 +137,7 @@ const parseMessage = (message: string): MessageFormatElement[] | string => {
     return parse(message, PARSE_OPTIONS);
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
-    return `Text is not valid message syntax (${error.message}).`;
+    return `This wording is not valid message syntax (${error.message}).`;
   }
 };
 
@@ -142,15 +150,35 @@ const isBlankElements = (elements: readonly MessageFormatElement[]): boolean =>
 const describeAllowed = (declaration: MessageArguments): string => {
   const names = Object.keys(declaration);
   return names.length === 0
-    ? 'This text cannot contain placeholders or formatting such as "{name}", plural or select.'
-    : `This text can only use ${names.map((name) => `"${name}"`).join(', ')}.`;
+    ? 'This wording cannot contain placeholders or formatting such as "{name}", plural or select.'
+    : `This wording can only use ${names.map((name) => `"${name}"`).join(', ')}.`;
 };
+
+/**
+ * How a message may use names that its setting does not declare: never
+ * (`undefined`, wording Network Canvas supplies), or, in text that shows
+ * dynamic values, as values that another check judges, with `inlineChoice`
+ * as the refusal of a choice between versions by one.
+ */
+type OtherNames = Readonly<{ inlineChoice: string }> | undefined;
 
 const findElementsProblem = (
   elements: readonly MessageFormatElement[],
   declaration: MessageArguments,
+  others?: OtherNames,
 ): string | undefined => {
   for (const element of elements) {
+    if (
+      others !== undefined &&
+      'value' in element &&
+      (element.type === TYPE.argument ||
+        element.type === TYPE.select ||
+        element.type === TYPE.plural) &&
+      !Object.hasOwn(declaration, element.value)
+    ) {
+      if (element.type === TYPE.argument) continue;
+      return others.inlineChoice;
+    }
     switch (element.type) {
       case TYPE.literal:
       case TYPE.pound:
@@ -158,28 +186,32 @@ const findElementsProblem = (
       case TYPE.argument: {
         const argument = declaration[element.value];
         if (argument === undefined) {
-          return `"{${element.value}}" is not something this text can show. ${describeAllowed(declaration)}`;
+          return `"{${element.value}}" is not something this wording can show. ${describeAllowed(declaration)}`;
         }
         if (argument.kind !== 'text') {
           return argument.kind === 'plural'
             ? `"${element.value}" is a number: write "#" inside its plural to show it.`
-            : `"${element.value}" chooses between versions of the text with select; it cannot be shown as "{${element.value}}".`;
+            : `"${element.value}" chooses between versions of the wording with select; it cannot be shown as "{${element.value}}".`;
         }
         break;
       }
       case TYPE.select: {
         const argument = declaration[element.value];
         if (argument?.kind !== 'select') {
-          return `"${element.value}" cannot choose between versions of this text. ${describeAllowed(declaration)}`;
+          return `"${element.value}" cannot choose between versions of this wording. ${describeAllowed(declaration)}`;
         }
         for (const [key, option] of Object.entries(element.options)) {
           if (key !== 'other' && !argument.cases.includes(key)) {
             return `"${key}" is not a case of "${element.value}". Its cases are ${[...argument.cases, 'other'].map((name) => `"${name}"`).join(', ')}.`;
           }
           if (isBlankElements(option.value)) {
-            return `The "${key}" version of this text is blank.`;
+            return `The "${key}" version of this wording is blank.`;
           }
-          const problem = findElementsProblem(option.value, declaration);
+          const problem = findElementsProblem(
+            option.value,
+            declaration,
+            others,
+          );
           if (problem !== undefined) return problem;
         }
         break;
@@ -187,7 +219,7 @@ const findElementsProblem = (
       case TYPE.plural: {
         const argument = declaration[element.value];
         if (argument?.kind !== 'plural' || element.pluralType !== 'cardinal') {
-          return `"${element.value}" cannot choose between versions of this text by number. ${describeAllowed(declaration)}`;
+          return `"${element.value}" cannot choose between versions of this wording by number. ${describeAllowed(declaration)}`;
         }
         if (element.offset !== 0) {
           return `The plural of "${element.value}" cannot use an offset.`;
@@ -196,10 +228,16 @@ const findElementsProblem = (
           if (!isPluralCategory(key)) {
             return `"${key}" is not a plural category. Use ${PLURAL_CATEGORIES.map((name) => `"${name}"`).join(', ')}.`;
           }
-          if (isBlankElements(option.value)) {
-            return `The "${key}" version of this text is blank.`;
+          const empty =
+            argument.emptyVersions === true && option.value.length === 0;
+          if (!empty && isBlankElements(option.value)) {
+            return `The "${key}" version of this wording is blank.`;
           }
-          const problem = findElementsProblem(option.value, declaration);
+          const problem = findElementsProblem(
+            option.value,
+            declaration,
+            others,
+          );
           if (problem !== undefined) return problem;
         }
         break;
@@ -209,7 +247,7 @@ const findElementsProblem = (
       case TYPE.time:
       case TYPE.tag:
       default:
-        return 'This text cannot format numbers, dates or times, or contain tags.';
+        return 'This wording cannot format numbers, dates or times, or contain tags.';
     }
   }
   return undefined;
@@ -230,6 +268,24 @@ export const findMessageArgumentProblem = (
   const elements = parseMessage(message);
   if (typeof elements === 'string') return elements;
   return findElementsProblem(elements, declaration);
+};
+
+/**
+ * `findMessageArgumentProblem` for text that shows dynamic values as well as
+ * the arguments its setting declares (the number of a dynamic attribute's
+ * number wording): each declared argument is used as its kind says, any
+ * other name may be shown as a value, which the site's own check judges, and
+ * a choice between versions by any other name is refused with
+ * `inlineChoice`, the refusal of a choice inside one line.
+ */
+export const findDeclaredArgumentProblem = (
+  message: string,
+  declaration: MessageArguments,
+  inlineChoice: string,
+): string | undefined => {
+  const elements = parseMessage(message);
+  if (typeof elements === 'string') return elements;
+  return findElementsProblem(elements, declaration, { inlineChoice });
 };
 
 /** One piece of a variant: text, or where an argument's value goes. */

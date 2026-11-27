@@ -25,11 +25,13 @@ import {
 } from '../../utils/validation-helpers.ts';
 import { findAssetBlockProblems } from './asset-block-validation.ts';
 import { type Conditions, isEdgeCountRule } from './conditions.ts';
+import { findDynamicAttributeProblems } from './dynamic-attribute-validation.ts';
 import { findDynamicValueProblems } from './dynamic-value-validation.ts';
 import {
   OperatorsByVariableType,
   TypeLevelOperators,
 } from './filters/index.ts';
+import { findFormDocumentProblems } from './form-document-validation.ts';
 import { findNodeLabelProblems } from './node-label.ts';
 
 // Re-export all the split schemas
@@ -220,8 +222,8 @@ const validateConditions = (
     ) {
       addIssue({
         message: aboutEdge
-          ? 'This condition is about an edge, but its text is not shown with one.'
-          : 'This condition is about a node, but its text is not shown with one.',
+          ? 'This condition is about an edge, but the wording that uses it does not refer to an edge.'
+          : 'This condition is about a node, but the wording that uses it does not refer to a node.',
         path: [...conditionPath, 'about'],
       });
       continue;
@@ -261,7 +263,7 @@ const validateConditions = (
       ) {
         addIssue({
           message:
-            'This rule is asked of the entity the text is shown with, so it must name that entity’s type.',
+            'This rule is about the node or edge that the wording refers to, so it must name the type of that node or edge.',
           path: [...rulePath, 'options', 'type'],
         });
       }
@@ -764,7 +766,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
   for (const path of findEmptyTextPaths(protocol, localizedStrings, hits)) {
     ctx.addIssue({
       code: 'custom' as const,
-      message: 'Text must have at least one translation.',
+      message: 'This wording must have at least one translation.',
       path: [...path],
     });
   }
@@ -783,7 +785,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         }
         ctx.addIssue({
           code: 'custom' as const,
-          message: `Text has a translation for "${locale}", which is not one of the protocol's languages.`,
+          message: `This wording has a translation for "${locale}", which is not one of the protocol's languages.`,
           path: [...hit.path, locale],
         });
       }
@@ -799,10 +801,32 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     ctx.addIssue({ code: 'custom' as const, ...problem });
   }
 
-  // The values each stage's text shows: bound, available where shown, and
-  // guarded where they can be missing. Each language is checked on its own.
+  // The values each stage's text shows: bound, and available where shown.
+  // Each language is checked on its own.
   for (const problem of findDynamicValueProblems(
     { codebook: protocol.codebook, stages: protocol.stages },
+    localizedStrings,
+  )) {
+    ctx.addIssue({ code: 'custom' as const, ...problem });
+  }
+
+  // The dynamic attributes of the stages and node type labels: used, and
+  // reading values and conditions that exist.
+  for (const problem of findDynamicAttributeProblems(
+    {
+      codebook: protocol.codebook,
+      stages: protocol.stages,
+      localization: protocol.localization,
+    },
+    localizedStrings,
+  )) {
+    ctx.addIssue({ code: 'custom' as const, ...problem });
+  }
+
+  // The documents of the forms: each language's places its fields once each,
+  // and every field is placed in some language.
+  for (const problem of findFormDocumentProblems(
+    { stages: protocol.stages },
     localizedStrings,
   )) {
     ctx.addIssue({ code: 'custom' as const, ...problem });

@@ -1,3 +1,8 @@
+import {
+  fieldIdsIn,
+  readContentDocument,
+} from '../../../localization/contentDocument.ts';
+import { fieldBlockMarkdown } from '../../../localization/fieldBlock.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 
@@ -101,13 +106,35 @@ const informationItems = (
   stage.items = items;
 };
 
+// A schema 8 form was its list of fields, without a document placing them.
+// An Ego Form showed its introduction panel above them: the heading and text
+// at the top of its document.
+const formLists = (stage: unknown, rewrite: (text: string) => string) => {
+  if (!isRecord(stage) || !isRecord(stage.form)) return;
+  const { content: localizedContent } = stage.form;
+  delete stage.form.content;
+  const content = isRecord(localizedContent) ? localizedContent.en : undefined;
+  if (stage.type !== 'EgoForm' || typeof content !== 'string') return;
+  const placed = new Set(
+    fieldIdsIn(readContentDocument(content).nodes).map(fieldBlockMarkdown),
+  );
+  const blocks = content.split('\n\n').filter((block) => !placed.has(block));
+  const heading = /^# (.+)$/.exec(blocks[0] ?? '');
+  const text = (heading === null ? blocks : blocks.slice(1)).join('\n\n');
+  stage.introductionPanel = {
+    title: rewrite(heading?.[1] ?? ''),
+    ...(text === '' ? {} : { text: rewrite(text) }),
+  };
+};
+
 /**
  * A schema 9 protocol written in English, as schema 8 held it: each localized
  * string is its English text, put through `rewrite` (text with placeholders,
  * which schema 8 never held, stays localized), Narrative highlights and
  * legend edges are ids, Network Composer edges have no label, an Anonymisation
  * explanation's heading is a title of its own, an Information page is a title
- * and a list of items, and the language
+ * and a list of items, a form is a list of fields (an Ego Form's heading and
+ * text are its introduction panel), and the language
  * chooser and language settings, which schema 8 did not have, are gone.
  */
 export const asSchema8Protocol = (
@@ -140,6 +167,8 @@ export const asSchema8Protocol = (
     if (key === 'content' && isRecord(owner) && owner.type === 'Information') {
       continue;
     }
+    // A form's document is its list of fields, below.
+    if (key === 'content' && path.at(-2) === 'form') continue;
     const parent = path
       .slice(0, -1)
       .reduce<unknown>(
@@ -164,6 +193,7 @@ export const asSchema8Protocol = (
     composerEdgeLabels(stage);
     explanationTitle(stage);
     informationItems(stage, rewrite);
+    formLists(stage, rewrite);
   }
   // Schema 8 has neither stage type: the interview chose no language, and
   // added its own finish screen.

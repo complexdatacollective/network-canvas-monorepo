@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildConnectivityIndex,
+  conditionHolds,
+  conditionReadsNetwork,
+} from '@codaco/network-query';
+import {
   type Conditions,
   ConditionsSchema,
   createProtocolObjectId,
@@ -15,8 +20,6 @@ import {
 
 import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { contentFormatFor } from '../../localization/contentFormat';
-import { buildConnectivityIndex } from '../../nodeLabels/connectivity';
-import { conditionHolds, conditionReadsNetwork } from '../conditions';
 import {
   type DynamicValueFormatters,
   type DynamicValueSources,
@@ -233,6 +236,7 @@ describe('stage text that chooses its wording by a condition', () => {
     format: contentFormatFor('en'),
     resolveLabel: (label) => label.en ?? '',
     booleanWords: { yes: 'Yes', no: 'No' },
+    versionOf: (wording) => ({ message: wording.en ?? '', locale: 'en' }),
   };
   const read = (message: string, extra: Partial<DynamicValueSources>) =>
     resolveDynamicText(

@@ -5,6 +5,9 @@ import {
   collectLocalizedStrings,
   type CurrentProtocol,
   CurrentProtocolSchema,
+  dynamicValueNameFor,
+  fieldBlockMarkdown,
+  optionCaseKey,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   suppliedStageSettingPaths,
 } from '@codaco/protocol-validation';
@@ -241,6 +244,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   [
     [...fixtureStage('FamilyPedigree'), 'form'],
     {
+      content: en(`What else?\n\n${fieldBlockMarkdown(testId('field-1'))}`),
       fields: [
         {
           id: testId('field-1'),
@@ -416,6 +420,82 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   ],
 ];
 
+const EGO_MOOD_VALUE = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: EGO_MOOD,
+});
+const EGO_ENERGY_VALUE = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: EGO_ENERGY,
+});
+const CONDITION = testId('condition/busy');
+
+/**
+ * One dynamic attribute of each kind of logic, so that every version that a
+ * dynamic attribute can have appears at least once. Its condition is not
+ * declared, and no text uses it.
+ */
+const EVERY_DYNAMIC_ATTRIBUTE = {
+  [testId('dynamic/by-condition')]: {
+    logic: 'conditions',
+    cases: [{ condition: CONDITION, when: 'met', wording: en('busy') }],
+    otherwise: en('free'),
+  },
+  [testId('dynamic/by-answer')]: {
+    logic: 'answers',
+    value: EGO_MOOD_VALUE,
+    missing: en('unsure'),
+    answers: [
+      { answer: optionCaseKey(testId('option/calm')), wording: en('calm') },
+    ],
+    other: en('mixed'),
+  },
+  [testId('dynamic/by-number')]: {
+    logic: 'number',
+    value: EGO_ENERGY_VALUE,
+    missing: en('some energy'),
+    wording: en('{count, plural, one {# point} other {# points}}'),
+  },
+  [testId('dynamic/by-participant')]: {
+    logic: 'participant',
+    participant: en('you'),
+    otherwise: en('them'),
+  },
+};
+
+/** The condition that the case of `dynamic/by-condition` tests. */
+const BUSY_CONDITION = {
+  [CONDITION]: {
+    rules: [
+      {
+        id: testId('rule/mood-known'),
+        type: 'ego',
+        options: { attribute: EGO_MOOD, operator: 'EXISTS' },
+      },
+    ],
+  },
+};
+
+/**
+ * Every stage of the fixture, and the person type's label, declare them. The
+ * stages declare the condition too; the label does not, so its case tests a
+ * condition that no longer exists.
+ */
+const DYNAMIC_ATTRIBUTE_ADDITIONS: readonly (readonly [Path, unknown])[] = [
+  [
+    ['codebook', 'node', PERSON, 'dynamicLabel', 'dynamicAttributes'],
+    EVERY_DYNAMIC_ATTRIBUTE,
+  ],
+  ...allInterfaces.stages.flatMap(
+    (_stage, index): (readonly [Path, unknown])[] => [
+      [['stages', index, 'dynamicAttributes'], EVERY_DYNAMIC_ATTRIBUTE],
+      [['stages', index, 'conditions'], BUSY_CONDITION],
+    ],
+  ),
+];
+
 const setAt = (root: unknown, path: Path, value: unknown): void => {
   const parent = path
     .slice(0, -1)
@@ -436,7 +516,13 @@ const setAt = (root: unknown, path: Path, value: unknown): void => {
 const augmentedProtocol = (): CurrentProtocol => {
   const document: unknown = structuredClone(allInterfaces);
   for (const [path, value] of ADDITIONS) setAt(document, path, value);
-  return CurrentProtocolSchema.parse(document);
+  const parsed = CurrentProtocolSchema.parse(document);
+  // Added after the parse: the schema refuses a dynamic attribute that no
+  // text uses, and these are here to be named, not shown.
+  for (const [path, value] of DYNAMIC_ATTRIBUTE_ADDITIONS) {
+    setAt(parsed, path, value);
+  }
+  return parsed;
 };
 
 const protocol = augmentedProtocol();
@@ -611,6 +697,86 @@ describe('nameLocalizedText', () => {
     expect(unnamed).toEqual([]);
   });
 
+  it('names a version of a dynamic attribute by its wordings and its logic', () => {
+    const at = [...stageAt('EgoForm'), 'dynamicAttributes'];
+    const participant = testId('dynamic/by-participant');
+    expect(name([...at, participant, 'otherwise'])).toEqual([
+      { key: '["dynamicAttributes"]', label: 'Dynamic attributes' },
+      {
+        key: JSON.stringify(['dynamicAttributes', participant]),
+        label: 'you / them',
+      },
+      {
+        key: JSON.stringify(['dynamicAttributes', participant, 'otherwise']),
+        label: 'About someone else',
+      },
+    ]);
+    const byCondition = [...at, testId('dynamic/by-condition')];
+    expect(name([...byCondition, 'otherwise'])?.at(-1)?.label).toBe(
+      'Otherwise',
+    );
+    const byAnswer = [...at, testId('dynamic/by-answer')];
+    expect(name([...byAnswer, 'missing'])?.map(({ label }) => label)).toEqual([
+      'Dynamic attributes',
+      'unsure / calm / mixed',
+      'If not known',
+    ]);
+    expect(name([...byAnswer, 'other'])?.at(-1)?.label).toBe(
+      'Any other answer',
+    );
+    expect(
+      name([...at, testId('dynamic/by-number'), 'wording'])?.slice(1),
+    ).toEqual([
+      {
+        key: JSON.stringify(['dynamicAttributes', testId('dynamic/by-number')]),
+        label: 'some energy / 1 point / 0 poin…',
+      },
+      {
+        key: JSON.stringify([
+          'dynamicAttributes',
+          testId('dynamic/by-number'),
+          'wording',
+        ]),
+        label: 'Wording for singular or plural numbers',
+      },
+    ]);
+  });
+
+  it('names a case of a dynamic attribute by its rules', () => {
+    const at = [
+      ...stageAt('EgoForm'),
+      'dynamicAttributes',
+      testId('dynamic/by-condition'),
+    ];
+    expect(
+      name([...at, 'cases', 0, 'wording'])?.map(({ label }) => label),
+    ).toEqual(['Dynamic attributes', 'busy / free', 'If: Ego has Mood']);
+    // A node type's label declares no condition: its case is named as one
+    // whose rules were deleted.
+    expect(
+      nameLocalizedText(enIntl, protocol, [
+        'codebook',
+        'node',
+        PERSON,
+        'dynamicLabel',
+        'dynamicAttributes',
+        testId('dynamic/by-condition'),
+        'cases',
+        0,
+        'wording',
+      ])?.at(-1)?.label,
+    ).toBe('If: Deleted condition');
+  });
+
+  it('names an answer of a dynamic attribute by its option', () => {
+    const at = [
+      ...stageAt('EgoForm'),
+      'dynamicAttributes',
+      testId('dynamic/by-answer'),
+    ];
+    expect(name([...at, 'answers', 0, 'wording'])?.at(-1)?.label).toBe('Calm');
+  });
+
   it('names a stage label', () => {
     expect(name([...stageAt('Anonymisation'), 'label'])).toEqual([
       { key: '["label"]', label: 'Stage name' },
@@ -657,22 +823,19 @@ describe('nameLocalizedText', () => {
     ]);
   });
 
-  it('names an introduction title', () => {
-    expect(name([...stageAt('EgoForm'), 'introductionPanel', 'title'])).toEqual(
-      [
-        { key: '["introductionPanel"]', label: 'Task introduction' },
-        { key: '["introductionPanel","title"]', label: 'Title' },
-      ],
-    );
+  it('names a form by its section', () => {
+    expect(name([...stageAt('EgoForm'), 'form', 'content'])).toEqual([
+      { key: '["form"]', label: 'Form' },
+    ]);
   });
 
   it('names a form field question by the attribute it records', () => {
     expect(
       name([...stageAt('AlterForm'), 'form', 'fields', 1, 'prompt']),
     ).toEqual([
-      { key: '["form"]', label: 'Form configuration' },
+      { key: '["form"]', label: 'Form' },
       { key: '["form","fields",1]', label: 'Flag for follow-up' },
-      { key: '["form","fields",1,"prompt"]', label: 'Question text' },
+      { key: '["form","fields",1,"prompt"]', label: 'Question' },
     ]);
   });
 

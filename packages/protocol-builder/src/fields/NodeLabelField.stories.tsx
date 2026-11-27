@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
@@ -56,14 +56,17 @@ const KIND_NAME = dynamicValueNameFor({
   role: 'node',
   variableId: KIND,
 });
-const LINKED_NAME = dynamicValueNameFor({
-  kind: 'condition',
-  conditionId: LINKED,
-});
+const ICON = testId('dynamic/icon');
+const LINKED_MARK = testId('dynamic/linked');
 
-const SWITCH_ON_KIND: NodeLabelDraft = {
+/**
+ * An emoji for each kind of place, the label the interview would otherwise
+ * choose, and a mark for a place joined to another: two dynamic attributes of
+ * the label, one with a version for each answer and one with an “If”.
+ */
+const ICON_AND_LINK: NodeLabelDraft = {
   text: {
-    en: `{${KIND_NAME}, select, missing {} ${optionCaseKey(HOSPITAL)} {🏥 } ${optionCaseKey(SCHOOL)} {🏫 } other {}}{node_label}{${LINKED_NAME}, select, true { 🔗} other {}}`,
+    en: `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: ICON })}} {node_label} {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: LINKED_MARK })}}`,
   },
   conditions: {
     [LINKED]: {
@@ -75,6 +78,23 @@ const SWITCH_ON_KIND: NodeLabelDraft = {
           options: { type: NEAR, operator: 'EXISTS' },
         },
       ],
+    },
+  },
+  dynamicAttributes: {
+    [ICON]: {
+      logic: 'answers',
+      value: KIND_NAME,
+      missing: { en: '📍' },
+      answers: [
+        { answer: optionCaseKey(HOSPITAL), wording: { en: '🏥' } },
+        { answer: optionCaseKey(SCHOOL), wording: { en: '🏫' } },
+      ],
+      other: { en: '📍' },
+    },
+    [LINKED_MARK]: {
+      logic: 'conditions',
+      cases: [{ condition: LINKED, when: 'met', wording: { en: '🔗' } }],
+      otherwise: { en: '·' },
     },
   },
 };
@@ -108,7 +128,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'How a node type labels its own nodes: one line of text a participant reads on every node of the type, written in the piped text editor. It can show the node’s attributes and the label the interview would otherwise choose, and hold logic from the editor’s second menu: a version of the text for each answer of an attribute, and an “If” whose rules (about the node’s attributes and its edges) are built with the rule builder. A version can hold further logic.',
+          'How a node type labels its own nodes: one line of text that a participant reads on every node of the type. The Attribute menu puts in the node’s attributes, the label that the interview would otherwise choose, and the label’s own dynamic attributes: words that read differently for different nodes, by the answer to an attribute or by rules about the node’s attributes and its edges, which are built with the rule builder.',
       },
     },
   },
@@ -123,7 +143,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Nothing written yet: the label box, with its two menus. */
+/** Nothing written yet: the label box, with its Attribute menu. */
 export const NothingWrittenYet: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -133,45 +153,55 @@ export const NothingWrittenYet: Story = {
       await canvas.findByRole('textbox', { name: LABEL }),
     ).toBeInTheDocument();
     await expect(
-      canvas.getByRole('button', { name: 'Insert logic' }),
+      canvas.getByRole('button', { name: 'Attribute' }),
     ).toBeEnabled();
   },
 };
 
 /**
- * An emoji for each kind of place, the label the interview would otherwise
- * choose, and an "If" that marks a place joined to another. Each is a pill;
- * logic is drawn in a colour of its own, says what its versions show while
- * folded, and opens when it is selected.
+ * Two dynamic attributes around the label the interview would otherwise
+ * choose. Each is a pill that shows its wordings.
  */
-export const AVersionForEachAnswer: Story = {
-  args: { children: <NodeLabel initialValue={SWITCH_ON_KIND} /> },
+export const DynamicAttributes: Story = {
+  args: { children: <NodeLabel initialValue={ICON_AND_LINK} /> },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
     const box = await canvas.findByRole('textbox', { name: LABEL });
     // The field's value reaches the editor a turn after it mounts.
-    await waitFor(() => expect(box).toHaveTextContent('kind'));
-    await expect(box).toHaveTextContent('Default label');
-    await expect(box).toHaveTextContent('If: Near exists: 🔗');
-    await expect(box).toHaveTextContent('kind: 🏥 · 🏫');
+    await waitFor(() =>
+      expect(box.querySelector('data[value="📍 / 🏥 / 🏫"]')).not.toBeNull(),
+    );
+    await expect(box.querySelector('data[value="🔗 / ·"]')).not.toBeNull();
+    await expect(
+      box.querySelector('data[value="Default label"]'),
+    ).not.toBeNull();
   },
 };
 
 /**
  * A node type that has not been saved has no attributes for a rule to name
- * or an answer to word for, so it has no logic to offer until it has been.
+ * or an answer to word for: the Attribute menu offers only the label that
+ * the interview would otherwise choose.
  */
 export const ANewNodeType: Story = {
   args: { children: <NodeLabel isNew /> },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await awaitPassiveEffects();
 
-    await canvas.findByRole('textbox', { name: LABEL });
+    await userEvent.click(await canvas.findByRole('textbox', { name: LABEL }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Attribute' }));
+    const menu = await body.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
     await expect(
-      canvas.queryByRole('button', { name: 'Insert logic' }),
+      within(menu).getByRole('option', { name: /^Default label/ }),
+    ).toBeInTheDocument();
+    await expect(
+      within(menu).queryByRole('option', { name: /^kind/ }),
     ).toBeNull();
   },
 };

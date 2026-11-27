@@ -1,10 +1,7 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Provider } from 'react-redux';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
   testOptionId,
   testTypeId,
@@ -14,10 +11,12 @@ import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 
-import TranslationTable from '../TranslationTable';
+import {
+  type RenderedTable,
+  renderTranslationTable,
+} from './renderTranslationTable';
 
 // French is missing the welcome name and content, both thanks texts and the
 // person type's one answer option; Spanish is missing only the thanks texts,
@@ -71,25 +70,10 @@ const trilingual: CurrentProtocol = {
   ],
 };
 
-const renderTable = (protocol: CurrentProtocol = trilingual) => {
-  const store = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  store.dispatch(setActiveProtocol(structuredClone(protocol)));
-  const onSaved = vi.fn();
-  render(
-    <Provider store={store}>
-      <FormStoreProvider>
-        <TranslationTable onSaved={onSaved} onCancel={vi.fn()} />
-      </FormStoreProvider>
-    </Provider>,
-  );
-  return { store, onSaved, user: userEvent.setup() };
-};
+const renderTable = (protocol: CurrentProtocol = trilingual) =>
+  renderTranslationTable(protocol);
 
-type Rendered = ReturnType<typeof renderTable>;
+type Rendered = RenderedTable;
 
 const cellName = (stage: string, row: string, language: string) =>
   new RegExp(`^Stage ${stage} .*\\b${row} ${language}$`);
@@ -152,7 +136,7 @@ const filterMenu = () =>
  * English stops being one of the protocol's languages, so its column goes
  * while one of its cells still has focus, without that cell ever being left.
  */
-const dropEnglish = (store: ReturnType<typeof renderTable>['store']) =>
+const dropEnglish = (store: RenderedTable['store']) =>
   act(() => {
     store.dispatch(
       setActiveProtocol({

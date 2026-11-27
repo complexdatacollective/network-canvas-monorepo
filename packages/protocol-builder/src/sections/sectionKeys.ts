@@ -35,7 +35,6 @@ export const SECTION_KEYS = [
   'form-fields',
   'gender-identity',
   'interviewer-guidance',
-  'introduction',
   'languages',
   'map-access',
   'map-appearance',

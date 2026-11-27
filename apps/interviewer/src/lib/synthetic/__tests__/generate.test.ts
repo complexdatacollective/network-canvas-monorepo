@@ -98,7 +98,11 @@ beforeEach(() => {
     name: 'Test Protocol',
     schemaVersion: 9,
     codebook: {},
-    protocol: { schemaVersion: 9, stages: [] },
+    protocol: {
+      schemaVersion: 9,
+      stages: [],
+      localization: { defaultLocale: 'en', locales: ['en', 'es'] },
+    },
   } as unknown as StoredProtocol);
 
   let next = 0;
@@ -133,6 +137,33 @@ describe('generateSyntheticSessions', () => {
       }),
     ).rejects.toThrow('is not at schema 9');
     expect(mockCreateSession).not.toHaveBeenCalled();
+  });
+
+  it('answers the forms in the language that an interview started on this device shows', async () => {
+    mockGenerateNetwork.mockImplementation(generationResult);
+    const languages = vi
+      .spyOn(navigator, 'languages', 'get')
+      .mockReturnValue(['es-MX', 'en']);
+    try {
+      await generateSyntheticSessions({
+        protocolHash: HASH,
+        count: 2,
+        simulateDropOut: false,
+        respectSkipLogicAndFiltering: false,
+      });
+    } finally {
+      languages.mockRestore();
+    }
+
+    expect(mockGenerateNetwork).toHaveBeenCalledTimes(2);
+    for (const [params] of mockGenerateNetwork.mock.calls) {
+      // The protocol's languages go too, so that a form without a document
+      // in that language falls back to the default as the interview does.
+      expect(params).toMatchObject({
+        formLanguage: 'es',
+        localization: { defaultLocale: 'en', locales: ['en', 'es'] },
+      });
+    }
   });
 
   it('persists the whole batch when every draw succeeds', async () => {

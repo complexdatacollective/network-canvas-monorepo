@@ -15,8 +15,13 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
   asEntityAttributeReference,
+  dynamicValueNameFor,
+  fieldBlockMarkdown,
+  optionCaseKey,
+  type Stage,
   type TitlelessForm,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -26,12 +31,17 @@ import {
 import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
+import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
+import { COMPLETE_DELAY } from '../../../forms/QuestionFlow';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import SlidesForm from '../SlidesForm';
+
+/** One animation frame on the fake clock, with time to spare. */
+const FRAME = 50;
 
 class StubResizeObserver {
   observe() {}
@@ -71,16 +81,17 @@ beforeAll(() => {
 const PERSON_TYPE = testTypeId('person');
 const NAME_VAR = testVariableId('name');
 const CLOSENESS_VAR = testVariableId('closeness');
+const NOTE_VAR = testVariableId('note');
+const NOT_CLOSE = testId('option not close');
+const VERY_CLOSE = testId('option very close');
 
-const form: TitlelessForm = {
-  fields: [
-    {
-      id: testId('field-1'),
-      variable: asEntityAttributeReference(NAME_VAR),
-      prompt: { en: 'Person name' },
-    },
-  ],
-};
+const form: TitlelessForm = formOf([
+  {
+    id: testId('field-1'),
+    variable: asEntityAttributeReference(NAME_VAR),
+    prompt: { en: 'Person name' },
+  },
+]);
 
 const person: NcNode = {
   [entityPrimaryKeyProperty]: 'person-1',
@@ -823,15 +834,41 @@ describe('SlidesForm going back from the first slide', () => {
 });
 
 describe('SlidesForm moving on from a complete form', () => {
-  const closenessForm: TitlelessForm = {
-    fields: [
-      {
-        id: testId('field-1'),
-        variable: asEntityAttributeReference(CLOSENESS_VAR),
-        prompt: { en: 'How close?' },
-      },
-    ],
+  const closenessForm: TitlelessForm = formOf([
+    {
+      id: testId('field-1'),
+      variable: asEntityAttributeReference(CLOSENESS_VAR),
+      prompt: { en: 'How close?' },
+    },
+  ]);
+
+  /**
+   * Puts the timers and frames on a clock that the test moves, and that
+   * otherwise keeps time, until the test finishes: so the test can let the
+   * pause after a choice pass without waiting for it.
+   */
+  const fakeTheClock = () => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+      ],
+    });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
   };
+
+  /**
+   * Moves the clock past the frame in which the form decides what follows a
+   * choice, and past the pause before it moves on by itself: whatever the
+   * form does by itself, it has done once this resolves.
+   */
+  const pastThePause = () =>
+    act(() => vi.advanceTimersByTimeAsync(FRAME + COMPLETE_DELAY));
 
   // A person's answers can be given, and Next moves on, once they arrive.
   const waitForAnswersToArrive = () =>
@@ -845,7 +882,16 @@ describe('SlidesForm moving on from a complete form', () => {
     nodes: NcNode[],
     saveTakes = 0,
     headerPlacement: 'top' | 'start' = 'top',
+    slideForm: TitlelessForm = closenessForm,
+    nameValidation?: Record<string, string>,
   ) {
+    const alterStage = {
+      id: 'alter-form',
+      type: 'AlterForm',
+      label: { en: 'Alter form' },
+      subject: { entity: 'node', type: PERSON_TYPE },
+      form: slideForm,
+    } as unknown as Stage;
     const store = configureStore({
       reducer: { session, protocol, ui },
       preloadedState: {
@@ -873,22 +919,23 @@ describe('SlidesForm moving on from a complete form', () => {
                     type: 'ordinal',
                     component: 'RadioGroup',
                     options: [
-                      { label: { en: 'Not close' }, value: 1 },
-                      { label: { en: 'Very close' }, value: 2 },
+                      { id: NOT_CLOSE, label: { en: 'Not close' }, value: 1 },
+                      { id: VERY_CLOSE, label: { en: 'Very close' }, value: 2 },
                     ],
+                  },
+                  [NOTE_VAR]: { name: 'Note', type: 'text', component: 'Text' },
+                  [NAME_VAR]: {
+                    name: 'Name',
+                    type: 'text',
+                    component: 'Text',
+                    ...(nameValidation && { validation: nameValidation }),
                   },
                 },
               },
             },
           },
           stages: [
-            {
-              id: 'alter-form',
-              type: 'AlterForm',
-              label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
-              form: closenessForm,
-            },
+            alterStage,
             {
               id: 'next-screen',
               type: 'Information',
@@ -920,7 +967,7 @@ describe('SlidesForm moving on from a complete form', () => {
         <MotionConfig reducedMotion={reduced ? 'always' : 'never'}>
           <StageMetadataProvider value={navigation.registerBeforeNext}>
             <SlidesForm
-              form={closenessForm}
+              form={slideForm}
               items={nodes}
               subject={{ entity: 'node', type: PERSON_TYPE }}
               updateItem={updateItem}
@@ -943,7 +990,9 @@ describe('SlidesForm moving on from a complete form', () => {
         <Provider store={store}>
           <CurrentStepProvider currentStep={0} onStepChange={onStepChange}>
             <DialogProvider>
-              <Harness />
+              <StageDynamicValues stage={alterStage}>
+                <Harness />
+              </StageDynamicValues>
             </DialogProvider>
           </CurrentStepProvider>
         </Provider>
@@ -992,6 +1041,7 @@ describe('SlidesForm moving on from a complete form', () => {
   });
 
   it('moves on once when Next is pressed during the pause', async () => {
+    fakeTheClock();
     // Saving outlasts the pause, so the form completes while Next is still
     // saving it.
     const { updateItem, onStepChange, next } = renderClosenessSlides(
@@ -1001,10 +1051,11 @@ describe('SlidesForm moving on from a complete form', () => {
 
     fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
     await act(async () => {
-      await next();
-      // Long enough for the save to finish, so a second move on would have
-      // been made.
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const moving = next();
+      // The pause ends while Next is saving, and then the save finishes:
+      // by then a second move on would have been made.
+      await vi.advanceTimersByTimeAsync(600 + COMPLETE_DELAY + FRAME);
+      await moving;
     });
 
     expect(screen.getByTestId('slide-header')).toHaveTextContent('person-2');
@@ -1012,7 +1063,157 @@ describe('SlidesForm moving on from a complete form', () => {
     expect(onStepChange).not.toHaveBeenCalled();
   });
 
+  it('stays on the person when a choice shows another question, until that is answered', async () => {
+    fakeTheClock();
+    // A note is asked only about someone very close.
+    const closeness = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: CLOSENESS_VAR,
+    });
+    const noteForm: TitlelessForm = {
+      content: {
+        en: [
+          fieldBlockMarkdown(testId('field-1')),
+          `{${closeness}, select, missing {} ${optionCaseKey(VERY_CLOSE)} {${fieldBlockMarkdown(testId('field-2'))}} other {}}`,
+        ].join('\n\n'),
+      },
+      fields: [
+        ...closenessForm.fields,
+        {
+          id: testId('field-2'),
+          variable: asEntityAttributeReference(NOTE_VAR),
+          prompt: { en: 'Why are you close?' },
+        },
+      ],
+    };
+    const { updateItem } = renderClosenessSlides(
+      [unanswered('person-1'), unanswered('person-2')],
+      0,
+      'top',
+      noteForm,
+    );
+    expect(
+      screen.queryByRole('textbox', { name: 'Why are you close?' }),
+    ).toBeNull();
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
+    expect(
+      await screen.findByRole('textbox', { name: 'Why are you close?' }),
+    ).toBeVisible();
+    await pastThePause();
+
+    expect(screen.getByTestId('slide-header')).toHaveTextContent('person-1');
+    expect(updateItem).not.toHaveBeenCalled();
+  });
+
+  it('moves on when a choice leaves no question waiting, the logic having shown none', async () => {
+    const closeness = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: CLOSENESS_VAR,
+    });
+    const noteForm: TitlelessForm = {
+      content: {
+        en: [
+          fieldBlockMarkdown(testId('field-1')),
+          `{${closeness}, select, missing {} ${optionCaseKey(VERY_CLOSE)} {${fieldBlockMarkdown(testId('field-2'))}} other {}}`,
+        ].join('\n\n'),
+      },
+      fields: [
+        ...closenessForm.fields,
+        {
+          id: testId('field-2'),
+          variable: asEntityAttributeReference(NOTE_VAR),
+          prompt: { en: 'Why are you close?' },
+        },
+      ],
+    };
+    const { updateItem } = renderClosenessSlides(
+      [unanswered('person-1'), unanswered('person-2')],
+      0,
+      'top',
+      noteForm,
+    );
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Not close' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('slide-header')).toHaveTextContent('person-2'),
+    );
+    expect(updateItem).toHaveBeenCalledWith('person-1', {
+      set: { [CLOSENESS_VAR]: 1 },
+      unset: [NOTE_VAR],
+    });
+  });
+
+  // A rule on a question that is shown can name a question that logic
+  // hides, which has no answer while it is hidden: its stored answer, which
+  // saving clears, is never compared with in its place.
+  it('saves a person whose answer a rule compares with a hidden question as unanswered', async () => {
+    const closeness = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: CLOSENESS_VAR,
+    });
+    const comparingForm: TitlelessForm = {
+      content: {
+        en: [
+          fieldBlockMarkdown(testId('field-1')),
+          `{${closeness}, select, missing {} ${optionCaseKey(VERY_CLOSE)} {${fieldBlockMarkdown(testId('field-2'))}} other {}}`,
+          fieldBlockMarkdown(testId('field-3')),
+        ].join('\n\n'),
+      },
+      fields: [
+        ...closenessForm.fields,
+        {
+          id: testId('field-2'),
+          variable: asEntityAttributeReference(NOTE_VAR),
+          prompt: { en: 'Why are you close?' },
+        },
+        {
+          id: testId('field-3'),
+          variable: asEntityAttributeReference(NAME_VAR),
+          prompt: { en: 'Their name' },
+        },
+      ],
+    };
+    const { updateItem, next } = renderClosenessSlides(
+      [
+        {
+          [entityPrimaryKeyProperty]: 'person-1',
+          type: PERSON_TYPE,
+          [entityAttributesProperty]: {
+            [CLOSENESS_VAR]: 1,
+            [NOTE_VAR]: 'Ada',
+            [NAME_VAR]: 'Ada',
+          },
+        },
+        unanswered('person-2'),
+      ],
+      0,
+      'top',
+      comparingForm,
+      { differentFrom: NOTE_VAR },
+    );
+    expect(await screen.findByDisplayValue('Ada')).toBeVisible();
+    expect(
+      screen.queryByRole('textbox', { name: /Why are you close/ }),
+    ).toBeNull();
+    await waitForAnswersToArrive();
+
+    await act(() => next());
+
+    await waitFor(() =>
+      expect(updateItem).toHaveBeenCalledWith('person-1', {
+        set: { [CLOSENESS_VAR]: 1, [NAME_VAR]: 'Ada' },
+        unset: [NOTE_VAR],
+      }),
+    );
+  });
+
   it('stays on the person when an answer already given is changed', async () => {
+    fakeTheClock();
     const { updateItem } = renderClosenessSlides([
       {
         ...unanswered('person-1'),
@@ -1022,8 +1223,7 @@ describe('SlidesForm moving on from a complete form', () => {
     ]);
 
     fireEvent.click(await screen.findByRole('radio', { name: 'Very close' }));
-    // Longer than the pause before the form moves on by itself.
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await pastThePause();
 
     expect(screen.getByTestId('slide-header')).toHaveTextContent('person-1');
     expect(updateItem).not.toHaveBeenCalled();

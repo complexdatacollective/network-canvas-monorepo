@@ -5,7 +5,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { attributeAvailabilityMessages } from '../../../../codebook/attributeAvailability.ts';
 import { draftAdditionalAttributePromptNumbers } from '../../../../codebook/variableValidation.ts';
 import { useStageValue } from '../../../../form/stageFormHooks.ts';
-import FormFieldsSection from '../../../../sections/form-fields/FormFieldsSection.tsx';
+import FormDocumentSection from '../../../../sections/form-document/FormDocumentSection.tsx';
 import type { StageSection } from '../../../defineStageEditor.tsx';
 
 function NameGeneratorFormFields() {
@@ -16,7 +16,7 @@ function NameGeneratorFormFields() {
     [prompts],
   );
   // Stable across renders that did not change the prompts: a fresh array
-  // re-registers the field list's validator.
+  // re-registers the form's validator.
   const draftUnvalidatedVariables = useMemo(
     () => [...promptNumbers.keys()],
     [promptNumbers],
@@ -30,7 +30,7 @@ function NameGeneratorFormFields() {
   );
 
   return (
-    <FormFieldsSection
+    <FormDocumentSection
       subject="node"
       hasTitle
       draftUnvalidatedVariables={draftUnvalidatedVariables}

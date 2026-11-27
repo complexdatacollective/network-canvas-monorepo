@@ -165,6 +165,12 @@
         "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
       },
       "form": {
+        "title": {
+          "en-US": "Name this person"
+        },
+        "content": {
+          "en-US": "![](field:aea4add8-64e5-5c6c-9730-6664434735e5)\n\n![](field:464fc598-6a45-5953-889f-7319dac6d6fa)"
+        },
         "fields": [
           {
             "id": "aea4add8-64e5-5c6c-9730-6664434735e5",
@@ -183,10 +189,7 @@
               "en-US": "Optional. Use your own words."
             }
           }
-        ],
-        "title": {
-          "en-US": "Name this person"
-        }
+        ]
       },
       "prompts": [
         {
@@ -233,6 +236,9 @@
         "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
       },
       "form": {
+        "content": {
+          "en-US": "![](field:1a61158f-3a65-552d-aa25-aa1a68fcf781)\n\n![](field:70483994-835c-5784-9875-45477721f80e)"
+        },
         "fields": [
           {
             "id": "1a61158f-3a65-552d-aa25-aa1a68fcf781",

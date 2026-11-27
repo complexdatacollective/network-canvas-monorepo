@@ -170,7 +170,7 @@ export function InterviewToastViewport() {
     <Toast.Portal container={portalContainer ?? undefined}>
       <Toast.Viewport
         aria-label={'Interview notifications'}
-        className="pointer-events-none fixed inset-0 z-50"
+        className="pointer-events-none fixed inset-0 z-3001"
       >
         {toasts.map((toast) => (
           <InterviewToastItem key={toast.id} toast={toast} />

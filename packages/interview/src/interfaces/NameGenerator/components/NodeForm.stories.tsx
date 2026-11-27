@@ -10,6 +10,7 @@ import {
   asEntityAttributeReference,
   type Form as TForm,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -377,7 +378,7 @@ type Story = StoryObj<StoryArgs>;
 // Basic form with all field types
 const basicForm: TForm = {
   title: { en: 'Add Person to Your Network' },
-  fields: [
+  ...formOf([
     {
       id: testId('field-1'),
       variable: asEntityAttributeReference(V.name),
@@ -398,13 +399,13 @@ const basicForm: TForm = {
       variable: asEntityAttributeReference(V.occupation),
       prompt: { en: 'What do they do for work?' },
     },
-  ],
+  ]),
 };
 
 // Form with validation
 const validatedForm: TForm = {
   title: { en: 'Add Person (with validation)' },
-  fields: [
+  ...formOf([
     {
       id: testId('field-1'),
       variable: asEntityAttributeReference(V.name),
@@ -420,7 +421,7 @@ const validatedForm: TForm = {
       variable: asEntityAttributeReference(V.favoriteColors),
       prompt: { en: 'Select at least 2 favorite colors' },
     },
-  ],
+  ]),
 };
 
 export const CreateNewNode: Story = {
@@ -499,7 +500,7 @@ export const EmptyForm: Story = {
     selectedNode: null,
     form: {
       title: { en: 'Quick Add' },
-      fields: [],
+      ...formOf([]),
     },
     disabled: false,
   },
@@ -510,13 +511,13 @@ export const SingleFieldForm: Story = {
     selectedNode: null,
     form: {
       title: { en: 'Add Name Only' },
-      fields: [
+      ...formOf([
         {
           id: testId('field-1'),
           variable: asEntityAttributeReference(V.name),
           prompt: { en: "Enter the person's name" },
         },
-      ],
+      ]),
     },
     disabled: false,
   },
@@ -525,7 +526,7 @@ export const SingleFieldForm: Story = {
 // Form with multiple field types to demonstrate initialValues comprehensively
 const comprehensiveForm: TForm = {
   title: { en: 'Complete Profile' },
-  fields: [
+  ...formOf([
     {
       id: testId('field-1'),
       variable: asEntityAttributeReference(V.name),
@@ -561,7 +562,7 @@ const comprehensiveForm: TForm = {
       variable: asEntityAttributeReference(V.bio),
       prompt: { en: 'Tell us a bit about them' },
     },
-  ],
+  ]),
 };
 
 export const EditWithMultipleFieldTypes: Story = {
@@ -599,7 +600,7 @@ export const WithUniqueValidation: Story = {
     selectedNode: null,
     form: {
       title: { en: 'Add Unique Person' },
-      fields: [
+      ...formOf([
         {
           id: testId('field-1'),
           variable: asEntityAttributeReference(V.name),
@@ -607,7 +608,7 @@ export const WithUniqueValidation: Story = {
             en: 'Enter a unique name (Alice Smith and Bob Johnson already exist)',
           },
         },
-      ],
+      ]),
     },
     disabled: false,
   },
@@ -624,7 +625,7 @@ export const WithUniqueValidation: Story = {
 // CheckboxGroup with validation
 const checkboxGroupForm: TForm = {
   title: { en: 'Select Your Skills' },
-  fields: [
+  ...formOf([
     {
       id: testId('field-1'),
       variable: asEntityAttributeReference(V.name),
@@ -635,7 +636,7 @@ const checkboxGroupForm: TForm = {
       variable: asEntityAttributeReference(V.skills),
       prompt: { en: 'Select your programming skills (1-4 required)' },
     },
-  ],
+  ]),
 };
 
 export const CheckboxGroupWithValidation: Story = {
@@ -680,7 +681,7 @@ export const CheckboxGroupWithInitialValues: Story = {
 // ToggleButtonGroup with validation
 const toggleButtonGroupForm: TForm = {
   title: { en: 'Communication Preferences' },
-  fields: [
+  ...formOf([
     {
       id: testId('field-1'),
       variable: asEntityAttributeReference(V.name),
@@ -691,7 +692,7 @@ const toggleButtonGroupForm: TForm = {
       variable: asEntityAttributeReference(V.communicationPreference),
       prompt: { en: 'How would you prefer to be contacted?' },
     },
-  ],
+  ]),
 };
 
 export const ToggleButtonGroupWithValidation: Story = {

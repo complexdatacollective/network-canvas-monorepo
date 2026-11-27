@@ -6,9 +6,9 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  readOwnProperty,
 } from '@codaco/shared-consts';
 
-import { readOwnProperty } from '../../utils/ownProperty';
 import { type KinTerm, kinTermFor, type Step, stepsFrom } from './kinship';
 import type { Family, PedigreeConfig } from './model';
 

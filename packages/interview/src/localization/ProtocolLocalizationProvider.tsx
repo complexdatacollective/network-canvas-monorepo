@@ -350,6 +350,15 @@ export function useResolveLocalizedStringWhereLocalized():
             yes: intl.formatMessage(booleanFieldMessages.yes),
             no: intl.formatMessage(booleanFieldMessages.no),
           },
+          // A version's wording, in the language of the text that shows it
+          // when it has one there, else as any protocol text falls back.
+          versionOf: (wording, textLocale) => {
+            const shown = resolveText(wording, localization, [
+              textLocale,
+              ...resolutionOrder,
+            ]);
+            return { message: shown.text, locale: shown.locale };
+          },
         };
         const dynamic = resolveDynamicText(
           resolved.text,
@@ -364,6 +373,29 @@ export function useResolveLocalizedStringWhereLocalized():
       return { ...resolved, text: format(resolved.locale, resolved.text) };
     };
   }, [state, intl]);
+}
+
+/**
+ * The translation of protocol text that the interview shows, as it is
+ * written: the message, unformatted, and the language it is in. For text
+ * that is read before it is shown (a document's logic blocks and fields;
+ * see `ContentDocument`).
+ */
+export function useResolveLocalizedSource(): (
+  value: LocalizedString,
+) => Readonly<{ text: string; locale: LocaleTag }> {
+  const { localization, resolutionOrder } = useProtocolLocalizationState();
+  return useCallback(
+    (value: LocalizedString) => {
+      const { text, locale } = resolveText(
+        value,
+        localization,
+        resolutionOrder,
+      );
+      return { text, locale };
+    },
+    [localization, resolutionOrder],
+  );
 }
 
 export function useLocalizedString(

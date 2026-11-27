@@ -1,8 +1,11 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { inlineValuesFor } from '../../../testing/inlineValues';
+import { withMod } from '../../../testing/modKey';
 import { headingVariants } from '../../../typography/Heading';
 import { paragraphVariants } from '../../../typography/Paragraph';
+import { ToolbarButton, toolbarLabelledButtonStyles } from '../RichTextEditor';
 import {
   doc,
   type FieldProps,
@@ -22,9 +25,20 @@ const textStyle = () =>
 
 const everything: Partial<FieldProps> = {
   toolbarOptions: { links: true, thematicBreak: true },
-  tokens: [{ id: 'name', label: 'Name' }],
-  insertMenu: { label: 'Insert a value', items: [] },
-  logicMenu: { label: 'Insert logic', items: [] },
+  inlineValues: inlineValuesFor({ name: 'Name' }),
+  insertTools: {
+    label: 'Insert an attribute or logic block',
+    render: () => (
+      <>
+        <ToolbarButton className={toolbarLabelledButtonStyles}>
+          Attribute
+        </ToolbarButton>
+        <ToolbarButton className={toolbarLabelledButtonStyles}>
+          Logic block
+        </ToolbarButton>
+      </>
+    ),
+  },
 };
 
 describe('the toolbar of a multi-line field', () => {
@@ -39,9 +53,9 @@ describe('the toolbar of a multi-line field', () => {
       'History',
       'Formatting',
       'Lists',
-      'Insert',
+      'Insert a link, break or emoji',
+      'Insert an attribute or logic block',
       'Insert a file',
-      'Insert a placeholder',
     ]);
   });
 
@@ -64,11 +78,11 @@ describe('the toolbar of a multi-line field', () => {
       'Add link',
       'Thematic break',
       'Insert emoji',
+      'Attribute',
+      'Logic block',
       'Insert image',
       'Insert audio',
       'Insert video',
-      'Insert a value',
-      'Insert logic',
     ].map((name) => buttons.indexOf(name));
     expect(inOrder).not.toContain(-1);
     expect(inOrder).toEqual(inOrder.toSorted((a, b) => a - b));
@@ -78,10 +92,16 @@ describe('the toolbar of a multi-line field', () => {
     expect(group('History')).toEqual(['Undo', 'Redo']);
     expect(group('Formatting')).toEqual(['Bold', 'Italic']);
     expect(group('Lists')).toEqual(['Bullet list', 'Numbered list']);
-    expect(group('Insert')).toEqual([
+    expect(group('Insert a link, break or emoji')).toEqual([
       'Add link',
       'Thematic break',
       'Insert emoji',
+    ]);
+    // The consumer's insert tools are one entry of their group, however
+    // many controls they draw, and their group takes the consumer's name.
+    expect(group('Insert an attribute or logic block')).toEqual([
+      'Attribute',
+      'Logic block',
     ]);
     expect(group('Insert a file')).toEqual([
       'Insert image',
@@ -144,17 +164,20 @@ describe('the toolbar of a multi-line field', () => {
       'Bold',
       'Bullet list',
       'Add link',
+      'Attribute',
       'Insert image',
-      'Insert a value',
     ];
     for (const button of toolbar().getAllByRole('button')) {
       const [name] = names([button]);
-      // Each control is one piece with the space before it.
+      // The first control of a group is one piece with the rule before it;
+      // every other control sits right after the one before it.
       const lead = button.previousElementSibling;
-      expect(lead).toHaveAttribute('aria-hidden', 'true');
-      expect(lead?.childElementCount, name ?? '').toBe(
-        firstOfAGroup.includes(name ?? '') ? 1 : 0,
-      );
+      if (firstOfAGroup.includes(name ?? '')) {
+        expect(lead, name ?? '').toHaveAttribute('data-toolbar-divider');
+        expect(lead).toHaveAttribute('aria-hidden', 'true');
+      } else {
+        expect(lead?.hasAttribute('data-toolbar-divider') ?? false).toBe(false);
+      }
     }
   });
 
@@ -267,7 +290,7 @@ describe('the text style of a line', () => {
   });
 
   // A field that cannot be edited changes nothing: whatever its toolbar had
-  // open when it became so closes, as its link and insert menus do.
+  // open when it became so closes, as its link and emoji menus do.
   it.each([{ disabled: true }, { readOnly: true }])(
     'closes its list, and changes nothing, once the field cannot be edited (%j)',
     async (unavailable) => {
@@ -342,7 +365,9 @@ describe('the toolbar without media', () => {
     });
     await field.editor();
 
-    expect(screen.queryByRole('group', { name: 'Insert' })).toBeNull();
+    expect(
+      screen.queryByRole('group', { name: 'Insert a link, break or emoji' }),
+    ).toBeNull();
   });
 });
 
@@ -350,12 +375,12 @@ describe('the toolbar of a single-line field', () => {
   it('has only what a line can hold, and ignores assetBlocks', async () => {
     const field = renderField({
       singleLine: true,
-      tokens: [{ id: 'name', label: 'Name' }],
+      inlineValues: inlineValuesFor({ name: 'Name' }),
       pick: vi.fn(() => Promise.resolve('a1')),
     });
     await field.editor();
 
-    // The one placeholder and the emoji button each stand alone.
+    // The emoji button stands alone.
     expect(names(toolbar().getAllByRole('group'))).toEqual([
       'History',
       'Formatting',
@@ -366,7 +391,62 @@ describe('the toolbar of a single-line field', () => {
       'Bold',
       'Italic',
       'Insert emoji',
-      'Insert “Name”',
     ]);
+  });
+});
+
+// One setting decides both what the toolbar offers and what the text can
+// hold: a mark without its button cannot be made from the keyboard either.
+describe('the marks a field allows', () => {
+  const boldHello = doc({
+    type: 'paragraph',
+    content: [{ type: 'text', text: 'Hello', marks: [{ type: 'bold' }] }],
+  });
+
+  it('makes nothing bold or italic where the toolbar offers neither', async () => {
+    const field = renderField({
+      singleLine: true,
+      toolbarOptions: { bold: false, italic: false },
+      value: boldHello,
+    });
+    const editor = await field.editor();
+    expect(toolbar().queryByRole('button', { name: 'Bold' })).toBeNull();
+    expect(toolbar().queryByRole('button', { name: 'Italic' })).toBeNull();
+    // A value given with a bold word shows it plain.
+    expect(editor.querySelector('strong')).toBeNull();
+
+    await field.user.click(editor);
+    await field.user.keyboard(' and **this** and *that*');
+    await waitFor(() => expect(editor).toHaveTextContent(/\*\*this\*\*/));
+    await field.user.keyboard(withMod('a'));
+    await field.user.keyboard(withMod('b'));
+    await field.user.keyboard(withMod('i'));
+
+    expect(editor).toHaveTextContent(/\*\*this\*\* and \*that\*/);
+    expect(editor.querySelector('strong, em')).toBeNull();
+  });
+
+  it('offers bold and italic on one line where they are allowed, by button and by key', async () => {
+    const field = renderField({
+      singleLine: true,
+      toolbarOptions: { bold: true, italic: true },
+      value: doc(paragraph('Hello')),
+    });
+    const editor = await field.editor();
+    expect(toolbar().getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+    expect(
+      toolbar().getByRole('button', { name: 'Italic' }),
+    ).toBeInTheDocument();
+
+    await field.user.click(editor);
+    await field.user.keyboard(withMod('a'));
+    await field.user.keyboard(withMod('b'));
+    await waitFor(() =>
+      expect(editor.querySelector('strong')).toHaveTextContent('Hello'),
+    );
+    await field.user.keyboard(withMod('i'));
+    await waitFor(() =>
+      expect(editor.querySelector('em')).toHaveTextContent('Hello'),
+    );
   });
 });

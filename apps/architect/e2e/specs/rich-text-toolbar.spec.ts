@@ -72,15 +72,21 @@ for (const width of [1280, 1024, 820, 640, 480]) {
       const controls = Array.from(bar.querySelectorAll('button')).map(
         (button) => {
           const box = button.getBoundingClientRect();
-          // Each control is one piece with the space before it, which is
-          // where the rule of a group's first control is drawn.
-          const rule =
-            button.previousElementSibling?.firstElementChild?.getBoundingClientRect();
+          // The controls sit next to each other. A group's first control is
+          // one piece with the space before it, where the group's rule is
+          // drawn (`data-toolbar-divider`).
+          const before = button.previousElementSibling;
+          const divider =
+            before?.hasAttribute('data-toolbar-divider') === true
+              ? before
+              : undefined;
+          const rule = divider?.firstElementChild?.getBoundingClientRect();
           return {
             name: button.getAttribute('aria-label') ?? button.textContent,
             left: box.left,
             right: box.right,
             middle: (box.top + box.bottom) / 2,
+            space: divider?.getBoundingClientRect().width ?? 0,
             // A rule is seen where it is inside what the bar shows of itself.
             rule:
               rule !== undefined &&
@@ -136,7 +142,7 @@ for (const width of [1280, 1024, 820, 640, 480]) {
       const next = drawn.lines[index + 1]?.[0];
       if (next !== undefined) {
         expect(
-          last.right + 12 + (next.right - next.left),
+          last.right + next.space + (next.right - next.left),
           `"${next.name}" after "${last.name}"`,
         ).toBeGreaterThan(drawn.end);
       }

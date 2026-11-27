@@ -110,7 +110,8 @@ export function useIssuesToolbarControl(
   // answered with errors. A successful save clears the errors, so the control
   // goes with them.
   const fieldErrors = useFormStore((state) => state.errors.fieldErrors);
-  const submitFailed = useFormStore((state) => state.errorFocusRequest > 0);
+  const errorFocusRequest = useFormStore((state) => state.errorFocusRequest);
+  const submitFailed = errorFocusRequest > 0;
   const stageProblems = useSyncExternalStore(
     problems.subscribe,
     problems.getSnapshot,
@@ -176,23 +177,25 @@ export function useIssuesToolbarControl(
   );
 
   // A save that failed with issues opens the panel. Compared during render
-  // rather than opened from an effect: both halves are values this render
-  // already has, and the panel then opens in the same commit that reports the
-  // failure instead of one frame later. Only the moment the pair BECOMES true
-  // opens it, so a panel the researcher dismissed stays dismissed while the
-  // same failed save stands.
-  const shouldAnnounceIssues = submitFailed && hasIssues;
-  const [wasAnnouncingIssues, setWasAnnouncingIssues] = useState(false);
-  if (shouldAnnounceIssues !== wasAnnouncingIssues) {
-    setWasAnnouncingIssues(shouldAnnounceIssues);
-    if (shouldAnnounceIssues) {
+  // rather than opened from an effect: the form records the refusal and its
+  // errors in one update, so this render already has both, and the panel then
+  // opens in the same commit that reports the failure instead of one frame
+  // later. Only a NEW refusal opens it: a panel the researcher dismissed
+  // stays dismissed while the same failed save stands, and a problem that
+  // their next change brings (a field they are still adding) is counted on
+  // the button without the panel taking the keyboard from them.
+  const [answeredRefusal, setAnsweredRefusal] = useState(errorFocusRequest);
+  if (errorFocusRequest !== answeredRefusal) {
+    setAnsweredRefusal(errorFocusRequest);
+    if (hasIssues) {
       setOpen(true);
     }
   }
 
-  // With nothing to show there is nothing to be open, so the panel's own state
-  // is qualified here rather than being reset when the issues clear. The
-  // control below renders nothing in that state either way.
+  // With nothing to show there is nothing to be open, and the panel shuts:
+  // problems that come back later are new, and do not reopen a panel that
+  // nobody opened for them. The control below renders nothing in that state.
+  if (open && !hasIssues) setOpen(false);
   const isOpen = open && hasIssues;
 
   // Every OPEN clears the focus target above, so a panel that is merely

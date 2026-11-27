@@ -3,7 +3,9 @@ import { v4 as uuid } from 'uuid';
 import { getInterviewProgress } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { generateNetwork } from '@codaco/protocol-utilities';
+import { resolveProtocolLocale } from '@codaco/protocol-validation';
 import { StageMetadataSchema } from '@codaco/shared-consts';
+import { browserLanguages } from '~/i18n/preference';
 import {
   createSession,
   deleteSessions,
@@ -71,6 +73,15 @@ export async function generateSyntheticSessions(
     simulateDropOut,
     respectSkipLogicAndFiltering,
     externalData,
+    // Forms are answered in the language that an interview started on this
+    // device shows: the one that the interview chooses from the device's
+    // languages, as a new interview states none.
+    formLanguage: resolveProtocolLocale(
+      null,
+      browserLanguages(),
+      protocol.protocol.localization,
+    ),
+    localization: protocol.protocol.localization,
   };
   const generated: GeneratedRow[] = [];
 

@@ -674,19 +674,12 @@
         "es": "Bienvenida y consentimiento",
         "hu": "Üdvözlés és beleegyezés"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About this study",
-          "es": "Sobre este estudio",
-          "hu": "A kutatásról"
-        },
-        "text": {
-          "en": "## Welcome\n\nThank you for considering taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you.\n\n### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. The researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end.",
-          "es": "## Le damos la bienvenida\n\nGracias por considerar su participación. En esta entrevista hablaremos de las **personas importantes en su vida**: tanto las que tiene cerca, aquí, como las que viven en su país de origen o en otros países.\n\nNo hay respuestas correctas ni incorrectas. Simplemente nos interesan su propia experiencia y las personas que le importan.\n\n### Cómo funciona\n\n- Primero le haremos algunas preguntas sobre su propia historia personal y migratoria.\n- Después le pediremos que nombre a las personas con las que tiene relación, aquí y en el extranjero, y que responda algunas preguntas sobre cada una de ellas.\n- Más adelante colocará a estas personas en un mapa, las clasificará en grupos y mostrará quién conoce a quién.\n\nPuede saltarse cualquier pregunta que prefiera no responder y puede parar en cualquier momento. Sus respuestas son confidenciales y solo se usarán con fines de investigación. La persona encargada del estudio debería explicarle en qué consiste y darle la oportunidad de hacer preguntas antes de que elija una opción más abajo. Si no acepta participar, la entrevista terminará.",
-          "hu": "## Üdvözöljük\n\nKöszönjük, hogy fontolóra veszi a részvételt. Ebben az interjúban az **Ön életében fontos emberekről** fogunk beszélgetni – azokról is, akik itt, az Ön közelében élnek, és azokról is, akik a származási országában vagy máshol külföldön élnek.\n\nNincsenek jó vagy rossz válaszok. Egyszerűen az Ön saját tapasztalatai és az Ön számára fontos emberek érdekelnek minket.\n\n### Hogyan zajlik?\n\n- Először néhány kérdést teszünk fel az Ön saját hátteréről és migrációs történetéről.\n- Ezután megkérjük, hogy nevezze meg azokat az embereket, akikhez kapcsolat fűzi, itt és külföldön, és válaszoljon néhány kérdésre mindegyikükről.\n- Később elhelyezi őket egy térképen, csoportokba sorolja, és megmutatja, ki kit ismer közülük.\n\nBármelyik kérdést kihagyhatja, amelyre nem szeretne válaszolni, és bármikor abbahagyhatja. Válaszait bizalmasan kezeljük, és csak kutatási célra használjuk fel. Mielőtt az alábbi lehetőségek közül választana, a kutatónak ismertetnie kell Önnel a kutatást, és lehetőséget kell adnia Önnek, hogy kérdéseket tegyen fel. Ha nem egyezik bele a részvételbe, az interjú véget ér."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About this study\n\n## Welcome\n\nThank you for considering taking part. In this interview we will talk about the **important people in your life** — both those near you here, and those who live in your country of origin or elsewhere abroad.\n\nThere are no right or wrong answers. We are simply interested in your own experience and the people who matter to you.\n\n### How it works\n\n- First we will ask a few questions about your own background and migration history.\n- Then you will be asked to name people you are connected to, here and abroad, and answer some questions about each of them.\n- Later you will place these people on a map, sort them into groups, and show how they know one another.\n\nYou may skip any question you prefer not to answer, and you can stop at any time. Your answers are confidential and will be used only for research. The researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n![](field:94cc9b4c-5d3d-530c-8490-0056da51c225)",
+          "es": "# Sobre este estudio\n\n## Le damos la bienvenida\n\nGracias por considerar su participación. En esta entrevista hablaremos de las **personas importantes en su vida**: tanto las que tiene cerca, aquí, como las que viven en su país de origen o en otros países.\n\nNo hay respuestas correctas ni incorrectas. Simplemente nos interesan su propia experiencia y las personas que le importan.\n\n### Cómo funciona\n\n- Primero le haremos algunas preguntas sobre su propia historia personal y migratoria.\n- Después le pediremos que nombre a las personas con las que tiene relación, aquí y en el extranjero, y que responda algunas preguntas sobre cada una de ellas.\n- Más adelante colocará a estas personas en un mapa, las clasificará en grupos y mostrará quién conoce a quién.\n\nPuede saltarse cualquier pregunta que prefiera no responder y puede parar en cualquier momento. Sus respuestas son confidenciales y solo se usarán con fines de investigación. La persona encargada del estudio debería explicarle en qué consiste y darle la oportunidad de hacer preguntas antes de que elija una opción más abajo. Si no acepta participar, la entrevista terminará.\n\n![](field:94cc9b4c-5d3d-530c-8490-0056da51c225)",
+          "hu": "# A kutatásról\n\n## Üdvözöljük\n\nKöszönjük, hogy fontolóra veszi a részvételt. Ebben az interjúban az **Ön életében fontos emberekről** fogunk beszélgetni – azokról is, akik itt, az Ön közelében élnek, és azokról is, akik a származási országában vagy máshol külföldön élnek.\n\nNincsenek jó vagy rossz válaszok. Egyszerűen az Ön saját tapasztalatai és az Ön számára fontos emberek érdekelnek minket.\n\n### Hogyan zajlik?\n\n- Először néhány kérdést teszünk fel az Ön saját hátteréről és migrációs történetéről.\n- Ezután megkérjük, hogy nevezze meg azokat az embereket, akikhez kapcsolat fűzi, itt és külföldön, és válaszoljon néhány kérdésre mindegyikükről.\n- Később elhelyezi őket egy térképen, csoportokba sorolja, és megmutatja, ki kit ismer közülük.\n\nBármelyik kérdést kihagyhatja, amelyre nem szeretne válaszolni, és bármikor abbahagyhatja. Válaszait bizalmasan kezeljük, és csak kutatási célra használjuk fel. Mielőtt az alábbi lehetőségek közül választana, a kutatónak ismertetnie kell Önnel a kutatást, és lehetőséget kell adnia Önnek, hogy kérdéseket tegyen fel. Ha nem egyezik bele a részvételbe, az interjú véget ér.\n\n![](field:94cc9b4c-5d3d-530c-8490-0056da51c225)"
+        },
         "fields": [
           {
             "id": "94cc9b4c-5d3d-530c-8490-0056da51c225",
@@ -708,6 +701,20 @@
         "es": "Su historia personal y migratoria",
         "hu": "Az Ön háttere és migrációs története"
       },
+      "conditions": {
+        "c6d4c021-cab4-5220-81b1-438d19028455": {
+          "rules": [
+            {
+              "id": "a0e6ee62-3e4e-5f00-8a4a-d805bc660ff7",
+              "type": "ego",
+              "options": {
+                "attribute": "333ccb78-c945-533d-95f3-75b3eb9f5af4",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -728,19 +735,12 @@
           "stageId": "5d0e9c0e-8c90-5c99-bebf-5d1400004ce2"
         }
       },
-      "introductionPanel": {
-        "title": {
-          "en": "A little about you",
-          "es": "Un poco sobre usted",
-          "hu": "Röviden Önről"
-        },
-        "text": {
-          "en": "Before we talk about the people in your life, we would like to understand a bit about **your own background and your migration history**. This helps us put the rest of your answers in context.",
-          "es": "Antes de hablar de las personas de su vida, nos gustaría conocer un poco **su propia historia personal y migratoria**. Esto nos ayuda a poner en contexto el resto de sus respuestas.",
-          "hu": "Mielőtt az Ön életében jelen lévő emberekről beszélnénk, szeretnénk egy kicsit megismerni **az Ön saját hátterét és migrációs történetét**. Ez segít abban, hogy a többi válaszát a megfelelő összefüggésben lássuk."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# A little about you\n\nBefore we talk about the people in your life, we would like to understand a bit about **your own background and your migration history**. This helps us put the rest of your answers in context.\n\n![](field:de11a30d-3e53-5265-a468-452d79476c60)\n\n![](field:8154d3ea-3ebb-5d5a-9728-493f74cee9cf)\n\n{condition_c6d4c021_cab4_5220_81b1_438d19028455, select, true {You said you first came to live here in {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.} other {}}\n\n![](field:c1f9ece0-86c1-55ba-b5ba-22e29b7a1546)\n\n![](field:d1064d2e-be33-5381-a6f4-a8ee6b3a1a3f)\n\n![](field:1ff55b2d-7cda-52d2-a1be-45191643e366)\n\n![](field:f79f9e85-3494-5d04-a5e3-d9efe1870348)",
+          "es": "# Un poco sobre usted\n\nAntes de hablar de las personas de su vida, nos gustaría conocer un poco **su propia historia personal y migratoria**. Esto nos ayuda a poner en contexto el resto de sus respuestas.\n\n![](field:de11a30d-3e53-5265-a468-452d79476c60)\n\n![](field:8154d3ea-3ebb-5d5a-9728-493f74cee9cf)\n\n{condition_c6d4c021_cab4_5220_81b1_438d19028455, select, true {Usted mencionó que vino a vivir a este país por primera vez en {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.} other {}}\n\n![](field:c1f9ece0-86c1-55ba-b5ba-22e29b7a1546)\n\n![](field:d1064d2e-be33-5381-a6f4-a8ee6b3a1a3f)\n\n![](field:1ff55b2d-7cda-52d2-a1be-45191643e366)\n\n![](field:f79f9e85-3494-5d04-a5e3-d9efe1870348)",
+          "hu": "# Röviden Önről\n\nMielőtt az Ön életében jelen lévő emberekről beszélnénk, szeretnénk egy kicsit megismerni **az Ön saját hátterét és migrációs történetét**. Ez segít abban, hogy a többi válaszát a megfelelő összefüggésben lássuk.\n\n![](field:de11a30d-3e53-5265-a468-452d79476c60)\n\n![](field:8154d3ea-3ebb-5d5a-9728-493f74cee9cf)\n\n{condition_c6d4c021_cab4_5220_81b1_438d19028455, select, true {Korábbi válasza szerint ekkor költözött először ebbe az országba: {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.} other {}}\n\n![](field:c1f9ece0-86c1-55ba-b5ba-22e29b7a1546)\n\n![](field:d1064d2e-be33-5381-a6f4-a8ee6b3a1a3f)\n\n![](field:1ff55b2d-7cda-52d2-a1be-45191643e366)\n\n![](field:f79f9e85-3494-5d04-a5e3-d9efe1870348)"
+        },
         "fields": [
           {
             "id": "de11a30d-3e53-5265-a468-452d79476c60",
@@ -768,11 +768,6 @@
           {
             "id": "c1f9ece0-86c1-55ba-b5ba-22e29b7a1546",
             "variable": "455eb4e1-a810-5415-a7c3-1cd84278b47f",
-            "hint": {
-              "en": "{ego_333ccb78_c945_533d_95f3_75b3eb9f5af4, select, missing {} other {You said you first came to live here in {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.}}",
-              "es": "{ego_333ccb78_c945_533d_95f3_75b3eb9f5af4, select, missing {} other {Usted mencionó que vino a vivir a este país por primera vez en {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.}}",
-              "hu": "{ego_333ccb78_c945_533d_95f3_75b3eb9f5af4, select, missing {} other {Korábbi válasza szerint ekkor költözött először ebbe az országba: {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.}}"
-            },
             "prompt": {
               "en": "About how many years have you lived in this country?",
               "es": "¿Cuántos años, aproximadamente, lleva viviendo en este país?",
@@ -843,6 +838,11 @@
           "es": "Añadir persona",
           "hu": "Személy hozzáadása"
         },
+        "content": {
+          "en": "![](field:5271c094-313e-5391-ae26-0ef4c0e271dc)",
+          "es": "![](field:5271c094-313e-5391-ae26-0ef4c0e271dc)",
+          "hu": "![](field:5271c094-313e-5391-ae26-0ef4c0e271dc)"
+        },
         "fields": [
           {
             "id": "5271c094-313e-5391-ae26-0ef4c0e271dc",
@@ -912,6 +912,11 @@
           "es": "Añadir persona",
           "hu": "Személy hozzáadása"
         },
+        "content": {
+          "en": "![](field:f58cf829-7d11-53d1-9c77-8f3b635e0764)",
+          "es": "![](field:f58cf829-7d11-53d1-9c77-8f3b635e0764)",
+          "hu": "![](field:f58cf829-7d11-53d1-9c77-8f3b635e0764)"
+        },
         "fields": [
           {
             "id": "f58cf829-7d11-53d1-9c77-8f3b635e0764",
@@ -974,6 +979,11 @@
         "type": "c3006c14-1177-50d2-937f-157d0fda53de"
       },
       "form": {
+        "content": {
+          "en": "![](field:a9a36b2f-e144-537c-90c4-c4bb4f28bfb1)\n\n![](field:0c627062-fc61-5bc7-8b63-b7415eac322e)\n\n![](field:fe41da66-1e29-51f5-877e-784dbb3ad53e)\n\n![](field:d11b5d9b-a2c1-59b7-b62f-bf785373f818)",
+          "es": "![](field:a9a36b2f-e144-537c-90c4-c4bb4f28bfb1)\n\n![](field:0c627062-fc61-5bc7-8b63-b7415eac322e)\n\n![](field:fe41da66-1e29-51f5-877e-784dbb3ad53e)\n\n![](field:d11b5d9b-a2c1-59b7-b62f-bf785373f818)",
+          "hu": "![](field:a9a36b2f-e144-537c-90c4-c4bb4f28bfb1)\n\n![](field:0c627062-fc61-5bc7-8b63-b7415eac322e)\n\n![](field:fe41da66-1e29-51f5-877e-784dbb3ad53e)\n\n![](field:d11b5d9b-a2c1-59b7-b62f-bf785373f818)"
+        },
         "fields": [
           {
             "id": "a9a36b2f-e144-537c-90c4-c4bb4f28bfb1",

@@ -6,6 +6,7 @@ import {
   createProtocolObjectId,
   CurrentProtocolSchema,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
@@ -325,6 +326,16 @@ test('formats printed attribute order and updates linked-list grammar live while
   // Underscore/hyphen/dot distinguish locale collation from codepoint order.
   const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
   const attributeId = (index: number) => testVariableId(`attribute-${index}`);
+  /** A form that opens with authored text and asks for these attributes. */
+  const authoredForm = (indexes: readonly number[]) =>
+    formOf(
+      indexes.map((index) => ({
+        id: createProtocolObjectId(),
+        variable: attributeId(index),
+        prompt: { en: `Authored_prompt_${index}` },
+      })),
+      { before: '# Authored introduction\n\nAuthored content' },
+    );
   const sortStageId = createProtocolObjectId();
   const conjunctionStageId = createProtocolObjectId();
   const protocol = CurrentProtocolSchema.parse(
@@ -345,33 +356,13 @@ test('formats printed attribute order and updates linked-list grammar live while
           id: sortStageId,
           type: 'EgoForm',
           label: { en: 'Authored_sort' },
-          introductionPanel: {
-            title: { en: 'Authored introduction' },
-            text: { en: 'Authored content' },
-          },
-          form: {
-            fields: names.map((_, index) => ({
-              id: createProtocolObjectId(),
-              variable: attributeId(index),
-              prompt: { en: `Authored_prompt_${index}` },
-            })),
-          },
+          form: authoredForm(names.map((_, index) => index)),
         },
         {
           id: conjunctionStageId,
           type: 'EgoForm',
           label: { en: 'Authored_conjunction' },
-          introductionPanel: {
-            title: { en: 'Authored introduction' },
-            text: { en: 'Authored content' },
-          },
-          form: {
-            fields: [0, 3].map((index) => ({
-              id: createProtocolObjectId(),
-              variable: attributeId(index),
-              prompt: { en: `Authored_prompt_${index}` },
-            })),
-          },
+          form: authoredForm([0, 3]),
         },
         ...emptyProtocol().stages,
       ],

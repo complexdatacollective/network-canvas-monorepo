@@ -429,3 +429,91 @@ describe('QuestionFlow moving on from a complete form', () => {
     });
   });
 });
+
+/**
+ * Three steps, and two sections with no question of their own: text that
+ * introduces the second step, and a researcher's section after the last,
+ * whose only question an answer in the first step brings in.
+ */
+function SectionsFlow() {
+  const [navigation, setNavigation] = useState<HTMLElement | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  return (
+    <TestProtocolLocalization>
+      <QuestionFlow stepped navigation={navigation} finish={<span />}>
+        <section data-question-step data-testid="first">
+          <label>
+            First
+            <input data-field-name="first" />
+          </label>
+          <button type="button" onClick={() => setRevealed(true)}>
+            Reveal
+          </button>
+        </section>
+        <section data-question-step data-testid="introduction">
+          <h2>About your work</h2>
+        </section>
+        <section data-question-step data-testid="second">
+          <label>
+            Second
+            <input data-field-name="second" />
+          </label>
+        </section>
+        <section data-question-step data-testid="history">
+          <h2>Pregnancy history</h2>
+          {revealed && (
+            <label>
+              Pregnancies
+              <input data-field-name="pregnancies" />
+            </label>
+          )}
+        </section>
+      </QuestionFlow>
+      <footer ref={setNavigation} />
+    </TestProtocolLocalization>
+  );
+}
+
+/** Whether a section is shown: steps are hidden, not taken out. */
+const shownSection = (testId: string) => !screen.getByTestId(testId).hidden;
+
+describe('QuestionFlow sections without a question', () => {
+  it('shows text with the next step that has a question, and text after the last step with none', async () => {
+    const user = userEvent.setup();
+    render(<SectionsFlow />);
+
+    await waitFor(() => expect(shownSection('introduction')).toBe(false));
+    expect(shownSection('first')).toBe(true);
+    expect(shownSection('history')).toBe(false);
+
+    await user.click(await screen.findByRole('button', { name: 'Skip' }));
+    await waitFor(() => expect(shownSection('second')).toBe(true));
+    expect(shownSection('introduction')).toBe(true);
+    expect(shownSection('first')).toBe(false);
+    expect(shownSection('history')).toBe(false);
+    // The last step, so the form's own button ends it.
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull();
+  });
+
+  it('makes a section a step of its own once an answer brings in its question, and not before', async () => {
+    const user = userEvent.setup();
+    render(<SectionsFlow />);
+    await waitFor(() => expect(shownSection('history')).toBe(false));
+
+    await user.click(await screen.findByRole('button', { name: 'Reveal' }));
+    // Still on the first step: the section waits for its turn.
+    await waitFor(() =>
+      expect(screen.getByLabelText('Pregnancies')).toBeInTheDocument(),
+    );
+    expect(shownSection('history')).toBe(false);
+
+    await user.click(await screen.findByRole('button', { name: 'Skip' }));
+    await waitFor(() => expect(shownSection('second')).toBe(true));
+    expect(shownSection('history')).toBe(false);
+
+    await user.click(await screen.findByRole('button', { name: 'Skip' }));
+    await waitFor(() => expect(shownSection('history')).toBe(true));
+    expect(shownSection('second')).toBe(false);
+    expect(shownSection('introduction')).toBe(false);
+  });
+});

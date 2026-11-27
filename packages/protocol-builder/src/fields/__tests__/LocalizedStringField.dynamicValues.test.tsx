@@ -8,13 +8,13 @@ import { declaredDynamicValueSite } from '../../testing/declaredDynamicValueSite
 import { fieldAround } from '../../testing/fieldAround.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
-const INSERT_A_VALUE = { name: /^Inject piped text/ };
+const INSERT_A_VALUE = { name: 'Attribute' };
 
 /**
  * Whether a text field offers to insert a value follows the site its schema
  * declares: a stage's label may not show values, its page content may.
  */
-describe('the insert-a-value control', () => {
+describe('the Attribute menu', () => {
   it('is declared by the schema for the content and not for the label', () => {
     expect(declaredDynamicValueSite(informationStage, ['label'])).toBe(
       undefined,

@@ -2,8 +2,11 @@ import {
   type CSSProperties,
   type RefObject,
   useLayoutEffect,
+  useRef,
   useState,
 } from 'react';
+
+import { POPOVER_ARROW_PADDING } from '@codaco/fresco-ui/popoverArrow';
 
 /**
  * How much of the top and of the bottom of the page a block scrolls in its
@@ -95,140 +98,451 @@ const clearanceOf = (covered: Covered): Covered => ({
   bottom: covered.bottom + SETTINGS_MARGIN,
 });
 
-/**
- * The part of the window the settings may stand in: what `scroller` shows of
- * the page, or the whole window, less `clearance` at each end.
- */
-const roomIn = (scroller: Element | undefined, clearance: Covered) => {
+/** A part of the window, as `getBoundingClientRect` measures it. */
+export type Box = Readonly<{
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}>;
+
+/** What of the window `scroller` shows of the page, or the whole window. */
+const shownBy = (scroller: Element | undefined): Box => {
   const box = scroller?.getBoundingClientRect();
   return {
-    top: Math.max(box?.top ?? 0, 0) + clearance.top,
-    bottom:
-      Math.min(box?.bottom ?? window.innerHeight, window.innerHeight) -
-      clearance.bottom,
+    top: Math.max(box?.top ?? 0, 0),
+    bottom: Math.min(box?.bottom ?? window.innerHeight, window.innerHeight),
+    left: Math.max(box?.left ?? 0, 0),
+    right: Math.min(box?.right ?? window.innerWidth, window.innerWidth),
   };
 };
 
 /**
- * Which side of the file its settings stand on, and whether they may cover
- * part of it to be seen whole.
+ * How far the settings stop short of a part of a block they must not cover
+ * (a player's controls, the corner that resizes a picture) when they cover
+ * the rest of it.
  */
-type SettingsPlacement = Readonly<{
-  side: 'top' | 'bottom';
-  overlaps: boolean;
-}>;
+export const KEEP_OUT_CLEARANCE = 12;
 
 /**
- * Under the file where the whole of its settings fits there, over it where
- * they fit there instead. Where they fit on neither side, on the side with
- * more room, moved over the file as far as they must be to be seen whole:
- * covering some of the file the researcher has just selected is better than
- * settings that have to be scrolled to be read. Never beside it, where they
- * would cover whatever the page has there.
- *
- * `room` is the part of the window they may stand in (`roomIn`), `tall` how
- * tall the whole of the settings is.
+ * How tall the bar of controls that a browser draws along the bottom of a
+ * video is, which the settings never cover.
  */
-export const settingsPlacement = (
-  file: Readonly<{ top: number; bottom: number }>,
-  tall: number,
-  room: Readonly<{ top: number; bottom: number }>,
-): SettingsPlacement => {
-  const below = room.bottom - file.bottom - SETTINGS_OFFSET;
-  const above = file.top - room.top - SETTINGS_OFFSET;
-  if (below >= tall) return { side: 'bottom', overlaps: false };
-  if (above >= tall) return { side: 'top', overlaps: false };
-  return { side: below >= above ? 'bottom' : 'top', overlaps: true };
+export const PLAYER_CONTROLS_HEIGHT = 56;
+
+/** The sides of the settings button, in the order they are tried. */
+export type SettingsSide = 'bottom' | 'top' | 'end' | 'start';
+
+const SIDES: readonly SettingsSide[] = ['bottom', 'top', 'end', 'start'];
+
+/**
+ * Which side of the settings button the settings stand on, and the part of
+ * the window they keep inside. `scrolls` where they fit on no side and are cut
+ * short, to be scrolled within.
+ */
+export type SettingsPlacement = Readonly<{
+  side: SettingsSide;
+  room: Box;
+  scrolls: boolean;
+}>;
+
+const clamp = (value: number, low: number, high: number) =>
+  Math.max(low, Math.min(value, high));
+
+/** Whether `one` comes within `SETTINGS_OFFSET` of `other`. */
+const comesNear = (one: Box, other: Box): boolean =>
+  one.top < other.bottom + SETTINGS_OFFSET &&
+  one.bottom > other.top - SETTINGS_OFFSET &&
+  one.left < other.right + SETTINGS_OFFSET &&
+  one.right > other.left - SETTINGS_OFFSET;
+
+/** How wide the arrow the settings point at their button with is drawn. */
+const ARROW_WIDE = 20;
+
+/**
+ * How far from a corner of the settings their arrow is, at the least: the
+ * popover keeps the middle of the arrow this far in from the corner, and
+ * moves the settings along to keep it so, past the end of a small button.
+ */
+const ARROW_INSET = POPOVER_ARROW_PADDING + ARROW_WIDE / 2;
+
+/**
+ * Where the edge of the settings lined up with an edge of `button` (its end,
+ * under or over it; its top, beside it) comes: on that edge, or past it as
+ * far as the arrow pointing at the button's middle needs (`ARROW_INSET`).
+ */
+const linedUpWith = (edge: number, middle: number, towards: 1 | -1): number =>
+  towards === 1
+    ? Math.max(edge, middle + ARROW_INSET)
+    : Math.min(edge, middle - ARROW_INSET);
+
+/**
+ * Where settings `wide` and `tall` would stand on `side` of `button`, as
+ * the popover puts them: under or over it lined up with its end and moved
+ * along the line to stay inside `room`; beside it lined up with its top and
+ * moved up or down to stay inside `room`. Null where they do not fit there.
+ */
+const standingOn = (
+  side: SettingsSide,
+  button: Box,
+  { wide, tall }: Readonly<{ wide: number; tall: number }>,
+  room: Box,
+  direction: 'ltr' | 'rtl',
+): Box | null => {
+  const across = (button.left + button.right) / 2;
+  if (side === 'bottom' || side === 'top') {
+    if (wide > room.right - room.left) return null;
+    const end =
+      direction === 'rtl'
+        ? linedUpWith(button.left, across, -1) + wide
+        : linedUpWith(button.right, across, 1);
+    const left = clamp(end - wide, room.left, room.right - wide);
+    const top =
+      side === 'bottom'
+        ? button.bottom + SETTINGS_OFFSET
+        : button.top - SETTINGS_OFFSET - tall;
+    if (top < room.top || top + tall > room.bottom) return null;
+    return { top, bottom: top + tall, left, right: left + wide };
+  }
+  if (tall > room.bottom - room.top) return null;
+  const onTheRight = (side === 'end') === (direction === 'ltr');
+  const left = onTheRight
+    ? button.right + SETTINGS_OFFSET
+    : button.left - SETTINGS_OFFSET - wide;
+  if (left < room.left || left + wide > room.right) return null;
+  const down = (button.top + button.bottom) / 2;
+  const top = clamp(
+    linedUpWith(button.top, down, -1),
+    room.top,
+    room.bottom - tall,
+  );
+  return { top, bottom: top + tall, left, right: left + wide };
 };
 
-/** Where the settings stand, and what they keep clear of the page's ends. */
-type SettingsLayout = SettingsPlacement & Readonly<{ clearance: Covered }>;
+/**
+ * Where a block's settings stand beside its settings button: on the first
+ * side of the button where the whole of them fits in `room` (below it, above
+ * it, at the end of the line, at its start), skipping a side where they would
+ * cover any of `keepOut` (a player's controls, the corner that resizes a
+ * picture). Where no side has room, they are cut short and scroll within,
+ * on whichever of the sides below and above the button has more room for
+ * them: below it, over the top of the block, they stop `KEEP_OUT_CLEARANCE`
+ * short of whatever of `keepOut` is below them.
+ *
+ * `room` is the part of the window they may stand in, `settings` how wide
+ * and how tall the whole of them is, and `direction` that of the block's
+ * text, whose end the button stands at.
+ */
+export const settingsPlacement = (
+  button: Box,
+  settings: Readonly<{ wide: number; tall: number }>,
+  room: Box,
+  keepOut: readonly Box[] = [],
+  direction: 'ltr' | 'rtl' = 'ltr',
+): SettingsPlacement => {
+  for (const side of SIDES) {
+    const box = standingOn(side, button, settings, room, direction);
+    if (box !== null && !keepOut.some((part) => comesNear(box, part))) {
+      // Beside the button, the room starts where they do, so that the
+      // popover, which moves them along the button's side to keep them in
+      // the room, keeps their top there as they grow (`settingsKeptOn`).
+      return {
+        side,
+        room:
+          side === 'bottom' || side === 'top'
+            ? room
+            : { ...room, top: box.top },
+        scrolls: false,
+      };
+    }
+  }
+  const top = button.bottom + SETTINGS_OFFSET;
+  const wide = Math.min(settings.wide, room.right - room.left);
+  const across = (button.left + button.right) / 2;
+  const end =
+    direction === 'rtl'
+      ? linedUpWith(button.left, across, -1) + wide
+      : linedUpWith(button.right, across, 1);
+  const left = clamp(end - wide, room.left, room.right - wide);
+  // Whatever of `keepOut` they would come near across, below their top.
+  const below = keepOut
+    .filter(
+      (part) =>
+        part.bottom > top &&
+        part.left < left + wide + SETTINGS_OFFSET &&
+        part.right > left - SETTINGS_OFFSET,
+    )
+    .map((part) => part.top - KEEP_OUT_CLEARANCE);
+  const bottom = Math.min(room.bottom, ...below);
+  // Above the button, nothing of the block is in their way: what they keep
+  // clear of is below its top.
+  const roomAbove = button.top - SETTINGS_OFFSET - room.top;
+  if (roomAbove > bottom - top) return { side: 'top', room, scrolls: true };
+  return { side: 'bottom', room: { ...room, bottom }, scrolls: true };
+};
+
+/**
+ * Where a block's settings stand once they are open and have changed size (a
+ * section in them opened or closed): on the side they opened on, with the
+ * edge that faces the button where it was. They grow away from the button,
+ * and are cut short and scroll within where the room on that side ends, or
+ * where something in `keepOut` below them begins (`KEEP_OUT_CLEARANCE` short
+ * of it). Moving them to another side, or cutting them short to fit the room
+ * of another, would move the control the researcher has just used out from
+ * under the pointer.
+ *
+ * Beside the button, their top stays at `standingTop`, where they stand now:
+ * the room they keep inside starts there, so that the popover, which moves
+ * settings along the side of the button to keep them in the room, cuts them
+ * short instead of moving them up.
+ */
+export const settingsKeptOn = (
+  side: SettingsSide,
+  button: Box,
+  settings: Readonly<{ wide: number; tall: number }>,
+  room: Box,
+  keepOut: readonly Box[] = [],
+  direction: 'ltr' | 'rtl' = 'ltr',
+  standingTop?: number,
+): SettingsPlacement => {
+  if (side === 'top') {
+    const roomAbove = button.top - SETTINGS_OFFSET - room.top;
+    return { side, room, scrolls: settings.tall > roomAbove };
+  }
+  const wide = Math.min(settings.wide, room.right - room.left);
+  const across = (button.left + button.right) / 2;
+  let left: number;
+  let top: number;
+  if (side === 'bottom') {
+    const end =
+      direction === 'rtl'
+        ? linedUpWith(button.left, across, -1) + wide
+        : linedUpWith(button.right, across, 1);
+    left = clamp(end - wide, room.left, room.right - wide);
+    top = button.bottom + SETTINGS_OFFSET;
+  } else {
+    const onTheRight = (side === 'end') === (direction === 'ltr');
+    left = onTheRight
+      ? button.right + SETTINGS_OFFSET
+      : button.left - SETTINGS_OFFSET - wide;
+    top = Math.max(
+      standingTop ??
+        linedUpWith(button.top, (button.top + button.bottom) / 2, -1),
+      room.top,
+    );
+  }
+  // Whatever of `keepOut` they would come near across, below their top.
+  const below = keepOut
+    .filter(
+      (part) =>
+        part.bottom > top &&
+        part.left < left + wide + SETTINGS_OFFSET &&
+        part.right > left - SETTINGS_OFFSET,
+    )
+    .map((part) => part.top - KEEP_OUT_CLEARANCE);
+  const bottom = Math.min(room.bottom, ...below);
+  return {
+    side,
+    room: { ...room, ...(side !== 'bottom' && { top }), bottom },
+    scrolls: settings.tall > bottom - top,
+  };
+};
+
+/**
+ * How far in from each edge of what the page is shown in (`shownBy`) the
+ * popover keeps, to stay inside `room`: its `collisionPadding`.
+ */
+type Clearance = Box;
+
+/**
+ * Where the settings stand, as the popover is told: the side of the button
+ * (a physical side: the end of the line is the right in left-to-right text),
+ * which edge of them lines up with the button, what they keep clear of the
+ * page's edges, and whether they are cut short to be scrolled within.
+ */
+type SettingsLayout = Readonly<{
+  side: 'top' | 'bottom' | 'left' | 'right';
+  align: 'start' | 'end';
+  clearance: Clearance;
+  scrolls: boolean;
+}>;
 
 const sameLayout = (one: SettingsLayout, other: SettingsLayout) =>
   one.side === other.side &&
-  one.overlaps === other.overlaps &&
+  one.align === other.align &&
+  one.scrolls === other.scrolls &&
   one.clearance.top === other.clearance.top &&
-  one.clearance.bottom === other.clearance.bottom;
+  one.clearance.bottom === other.clearance.bottom &&
+  one.clearance.left === other.clearance.left &&
+  one.clearance.right === other.clearance.right;
 
-/**
- * How tall the popup `panel` is drawn in would be with the whole of what
- * `panel` holds in sight: the popup as it is, with the part of `panel` it
- * shows given back as all of it. Whatever the popup draws around `panel`, a
- * border among it, is counted as it is drawn.
- */
-const popupHeightAround = (panel: HTMLElement): number => {
-  const popup = panel.closest('[role="dialog"]');
-  const around =
-    popup instanceof HTMLElement ? popup.offsetHeight - panel.clientHeight : 0;
-  return panel.scrollHeight + around;
+/** The popover's side for `side` of a button at the end of a line in `direction`. */
+const physicalSide = (
+  side: SettingsSide,
+  direction: 'ltr' | 'rtl',
+): SettingsLayout['side'] => {
+  if (side === 'top' || side === 'bottom') return side;
+  return (side === 'end') === (direction === 'ltr') ? 'right' : 'left';
 };
 
 /**
- * Where a block's settings stand (`settingsPlacement`), kept up while they
- * are open as the page scrolls, the window changes size and the settings
- * change height. `panel` is what scrolls inside them, whose full height is
- * theirs; `scroller` what the page scrolls in; `probeRef` where the host's
- * bars are read (`COVERED_PROBE_STYLE`).
+ * How wide and how tall the popup `panel` is drawn in would be with the whole
+ * of what `panel` holds in sight: the popup as it is, with the part of
+ * `panel` it shows given back as all of it. Whatever the popup draws around
+ * `panel`, a border among it, is counted as it is drawn.
  */
-export function useSettingsPlacement(
-  open: boolean,
-  anchorRef: RefObject<HTMLElement | null>,
-  panel: HTMLElement | null,
-  scroller: Element | undefined,
-  probeRef: RefObject<HTMLElement | null>,
-): SettingsLayout {
+const popupSizeAround = (
+  panel: HTMLElement,
+): Readonly<{ wide: number; tall: number }> => {
+  const popup = panel.closest('[role="dialog"]');
+  if (!(popup instanceof HTMLElement)) {
+    return { wide: panel.offsetWidth, tall: panel.scrollHeight };
+  }
+  return {
+    wide: popup.offsetWidth,
+    tall: panel.scrollHeight + popup.offsetHeight - panel.clientHeight,
+  };
+};
+
+/** What `useSettingsPlacement` places the settings of a block from. */
+type SettingsPlacementSource = Readonly<{
+  /** Whether the settings are open. */
+  open: boolean;
+  /** The settings button, which the settings are attached to. */
+  buttonRef: RefObject<HTMLElement | null>;
+  /** What scrolls inside the settings, whose full height is theirs. */
+  panel: HTMLElement | null;
+  /** What the page scrolls in (`scrollerOf`). */
+  scroller: Element | undefined;
+  /** Where the host's bars are read (`COVERED_PROBE_STYLE`). */
+  probeRef: RefObject<HTMLElement | null>;
+  /** The parts of the block that the settings never cover, read as they open. */
+  keepOut?: () => readonly Box[];
+  /** The direction of the block's text. */
+  direction: 'ltr' | 'rtl';
+}>;
+
+/**
+ * Where a block's settings stand beside its settings button: chosen
+ * (`settingsPlacement`) as they open, and again as the page scrolls or the
+ * window changes size; kept on the side they stand on while they change
+ * height (`settingsKeptOn`), so that opening a section in them does not move
+ * them. Scrolling inside the settings is not the page scrolling.
+ */
+export function useSettingsPlacement({
+  open,
+  buttonRef,
+  panel,
+  scroller,
+  probeRef,
+  keepOut,
+  direction,
+}: SettingsPlacementSource): SettingsLayout {
   const [layout, setLayout] = useState<SettingsLayout>({
     side: 'bottom',
-    overlaps: false,
-    clearance: clearanceOf(UNCOVERED),
+    align: 'end',
+    clearance: { ...clearanceOf(UNCOVERED), left: 0, right: 0 },
+    scrolls: false,
+  });
+  const latestKeepOut = useRef(keepOut);
+  useLayoutEffect(() => {
+    latestKeepOut.current = keepOut;
   });
   useLayoutEffect(() => {
     if (!open || panel === null) return undefined;
     let frame: number | undefined;
+    // The side they stand on, once chosen; and whether the page has moved
+    // under them since (a scroll, a change of the window's size), so that it
+    // is chosen again.
+    let standing: SettingsSide | undefined;
+    let moved = true;
     const measure = () => {
       frame = undefined;
-      const anchor = anchorRef.current;
-      if (anchor === null) return;
-      const clearance = clearanceOf(coveredAt(probeRef.current));
-      const next = {
-        ...settingsPlacement(
-          anchor.getBoundingClientRect(),
-          popupHeightAround(panel),
-          roomIn(scroller, clearance),
-        ),
-        clearance,
+      const button = buttonRef.current;
+      if (button === null) return;
+      const shown = shownBy(scroller);
+      const covered = clearanceOf(coveredAt(probeRef.current));
+      const at = button.getBoundingClientRect();
+      const size = popupSizeAround(panel);
+      const roomShown = {
+        ...shown,
+        top: shown.top + covered.top,
+        bottom: shown.bottom - covered.bottom,
+      };
+      const keptOut = latestKeepOut.current?.() ?? [];
+      const { side, room, scrolls } =
+        moved || standing === undefined
+          ? settingsPlacement(at, size, roomShown, keptOut, direction)
+          : settingsKeptOn(
+              standing,
+              at,
+              size,
+              roomShown,
+              keptOut,
+              direction,
+              (
+                panel.closest('[role="dialog"]') ?? panel
+              ).getBoundingClientRect().top,
+            );
+      moved = false;
+      standing = side;
+      const next: SettingsLayout = {
+        side: physicalSide(side, direction),
+        align: side === 'top' || side === 'bottom' ? 'end' : 'start',
+        scrolls,
+        clearance: {
+          top: room.top - shown.top,
+          bottom: shown.bottom - room.bottom,
+          left: room.left - shown.left,
+          right: shown.right - room.right,
+        },
       };
       setLayout((current) => (sameLayout(current, next) ? current : next));
     };
     const schedule = () => {
       frame ??= requestAnimationFrame(measure);
     };
+    const pageMoved = () => {
+      moved = true;
+      schedule();
+    };
+    // Scrolling inside the settings (as a control in them takes focus) is
+    // not the page moving under them.
+    const scrolled = (event: Event) => {
+      const popup = panel.closest('[role="dialog"]') ?? panel;
+      if (event.target instanceof Node && popup.contains(event.target)) return;
+      pageMoved();
+    };
     measure();
-    window.addEventListener('scroll', schedule, {
+    window.addEventListener('scroll', scrolled, {
       capture: true,
       passive: true,
     });
-    window.addEventListener('resize', schedule);
-    const observer =
+    window.addEventListener('resize', pageMoved);
+    const observers =
       typeof ResizeObserver === 'undefined'
-        ? undefined
-        : new ResizeObserver(schedule);
-    for (const child of panel.children) observer?.observe(child);
-    if (anchorRef.current !== null) observer?.observe(anchorRef.current);
-    if (scroller !== undefined) observer?.observe(scroller);
+        ? []
+        : [new ResizeObserver(schedule), new ResizeObserver(pageMoved)];
+    const [settingsObserver, pageObserver] = observers;
+    for (const child of panel.children) settingsObserver?.observe(child);
+    if (buttonRef.current !== null) pageObserver?.observe(buttonRef.current);
+    if (scroller !== undefined) pageObserver?.observe(scroller);
     return () => {
       if (frame !== undefined) cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', schedule, { capture: true });
-      window.removeEventListener('resize', schedule);
-      observer?.disconnect();
+      window.removeEventListener('scroll', scrolled, { capture: true });
+      window.removeEventListener('resize', pageMoved);
+      for (const observer of observers) observer.disconnect();
     };
-  }, [open, anchorRef, panel, scroller, probeRef]);
+  }, [open, buttonRef, panel, scroller, probeRef, direction]);
   return layout;
 }
 
-// On the side chosen for them, moved along the line of the page to stay in
-// the window; and, where they must cover the file, moved over it.
+/**
+ * On the side chosen for them, moved along it to stay in the window (see
+ * `settingsPlacement`), and never moved to another side by the popover.
+ */
 export const SETTINGS_COLLISIONS = {
-  beside: { side: 'none', align: 'shift', fallbackAxisSide: 'none' },
-  over: { side: 'shift', align: 'shift', fallbackAxisSide: 'none' },
+  side: 'none',
+  align: 'shift',
+  fallbackAxisSide: 'none',
 } as const;

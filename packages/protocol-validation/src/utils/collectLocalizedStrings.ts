@@ -12,9 +12,16 @@ import {
 // Imported from its own module for the reason given in
 // `collectEntityAttributeReferences.ts`.
 import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
+import { type TextPlace, textPlaceOf, type TextRoot } from './textPlace.ts';
 
 export type LocalizedStringHit = Readonly<{
   path: (string | number)[];
+  /**
+   * What the string is, by where it sits (see `textPlaceOf`), read against
+   * the root that the walk started from. A copy of a hit whose `path` is
+   * changed needs its place read again.
+   */
+  place: TextPlace;
   value: LocalizedString;
   format: LocalizedStringFormat;
   /** One line or several (see `LocalizedTextShape`). */
@@ -25,8 +32,10 @@ export type LocalizedStringHit = Readonly<{
   dynamicValues?: DynamicValueSite;
   /** The text may have no translation at all (see `localizedString`). */
   mayBeEmpty?: true;
-  /** The text may hold files as blocks (see `LocalizedTextShape`). */
+  /** The text may contain files as blocks (see `LocalizedTextShape`). */
   assetBlocks?: true;
+  /** The text may contain a form's fields (see `LocalizedTextShape`). */
+  fieldBlocks?: true;
 }>;
 
 export type LocalizedStringSite = Readonly<{
@@ -41,8 +50,10 @@ export type LocalizedStringSite = Readonly<{
   dynamicValues?: DynamicValueSite;
   /** The text may have no translation at all (see `localizedString`). */
   mayBeEmpty?: true;
-  /** The text may hold files as blocks (see `LocalizedTextShape`). */
+  /** The text may contain files as blocks (see `LocalizedTextShape`). */
   assetBlocks?: true;
+  /** The text may contain a form's fields (see `LocalizedTextShape`). */
+  fieldBlocks?: true;
   /** The tagged declaration, shared by every site it describes. */
   schema: z.ZodType;
   /** The owning object lets the field be left out. */
@@ -229,6 +240,7 @@ const walk = (
           : { dynamicValues: descriptor.dynamicValues }),
         ...(descriptor.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
         ...(descriptor.assetBlocks === true ? { assetBlocks: true } : {}),
+        ...(descriptor.fieldBlocks === true ? { fieldBlocks: true } : {}),
         schema: node,
         ...context,
       },
@@ -310,16 +322,22 @@ export const collectLocalizedStringSites = (
  *
  * A site whose value is not a record of strings is skipped: schema validation
  * reports it, and the walk tolerates invalid and partial documents.
+ *
+ * `root` says what `value` is, for each hit's `place`: a protocol (the
+ * default), or one owner of text, such as a stage read with the stage's own
+ * schema (`'owner'`).
  */
 export const collectLocalizedStringsFromSchema = (
   schema: z.ZodType,
   value: unknown,
+  root: TextRoot = 'protocol',
 ): LocalizedStringHit[] =>
   collectLocalizedStringSites(schema, value).flatMap((site) =>
     isLocalizedStringValue(site.value)
       ? [
           {
             path: site.path,
+            place: textPlaceOf(site.path, root),
             value: site.value,
             format: site.format,
             lines: site.lines,
@@ -331,6 +349,7 @@ export const collectLocalizedStringsFromSchema = (
               : { dynamicValues: site.dynamicValues }),
             ...(site.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
             ...(site.assetBlocks === true ? { assetBlocks: true } : {}),
+            ...(site.fieldBlocks === true ? { fieldBlocks: true } : {}),
           },
         ]
       : [],
@@ -372,6 +391,7 @@ export const localizedTextShapeAt = (
     format: site.format,
     lines: site.lines,
     ...(site.assetBlocks === true ? { assetBlocks: true } : {}),
+    ...(site.fieldBlocks === true ? { fieldBlocks: true } : {}),
   };
 };
 

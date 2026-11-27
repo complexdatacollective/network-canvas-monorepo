@@ -248,13 +248,19 @@ This section is where you will define the fields that will be shown on the form 
 
 Fields capture data about alters or ego, and are where specific variables are defined.
 
-First, create a title for the form to orient the participant to the information you want to collect. Enter the title "Add a Clinic or Health Care Provider."
-
 <AppOnly app="current">
 
-Next, define the fields of the form. Click **Create new form field** in the **Form fields** section. A dialog opens with the field's settings on the left, where you choose an attribute for the field, write the question, choose an input control, and set any validation you want to include. On the right is a live preview of the question as the participant will see it, which updates as you work. On a narrow screen the preview appears below the settings instead.
+First, give the form a title to orient the participant to the information you want to collect. In the **Dialog title** field, enter "Add a Clinic or Health Care Provider." Participants see it as the heading of the dialog in which they add a clinic.
 
-For the first field, you want to know the name of the clinic the participant is nominating. Under **Attribute selection**, click **Select an attribute** and choose "name" from the list, or, if the Clinic node type doesn't have a "name" attribute yet, type "name" and choose **Create “name”**. Next, under **Field configuration**, enter the **Question text**. In this example, use the question prompt "What is the name of this clinic?"
+Next, define the fields of the form. The form is written in the **Form content** editor, as one piece of text in which each question is a field. Place the cursor in the editor and choose **Field** in its toolbar. A new field appears in the text, with a dashed outline, and a list of attributes opens at the **Field** button.
+
+For the first field, you want to know the name of the clinic the participant is nominating. Choose "name" from the list, or, if the Clinic node type doesn't have a "name" attribute yet, type "name" in the search box, choose **Create “name”**, and choose **Text** as its type. Next, type the question where the field reads **Type the question**. In this example, use the question "What is the name of this clinic?"
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+First, create a title for the form to orient the participant to the information you want to collect. Enter the title "Add a Clinic or Health Care Provider."
 
 </AppOnly>
 
@@ -270,7 +276,7 @@ For the first field, you want to know the name of the clinic the participant is 
 
 <AppOnly app="current">
 
-In Architect, each form field can include an optional **hint** — a short, markdown-formatted note shown beneath the question to guide the participant on how to answer.
+In Architect, each form field can include an optional **hint**: a short note shown beneath the question to guide the participant on how to answer. Type it where the field reads **Add a hint (optional)**.
 
 </AppOnly>
 
@@ -302,7 +308,17 @@ Otherwise, click an existing variable from the list.
 
 </AppOnly>
 
+<AppOnly app="current">
+
+Next, select the field to open its settings: click its outline or its input control. The settings open beside the field. Choose the input control that will be shown to collect this variable under **Input control**.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Finally, choose the input control that will be shown to collect this variable.
+
+</AppOnly>
 
 <KeyConcept title="Key Concept: Input controls">
 
@@ -316,11 +332,11 @@ Because you are asking for the name of the clinic (a simple text variable), a Te
 
 <AppOnly app="current">
 
-![The Input Control selector and live preview in Architect.](/assets/img/architect-guide/input-control.png)
+![The settings of a form field in Architect, with the Input control list.](/assets/img/architect-guide/input-control.png)
 
 </AppOnly>
 
-Finally, define validation requirements for this field. Indicate that this text field is required. The validation options available vary depending on the type of variable. By adding a required validation, the participant must include information in this field before they can proceed. For more information, see the [field validation guide](/en/design-protocols/key-concepts/field-validation).
+Finally, define validation requirements for this field<AppOnly app="current"> under **Validation** in the field's settings</AppOnly>. Indicate that this text field is required. The validation options available vary depending on the type of variable. By adding a required validation, the participant must include information in this field before they can proceed. For more information, see the [field validation guide](/en/design-protocols/key-concepts/field-validation).
 
 <Screenshot axis="architect" name="validation"></Screenshot>
 
@@ -328,13 +344,19 @@ Finally, define validation requirements for this field. Indicate that this text 
 
 Architect also offers a **Show validation hints** option. When enabled, it automatically shows participants a hint derived from the field's validation rules, so they understand the input requirements.
 
-To try the field out, answer the question in the preview and click **Check response**. The preview runs the rules the attribute already carries in the codebook and shows you what a participant would be told. Answering the preview doesn't change your protocol. While a field is creating a new attribute, as this one is, the rules you set alongside it are not in the codebook yet, so **Check response** accepts anything until you click **Add**; reopen the field afterwards to try them.
+The input control, options and validation belong to the attribute, so they apply wherever the attribute is collected. They are saved with the stage, when you save it. To return to writing the form, click in the text again.
+
+Now, using the process you learned above, create the two additional fields for this form. Place the cursor after the first field before you choose **Field**, so that the fields follow one another.
 
 </AppOnly>
 
-Click <AppOnly app="current">**Add**</AppOnly><AppOnly app="classic">**Save and Close**</AppOnly> to create your first form field.
+<AppOnly app="classic">
+
+Click **Save and Close** to create your first form field.
 
 Now, using the process you learned above, create the two additional fields for this form.
+
+</AppOnly>
 
 Create the following fields with appropriate input controls, question prompts, and options:
 
@@ -393,13 +415,25 @@ We will collect data about each of these universities using the University node 
 
 The next stage in this sample protocol uses the Ego Form Interface. We create the Ego Form and set a stage name as we have previous interfaces.
 
+<AppOnly app="current">
+
+### Introducing the form
+
+Begin the form by introducing it to the participant. You might explain which data you are asking for, and why. In the **Form content** editor, type a heading, make it **Heading 1** from the list of text styles in the toolbar, and write a paragraph below it. In our case, we explain the intended use of the Ego Form Interface.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 ### Introduction Panel
 
 The introduction panel is a feature of the Ego Form Interface that lets you introduce the form to the participant. You might use it to explain which data you are asking for, and why. In our case, we explain the intended use of the Ego Form Interface.
 
+</AppOnly>
+
 <Screenshot axis="architect" name="ego-form"></Screenshot>
 
-Now, let's create a series of fields for our ego form just as we did while configuring the Name Generator using forms. If you don't remember how we did this, please review above.
+Now, let's create a series of fields for our ego form just as we did while configuring the Name Generator using forms. If you don't remember how we did this, please review above.<AppOnly app="current"> Add the fields below the introduction, one after another.</AppOnly>
 
 Next, we will create the following fields with associated variables, question prompts, input controls, validations (if used):
 
@@ -448,9 +482,9 @@ Add just two fields to this form. Here are the details you need, following the s
 
 Both questions refer to "this university". The participant sees one form for each university they selected, so the question can instead name the university that the form concerns. Architect does this by inserting the node's label into the question text, a technique known as piped text.
 
-Open the `visit_or_study` field again. Replace the question text with "Did you visit ", then click the syringe button in the toolbar of **Question text**, or type `{`. A menu lists the values that this question can show. Choose **Node label**, the first entry under **Contextual Attributes**, and complete the question with " or study there?". The value appears in the question as a **Node label** pill, and the interactive preview shows the question with the same pill. The `overall_review` question can name the university in the same way.
+In the form, replace the question of the `visit_or_study` field with "Did you visit ", then click **Attribute** in the editor's toolbar, or type `{`. A list shows the values that this question can show. Choose **Node label**, under **Node attributes**, and complete the question with " or study there?". The value appears in the question as a **Node label** pill. The `overall_review` question can name the university in the same way.
 
-![The Question text editor reading "Did you visit [Node label] or study there?", beside the interactive preview of the field.](/assets/img/piped-text/value-in-question.png)
+![A form field whose question reads "Did you visit [Node label] or study there?".](/assets/img/piped-text/value-in-question.png)
 
 During the interview, the pill is replaced by the text shown on each university node, which for this roster is the university's name: "Did you visit Universidad Francisco Marroquín or study there?". The downloadable sample protocol names the university in both questions in this way.
 
@@ -459,9 +493,9 @@ During the interview, the pill is replaced by the text shown on each university 
 Piped text inserts information already recorded in the interview into the
 wording a participant reads: a node's label, an attribute of the node or edge a
 question concerns, an attribute of the participant, or today's date. A node's
-label is never missing, so it can be inserted on its own. Any attribute can be
-missing when the question is shown, so Architect asks for two versions of the
-surrounding text, one for when the value is known and one for when it is not.
+label is never missing. Any attribute can be missing when the question is
+shown, and a missing value shows nothing, so write the question to read well
+without it, or use logic to give it another version for that case.
 For the full account, see [Piped Text](/en/design-protocols/key-concepts/piped-text).
 
 </KeyConcept>
@@ -577,7 +611,7 @@ We previously created two edge types on the sociogram which appear available for
 
 <AppOnly app="current">
 
-As on the Per-Alter Form, piped text can make this question name the two classmates it concerns. Write "To the best of your knowledge, do ", then open the syringe menu and choose **First node: label**. Type " and ", choose **Second node: label**, and finish with " spend time together outside of class?". For each pair, the participant then reads a question such as "To the best of your knowledge, do Corbett and Rebecka spend time together outside of class?", using the names shown on the two nodes.
+As on the Per-Alter Form, piped text can make this question name the two classmates it concerns. Write "To the best of your knowledge, do ", then click **Attribute** and choose **First node: label**. Type " and ", choose **Second node: label**, and finish with " spend time together outside of class?". For each pair, the participant then reads a question such as "To the best of your knowledge, do Corbett and Rebecka spend time together outside of class?", using the names shown on the two nodes.
 
 ![The Dyad Census prompt text reading "To the best of your knowledge, do [First node: label] and [Second node: label] spend time together outside of class?"](/assets/img/piped-text/pair-prompt.png)
 
@@ -777,7 +811,7 @@ Spanish now appears beside American English, with a **Missing translations** bad
 
 Return to the stage list, where a note now reports that some wording is not yet translated into Spanish, and open the **Welcome** stage. Because the protocol has two languages, each text field in the stage editor has a language menu. Choose **Spanish** from the menu beside **Rich Text**. Every field in the editor switches to Spanish together. The page's text is empty, and a note beneath it explains that participants using Spanish will see the American English text.
 
-![The Welcome stage's Page heading with Spanish chosen for editing, before it has been translated.](/assets/img/architect/localization/editor-missing-translation.png)
+![The Welcome stage's Rich Text field with Spanish chosen for editing, before it has been translated.](/assets/img/architect/localization/editor-missing-translation.png)
 
 Enter "Bienvenida" as the stage name. In the **Rich Text** editor, type "Te damos la bienvenida al protocolo de ejemplo" and make it the page's heading by choosing **Heading 1**, as you did in American English. Then click **Finished Editing**.
 

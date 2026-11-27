@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -69,12 +70,11 @@ const variables = {
   },
 };
 
-const form = {
-  fields: [
-    { id: 'field-1', variable: NAME_VAR, prompt: { en: 'Name' } },
-    { id: 'field-2', variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
-  ],
-};
+const fields = [
+  { id: 'field-1', variable: NAME_VAR, prompt: { en: 'Name' } },
+  { id: 'field-2', variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
+];
+const form = formOf(fields);
 
 const nodeType = {
   name: 'Person',
@@ -115,8 +115,7 @@ const stageFor = (kind: Kind) => {
         id: 'stage',
         type: 'EgoForm',
         label: { en: 'Form' },
-        introductionPanel: { title: { en: 'About you' } },
-        form,
+        form: formOf(fields, { before: '# About you' }),
       };
     default: {
       const unhandled: never = kind;

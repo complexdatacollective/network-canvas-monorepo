@@ -1,4 +1,6 @@
 import {
+  formPathOfField,
+  rewriteFieldBlockReferences,
   rewriteStageReferences,
   setObjectIdAt,
   unshareObjects,
@@ -17,11 +19,16 @@ import { optionValueKey } from './variables/variable.ts';
  * id it had before, except the options of categorical and ordinal variables,
  * which `assignOptionIds` gives theirs once every variable has its id. Each stage reference names the new id of the stage it
  * named; where one id was on several stages, it names the first of them.
- * `document` is changed in place.
+ * Each field block in a form's text names the new id of the form's field it
+ * named. `document` is changed in place.
  */
 export const assignProtocolObjectIds = (document: Record<string, unknown>) => {
   unshareObjects(document);
   const stageRenames = new Map<string, string>();
+  const fieldRenames = new Map<
+    string,
+    { formPath: readonly (string | number)[]; renames: Map<string, string> }
+  >();
   for (const { id, path, objectKind } of findMarkedObjects(
     ProtocolStructureSchema,
     document,
@@ -32,10 +39,20 @@ export const assignProtocolObjectIds = (document: Record<string, unknown>) => {
     if (objectKind === 'stage' && id !== undefined && !stageRenames.has(id)) {
       stageRenames.set(id, newId);
     }
+    if (objectKind === 'formField' && id !== undefined) {
+      const formPath = formPathOfField(path);
+      const key = JSON.stringify(formPath);
+      const form = fieldRenames.get(key) ?? { formPath, renames: new Map() };
+      if (!form.renames.has(id)) form.renames.set(id, newId);
+      fieldRenames.set(key, form);
+    }
   }
   rewriteStageReferences(ProtocolStructureSchema, document, (id) =>
     stageRenames.get(id),
   );
+  for (const { formPath, renames } of fieldRenames.values()) {
+    rewriteFieldBlockReferences(document, formPath, renames);
+  }
 };
 
 // The namespace option ids are named in. Changing it changes the id of every

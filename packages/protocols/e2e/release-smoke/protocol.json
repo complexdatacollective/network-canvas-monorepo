@@ -393,17 +393,11 @@
         "en-US": "About you",
         "es": "Sobre ti"
       },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction",
-          "es": "Introducción"
-        },
-        "text": {
-          "en-US": "Tell us about **you**.",
-          "es": "Cuéntanos sobre **ti**."
-        }
-      },
       "form": {
+        "content": {
+          "en-US": "# Introduction\n\nTell us about **you**.\n\n![](field:c9079860-d80d-5883-95d8-a0651ecb0e79)\n\n![](field:81135797-4a1b-5732-89af-c60b6fa9a438)",
+          "es": "# Introducción\n\nCuéntanos sobre **ti**.\n\n![](field:c9079860-d80d-5883-95d8-a0651ecb0e79)\n\n![](field:81135797-4a1b-5732-89af-c60b6fa9a438)"
+        },
         "fields": [
           {
             "id": "c9079860-d80d-5883-95d8-a0651ecb0e79",
@@ -467,6 +461,56 @@
         "en-US": "Name people",
         "es": "Nombra a personas"
       },
+      "dynamicAttributes": {
+        "5006d663-5677-4945-933c-81fb020af182": {
+          "logic": "conditions",
+          "cases": [
+            {
+              "condition": "b7e79bd1-a882-47e9-843e-3a37691d39b8",
+              "when": "met",
+              "wording": {
+                "en-US": "Who are the people you know,",
+                "es": "¿Quiénes son las personas que conoces,"
+              }
+            }
+          ],
+          "otherwise": {
+            "en-US": "Who are the people you know?",
+            "es": "¿Quiénes son las personas que conoces?"
+          }
+        },
+        "b640992c-efe3-4e9a-afa8-439b59aba971": {
+          "logic": "conditions",
+          "cases": [
+            {
+              "condition": "b7e79bd1-a882-47e9-843e-3a37691d39b8",
+              "when": "met",
+              "wording": {
+                "en-US": "?",
+                "es": "?"
+              }
+            }
+          ],
+          "otherwise": {
+            "en-US": "",
+            "es": ""
+          }
+        }
+      },
+      "conditions": {
+        "b7e79bd1-a882-47e9-843e-3a37691d39b8": {
+          "rules": [
+            {
+              "id": "4a0afd08-5cf4-4be6-ab73-f3ca0af2692d",
+              "type": "ego",
+              "options": {
+                "attribute": "917f97a5-9d39-5de2-a86b-050e8640c920",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
       "minNodesNotice": {
         "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}",
         "es": "{count, plural, one {Debes crear al menos # elemento antes de continuar.} other {Debes crear al menos # elementos antes de continuar.}}"
@@ -488,8 +532,8 @@
         {
           "id": "7784b696-92fe-521f-99d4-842cb0cb9b81",
           "text": {
-            "en-US": "{ego_917f97a5_9d39_5de2_a86b_050e8640c920, select, missing {Who are the people you know?} other {Who are the people you know, {ego_917f97a5_9d39_5de2_a86b_050e8640c920}?}}",
-            "es": "{ego_917f97a5_9d39_5de2_a86b_050e8640c920, select, missing {¿Quiénes son las personas que conoces?} other {¿Quiénes son las personas que conoces, {ego_917f97a5_9d39_5de2_a86b_050e8640c920}?}}"
+            "en-US": "{dynamic_5006d663_5677_4945_933c_81fb020af182} {ego_917f97a5_9d39_5de2_a86b_050e8640c920}{dynamic_b640992c_efe3_4e9a_afa8_439b59aba971}",
+            "es": "{dynamic_5006d663_5677_4945_933c_81fb020af182} {ego_917f97a5_9d39_5de2_a86b_050e8640c920}{dynamic_b640992c_efe3_4e9a_afa8_439b59aba971}"
           }
         }
       ],
@@ -619,6 +663,10 @@
         ]
       },
       "form": {
+        "content": {
+          "en-US": "![](field:b213121c-6246-5fca-a33d-a9f7d98e6838)",
+          "es": "![](field:b213121c-6246-5fca-a33d-a9f7d98e6838)"
+        },
         "fields": [
           {
             "id": "b213121c-6246-5fca-a33d-a9f7d98e6838",

@@ -17,6 +17,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../generateNetwork.ts';
+import { ENGLISH_FORMS } from './englishForms.ts';
 import { testId } from './testId.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
@@ -307,6 +308,7 @@ describe('generateNetwork', () => {
     Reflect.set(row[entityAttributesProperty], 'var-nickname', null);
 
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook,
       stages: [makeRosterStage({ behaviours: { minNodes: 1, maxNodes: 1 } })],
       externalData: { 'stage-ngr': [row] },
@@ -364,6 +366,7 @@ describe('generateNetwork', () => {
     } as unknown as Stage;
 
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook,
       stages: [generator, sociogram],
       seed: 42,
@@ -388,6 +391,7 @@ describe('generateNetwork', () => {
 
       expect(() =>
         generateNetwork({
+          ...ENGLISH_FORMS,
           codebook: makeSkipRoutingCodebook(),
           stages,
           seed: 42,
@@ -406,6 +410,7 @@ describe('generateNetwork', () => {
       } as Stage;
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeSkipRoutingCodebook(),
         stages,
         seed: 42,
@@ -429,6 +434,7 @@ describe('generateNetwork', () => {
       ];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeSkipRoutingCodebook(),
         stages,
         seed: 42,
@@ -451,6 +457,7 @@ describe('generateNetwork', () => {
       ];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeSkipRoutingCodebook(),
         stages,
         seed: 42,
@@ -476,6 +483,7 @@ describe('generateNetwork', () => {
       ];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeSkipRoutingCodebook(),
         stages,
         seed: 42,
@@ -500,6 +508,7 @@ describe('generateNetwork', () => {
       ];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeSkipRoutingCodebook(),
         stages,
         seed: 42,
@@ -519,6 +528,7 @@ describe('generateNetwork', () => {
       const stages = [makeFamilyPedigreeStage()];
 
       const { network, stageMetadata } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages,
         seed: 42,
@@ -551,7 +561,12 @@ describe('generateNetwork', () => {
         makeFamilyPedigreeStage(),
       ];
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
+      const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
+        codebook,
+        stages,
+        seed: 42,
+      });
 
       for (const node of network.nodes) {
         expect(node.type).not.toBe('person');
@@ -566,7 +581,12 @@ describe('generateNetwork', () => {
       const codebook = makeCodebook();
       const stages = [makeNameGeneratorStage({ behaviours: { minNodes: 9 } })];
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
+      const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
+        codebook,
+        stages,
+        seed: 42,
+      });
 
       expect(network.nodes.length).toBeGreaterThanOrEqual(9);
       for (const node of network.nodes) {
@@ -580,7 +600,12 @@ describe('generateNetwork', () => {
         makeNameGeneratorStage({ behaviours: { minNodes: 6, maxNodes: 3 } }),
       ];
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
+      const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
+        codebook,
+        stages,
+        seed: 42,
+      });
 
       expect(network.nodes.length).toBeGreaterThanOrEqual(6);
     });
@@ -592,6 +617,7 @@ describe('generateNetwork', () => {
       const stages = [makeNameGeneratorStage(), makeDyadCensusStage()];
 
       const { stageMetadata, network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages,
         seed: 42,
@@ -630,6 +656,7 @@ describe('generateNetwork', () => {
       const stages = [makeNameGeneratorStage(), makeTieStrengthCensusStage()];
 
       const { stageMetadata, network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages,
         seed: 42,
@@ -661,7 +688,12 @@ describe('generateNetwork', () => {
         makeFamilyPedigreeStage({ id: 'stage-fp-2' }),
       ];
 
-      const { stageMetadata } = generateNetwork({ codebook, stages, seed: 42 });
+      const { stageMetadata } = generateNetwork({
+        ...ENGLISH_FORMS,
+        codebook,
+        stages,
+        seed: 42,
+      });
 
       const result = StageMetadataSchema.safeParse(stageMetadata);
       expect(result.success).toBe(true);
@@ -764,7 +796,12 @@ describe('generateNetwork', () => {
       const codebook = makeBinCodebook();
       const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
+      const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
+        codebook,
+        stages,
+        seed: 42,
+      });
 
       expect(network.nodes.length).toBeGreaterThan(0);
       for (const node of network.nodes) {
@@ -777,6 +814,7 @@ describe('generateNetwork', () => {
       const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages,
         seed: 42,
@@ -809,6 +847,7 @@ describe('generateNetwork', () => {
       const stages = [makeNameGeneratorStage(), makeCategoricalBinStage()];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages,
         seed: 42,
@@ -861,6 +900,7 @@ describe('generateNetwork', () => {
       ];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages,
         seed: 42,
@@ -880,6 +920,7 @@ describe('generateNetwork', () => {
       const stages = [makeNameGeneratorStage(), makeOrdinalBinStage()];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages,
         seed: 42,
@@ -897,6 +938,7 @@ describe('generateNetwork', () => {
 
       const attributesOf = (inProgressStageIndex?: number) =>
         generateNetwork({
+          ...ENGLISH_FORMS,
           codebook,
           stages,
           seed: 42,
@@ -922,6 +964,7 @@ describe('generateNetwork', () => {
       ];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages,
         seed: 42,
@@ -949,6 +992,7 @@ describe('generateNetwork', () => {
       let result: ReturnType<typeof generateNetwork> | undefined;
       expect(() => {
         result = generateNetwork({
+          ...ENGLISH_FORMS,
           codebook,
           stages,
           seed: 42,
@@ -982,6 +1026,7 @@ describe('generateNetwork', () => {
       let result: ReturnType<typeof generateNetwork> | undefined;
       expect(() => {
         result = generateNetwork({
+          ...ENGLISH_FORMS,
           codebook,
           stages,
           seed: 42,
@@ -1002,6 +1047,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1027,6 +1073,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 7,
@@ -1052,6 +1099,7 @@ describe('generateNetwork', () => {
       ];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages,
         seed: 42,
@@ -1068,6 +1116,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1083,6 +1132,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1105,6 +1155,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1123,6 +1174,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1141,6 +1193,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1160,6 +1213,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1187,6 +1241,7 @@ describe('generateNetwork', () => {
       ];
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages,
         seed: 42,
@@ -1212,6 +1267,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1242,6 +1298,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1270,6 +1327,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1292,12 +1350,14 @@ describe('generateNetwork', () => {
       const externalData = { 'stage-ngr': makeRosterPool(8) };
 
       const first = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages,
         seed: 99,
         externalData,
       });
       const second = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages,
         seed: 99,
@@ -1329,7 +1389,13 @@ describe('generateNetwork', () => {
         } as unknown as Stage;
 
         expect(
-          () => generateNetwork({ codebook, stages: [stage], seed: 42 }),
+          () =>
+            generateNetwork({
+              ...ENGLISH_FORMS,
+              codebook,
+              stages: [stage],
+              seed: 42,
+            }),
           `Stage type "${stageType}" is not handled by generateNetwork`,
         ).not.toThrow();
       }
@@ -1344,7 +1410,12 @@ describe('generateNetwork', () => {
       } as unknown as Stage;
 
       expect(() =>
-        generateNetwork({ codebook, stages: [stage], seed: 42 }),
+        generateNetwork({
+          ...ENGLISH_FORMS,
+          codebook,
+          stages: [stage],
+          seed: 42,
+        }),
       ).toThrow(/Unsupported stage type "SomeNewStageType"/);
     });
   });
@@ -1373,10 +1444,20 @@ describe('generateNetwork', () => {
       ];
 
       expect(() =>
-        generateNetwork({ codebook, stages, seed: 42 }),
+        generateNetwork({
+          ...ENGLISH_FORMS,
+          codebook,
+          stages,
+          seed: 42,
+        }),
       ).not.toThrow();
 
-      const { network } = generateNetwork({ codebook, stages, seed: 42 });
+      const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
+        codebook,
+        stages,
+        seed: 42,
+      });
       expect(network.nodes).toHaveLength(4);
       expect(network.edges).toHaveLength(0);
     });
@@ -1415,6 +1496,7 @@ describe('generateNetwork', () => {
       } as unknown as Stage;
 
       const withoutDraft = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages: baseStages,
         seed: 42,
@@ -1422,6 +1504,7 @@ describe('generateNetwork', () => {
 
       const runWithDraft = () =>
         generateNetwork({
+          ...ENGLISH_FORMS,
           codebook,
           stages: [...baseStages, draftStage],
           seed: 42,
@@ -1458,10 +1541,16 @@ describe('generateNetwork', () => {
       } as unknown as Stage;
 
       expect(() =>
-        generateNetwork({ codebook, stages: [stage], seed: 42 }),
+        generateNetwork({
+          ...ENGLISH_FORMS,
+          codebook,
+          stages: [stage],
+          seed: 42,
+        }),
       ).not.toThrow();
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages: [stage],
         seed: 42,
@@ -1478,6 +1567,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1497,6 +1587,7 @@ describe('generateNetwork', () => {
       });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1514,6 +1605,7 @@ describe('generateNetwork', () => {
       const stage = makeNameGeneratorStage({ behaviours: undefined });
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages: [stage],
         seed: 42,
@@ -1529,6 +1621,7 @@ describe('generateNetwork', () => {
       );
 
       const { droppedOut, currentStep } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages,
         seed: 42,
@@ -1562,6 +1655,7 @@ describe('generateNetwork', () => {
       ];
 
       const { droppedOut, currentStep } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages,
         seed: 42,
@@ -1594,6 +1688,7 @@ describe('generateNetwork', () => {
         const stages = [makeFinish('end-completed', 'completed')];
 
         const { droppedOut, currentStep } = generateNetwork({
+          ...ENGLISH_FORMS,
           codebook: makeCodebook(),
           stages,
           seed: 42,
@@ -1615,6 +1710,7 @@ describe('generateNetwork', () => {
         const outcomes = (stages: Stage[]) =>
           Array.from({ length: 30 }, (_, seed) => {
             const { droppedOut, currentStep } = generateNetwork({
+              ...ENGLISH_FORMS,
               codebook: makeCodebook(),
               stages,
               seed,
@@ -1644,6 +1740,7 @@ describe('generateNetwork', () => {
         ];
 
         const { droppedOut, currentStep } = generateNetwork({
+          ...ENGLISH_FORMS,
           codebook: makeCodebook(),
           stages,
           seed: 42,
@@ -1665,6 +1762,7 @@ describe('generateNetwork', () => {
         ];
 
         const { network, currentStep } = generateNetwork({
+          ...ENGLISH_FORMS,
           codebook: makeSkipRoutingCodebook(),
           stages,
           seed: 42,
@@ -1682,6 +1780,7 @@ describe('generateNetwork', () => {
       );
 
       const { droppedOut, currentStep } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: makeCodebook(),
         stages,
         seed: 42,

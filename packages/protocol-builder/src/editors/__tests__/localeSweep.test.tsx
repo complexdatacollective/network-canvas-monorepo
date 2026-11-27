@@ -33,9 +33,8 @@ import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEd
  * One stage rather than five: the form-based generator mounts every section
  * this branch added — the prompt list and its stamps, the side panels and the
  * nomination window — plus the frame under them. The four form editors mount
- * `FormFieldsSection` and `PageContentSection`, which the sibling sweep
- * already drives, and the generator below mounts the first of them again in
- * composition. The other two name generators join this table with their own
+ * `FormDocumentSection`, which the sibling sweep already drives, and the
+ * generator below mounts it again in composition. The other two name generators join this table with their own
  * sections.
  */
 

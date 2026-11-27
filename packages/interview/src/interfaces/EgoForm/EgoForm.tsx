@@ -30,9 +30,7 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { springs } from '@codaco/fresco-ui/motion';
-import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { useTrack } from '../../analytics/useTrack';
 import { buildProtocolFieldErrors } from '../../forms/buildProtocolFieldErrors';
@@ -44,8 +42,6 @@ import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { interfaceTextMessages } from '../../i18n/interfaceTextMessages';
-import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
-import { LocalizedText } from '../../localization/LocalizedText';
 import { getEgoAttributes } from '../../selectors/session';
 import { updateEgo } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
@@ -58,7 +54,7 @@ type EgoFormProps = StageProps<'EgoForm'>;
 const EgoFormInner = (props: EgoFormProps) => {
   const { stage } = props;
 
-  const { form, introductionPanel } = stage;
+  const { form } = stage;
 
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
@@ -118,13 +114,13 @@ const EgoFormInner = (props: EgoFormProps) => {
   const egoAttributes = useStageSelector(getEgoAttributes);
 
   const {
-    fieldComponents,
-    withFormValues,
+    formContent,
     toAttributePatch,
     componentByVariable,
+    fieldComponents,
     variableByFieldPath,
   } = useProtocolForm({
-    fields: form.fields,
+    form,
     initialValues: Object.entries(egoAttributes).reduce<
       Record<string, FieldValue>
     >((values, [name, value]) => {
@@ -139,9 +135,7 @@ const EgoFormInner = (props: EgoFormProps) => {
   useEffect(() => {
     track('form_opened', {
       form_kind: 'ego',
-      field_details: form.fields.map(
-        (f) => componentByVariable[f.variable] ?? 'unknown',
-      ),
+      field_details: fieldComponents,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -287,24 +281,8 @@ const EgoFormInner = (props: EgoFormProps) => {
       >
         <div className="interface mx-auto max-w-[80ch]">
           <Surface spacing="lg" shadow="lg">
-            {withFormValues(
-              <>
-                <LocalizedText
-                  value={introductionPanel.title}
-                  render={<Heading level="h1" />}
-                />
-                {introductionPanel.text && (
-                  <LocalizedMarkdown
-                    value={introductionPanel.text}
-                    allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-                  />
-                )}
-              </>,
-            )}
-          </Surface>
-          <Surface spacing="lg" shadow="lg">
             <FormWithoutProvider onSubmit={handleSubmitForm}>
-              {fieldComponents}
+              {formContent}
             </FormWithoutProvider>
           </Surface>
         </div>

@@ -11,10 +11,12 @@ import Form from '@codaco/fresco-ui/form/Form';
 import {
   asEntityAttributeReference,
   dynamicValueNameFor,
+  fieldBlockMarkdown,
   type FormField,
   optionCaseKey,
   type Stage,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -93,15 +95,13 @@ const stageShowing = (prompt: string) =>
     type: 'NameGenerator',
     label: { en: 'People' },
     subject: { entity: 'node', type: NODE_TYPE },
-    form: {
-      fields: [
-        {
-          id: testId('field-L97'),
-          variable: asEntityAttributeReference(NOTE),
-          prompt: { en: prompt },
-        },
-      ],
-    },
+    form: formOf([
+      {
+        id: testId('field-L97'),
+        variable: asEntityAttributeReference(NOTE),
+        prompt: { en: prompt },
+      },
+    ]),
     prompts: [{ id: 'prompt', text: { en: 'Who?' } }],
   }) as unknown as Stage;
 
@@ -162,11 +162,12 @@ function renderForm(
     middleware: (getDefault) => getDefault({ serializableCheck: false }),
   });
 
-  const fields = (stage as unknown as { form: { fields: FormField[] } }).form
-    .fields;
+  const { form } = stage as unknown as {
+    form: ReturnType<typeof formOf<FormField>>;
+  };
 
   function PersonFields() {
-    const { fieldComponents } = useProtocolForm({ fields, ...options });
+    const { formContent } = useProtocolForm({ form, ...options });
     return (
       <>
         {/* A control the interface asks before the protocol's fields. */}
@@ -187,7 +188,7 @@ function renderForm(
             { value: 'cousin', label: 'Cousin' },
           ]}
         />
-        {fieldComponents}
+        {formContent}
       </>
     );
   }
@@ -330,19 +331,19 @@ describe('useProtocolForm dynamic values', () => {
 
 describe('useProtocolForm dynamic values on an edge form', () => {
   function renderEdgeForm(prompt: string, edgeAttributes: object = {}) {
-    const fields: FormField[] = [
+    const form = formOf<FormField>([
       {
         id: testId('field-1'),
         variable: asEntityAttributeReference(EDGE_NOTE),
         prompt: { en: prompt },
       },
-    ];
+    ]);
     const edgeStage = {
       id: 'edges',
       type: 'AlterEdgeForm',
       label: { en: 'Ties' },
       subject: { entity: 'edge', type: KNOWS },
-      form: { fields },
+      form,
     } as unknown as Stage;
     const store = configureStore({
       reducer: { session, protocol, ui },
@@ -415,12 +416,12 @@ describe('useProtocolForm dynamic values on an edge form', () => {
     });
 
     function EdgeFields() {
-      const { fieldComponents } = useProtocolForm({
-        fields,
+      const { formContent } = useProtocolForm({
+        form,
         subject: { entity: 'edge', type: KNOWS },
         currentEntityId: 'e1',
       });
-      return <>{fieldComponents}</>;
+      return <>{formContent}</>;
     }
 
     render(
@@ -462,5 +463,258 @@ describe('useProtocolForm dynamic values on an edge form', () => {
       /^Closeness: EDGE_SENTINEL/,
     );
     expect(screen.queryByText('How close?')).toBeNull();
+  });
+});
+
+describe('useProtocolForm dynamic values on a form whose logic hides a field', () => {
+  const NAME_FIELD = testId('field name');
+  const NOTE_FIELD = testId('field note');
+  const THEIR_WORD = testId('their word');
+  const theirWord = dynamicValueNameFor({
+    kind: 'dynamicAttribute',
+    id: THEIR_WORD,
+  });
+
+  /**
+   * A form that asks for the node's name only while "Aunt" is checked (in a
+   * control the interface asks before the form), and then a question that
+   * shows the node's label.
+   */
+  function renderHidingForm({
+    dynamicLabel,
+    labelNode,
+    storedName,
+    showsName,
+  }: {
+    dynamicLabel?: unknown;
+    labelNode?: Parameters<typeof useProtocolForm>[0]['labelNode'];
+    /** Edits a stored node with this name, in place of adding one. */
+    storedName?: string;
+    /** The logic that shows the name's question, in place of "Aunt". */
+    showsName?: (nameField: string) => string;
+  } = {}) {
+    const nameQuestion = fieldBlockMarkdown(NAME_FIELD);
+    const form = {
+      content: {
+        en: [
+          showsName === undefined
+            ? `{${NAMES.kinds}, select, missing {} ${optionCaseKey(AUNT)} {${nameQuestion}} other {}}`
+            : showsName(nameQuestion),
+          fieldBlockMarkdown(NOTE_FIELD),
+        ].join('\n\n'),
+      },
+      fields: [
+        {
+          id: NAME_FIELD,
+          variable: asEntityAttributeReference(NAME),
+          prompt: { en: 'Their name' },
+        },
+        {
+          id: NOTE_FIELD,
+          variable: asEntityAttributeReference(NOTE),
+          // The label, then the name itself, as a value.
+          prompt: { en: `How old is {${NAMES.label}}{${NAMES.name}}?` },
+        },
+      ],
+    } as unknown as ReturnType<typeof formOf<FormField>>;
+    const stage = {
+      id: 'stage',
+      type: 'NameGenerator',
+      label: { en: 'People' },
+      subject: { entity: 'node', type: NODE_TYPE },
+      form,
+      prompts: [{ id: 'prompt', text: { en: 'Who?' } }],
+    } as unknown as Stage;
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 's',
+          promptIndex: 0,
+          network: {
+            nodes:
+              storedName === undefined
+                ? []
+                : [
+                    {
+                      [entityPrimaryKeyProperty]: 'stored',
+                      type: NODE_TYPE,
+                      [entityAttributesProperty]: { [NAME]: storedName },
+                    },
+                  ],
+            edges: [],
+            ego: { [entityAttributesProperty]: {} },
+          },
+        } as never,
+        protocol: {
+          id: 'p',
+          hash: 'h',
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          codebook: {
+            node: {
+              [NODE_TYPE]: {
+                name: 'person',
+                ...(dynamicLabel === undefined ? {} : { dynamicLabel }),
+                variables: {
+                  [NAME]: { name: 'name', type: 'text', component: 'Text' },
+                  [NOTE]: { name: 'note', type: 'text', component: 'Text' },
+                  [KINDS]: {
+                    name: 'kinds',
+                    type: 'categorical',
+                    component: 'CheckboxGroup',
+                    options: [
+                      { id: AUNT, value: 'aunt', label: { en: 'Aunt' } },
+                      { id: COUSIN, value: 'cousin', label: { en: 'Cousin' } },
+                    ],
+                  },
+                },
+              },
+            },
+            edge: {},
+            ego: { variables: {} },
+          },
+          stages: [stage],
+        } as never,
+      },
+      middleware: (getDefault) => getDefault({ serializableCheck: false }),
+    });
+
+    function HidingFields() {
+      const { formContent } = useProtocolForm({
+        form,
+        precedingVariables: [KINDS],
+        ...(labelNode !== undefined && { labelNode }),
+        ...(storedName !== undefined && { currentEntityId: 'stored' }),
+      });
+      return (
+        <>
+          <Field
+            component={CheckboxGroupField}
+            name={KINDS}
+            nameMode="opaque"
+            label="How they are related"
+            options={[
+              { value: 'aunt', label: 'Aunt' },
+              { value: 'cousin', label: 'Cousin' },
+            ]}
+          />
+          {formContent}
+        </>
+      );
+    }
+
+    render(
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <StageDynamicValues stage={stage}>
+              <Form onSubmit={() => ({ success: true })}>
+                <HidingFields />
+              </Form>
+            </StageDynamicValues>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
+    );
+  }
+
+  const question = () => screen.getByText(/^How old is/).closest('label');
+
+  /**
+   * Checks "Aunt", names the node Ada, then unchecks "Aunt": the label, and
+   * the name shown after it, while the name's question is shown and once it
+   * is hidden.
+   */
+  const nameThenHide = (labelWhileShown: string, labelWhenHidden: string) => {
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Aunt' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
+      target: { value: 'Ada' },
+    });
+    expect(question()).toHaveTextContent(`How old is ${labelWhileShown}Ada?`);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Aunt' }));
+    expect(screen.queryByRole('textbox', { name: 'Their name' })).toBeNull();
+    expect(question()).toHaveTextContent(`How old is ${labelWhenHidden}?`);
+  };
+
+  it('labels the node without the answer to a question that logic hides', () => {
+    renderHidingForm();
+    nameThenHide('Ada', 'Unnamed');
+  });
+
+  it('chooses the wording of the node type’s own label without the answer to a question that logic hides', () => {
+    renderHidingForm({
+      dynamicLabel: {
+        text: { en: `{${theirWord}}` },
+        dynamicAttributes: {
+          [THEIR_WORD]: {
+            logic: 'answers',
+            value: NAMES.name,
+            missing: { en: 'someone unnamed' },
+            answers: [],
+            other: { en: 'someone named' },
+          },
+        },
+      },
+    });
+    nameThenHide('someone named', 'someone unnamed');
+  });
+
+  it('gives the interface’s own label the answers as the form shows them, with a hidden question’s answer as none', () => {
+    const labelNode = vi.fn(
+      (
+        attributes: Readonly<Record<string, unknown>>,
+        answered: Readonly<Record<string, boolean>>,
+      ) => {
+        const name = attributes[NAME];
+        // Answered, so a name that is stored is not shown in its place.
+        if (!answered[NAME]) return 'Stored name';
+        return typeof name === 'string' ? name : 'Their relative';
+      },
+    );
+    renderHidingForm({ labelNode });
+    nameThenHide('Ada', 'Their relative');
+    expect(labelNode).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ [NAME]: expect.anything() }),
+      expect.objectContaining({ [NAME]: true }),
+    );
+  });
+
+  // The node's label is worked out from the form's shown answers, so its
+  // logic cannot read the label first; it reads it as present, as the node
+  // always has one while the form is on screen.
+  it('reads the node’s label as present, so a question shown only while the node has a label keeps its answer', () => {
+    renderHidingForm({
+      showsName: (nameQuestion) =>
+        `{${NAMES.label}, select, missing {} other {${nameQuestion}}}`,
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
+      target: { value: 'Ada' },
+    });
+    expect(question()).toHaveTextContent('How old is AdaAda?');
+  });
+
+  it('labels a stored node without its stored answer to a question that logic hides', () => {
+    const labelNode = vi.fn(
+      (
+        attributes: Readonly<Record<string, unknown>>,
+        answered: Readonly<Record<string, boolean>>,
+      ) => {
+        // As a Family Pedigree does: an unanswered name is the stored one.
+        if (!answered[NAME]) return 'Stored name';
+        const name = attributes[NAME];
+        return typeof name === 'string' ? name : 'Their relative';
+      },
+    );
+    renderHidingForm({ labelNode, storedName: 'Ada' });
+    expect(screen.queryByRole('textbox', { name: 'Their name' })).toBeNull();
+    expect(question()).toHaveTextContent('How old is Their relative?');
+  });
+
+  it('labels a stored node by the codebook’s rules without its stored answer to a question that logic hides', () => {
+    renderHidingForm({ storedName: 'Ada' });
+    expect(screen.queryByRole('textbox', { name: 'Their name' })).toBeNull();
+    expect(question()).toHaveTextContent('How old is Unnamed?');
   });
 });

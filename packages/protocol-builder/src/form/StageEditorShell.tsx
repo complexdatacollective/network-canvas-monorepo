@@ -29,40 +29,28 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
-import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
-import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
-  collectLocalizedStringsFromSchema,
   collectProtocolObjectIdsFromSchema,
-  dynamicValueReferencesIn,
-  enclosingProtocolObjects,
-  findDynamicValueProblems,
   type InterfaceTextUpdate,
-  type LocalizationDeclaration,
-  optionIdFromCaseKey,
-  removedOptionIds,
   stageSchema,
-  withoutRemovedOptionVersions,
 } from '@codaco/protocol-validation';
 import {
   applyCommands,
   type Command,
   contentHash,
-  type SectionDoc,
 } from '@codaco/studio-sync/apply';
 
-import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
+import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import {
   useConditionsRegistration,
-  withoutUnusedConditions,
+  useDynamicAttributesRegistration,
 } from '../localization/useDynamicValueSite.ts';
 import type {
   StageEditorActions,
   StageSection,
 } from '../stage-editor-contract.ts';
 import {
-  savedStageFields,
   SHARED_WORDING_PATH,
   stageDocument,
   stageFieldsOf,
@@ -73,7 +61,6 @@ import { NOT_READY_MESSAGE, useStageEdit } from '../stageEdit.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import {
   NOTHING_STAGED,
-  type StagedCodebook,
   useStagedCodebookStore,
 } from '../state/stagedCodebook.ts';
 import { useLatest } from '../state/useLatest.ts';
@@ -82,10 +69,7 @@ import {
   mountedPathsOf,
   documentFromSubmission,
 } from './documentFromSubmission.ts';
-import {
-  SectionOutlineStore,
-  type SectionValidationIssue,
-} from './outlineStore.ts';
+import { SectionOutlineStore } from './outlineStore.ts';
 import {
   findProtocolObjectRow,
   focusProtocolObjectRow,
@@ -101,11 +85,13 @@ import {
   sharedWordingInUse,
   sharedWordingIssues,
 } from './sharedWordingDraft.ts';
+import { stageAsSaved } from './stageAsSaved.ts';
 import { StagedCodebookProvider } from './StagedCodebookProvider.tsx';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
 } from './stageEditorContext.ts';
+import { stageProblems } from './stageProblems.ts';
 import {
   createStageProblemsStore,
   createStageSectionsStore,
@@ -309,7 +295,9 @@ function StageEditorFormBody({
   const writeRefusal =
     access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
   const intl = useAppIntl();
-  const localization = useProtocolLocalization();
+  // The language being edited names the dynamic attributes that a refused
+  // save reports, as their pills on screen show them.
+  const { localization, locale: editingLocale } = useEditingLanguage();
   const protocol = useProtocolContext();
   const { codebook } = protocol;
   // Read by the shared words a save writes, which a host also reads from a
@@ -508,29 +496,18 @@ function StageEditorFormBody({
         return { success: false, formErrors: [writeRefusal] };
       }
 
-      // As the stage will be saved: holding exactly the wording settings that
-      // apply to it (see `stageDocument`), so the schema judges what is
-      // saved, and the draft the form goes on editing is what was stored.
-      // Without the conditions no text names any more (see
-      // `withoutUnusedConditions`), however their last use went, and without
-      // the wording written for options that the stage's codebook changes
-      // leave out (see `withoutVersionsForStagedRemovals`).
-      const fields = withoutVersionsForStagedRemovals(
+      // As the stage will be saved (see `stageAsSaved`), so the schema
+      // judges what is saved, and the draft the form goes on editing is what
+      // was stored.
+      const fields = stageAsSaved(
         identity,
-        withoutUnusedConditions(
-          savedStageFields(
-            identity,
-            documentFromSubmission({
-              currentFields: working.read(),
-              submittedValues: values as Record<string, FieldValue>,
-              mountedPaths: mountedPathsOf(storeApi),
-              dormantFields: dormantFieldsOf(storeApi),
-            }),
-            localization,
-          ),
-          saved,
-        ),
-        stagedCodebook?.read() ?? NOTHING_STAGED,
+        documentFromSubmission({
+          currentFields: working.read(),
+          submittedValues: values as Record<string, FieldValue>,
+          mountedPaths: mountedPathsOf(storeApi),
+          dormantFields: dormantFieldsOf(storeApi),
+        }),
+        { localization, staged: stagedCodebook?.read() ?? NOTHING_STAGED },
       );
       working.write(fields);
 
@@ -543,12 +520,12 @@ function StageEditorFormBody({
       // section's problems named by that section, then the rules about the
       // stage as a whole. The unattributed ones are deliberately not here;
       // they are what a host's own issue surfacing is for.
-      const { sections: stageIssues, whole } = stageProblems(
-        identity,
-        fields,
+      const { sections: stageIssues, whole } = stageProblems(identity, fields, {
         localization,
+        locale: editingLocale,
         codebook,
-      );
+        intl,
+      });
       // The shared words changed in the stage editor, and those the stage is
       // the first to use, are saved with it, so a word that cannot be saved
       // refuses the stage, as a setting of its own would, and is answered for
@@ -658,6 +635,7 @@ function StageEditorFormBody({
       clearRefusedWrite,
       codebook,
       discardDraft,
+      editingLocale,
       identity,
       intl,
       latestProtocol,
@@ -665,7 +643,6 @@ function StageEditorFormBody({
       outline,
       readOnly,
       save,
-      saved,
       sections,
       setDocument,
       setSaved,
@@ -849,12 +826,12 @@ function StageEditorFormBody({
                 {reportedErrors && (
                   <FormErrorsList key="form-errors" errors={reportedErrors} />
                 )}
+                <TextDefinitionsRegistration />
                 {/*
                   Said once by the form rather than by every control: being
                   unable to write is a property of the edit, not of any one
                   field, so no section has to remember to pass it down.
                 */}
-                <ConditionsRegistration />
                 <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </LayoutGroup>
             </form>
@@ -869,6 +846,22 @@ function StageEditorFormBody({
         </div>
       </div>
     </StageEditorFormContext>
+  );
+}
+
+/**
+ * Puts the conditions the stage's text tests, and the dynamic attributes it
+ * shows, among what a save writes, whichever sections the stage has: a text
+ * field anywhere in it may add one.
+ */
+function TextDefinitionsRegistration() {
+  const conditions = useConditionsRegistration();
+  const dynamicAttributes = useDynamicAttributesRegistration();
+  return (
+    <>
+      <div hidden {...conditions} />
+      <div hidden {...dynamicAttributes} />
+    </>
   );
 }
 
@@ -888,15 +881,6 @@ function StageEditorFormBody({
  * plain one the protocol schema wrote about a named thing, which the same
  * route passes through untouched.
  */
-/**
- * Puts the conditions the stage's text tests among what a save writes,
- * whichever sections the stage has: a text field anywhere in it may add one.
- */
-function ConditionsRegistration() {
-  const conditions = useConditionsRegistration();
-  return <div hidden {...conditions} />;
-}
-
 function sectionProblems(sections: readonly StageSection[]): string[] {
   return sections.flatMap((section) =>
     section.problems.map((problem) =>
@@ -906,192 +890,6 @@ function sectionProblems(sections: readonly StageSection[]): string[] {
       }),
     ),
   );
-}
-
-/**
- * `fields` without the versions that the stage's text writes for options that
- * a variable in the stage's changed codebook sections does not have (see
- * `withoutRemovedOptionVersions`). An option can be deleted from inside a
- * stage editor (the Family Pedigree manages its gender identity options
- * there), and the stage's own text may have a version for it. That version
- * names an option that no longer exists, so the stage's check would refuse
- * the save until the researcher found and removed it.
- *
- * The text is compared with the options each changed variable has as the
- * edit leaves it (`edited`), not with what the protocol held before (`base`):
- * an option created and removed in the same edit, or on a variable or section
- * the edit created, was never in the protocol, and its version must go too.
- * Text about a variable that no changed section has is left as it is.
- */
-function withoutVersionsForStagedRemovals(
-  identity: StageIdentity,
-  fields: StageFormDraft,
-  staged: StagedCodebook,
-): StageFormDraft {
-  const sections = Object.values(staged).map(({ edited }) => edited);
-  if (sections.length === 0) return fields;
-  const removed = removedOptionIds(
-    [optionsTheTextChooses(identity, fields)],
-    sections,
-  );
-  if (removed.size === 0) return fields;
-  let protocol: Readonly<{ stages: readonly SectionDoc[] }> = {
-    stages: [{ ...fields, id: identity.id, type: identity.type }],
-  };
-  for (const [variableId, optionIds] of removed) {
-    protocol = withoutRemovedOptionVersions(protocol, variableId, optionIds);
-  }
-  const [stage] = protocol.stages;
-  if (stage === undefined) return fields;
-  const { id: _id, type: _type, ...pruned } = stage;
-  return pruned;
-}
-
-/**
- * The options that the stage's text gives a version for, in any translation,
- * by the variable whose select chooses them. They are returned in the shape
- * of a codebook record that holds variables, so that `removedOptionIds` can
- * compare them with the options the changed sections have.
- */
-function optionsTheTextChooses(
-  identity: StageIdentity,
-  fields: StageFormDraft,
-): Readonly<{
-  variables: Record<string, { options: { id: string }[] }>;
-}> {
-  const byVariable = new Map<string, Set<string>>();
-  const document = stageDocument(identity, fields);
-  for (const { value } of collectLocalizedStringsFromSchema(
-    stageSchema,
-    document,
-  )) {
-    for (const message of Object.values(value)) {
-      for (const { parsed, caseKeys } of dynamicValueReferencesIn(message)) {
-        if (parsed?.kind !== 'attribute') continue;
-        const options = byVariable.get(parsed.variableId) ?? new Set();
-        for (const key of caseKeys) {
-          const optionId = optionIdFromCaseKey(key);
-          if (optionId !== undefined) options.add(optionId);
-        }
-        byVariable.set(parsed.variableId, options);
-      }
-    }
-  }
-  return {
-    variables: Object.fromEntries(
-      [...byVariable].map(([variableId, options]) => [
-        variableId,
-        { options: [...options].map((id) => ({ id })) },
-      ]),
-    ),
-  };
-}
-
-/**
- * What the schema says is wrong with the stage, split by whether a section can
- * answer for it.
- *
- * A problem anchored at a path belongs to whichever section owns that path, so
- * it can be named by that section — above the form, and in a host's own list
- * of the sections. A problem anchored at NOTHING is about the stage as a whole
- * — a rule relating two of its keys — and no section can be pointed at for it,
- * so it is read out in the schema's own words. Dropping either was the same as
- * accepting it: the save would have gone ahead with nothing on screen to say
- * why it should not have.
- *
- * Each anchored issue is also asked the question the validator's own answer
- * cannot settle: is this a value that is wrong, or a value that is not there?
- * Zod finalises an issue without keeping what it was given, and the code is the
- * same either way — a missing key and a number where a string belongs are both
- * `invalid_type` — so the document it judged is what says which. Read with the
- * same predicate a required field is judged by, so "empty" means one thing in
- * this editor.
- */
-function stageProblems(
-  identity: StageIdentity,
-  fields: StageFormDraft,
-  localization: LocalizationDeclaration | undefined,
-  codebook: unknown,
-): Readonly<{ sections: SectionValidationIssue[]; whole: string[] }> {
-  const document = stageDocument(identity, fields);
-  const result = stageSchema.safeParse(document);
-  const sections: SectionValidationIssue[] = [];
-  const whole: string[] = [];
-
-  // What the protocol's own check asks of the values a stage's text shows,
-  // and which the stage's schema cannot: that each is bound and can be shown
-  // there. A stage saved without asking would leave the protocol invalid
-  // until it is next checked whole.
-  const seen = new Set<string>();
-  for (const problem of findDynamicValueProblems(
-    { codebook, stages: [document] },
-    collectLocalizedStringsFromSchema(stageSchema, document).map((hit) => ({
-      ...hit,
-      path: ['stages', 0, ...hit.path],
-    })),
-  )) {
-    const path = problem.path.slice(2);
-    const key = JSON.stringify([path, problem.message]);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    if (path.length === 0) {
-      whole.push(problem.message);
-      continue;
-    }
-    sections.push({
-      path,
-      code: 'custom',
-      message: problem.message,
-      absent: false,
-    });
-  }
-
-  if (result.success) {
-    return { sections: withEnclosingObjects(document, sections), whole };
-  }
-  for (const issue of result.error.issues) {
-    const path = issue.path.map((part) =>
-      typeof part === 'symbol' ? String(part) : part,
-    );
-    if (path.length === 0) {
-      // A key the schema does not name is the HOST's to refuse — it answers
-      // `INVALID_SHAPE` for a document that is not shaped like its section, and
-      // an editor with a second, stricter opinion would refuse a save the
-      // protocol would have taken. Everything else anchored at nothing is a
-      // rule about the stage's own keys, which the researcher can act on.
-      if (issue.code !== 'unrecognized_keys') whole.push(issue.message);
-      continue;
-    }
-    sections.push({
-      path,
-      code: issue.code,
-      message: issue.message,
-      absent: isUnanswered(getValue(fields, path)),
-    });
-  }
-  return { sections: withEnclosingObjects(document, sections), whole };
-}
-
-/**
- * Each issue with the innermost protocol object inside the stage that holds
- * it. The stage itself is left out: every problem is inside it, so it says
- * nothing about where one belongs.
- */
-function withEnclosingObjects(
-  document: SectionDoc,
-  issues: readonly SectionValidationIssue[],
-): SectionValidationIssue[] {
-  const objects = enclosingProtocolObjects(
-    stageSchema,
-    document,
-    issues.map((issue) => issue.path),
-  );
-  return issues.map((issue, index) => {
-    const object = objects[index];
-    return object === undefined || object.path.length === 0
-      ? issue
-      : { ...issue, object };
-  });
 }
 
 /**

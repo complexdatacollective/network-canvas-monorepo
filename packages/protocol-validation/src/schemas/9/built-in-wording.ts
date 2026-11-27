@@ -9,6 +9,7 @@ import {
 } from '../../utils/collectLocalizedStrings.ts';
 import { findInterfaceOwnedOptionBindings } from '../../utils/findExclusiveVariableConflicts.ts';
 import type { EntityAttributeReferenceHit } from '../../utils/schemaReferenceWalk.ts';
+import { textPlaceOf } from '../../utils/textPlace.ts';
 import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
 import type { LocalizedString } from './localized-string.ts';
 import { wordingPresent } from './protocol-wording.ts';
@@ -114,9 +115,11 @@ const isBuiltInWordingPath = (
 
 /**
  * The paths of text with no translation at all that may not be empty: any
- * but text declared as possibly empty (`mayBeEmpty`) and wording Network
- * Canvas supplies, which a protocol in a language it has no wording in holds
- * empty until the researcher writes it (`findBuiltInWordingProblems`).
+ * but text declared as possibly empty (`mayBeEmpty`), wording Network
+ * Canvas supplies, which a protocol in a language it has no wording in contains
+ * empty until the researcher writes it (`findBuiltInWordingProblems`), and
+ * the versions of a dynamic attribute, which are reported in each language
+ * that shows the dynamic attribute (`findDynamicAttributeProblems`).
  */
 export const findEmptyTextPaths = (
   protocol: unknown,
@@ -124,7 +127,10 @@ export const findEmptyTextPaths = (
   references?: readonly EntityAttributeReferenceHit[],
 ): readonly (readonly (string | number)[])[] => {
   const empty = localizedStrings.filter(
-    (hit) => hit.mayBeEmpty !== true && Object.keys(hit.value).length === 0,
+    (hit) =>
+      hit.mayBeEmpty !== true &&
+      Object.keys(hit.value).length === 0 &&
+      textPlaceOf(hit.path).kind !== 'dynamicAttributeWording',
   );
   if (empty.length === 0) return [];
   const paths = builtInWordingPaths(protocol, references);

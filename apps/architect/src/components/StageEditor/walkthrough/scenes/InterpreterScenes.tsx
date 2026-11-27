@@ -27,8 +27,6 @@ const TEXT = {
   typedAge: '34',
   yes: 'Yes',
   no: 'No',
-  titleChip: 'Title',
-  textChip: 'Introduction text',
   known: 'How long have you known each other?',
   typedKnown: '5 years',
   oneForm: 'One form for each edge',
@@ -230,51 +228,16 @@ export function Heading({
 const EGO = {
   x: STAGE_CENTER_X - 220,
   width: 440,
-  introY: STAGE.y + 22,
-  introHeight: 96,
+  y: STAGE.y + 22,
+  /** Where the questions start, below the heading and the introduction. */
+  fieldsY: STAGE.y + 22 + 96,
+  height: 296,
 } as const;
-const EGO_FORM_Y = EGO.introY + EGO.introHeight + 16;
-
-function EgoIntro({
-  title = TEXT.aboutYou,
-  lines = 2,
-  short = false,
-}: {
-  title?: string;
-  lines?: number;
-  /** Shorter text lines, leaving room for a label beside them. */
-  short?: boolean;
-}) {
-  return (
-    <>
-      <Card
-        x={EGO.x}
-        y={EGO.introY}
-        width={EGO.width}
-        height={EGO.introHeight}
-      />
-      <text
-        x={EGO.x + 28}
-        y={EGO.introY + 40}
-        fontSize={24}
-        fontWeight={900}
-        className="fill-white"
-      >
-        {title}
-      </text>
-      {lines > 0 ? (
-        <TextBar x={EGO.x + 28} y={EGO.introY + 62} width={short ? 200 : 300} />
-      ) : null}
-      {lines > 1 ? (
-        <TextBar x={EGO.x + 28} y={EGO.introY + 80} width={short ? 150 : 220} />
-      ) : null}
-    </>
-  );
-}
 
 /**
- * Shows an ego form where the participant types their age and chooses Yes on
- * the form below the introduction, then presses Next.
+ * Shows an ego form, one document with a heading and an introduction above
+ * its questions, where the participant types their age and chooses Yes, then
+ * presses Next.
  */
 export const EgoFormIntroScene = defineScene(5.4, ({ t }) => {
   const typed = TEXT.typedAge.slice(
@@ -282,7 +245,6 @@ export const EgoFormIntroScene = defineScene(5.4, ({ t }) => {
     Math.round(TEXT.typedAge.length * segment(t, 0.9, 0.5)),
   );
   const chosen = t >= 2.6 ? 'yes' : undefined;
-  const formHeight = 200;
   const ready = t >= 3.4;
   return {
     rail: {
@@ -293,83 +255,40 @@ export const EgoFormIntroScene = defineScene(5.4, ({ t }) => {
     },
     body: (
       <>
-        <EgoIntro />
-        <Card x={EGO.x} y={EGO_FORM_Y} width={EGO.width} height={formHeight} />
-        <Label x={EGO.x + 28} y={EGO_FORM_Y + 34} text={TEXT.age} />
+        <Card x={EGO.x} y={EGO.y} width={EGO.width} height={EGO.height} />
+        <text
+          x={EGO.x + 28}
+          y={EGO.y + 40}
+          fontSize={24}
+          fontWeight={900}
+          className="fill-white"
+        >
+          {TEXT.aboutYou}
+        </text>
+        <TextBar x={EGO.x + 28} y={EGO.y + 62} width={300} />
+        <TextBar x={EGO.x + 28} y={EGO.y + 80} width={220} />
+        <Label x={EGO.x + 28} y={EGO.fieldsY + 34} text={TEXT.age} />
         <TextBox
           x={EGO.x + 28}
-          y={EGO_FORM_Y + 46}
+          y={EGO.fieldsY + 46}
           width={EGO.width - 56}
           text={typed}
           caret={t >= 0.9 && t < 1.8}
         />
-        <Label x={EGO.x + 28} y={EGO_FORM_Y + 124} text={TEXT.partner} />
-        <YesNo x={EGO.x + 28} y={EGO_FORM_Y + 140} chosen={chosen} />
+        <Label x={EGO.x + 28} y={EGO.fieldsY + 124} text={TEXT.partner} />
+        <YesNo x={EGO.x + 28} y={EGO.fieldsY + 140} chosen={chosen} />
       </>
     ),
     overlay: (
       <Click
         t={t}
         stops={[
-          { to: [EGO.x + 120, EGO_FORM_Y + 66], at: 0.8 },
-          { to: [EGO.x + 83, EGO_FORM_Y + 160], at: 2.6 },
+          { to: [EGO.x + 120, EGO.fieldsY + 66], at: 0.8 },
+          { to: [EGO.x + 83, EGO.fieldsY + 160], at: 2.6 },
           { to: NEXT_BUTTON, at: 4.3 },
         ]}
         leave={4.8}
       />
-    ),
-  };
-});
-
-/**
- * Shows an ego form where the introduction's required title is typed in first,
- * and the optional introduction text then appears below the title.
- */
-export const EgoFormIntroductionScene = defineScene(4.2, ({ t }) => {
-  const title = TEXT.aboutYou.slice(
-    0,
-    Math.round(TEXT.aboutYou.length * segment(t, 0.4, 0.9)),
-  );
-  const lines = t >= 2.4 ? 2 : t >= 1.9 ? 1 : 0;
-  return {
-    rail: { progress: 0.12 },
-    body: (
-      <>
-        <EgoIntro title={title} lines={lines} short />
-        <Card
-          x={EGO.x}
-          y={EGO_FORM_Y}
-          width={EGO.width}
-          height={200}
-          opacity={0.45}
-        />
-        <TextBar
-          x={EGO.x + 28}
-          y={EGO_FORM_Y + 34}
-          width={180}
-          className="stroke-white/20"
-        />
-        <TextBar
-          x={EGO.x + 28}
-          y={EGO_FORM_Y + 104}
-          width={220}
-          className="stroke-white/20"
-        />
-        <Chip
-          x={EGO.x + EGO.width - 70}
-          y={EGO.introY + 34}
-          text={TEXT.titleChip}
-          size={13}
-          k={backOut(segment(t, 1.4, 0.4))}
-        />
-        <Chip
-          x={EGO.x + EGO.width - 90}
-          y={EGO.introY + 71}
-          text={TEXT.textChip}
-          size={13}
-          k={backOut(segment(t, 2.6, 0.4))}
-        />
-      </>
     ),
   };
 });

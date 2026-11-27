@@ -635,6 +635,9 @@
         "title": {
           "en": "Add to my world"
         },
+        "content": {
+          "en": "![](field:b540ded0-fd58-5c0b-9c7b-8757d73eb56b)\n\n![](field:9c9eda96-c4d5-5454-9e1d-23004abb3857)"
+        },
         "fields": [
           {
             "id": "b540ded0-fd58-5c0b-9c7b-8757d73eb56b",
@@ -714,6 +717,9 @@
       "form": {
         "title": {
           "en": "Add to my world"
+        },
+        "content": {
+          "en": "![](field:e2efdcae-d80b-53f5-80bf-4a44849feb6b)\n\n![](field:f351137e-0b3a-5902-9e82-354752cf3d60)"
         },
         "fields": [
           {

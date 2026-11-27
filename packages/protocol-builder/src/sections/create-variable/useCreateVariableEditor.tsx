@@ -71,6 +71,13 @@ export type CreateVariableEditorOptions = Readonly<{
    */
   seedValidation?: Readonly<Record<string, unknown>>;
   /**
+   * The input control the attribute is collected with, for a slot that
+   * collects it (a form's field). Written with the attribute, and the
+   * editor asks for the settings that this control needs, such as the
+   * labels of a scale.
+   */
+  seedComponent?: string;
+  /**
    * Passed on to the editor, for a slot whose host fixes the type or keeps a
    * choice of its own about each option.
    */
@@ -109,6 +116,25 @@ export type CreateVariableEditor = Readonly<{
   /** The dialog itself, rendered by whoever owns the control that opens it. */
   editor: ReactNode;
 }>;
+
+/**
+ * The participant's section as a protocol that has asked the participant
+ * nothing yet has it: none at all. The first attribute brings it into being
+ * (see `useCodebookSectionWrite`), so an editor opens on it as on an empty
+ * one.
+ */
+const NO_EGO_SECTION: SectionDoc = {};
+
+/**
+ * The section that an attribute of `subject` is created in: the protocol's,
+ * or an empty one for the participant's attributes before the first.
+ */
+const sectionToCreateIn = (
+  sections: Readonly<Record<string, SectionDoc>>,
+  subject: CodebookSubject,
+): SectionDoc | undefined =>
+  sections[sectionIdForCodebookSubject(subject)] ??
+  (subject.entity === 'ego' ? NO_EGO_SECTION : undefined);
 
 type EditorSession = Readonly<{
   key: string;
@@ -157,6 +183,7 @@ export function useCreateVariableEditor({
   seedOptions,
   title,
   seedValidation,
+  seedComponent,
   editorOptions,
   onCreated,
 }: CreateVariableEditorOptions): CreateVariableEditor {
@@ -167,9 +194,7 @@ export function useCreateVariableEditor({
   const { session, openSession, closeSession, onSessionExited } =
     useDialogSession<EditorSession>();
   const authoritativeDocument =
-    subject === null
-      ? undefined
-      : protocolSections[sectionIdForCodebookSubject(subject)];
+    subject === null ? undefined : sectionToCreateIn(protocolSections, subject);
 
   /**
    * What opening an editor from here would open it ON, or `undefined` while
@@ -191,7 +216,7 @@ export function useCreateVariableEditor({
   const openedSection =
     session === null
       ? undefined
-      : protocolSections[sectionIdForCodebookSubject(session.subject)];
+      : sectionToCreateIn(protocolSections, session.subject);
 
   /**
    * Whether what is open may be WRITTEN, which is three questions.
@@ -332,6 +357,7 @@ export function useCreateVariableEditor({
           ...(seedValidation === undefined
             ? {}
             : { validation: seedValidation }),
+          ...(seedComponent === undefined ? {} : { component: seedComponent }),
         }}
         allowedVariableTypes={variableTypes}
         lockedOptions={lockedOptions ?? null}

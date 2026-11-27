@@ -131,11 +131,17 @@ The choice changes only the words participants read and is not reflected in the 
 ## Collect additional attributes for each person
 
 <!-- section: person-form-fields -->
-<!-- field: form.fields -->
+<!-- field: form.content -->
 
 Switch on **Additional person fields** to ask more about each family member. The participant is shown these questions for every person they add, and also for themselves.
 
-> Do: Use the dynamic attribute that determines who the question is being asked of to tailor wording to suit the question being asked of the participant or their family members.
+The questions are written as a form: one rich text document in which each question is a **field**. To add a field, choose **Field** in the toolbar, choose the attribute to which the answers are saved, and then type the question in the field. Select a field to change its input control, options and validation. The form must contain at least one field.
+
+Choose **Logic block** in the toolbar to show some questions only in some cases. When the participant saves a person, the answers to any fields that the logic hides are cleared.
+
+Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
+
+> Do: Word each question for the person that it asks about, such as "How old are you?" for the participant and "How old is this person?" for a relative. Use a dynamic attribute or a logic block with the **Participant or someone else** logic.
 
 > Avoid: Long forms with many items. Participants answer the additional person fields for every family member, so shorter forms reduce response burden and encourage more complete family trees.
 

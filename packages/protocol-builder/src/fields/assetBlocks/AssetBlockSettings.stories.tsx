@@ -52,46 +52,32 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * An image's settings: what it says to a screen reader and how large it is
- * drawn. Where it sits across the page is offered only once it is held to a
- * size, since a picture drawn as large as it is has nowhere else to sit; and
- * nothing about playing, which a picture does not do.
+ * An image's settings: what it says to a screen reader. Nothing about its
+ * size, which is set by dragging its corner, or where it sits across the
+ * page, which Markdown cannot say; and nothing about playing, which a
+ * picture does not do.
  */
 export const ForAnImage: Story = {
   play: async ({ canvasElement, args }) => {
     const settings = within(canvasElement);
+    const description = settings.getByRole('textbox', { name: 'Description' });
+    await expect(description).toBeVisible();
     await expect(
-      settings.getByRole('textbox', { name: 'Description' }),
-    ).toBeVisible();
+      settings.queryByRole('group', { name: 'Display size' }),
+    ).toBeNull();
     await expect(
       settings.queryByRole('group', { name: 'Alignment' }),
     ).toBeNull();
     await expect(settings.queryByRole('switch')).toBeNull();
 
-    const size = settings.getByRole('group', { name: 'Display size' });
-    await userEvent.click(within(size).getByRole('button', { name: 'Small' }));
-    await expect(args.update).toHaveBeenLastCalledWith({ size: 'small' });
-
-    const alignment = await settings.findByRole('group', { name: 'Alignment' });
-    await userEvent.click(
-      within(alignment).getByRole('button', { name: 'Align to the end' }),
-    );
-    await expect(args.update).toHaveBeenLastCalledWith({ align: 'end' });
-
-    // Back to its own size, which is no size at all.
-    await userEvent.click(
-      within(size).getByRole('button', { name: 'Full size' }),
-    );
-    await expect(args.update).toHaveBeenLastCalledWith({ size: null });
-    await expect(
-      settings.queryByRole('group', { name: 'Alignment' }),
-    ).toBeNull();
+    await userEvent.type(description, 'A');
+    await expect(args.update).toHaveBeenLastCalledWith({ description: 'A' });
   },
 };
 
 /**
- * A recording's settings: no size, since a player is the height it is, but
- * always where it sits, and whether it plays by itself and again.
+ * A recording's settings: whether it plays by itself and again, and nothing
+ * about its size or where it sits.
  */
 export const ForAudio: Story = {
   args: { asset: { kind: 'audio', name: 'instructions.mp3' } },
@@ -101,8 +87,8 @@ export const ForAudio: Story = {
       settings.queryByRole('group', { name: 'Display size' }),
     ).toBeNull();
     await expect(
-      settings.getByRole('group', { name: 'Alignment' }),
-    ).toBeVisible();
+      settings.queryByRole('group', { name: 'Alignment' }),
+    ).toBeNull();
 
     const autoplay = settings.getByRole('switch', {
       name: 'Start playing automatically',
@@ -114,7 +100,7 @@ export const ForAudio: Story = {
   },
 };
 
-/** A video's settings: how large it is drawn, and how it plays. */
+/** A video's settings: how it plays, and nothing about its size. */
 export const ForAVideo: Story = {
   args: {
     asset: { kind: 'video', name: 'walkthrough.mp4' },
@@ -126,13 +112,9 @@ export const ForAVideo: Story = {
   },
   play: async ({ canvasElement, args }) => {
     const settings = within(canvasElement);
-    const size = settings.getByRole('group', { name: 'Display size' });
     await expect(
-      within(size).getByRole('button', { name: 'Medium' }),
-    ).toHaveAttribute('aria-pressed', 'true');
-    await expect(
-      settings.getByRole('group', { name: 'Alignment' }),
-    ).toBeVisible();
+      settings.queryByRole('group', { name: 'Display size' }),
+    ).toBeNull();
 
     await userEvent.click(
       settings.getByRole('switch', { name: 'Repeat when it ends' }),
@@ -141,29 +123,6 @@ export const ForAVideo: Story = {
     await expect(
       settings.getByRole('switch', { name: 'Start playing automatically' }),
     ).not.toBeChecked();
-  },
-};
-
-/**
- * Text that runs right to left: the alignment that sits a picture where a
- * line starts is drawn against the right, where its lines start, whichever
- * way the interface reads.
- */
-export const InTextThatRunsRightToLeft: Story = {
-  args: {
-    direction: 'rtl',
-    attributes: assetBlockAttributes({ size: 'small' }),
-  },
-  play: async ({ canvasElement }) => {
-    const alignment = within(canvasElement).getByRole('group', {
-      name: 'Alignment',
-    });
-    const iconOf = (name: string) =>
-      within(alignment).getByRole('button', { name }).querySelector('svg');
-    await expect(iconOf('Align to the start')).toHaveClass(
-      'lucide-align-right',
-    );
-    await expect(iconOf('Align to the end')).toHaveClass('lucide-align-left');
   },
 };
 

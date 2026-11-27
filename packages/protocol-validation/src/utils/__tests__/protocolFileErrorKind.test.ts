@@ -59,14 +59,14 @@ describe('isProtocolFileFault', () => {
         {
           code: 'custom',
           path: ['stages', 0, 'prompts', 0, 'text'],
-          message: 'Text cannot be blank.',
+          message: 'This wording cannot be blank.',
         },
       ],
       [
         {
           path: ['stages', 0, 'prompts', 0, 'text'],
           place: 'Stage “Friends”, prompt 1',
-          message: 'Text cannot be blank.',
+          message: 'This wording cannot be blank.',
         },
       ],
     );

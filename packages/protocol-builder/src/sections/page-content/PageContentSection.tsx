@@ -29,11 +29,11 @@ export const pageContentMessages = defineMessages({
       'Label of the text editor where a researcher writes a page a participant reads. Rich text is text that can hold headings, formatting and media files, as opposed to plain text.',
   },
   contentHint: {
-    id: 'protocolBuilder.pageContent.contentHint',
+    id: 'protocolBuilder.pageContent.toolbarHint',
     defaultMessage:
-      'Use the toolbar to add headings and format text, as well as to insert images, audio and video.',
+      'Use the toolbar to format the text, and to insert attributes, logic blocks, images, audio and video. A logic block contains content that is shown only in some cases.',
     description:
-      'Guidance under the label of the text editor where a researcher writes a page a participant reads. The toolbar is the row of buttons above the text; it formats the text and inserts media files between its paragraphs.',
+      'Guidance under the label of the text editor where a researcher writes a page a participant reads. The toolbar is the row of buttons above the text. An attribute is a value that the interview fills in, such as the participant’s name; a logic block is content shown only when its rules are met, or only for some answers.',
   },
   contentPlaceholder: {
     id: 'protocolBuilder.pageContent.contentPlaceholder',

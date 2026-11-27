@@ -1,8 +1,6 @@
 import {
-  ASSET_BLOCK_DEFAULTS,
-  type AssetBlockAlignment,
+  boundedCache,
   type AssetBlockSize,
-  isAssetBlockAlignment,
   isAssetBlockSize,
 } from '@codaco/shared-consts';
 
@@ -18,7 +16,7 @@ import { type MessageNode, messageStructure } from './messageStructure.ts';
  * Text holds a block as a markdown image in a paragraph of its own, whose
  * address names the file by its id in the protocol's assets:
  *
- *     ![A map of the study area](asset:8a2f0c1e?size=medium&align=end)
+ *     ![A map of the study area](asset:8a2f0c1e?size=medium)
  *
  * The form is plain CommonMark, so every markdown parser already reads it; it
  * holds no braces, so it is literal text inside the ICU messages that
@@ -36,8 +34,6 @@ export type AssetBlock = Readonly<{
   description?: string;
   /** How tall an image or a video may be. Absent, it takes its own height. */
   size?: AssetBlockSize;
-  /** Where the file sits across the page. Absent, it is centred. */
-  align?: AssetBlockAlignment;
   /** Whether audio or video starts by itself. Absent, it does. */
   autoplay?: boolean;
   /** Whether audio or video starts again when it ends. Absent, it does. */
@@ -48,15 +44,12 @@ export type AssetBlock = Readonly<{
 // what draws a block without reading its markdown holds the same list. They
 // are exported here too, beside the grammar that writes them.
 export {
-  ASSET_BLOCK_ALIGNMENTS,
   ASSET_BLOCK_DEFAULTS,
   ASSET_BLOCK_KINDS,
   ASSET_BLOCK_SIZES,
-  type AssetBlockAlignment,
   type AssetBlockAttributes,
   type AssetBlockKind,
   type AssetBlockSize,
-  isAssetBlockAlignment,
   isAssetBlockKind,
   isAssetBlockSize,
 } from '@codaco/shared-consts';
@@ -96,15 +89,11 @@ const decodeAssetId = (encoded: string): string | undefined => {
 export const assetBlockUrl = ({
   assetId,
   size,
-  align,
   autoplay,
   loop,
 }: AssetBlock): string => {
   const settings = [
     ...(size === undefined ? [] : [`size=${size}`]),
-    ...(align === undefined || align === ASSET_BLOCK_DEFAULTS.align
-      ? []
-      : [`align=${align}`]),
     ...(autoplay === false ? ['autoplay=false'] : []),
     ...(loop === false ? ['loop=false'] : []),
   ];
@@ -136,8 +125,6 @@ export type AssetBlockPlacementProblem = Readonly<
   | { kind: 'notInParagraph' }
   /** Named through a reference (`![alt][label]`, `[label]: asset:…`). */
   | { kind: 'byReference' }
-  /** Inside one version of a `select` or `plural`, which is a line of words. */
-  | { kind: 'inVersion' }
   /** With a value, or a choice of versions, in its description or address. */
   | { kind: 'holdsValue' }
 >;
@@ -170,7 +157,6 @@ export const readAssetBlockUrl = (
   if (assetId === '') problems.push({ kind: 'noAsset' });
 
   let size: AssetBlockSize | undefined;
-  let align: AssetBlockAlignment | undefined;
   let autoplay: boolean | undefined;
   let loop: boolean | undefined;
   for (const [setting, value] of new URLSearchParams(query)) {
@@ -178,9 +164,6 @@ export const readAssetBlockUrl = (
       problems.push({ kind: 'invalidValue', setting, value });
     if (setting === 'size') {
       if (isAssetBlockSize(value)) size = value;
-      else invalid();
-    } else if (setting === 'align') {
-      if (isAssetBlockAlignment(value)) align = value;
       else invalid();
     } else if (setting === 'autoplay' || setting === 'loop') {
       const flag = BOOLEANS[value];
@@ -196,8 +179,6 @@ export const readAssetBlockUrl = (
     block: {
       assetId,
       ...(size !== undefined && { size }),
-      ...(align !== undefined &&
-        align !== ASSET_BLOCK_DEFAULTS.align && { align }),
       ...(autoplay === false && { autoplay }),
       ...(loop === false && { loop }),
     },
@@ -347,52 +328,34 @@ const readAssetBlocksInMessage = (
   // The text is always read. Looking for `asset:` in it first would save the
   // reading for most text and miss a file named with the colon escaped
   // (`asset\:id`, `asset&#58;id`), which markdown reads as the same address.
+  // A version of a logic block is a document of its own, whose blocks are
+  // read as the text's own are (see `contentDocument.ts`).
   const structure = messageStructure(message);
-  const [own = '', ...versions] =
-    'nodes' in structure ? levelTexts(structure.nodes) : [message];
-  return [
-    ...blocksInMarkdown(own).map(({ block, problems, written }) => ({
+  const levels = 'nodes' in structure ? levelTexts(structure.nodes) : [message];
+  return levels
+    .flatMap(blocksInMarkdown)
+    .map(({ block, problems, written }) => ({
       block,
       // What a value stands in cannot be read until the value is shown, so
       // nothing else is said of it.
       problems: written.includes(NOT_TEXT)
         ? [{ kind: 'holdsValue' } as const]
         : problems,
-    })),
-    ...versions.flatMap(blocksInMarkdown).map(({ block, problems }) => ({
-      block,
-      problems: [...problems, { kind: 'inVersion' } as const],
-    })),
-  ];
+    }));
 };
-
-// Validation reads each translation that can hold blocks several times (for
-// the asset references, for the blocks' problems, for whether a page shows a
-// file), and an editor checks the protocol again after each change, mostly
-// to text that has not changed. Parsing markdown is the costly part, and its
-// result is only ever read, so one reading serves every reader. Bounded, so
-// that an editor producing a new message with each keystroke cannot grow it
-// without limit.
-const BLOCK_READINGS_KEPT = 500;
-const blockReadings = new Map<string, readonly AssetBlockInText[]>();
 
 /**
  * Every file a localized message names as a block: in its own text, and in
- * each version a `select` or `plural` chooses between, since any of them may
- * be the one a participant is shown. One in a version is found so that it can
- * be reported: a version is a line of words, and holds no block. A message
- * that cannot be read as ICU is searched as it is written.
+ * each version of a logic block, since any of them may be the one a
+ * participant is shown. A message that cannot be read as ICU is searched as
+ * it is written.
+ *
+ * Validation reads each translation that can contain blocks several times
+ * (for the asset references, for the blocks' problems, for whether a page
+ * shows a file), and an editor checks the protocol again after each change,
+ * mostly to text that has not changed. Parsing markdown is the costly part,
+ * and its result is only ever read, so readings are kept (`boundedCache`).
  */
-export const assetBlocksInMessage = (
+export const assetBlocksInMessage: (
   message: string,
-): readonly AssetBlockInText[] => {
-  const known = blockReadings.get(message);
-  if (known !== undefined) return known;
-  const read = readAssetBlocksInMessage(message);
-  if (blockReadings.size >= BLOCK_READINGS_KEPT) {
-    const oldest = blockReadings.keys().next();
-    if (!oldest.done) blockReadings.delete(oldest.value);
-  }
-  blockReadings.set(message, read);
-  return read;
-};
+) => readonly AssetBlockInText[] = boundedCache(500, readAssetBlocksInMessage);

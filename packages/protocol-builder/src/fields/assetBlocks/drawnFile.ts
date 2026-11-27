@@ -9,11 +9,6 @@ export type DrawnFile = Readonly<{
   height: number;
   /** A picture's width over its height; `undefined` for an audio player. */
   ratio: number | undefined;
-  /**
-   * How far across the box the file sits: 0 against its left edge, 1 against
-   * its right, 0.5 in the middle.
-   */
-  across: number;
 }>;
 
 export const hasRatio = (
@@ -31,13 +26,12 @@ const sameDrawing = (
     one.top === other.top &&
     one.width === other.width &&
     one.height === other.height &&
-    one.ratio === other.ratio &&
-    one.across === other.across);
+    one.ratio === other.ratio);
 
 /**
  * Where `box` draws its file. An image or video held to a height is drawn
  * inside an element as wide as the page, so its picture is narrower than its
- * element, and sits where the element's `object-position` puts it. Nothing
+ * element, and sits in the middle of it. Nothing
  * until the file has said how large it is.
  */
 const drawnFileIn = (box: HTMLElement): DrawnFile | undefined => {
@@ -52,7 +46,6 @@ const drawnFileIn = (box: HTMLElement): DrawnFile | undefined => {
       width: element.width,
       height: element.height,
       ratio: undefined,
-      across: 0.5,
     };
   }
   const [naturalWidth, naturalHeight] =
@@ -67,15 +60,13 @@ const drawnFileIn = (box: HTMLElement): DrawnFile | undefined => {
   const ratio = naturalWidth / naturalHeight;
   const width = Math.min(element.width, element.height * ratio);
   const height = width / ratio;
-  const position = Number.parseFloat(getComputedStyle(media).objectPosition);
-  const across = Number.isFinite(position) ? position / 100 : 0.5;
+  // Drawn whole in the middle of its element (`object-contain`).
   return {
-    left: element.left - outer.left + (element.width - width) * across,
+    left: element.left - outer.left + (element.width - width) / 2,
     top: element.top - outer.top + (element.height - height) / 2,
     width,
     height,
     ratio,
-    across,
   };
 };
 

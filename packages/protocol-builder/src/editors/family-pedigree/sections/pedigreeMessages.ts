@@ -1034,25 +1034,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Description of the additional person fields section. The side panel is where the participant describes each person they add. The interface’s own questions are the person’s name, gender identity (when the stage asks it) and sex assigned at birth, and then how the person is related to others in the family.',
   },
-  personFormFieldLabel: {
-    id: 'protocolBuilder.pedigree.personFormFieldLabel',
-    defaultMessage: 'Form fields',
-    description:
-      'Label of the ordered list of extra questions asked about each family member.',
-  },
-  personFormAddLabel: {
-    id: 'protocolBuilder.pedigree.personFormAddLabel',
-    defaultMessage: 'Create new person field',
-    description:
-      'Button that opens the dialog for adding one more question about each family member.',
-  },
-  personFormEmptyState: {
-    id: 'protocolBuilder.pedigree.personFormEmptyState',
-    defaultMessage:
-      'No fields yet. Create one to ask something more about each family member.',
-    description:
-      'Shown in place of the additional person fields list while it asks nothing yet.',
-  },
   personFormClearTitle: {
     id: 'protocolBuilder.pedigree.personFormClearTitle',
     defaultMessage: 'Remove the additional person fields?',

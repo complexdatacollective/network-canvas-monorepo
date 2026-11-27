@@ -141,13 +141,20 @@ export const holdsFocus = (node: Node | null | undefined): node is Element =>
  * and for the same reason: not tabbable itself, so it resolves to the
  * document's first tabbable element.
  *
+ * Nor is an element inside an `inert` subtree, which cannot take focus. A
+ * list's row on its way out stays in the document, `inert`, until its exit
+ * animation ends: a dialog opened from a control in that row (the row's own
+ * Delete) would otherwise hand focus back to that control, and focus would be
+ * left on `<body>` instead of moving to the row that takes its place.
+ *
  * Exported because EVERY path that names a target explicitly needs it: an
  * explicit `finalFocus` bypasses Base UI's own connectivity check, so a target
  * that has since been removed is strictly worse than answering "no opinion".
  */
 export const isUsableFinalFocusTarget = (
   element: HTMLElement | null | undefined,
-): element is HTMLElement => holdsFocus(element);
+): element is HTMLElement =>
+  holdsFocus(element) && element.closest('[inert]') === null;
 
 /**
  * Narrows an arbitrary node — in practice `document.activeElement`, which is

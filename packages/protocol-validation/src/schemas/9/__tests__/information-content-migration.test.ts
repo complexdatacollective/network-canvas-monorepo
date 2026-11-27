@@ -529,14 +529,14 @@ describe('combineInformationContent', () => {
       expect(blocksOf([asset('a', 'clip')])).toBe('# T\n\n![](asset:clip)');
     });
 
-    it('writes an audio recording that starts at the start of the line and plays once, with no size', () => {
+    it('writes an audio recording that plays once, with no size', () => {
       expect(blocksOf([asset('a', 'tune', { size: 'LARGE' })])).toBe(
-        '# T\n\n![](asset:tune?align=start&loop=false)',
+        '# T\n\n![](asset:tune?loop=false)',
       );
     });
 
-    it('writes an image with no loop and no align setting', () => {
-      expect(blocksOf([asset('a', 'photo')])).not.toMatch(/loop|align/);
+    it('writes an image with no loop setting', () => {
+      expect(blocksOf([asset('a', 'photo')])).not.toMatch(/loop/);
     });
 
     it('leaves out an item naming a file missing from the manifest', () => {
@@ -706,8 +706,8 @@ describe('combineInformationContent', () => {
         { localization: EN_FR },
       );
       expect(stage.content).toEqual({
-        en: '# Hi {name}\n\n![Song for {name}](asset:tune?align=start&loop=false)',
-        fr: '# Salut {name}\n\n![Song for {name}](asset:tune?align=start&loop=false)',
+        en: '# Hi {name}\n\n![Song for {name}](asset:tune?loop=false)',
+        fr: '# Salut {name}\n\n![Song for {name}](asset:tune?loop=false)',
       });
     });
 
@@ -894,7 +894,7 @@ describe('through the whole 8 to 9 migration', () => {
         'Some text.',
         '![A map](asset:photo?size=medium)',
         '![](asset:clip?size=small)',
-        '![A song](asset:tune?align=start&loop=false)',
+        '![A song](asset:tune?loop=false)',
       ].join('\n\n'),
     });
     expect(stage).not.toHaveProperty('title');

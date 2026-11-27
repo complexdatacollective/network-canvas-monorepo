@@ -9,6 +9,7 @@
 export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   CategoricalBin: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -45,6 +46,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   AlterForm: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -85,6 +87,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   AlterEdgeForm: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -135,6 +138,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   Anonymisation: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'explanationText',
     'label',
@@ -168,6 +172,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   DyadCensus: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -190,9 +195,12 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   EgoForm: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
-    'introductionPanel.title',
-    'introductionPanel.text',
+    'form.content',
+    'form.content.logic-block-shows-field',
+    'form.content.hidden-answer-cleared-on-submit',
+    'form.content.field-in-one-language-only',
     'form.fields-ordering-and-prompt',
     'form.fields[].hint',
     'form.fields[].showValidationHints',
@@ -241,6 +249,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   OrdinalBin: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -261,6 +270,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NameGenerator: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'subject',
     'form',
@@ -295,6 +305,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NetworkComposer: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -332,6 +343,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   Narrative: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -359,6 +371,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   OneToManyDyadCensus: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'subject.type',
     'behaviours.removeAfterConsideration',
@@ -374,6 +387,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   Sociogram: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -399,6 +413,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   TieStrengthCensus: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -421,6 +436,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NameGeneratorRoster: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'panelTitle',
@@ -459,6 +475,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NameGeneratorQuickAdd: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -490,6 +507,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   FamilyPedigree: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -637,6 +655,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   FinishSession: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'stage.type',
     'stage.id',
@@ -673,6 +692,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   Geospatial: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'label',
     'interviewScript',
@@ -711,6 +731,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   Information: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'content',
     'content.heading',
@@ -719,7 +740,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'asset-block.audio',
     'asset-block.video',
     'asset-block.size',
-    'asset-block.align',
     'asset-block.autoplay',
     'asset-block.loop',
     'asset-block.description',
@@ -733,6 +753,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   NarrativePedigree: [
     'conditions',
+    'dynamicAttributes',
     'dynamicValues',
     'type',
     'id',

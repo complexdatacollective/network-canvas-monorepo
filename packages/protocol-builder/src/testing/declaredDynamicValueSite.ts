@@ -20,7 +20,9 @@ export const declaredDynamicValueSite = (
     { en: 'text' },
   );
   const target = path.map((part) => (typeof part === 'number' ? 0 : part));
-  const hit = collectLocalizedStringsFromSchema(schema, probe).find(
+  // The schema is an owner's (a stage's, or a variable's), so the probe
+  // starts at the owner rather than at a protocol's root.
+  const hit = collectLocalizedStringsFromSchema(schema, probe, 'owner').find(
     (candidate) => candidate.path.join('.') === target.join('.'),
   );
   if (hit === undefined) {

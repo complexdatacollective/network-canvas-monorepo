@@ -12,6 +12,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../../__tests__/englishForms.ts';
 import { testId } from '../../../__tests__/testId.ts';
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { ValueGenerator } from '../../../ValueGenerator.ts';
@@ -48,6 +49,8 @@ function makeContext(seed = 1): GenerationContext {
     usedRosterUids: new Set(),
     externalData: undefined,
     respectSkipLogicAndFiltering: false,
+    formLanguage: ENGLISH_FORMS.formLanguage,
+    formLocalization: ENGLISH_FORMS.localization,
     uniqueRegistry: new UniqueRegistry(),
     // These tests pass their constraints to `generateEntityAttributes`
     // directly, so the context's per-type maps are never read.
@@ -2237,6 +2240,7 @@ describe('a fixed value the greedy draw can only complete by breaking a rule', (
     pool: NcNode[],
   ): Record<string, VariableValue>[] {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed,
       codebook,
       stages: [stage],
