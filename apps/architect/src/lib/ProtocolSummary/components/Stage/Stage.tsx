@@ -23,9 +23,9 @@ import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
 import LayoutName from '../LayoutName';
 import MiniTable from '../MiniTable';
+import PrintedPage from '../PrintedPage';
 import type { FilterType } from '../Rules';
 import SummaryContext from '../SummaryContext';
-import SummaryPage from '../SummaryPage';
 import {
   DefaultLanguageText,
   SummaryDynamicValuesContext,
@@ -299,7 +299,7 @@ const StageContent = ({
         }
       : null;
   return (
-    <SummaryPage id={`stage-${id}`}>
+    <PrintedPage id={`stage-${id}`}>
       <div className="flex items-center">
         <div className="me-5 flex-1">
           <div
@@ -483,7 +483,7 @@ const StageContent = ({
         />
       )}
       <InterviewScript interviewScript={interviewScript ?? null} />
-    </SummaryPage>
+    </PrintedPage>
   );
 };
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>

@@ -15,9 +15,9 @@ import {
 } from '@codaco/protocol-validation';
 
 import MiniTable from './MiniTable';
+import PrintedPage from './PrintedPage';
 import SectionFrame from './Stage/SectionFrame';
 import SummaryContext from './SummaryContext';
-import SummaryPage from './SummaryPage';
 import { SummaryMarkdown, SummaryMessage, SummaryText } from './SummaryText';
 
 const messages = defineMessages({
@@ -102,7 +102,7 @@ const InterfaceText = () => {
   };
 
   return (
-    <SummaryPage id={INTERFACE_TEXT_ANCHOR}>
+    <PrintedPage id={INTERFACE_TEXT_ANCHOR}>
       <Heading level="h1">{intl.formatMessage(messages.title)}</Heading>
       {[...groups].map(([group, groupEntries]) => (
         <SectionFrame
@@ -138,7 +138,7 @@ const InterfaceText = () => {
           />
         </SectionFrame>
       ))}
-    </SummaryPage>
+    </PrintedPage>
   );
 };
 

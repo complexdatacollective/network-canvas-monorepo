@@ -7,8 +7,8 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { formatAssetType } from '~/components/Assets/assetMetadataMessages';
 
 import Asset from './Asset';
+import PrintedPage from './PrintedPage';
 import SummaryContext from './SummaryContext';
-import SummaryPage from './SummaryPage';
 const messages = defineMessages({
   resourceLibrary: {
     id: 'architect.protocolSummary.assetManifest.resourceLibrary',
@@ -36,7 +36,7 @@ const AssetManifest = () => {
     return null;
   }
   return (
-    <SummaryPage className="[&_h2]:capitalize">
+    <PrintedPage className="[&_h2]:capitalize">
       <Heading level="h1">
         {intl.formatMessage(messages.resourceLibrary)}
       </Heading>
@@ -49,7 +49,7 @@ const AssetManifest = () => {
             ))}
           </div>
         ))}
-    </SummaryPage>
+    </PrintedPage>
   );
 };
 export default AssetManifest;

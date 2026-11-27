@@ -8,8 +8,8 @@ import { describeLayouts } from '~/selectors/codebook/layouts';
 import DualLink from './DualLink';
 import EntityBadge from './EntityBadge';
 import MiniTable from './MiniTable';
+import PrintedPage from './PrintedPage';
 import SummaryContext from './SummaryContext';
-import SummaryPage from './SummaryPage';
 import { DefaultLanguageText } from './SummaryText';
 
 const messages = defineMessages({
@@ -79,7 +79,7 @@ const Layouts = () => {
     });
 
   return (
-    <SummaryPage id="layouts">
+    <PrintedPage id="layouts">
       <Heading level="h1">{intl.formatMessage(messages.layouts)}</Heading>
       {layouts.map((layout) => {
         const rows = [
@@ -115,7 +115,7 @@ const Layouts = () => {
           </div>
         );
       })}
-    </SummaryPage>
+    </PrintedPage>
   );
 };
 

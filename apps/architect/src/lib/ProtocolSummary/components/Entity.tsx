@@ -12,9 +12,10 @@ import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from './DualLink';
 import EntityBadge from './EntityBadge';
+import LayoutName from './LayoutName';
 import MiniTable from './MiniTable';
+import PrintedPage from './PrintedPage';
 import SummaryContext from './SummaryContext';
-import SummaryPage from './SummaryPage';
 import { SummaryText } from './SummaryText';
 import Variables from './Variables';
 const messages = defineMessages({
@@ -59,9 +60,9 @@ const Entity = ({ type, entity, label, variables }: EntityProps) => {
             layouts.map((layoutId) => (
               <div key={layoutId}>
                 <DualLink to={`#layout-${layoutId}`}>
-                  <bdi className="wrap-anywhere">
-                    {protocol.codebook.layouts?.[layoutId]?.name ?? layoutId}
-                  </bdi>
+                  <span className="wrap-anywhere">
+                    <LayoutName id={layoutId} />
+                  </span>
                 </DualLink>
               </div>
             )),
@@ -70,7 +71,7 @@ const Entity = ({ type, entity, label, variables }: EntityProps) => {
       : []),
   ];
   return (
-    <SummaryPage id={entity === 'ego' ? 'ego' : `entity-${type ?? ''}`}>
+    <PrintedPage id={entity === 'ego' ? 'ego' : `entity-${type ?? ''}`}>
       {entity !== 'ego' && type && entity && (
         <EntityBadge type={type} entity={entity} iconSize="tiny" />
       )}
@@ -82,7 +83,7 @@ const Entity = ({ type, entity, label, variables }: EntityProps) => {
       )}
 
       <Variables variables={variables} />
-    </SummaryPage>
+    </PrintedPage>
   );
 };
 export default Entity;

@@ -16,7 +16,7 @@ import { Toolbar } from '../pageobjects/toolbar.js';
 const FIXED_CLOCK = new Date('2026-01-01T12:00:00Z');
 
 /**
- * The printed document's own page structure. `SummaryPage.tsx` stamps
+ * The printed document's own page structure. `PrintedPage.tsx` stamps
  * `page-break-marker` on every element that begins a printed page — the cover,
  * the contents, each stage, each codebook entity, the layouts, the resource
  * library, and the interview text —

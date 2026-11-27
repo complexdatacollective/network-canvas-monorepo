@@ -10,6 +10,7 @@ import Codebook from '~/lib/ProtocolSummary/components/Codebook';
 import Contents from '~/lib/ProtocolSummary/components/Contents';
 import Cover from '~/lib/ProtocolSummary/components/Cover';
 import InterfaceText from '~/lib/ProtocolSummary/components/InterfaceText';
+import PrintedPage from '~/lib/ProtocolSummary/components/PrintedPage';
 import Stages from '~/lib/ProtocolSummary/components/Stages';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
 import { getCodebookIndex } from '~/lib/ProtocolSummary/helpers';
@@ -73,18 +74,12 @@ const SummaryPage = () => {
           />
         </div>
         <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8] rtl:[&_.variable-pill]:origin-right">
-          {/* Cover is the first marker; an explicit page break here would be
-            a no-op (CSS Fragmentation: forced breaks at the start of a
-            fragment are discarded) so it's omitted. */}
-          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook */}
-          <div className="page-break-marker flex flex-col gap-6">
+          <PrintedPage first>
             <Cover />
-          </div>
-
-          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- see above. */}
-          <div className="page-break-marker flex break-before-page flex-col gap-6">
+          </PrintedPage>
+          <PrintedPage>
             <Contents />
-          </div>
+          </PrintedPage>
 
           <Stages />
           <Codebook />
