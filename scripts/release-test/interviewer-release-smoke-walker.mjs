@@ -699,12 +699,16 @@ try {
   );
   await nextStage();
 
-  // Stage 5 — Sociogram: place all three (layout writes), then click two
-  // nodes in turn to create a "Knows" edge on the same prompt.
+  // Stage 5 — Sociogram: place all three on the layout prompt, then move to
+  // the connect prompt and click two nodes in turn to create a "Knows" edge.
   await expectStep(STEP.sociogram);
   await dragNodeToCanvasPosition('Alex', { x: 0.3, y: 0.35 });
   await dragNodeToCanvasPosition('Blair', { x: 0.65, y: 0.35 });
   await dragNodeToCanvasPosition('Casey', { x: 0.5, y: 0.65 });
+  await page.getByTestId('next-button').click();
+  await expect(
+    page.getByRole('status').locator('[data-active]').nth(1),
+  ).toHaveAttribute('data-active', 'true');
   await page.getByRole('button', { name: /^Alex/ }).click();
   await page.getByRole('button', { name: /^Blair/ }).click();
   await expect(page.locator('line[data-edge-id]')).toHaveCount(1);

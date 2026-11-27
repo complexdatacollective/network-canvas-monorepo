@@ -431,6 +431,12 @@ test.describe('conducting an interview', () => {
     // Both alters are now placed; the drawer reports zero unplaced.
     await expect(page.getByText(/^0 unplaced$/)).toBeVisible();
 
+    // Edges are created on the stage's second prompt, a connect task.
+    await page.getByTestId('next-button').click();
+    await expect(
+      page.getByText('Link people who know each other.'),
+    ).toBeVisible();
+
     await expect.poll(() => getEdgeCount(page)).toBe(0);
     await connectNodes(page, 'Alice', 'Bob');
     await expect.poll(() => getEdgeCount(page)).toBe(1);
