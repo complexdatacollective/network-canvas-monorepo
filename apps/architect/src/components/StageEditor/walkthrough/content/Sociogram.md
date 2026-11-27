@@ -67,7 +67,7 @@ Each prompt sets one task:
 - **Highlight nodes**: the participant taps nodes to set a Boolean attribute to true or false.
 - **Connect nodes**: the participant taps two nodes to create an edge of the type you choose.
 
-The participant works through the prompts one at a time, in the order you set, on the same canvas. The Next and Back buttons control moving between prompts. During a highlight or connect task, only nodes that are already on the canvas can be used, so put a position task first unless an earlier stage or automatic layout has already placed the nodes. If the first prompt is not a position task and nothing has placed the nodes before it, Architect shows a warning in this section.
+The participant works through the prompts one at a time, in the order you set, on the same canvas. The Next and Back buttons control moving between prompts. During a highlight or connect task, only nodes that are already on the canvas can be used, so put a positioning task first unless an earlier stage or automatic layout has already placed the nodes. If the first prompt is not a positioning task and nothing has placed the nodes before it, Architect shows a warning in this section.
 
 Every prompt uses the stage's layout, so positions carry over from one prompt to the next. To show nodes in a different arrangement, add another Sociogram stage that uses a different layout.
 
@@ -83,7 +83,7 @@ Read more about [prompts](https://documentation.networkcanvas.com/design-protoco
 
 In **Manual mode**, nodes that have not been placed yet wait in a bucket at the bottom of the screen. The participant drags each node onto the canvas, and can drag a node back to the bucket to remove it from the canvas.
 
-In **Automatic mode**, Network Canvas arranges the nodes for the participant when the stage opens by simulating attraction and repulsion. The participant can pause the simulation. During a position task, they can also move nodes while the simulation is paused.
+In **Automatic mode**, Network Canvas arranges the nodes for the participant when the stage opens by simulating attraction and repulsion. The participant can pause the simulation. During a positioning task, they can also move nodes while the simulation is paused.
 
 <!-- include: skip-logic -->
 

@@ -24,7 +24,7 @@ import {
 
 const TEXT = {
   place: ['Place people closer to the center', 'the closer you feel to them.'],
-  connect: ['Tap two people who know each other', 'to connect them.'],
+  connect: ['Tap two people who know', 'each other to connect them.'],
   rings: (n: number) => `Concentric circles: ${n}`,
   skew: 'Skew circle sizes: on',
   image: 'Image background',
@@ -256,7 +256,7 @@ function placed(
 }
 
 /**
- * Shows a sociogram with two prompts. In the first, a position task, the
+ * Shows a sociogram with two prompts. In the first, a positioning task, the
  * participant drags three alters from the drawer onto the concentric circles.
  * The prompt then moves on to a connect task, in which the participant taps
  * one node and then another to draw an edge between them.

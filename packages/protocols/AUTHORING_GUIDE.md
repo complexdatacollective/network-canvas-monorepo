@@ -47,7 +47,8 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
    stages, prompts, panels, Information `items`, form `fields`, filter `rules`, roster sort
    rules (`sortOptions.sortOrder`), `additionalAttributes` rows, roster card and sort properties
    (`cardOptions.additionalProperties`, `sortOptions.sortableProperties`), Narrative `presets`
-   and the rows of their `edges.display` and `highlight` lists, FamilyPedigree diseases,
+   and the rows of their `edges.display` and `highlight` lists, the rows of a Sociogram
+   highlight prompt's `highlight` list, FamilyPedigree diseases,
    NetworkComposer edge settings, and the `options` of categorical and ordinal variables. Each
    id must be a UUID (for example
    `"3f2c8a91-6b4d-4e2f-9a17-5c0d8e6b2a43"`), and no two of these objects anywhere in the
