@@ -136,6 +136,8 @@ The dynamic attribute is placed in the text as a pill that shows its versions, s
 
 Select the pill to open the dynamic attribute's settings, which contain the same controls as the dialog. A change applies everywhere that the dynamic attribute is used on the stage, and the settings say how many places that is. **Remove from this wording** removes the pill from the translatable string that you are editing. Any other translatable string that uses the dynamic attribute keeps it. When the stage is saved, a dynamic attribute that no translatable string uses is removed.
 
+![The settings of a dynamic attribute in the Per Alter Form question "How long have you known this [person / family member / friend…]?". Its logic is Different wording for each answer, and the answer to how_known decides which version is shown. The versions are "person" if the answer is not known, "family member" for Family, "friend" for Friend, "colleague" for Colleague, and "person" for any other answer.](/assets/img/piped-text/dynamic-attribute.png 'The settings of a dynamic attribute')
+
 The versions of a dynamic attribute are plain words: they cannot be formatted, and they cannot show values. A version can be left empty, and then nothing is shown in place of the pill. In the editor, an empty version reads **Shows nothing**, and so does the pill of a dynamic attribute whose versions are all empty.
 
 For example, a Per Alter Form question could ask "Where does this person [study / work]?", with a dynamic attribute whose logic is **If … else**:
@@ -155,6 +157,8 @@ A logic block can be added to any translatable string of several lines that acce
 4. Write the content of each version in the block.
 
 The block shows its versions one below another. Each version has a label that says when it is shown, such as **If:** followed by its rules, **Otherwise**, the label of an answer, **If not known** or **Any other answer**. A version that has no content reads **Nothing is shown.** In that case, the participant sees nothing.
+
+![A logic block at the end of an Information stage's text. Its If version, which is shown when the participant's answer to preferred_contact_method includes Email, reads "We will email you a reminder before your next interview." Its Otherwise version reads "We will contact you before your next interview."](/assets/img/piped-text/logic-block.png 'A logic block with an If version and an Otherwise version')
 
 To change a logic block, choose its settings button. The settings contain the **Logic** control, the rules or the attribute, and **Delete logic block**, which deletes the block with all of its content. When a change to the logic would remove versions that have content, Architect asks before deleting them. In a form, the settings also say that when the participant submits the form, the answers to any fields in versions that are not shown are cleared.
 

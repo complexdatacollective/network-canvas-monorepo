@@ -79,12 +79,12 @@ An Information stage's page heading and list of items became one text, written
 in a single editor, with images, audio and video placed in it as blocks. These
 images predate that work:
 
-| Image                                                     | Page                                                                                                                   | What changed                                                                                                                                                                                                                                                                                                                                                                           |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface-documentation/information/architect-items.png` | `design-protocols/interface-documentation/information.en.mdx`                                                          | Shows the removed **Page heading** field and the list of items. Recapture the **Content** section: the **Rich Text** editor holding a heading, a paragraph and an image block, with the image selected so that its resize handle (on the bottom corner of its outline) and its settings (Description, Display size, Alignment, the **Image** file field and **Delete**) show under it. |
-| `architect/localization/editor-missing-translation.png`   | `design-protocols/tutorials/translating-your-protocol.en.mdx`, `design-protocols/tutorials/building-a-protocol.en.mdx` | Shows the removed **Page heading** field. The tutorial now has the reader choose Spanish from the menu beside **Rich Text** in the Welcome stage, so recapture that field with Spanish chosen and no translation, so that the note under it shows, and reword the image's description on both pages (and in their Spanish and French pages) to name that field.                        |
-| `architect-guide/information-interface.png`               | `design-protocols/tutorials/building-a-protocol.en.mdx`                                                                | Shows the removed **Page heading** field and list of items. Recapture the Information stage editor as it opens: the **Content** section with its empty **Rich Text** editor.                                                                                                                                                                                                           |
-| `architect-guide/edit-item.png`                           | `design-protocols/tutorials/building-a-protocol.en.mdx`                                                                | Shows the removed **Create item** dialog, so the tutorial now shows this capture only to Architect Classic readers. Recapture the **Content** section with "Welcome to the Sample Protocol" as a heading and an image block selected so that its settings show, then show it in the `current` block of "Adding images, video and audio".                                               |
+| Image                                                     | Page                                                                                                                   | What changed                                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface-documentation/information/architect-items.png` | `design-protocols/interface-documentation/information.en.mdx`                                                          | ✅ Recaptured for forms as rich text, with the image block selected so that its resize handle and settings show.                                                                                                                                                                                                                         |
+| `architect/localization/editor-missing-translation.png`   | `design-protocols/tutorials/translating-your-protocol.en.mdx`, `design-protocols/tutorials/building-a-protocol.en.mdx` | ✅ Recaptured for forms as rich text: the Welcome stage's **Rich Text** field with Spanish chosen. The image's description names that field on both pages, in English, Spanish and French.                                                                                                                                               |
+| `architect-guide/information-interface.png`               | `design-protocols/tutorials/building-a-protocol.en.mdx`                                                                | Shows the removed **Page heading** field and list of items. Recapture the Information stage editor as it opens: the **Content** section with its empty **Rich Text** editor.                                                                                                                                                             |
+| `architect-guide/edit-item.png`                           | `design-protocols/tutorials/building-a-protocol.en.mdx`                                                                | Shows the removed **Create item** dialog, so the tutorial now shows this capture only to Architect Classic readers. Recapture the **Content** section with "Welcome to the Sample Protocol" as a heading and an image block selected so that its settings show, then show it in the `current` block of "Adding images, video and audio". |
 
 Every Architect capture that shows a rich text editor's toolbar also predates
 its regrouping (undo and redo, a list of text styles in place of the heading
@@ -184,41 +184,41 @@ shot is shown in both views. To wire a new Web capture, drop it at
 `/assets/img/architect-guide/<name>.png` and add `web="true"` to that
 screenshot in the article.
 
-| Image (`/assets/img/architect-guide/…`) | Status                  |
-| --------------------------------------- | ----------------------- |
-| `add-a-stage.png`                       | ✅ Recaptured for 8.3.0 |
-| `information-interface.png`             | ✅ Recaptured for 8.3.0 |
-| `edit-item.png`                         | ✅ Recaptured for 8.3.0 |
-| `completed-stage.png`                   | ✅ Recaptured for 8.3.0 |
-| `node-type.png`                         | ✅ Recaptured for 8.3.0 |
-| `node-type-shape.png` (Web-only)        | ✅ Recaptured for 8.3.0 |
-| `edit-prompt.png`                       | ✅ Recaptured for 8.3.0 |
-| `side-panel.png`                        | ✅ Recaptured for 8.3.0 |
-| `form-fields.png`                       | ✅ Recaptured for 8.3.0 |
-| `input-control.png` (Web-only)          | ✅ Recaptured for 8.3.0 |
-| `validation.png`                        | ✅ Recaptured for 8.3.0 |
-| `fields-inputs-prompts.png`             | ✅ Recaptured for 8.3.0 |
-| `adding-roster.png`                     | ✅ Recaptured for 8.3.0 |
-| `roster-sort.png`                       | ✅ Recaptured for 8.3.0 |
-| `roster-search.png`                     | ✅ Recaptured for 8.3.0 |
-| `ego-form.png`                          | ✅ Recaptured for 8.3.0 |
-| `ego-form-fields.png`                   | ✅ Recaptured for 8.3.0 |
-| `per-alter-form.png`                    | ✅ Recaptured for 8.3.0 |
-| `sociogram-background.png`              | ✅ Recaptured for 8.3.0 |
-| `sociogram-layout.png`                  | ✅ Recaptured for 8.3.0 |
-| `edge-creation.png`                     | ✅ Recaptured for 8.3.0 |
-| `dyad-skip.png`                         | ✅ Recaptured for 8.3.0 |
-| `dyad-prompt.png`                       | ✅ Recaptured for 8.3.0 |
-| `variable-toggling.png`                 | ✅ Recaptured for 8.3.0 |
-| `catbin-variables.png`                  | ✅ Recaptured for 8.3.0 |
-| `filter-skip.png`                       | ✅ Recaptured for 8.3.0 |
-| `skip.png`                              | ✅ Recaptured for 8.3.0 |
-| `catbin-prompt.png`                     | ✅ Recaptured for 8.3.0 |
-| `followup.png`                          | ✅ Recaptured for 8.3.0 |
-| `narrative.png`                         | ✅ Recaptured for 8.3.0 |
-| `edit-preset.png`                       | ✅ Recaptured for 8.3.0 |
-| `edit-preset2.png`                      | ✅ Recaptured for 8.3.0 |
-| `narrative-behaviors.png`               | ✅ Recaptured for 8.3.0 |
+| Image (`/assets/img/architect-guide/…`) | Status                               |
+| --------------------------------------- | ------------------------------------ |
+| `add-a-stage.png`                       | ✅ Recaptured for 8.3.0              |
+| `information-interface.png`             | ✅ Recaptured for 8.3.0              |
+| `edit-item.png`                         | ✅ Recaptured for 8.3.0              |
+| `completed-stage.png`                   | ✅ Recaptured for 8.3.0              |
+| `node-type.png`                         | ✅ Recaptured for 8.3.0              |
+| `node-type-shape.png` (Web-only)        | ✅ Recaptured for 8.3.0              |
+| `edit-prompt.png`                       | ✅ Recaptured for forms as rich text |
+| `side-panel.png`                        | ✅ Recaptured for 8.3.0              |
+| `form-fields.png`                       | ✅ Recaptured for forms as rich text |
+| `input-control.png` (Web-only)          | ✅ Recaptured for forms as rich text |
+| `validation.png`                        | ✅ Recaptured for forms as rich text |
+| `fields-inputs-prompts.png`             | ✅ Recaptured for 8.3.0              |
+| `adding-roster.png`                     | ✅ Recaptured for 8.3.0              |
+| `roster-sort.png`                       | ✅ Recaptured for 8.3.0              |
+| `roster-search.png`                     | ✅ Recaptured for 8.3.0              |
+| `ego-form.png`                          | ✅ Recaptured for forms as rich text |
+| `ego-form-fields.png`                   | ✅ Recaptured for forms as rich text |
+| `per-alter-form.png`                    | ✅ Recaptured for 8.3.0              |
+| `sociogram-background.png`              | ✅ Recaptured for 8.3.0              |
+| `sociogram-layout.png`                  | ✅ Recaptured for 8.3.0              |
+| `edge-creation.png`                     | ✅ Recaptured for 8.3.0              |
+| `dyad-skip.png`                         | ✅ Recaptured for 8.3.0              |
+| `dyad-prompt.png`                       | ✅ Recaptured for forms as rich text |
+| `variable-toggling.png`                 | ✅ Recaptured for 8.3.0              |
+| `catbin-variables.png`                  | ✅ Recaptured for 8.3.0              |
+| `filter-skip.png`                       | ✅ Recaptured for 8.3.0              |
+| `skip.png`                              | ✅ Recaptured for 8.3.0              |
+| `catbin-prompt.png`                     | ✅ Recaptured for forms as rich text |
+| `followup.png`                          | ✅ Recaptured for 8.3.0              |
+| `narrative.png`                         | ✅ Recaptured for 8.3.0              |
+| `edit-preset.png`                       | ✅ Recaptured for 8.3.0              |
+| `edit-preset2.png`                      | ✅ Recaptured for 8.3.0              |
+| `narrative-behaviors.png`               | ✅ Recaptured for 8.3.0              |
 
 ## About Fresco
 
@@ -351,18 +351,23 @@ images in `/assets/img/custom-node-shapes/` are new and current.
 | `/assets/img/architect-guide/node-type-shape.png` (Building a protocol) | ✅ Recaptured |
 | `/assets/img/custom-node-shapes/architect-custom-shapes.png`            | ✅ Recaptured |
 
-## Logic in piped text (schema 9)
+## Forms as rich text (schema 9)
 
-The piped text editor now has two toolbar buttons: the syringe inserts values
-only, and **Insert logic** inserts If blocks, different wording for each
-answer, wording that fits a number, and wording for the participant or someone
-else. Logic is drawn as a pill of its own colour and icon. These images on
-`design-protocols/key-concepts/piped-text.en.mdx` predate that change:
+Stage forms became rich text documents with field blocks, and the rich text
+toolbar gained **Attribute**, **Field** and **Logic block** buttons in place of
+the syringe and the inline versions. The captures that showed the old field
+list, the field dialog, the Ego Form introduction panel or the old toolbar were
+recaptured in November 2026 from Architect driving the Sample Protocol. The
+interface documentation captures came from a protocol named "Interface
+Documentation", with the same stage names as before. The recaptures are the Building a protocol tutorial's form and prompt
+captures (marked above), `key-concepts/forms/form.png` and `field.png`,
+`piped-text/insert-menu.png`, `value-in-question.png` and `pair-prompt.png`,
+`interface-documentation/ego-form/architect-ego-form.png`,
+`per-alter-form/architect-form.png`, `per-edge-form/architect-form.png`,
+`name-generators/side-panel.png` and `information/architect-items.png`, and
+`architect/localization/editor-missing-translation.png` (marked above).
+`piped-text/logic-block.png` and `piped-text/dynamic-attribute.png` are new, on
+the Piped Text page, with descriptions in English, Spanish and French.
+`piped-text/missing-value-versions.png`, which no page used, was removed.
 
-| Image                                   | What changed                                                                                                                                                                                        | Status           |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| `piped-text/insert-menu.png`            | The syringe menu no longer lists a second **Different wording for each answer** entry for `overall_review`; that entry moved to the **Insert logic** menu. The toolbar also shows the logic button. | ✅ Recaptured    |
-| `piped-text/missing-value-versions.png` | The toolbar shows the **Insert logic** button beside the syringe.                                                                                                                                   | ✅ Recaptured    |
-| `piped-text/value-in-question.png`      | Same toolbar change: both toolbars in frame lack the **Insert logic** button.                                                                                                                       | ✅ Recaptured    |
-| `piped-text/pair-prompt.png`            | Same toolbar change: the toolbar lacks the **Insert logic** button.                                                                                                                                 | ✅ Recaptured    |
-| (new) `piped-text/if-block.png`         | Not yet captured: an open If block with an **If:** row, an **Otherwise** row, **Edit rules** and **Add else if**, for the new Logic section.                                                        | Not yet captured |
+Nothing in this section is outstanding.

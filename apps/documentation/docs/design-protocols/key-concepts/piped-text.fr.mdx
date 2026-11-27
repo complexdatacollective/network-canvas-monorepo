@@ -2,7 +2,7 @@
 title: Texte dynamique
 navOrder: 14
 toc: true
-translatedFrom: 8e76d8bf143bde6b6aadcaa83db94da438941644
+translatedFrom: 865e3b7132f31d7833e712be22c311055d5b1f1d
 ---
 
 <Definition>
@@ -139,6 +139,8 @@ L’attribut dynamique est placé dans le texte sous la forme d’une pastille q
 
 Sélectionnez la pastille pour ouvrir les paramètres de l’attribut dynamique, qui contiennent les mêmes commandes que la boîte de dialogue. Une modification s’applique partout où l’attribut dynamique est utilisé dans l’étape, et les paramètres indiquent à combien d’endroits. **Retirer de cette formulation** retire la pastille de la chaîne traduisible que vous modifiez. Toute autre chaîne traduisible qui utilise l’attribut dynamique le conserve. Lorsque l’étape est enregistrée, un attribut dynamique qu’aucune chaîne traduisible n’utilise est supprimé.
 
+![Les paramètres d’un attribut dynamique dans la question « How long have you known this [person / family member / friend…]? » d’une étape « Formulaire par alter ». La logique de l’attribut dynamique est « Formulation différente pour chaque réponse », et la réponse à how_known détermine la version affichée. Les versions sont « person » (une personne) si la réponse n’est pas connue, « family member » (un membre de la famille) pour Family, « friend » (un ami ou une amie) pour Friend, « colleague » (un ou une collègue) pour Colleague et « person » pour toute autre réponse.](/assets/img/piped-text/dynamic-attribute.png 'Les paramètres d’un attribut dynamique')
+
 Les versions d’un attribut dynamique sont de simples mots : elles ne peuvent ni être mises en forme ni afficher de valeurs. Une version peut être laissée vide : rien n’est alors affiché à la place de la pastille. Dans l’éditeur, une version vide porte la mention **N’affiche rien**, tout comme la pastille d’un attribut dynamique dont toutes les versions sont vides.
 
 Par exemple, une question d’une étape « Formulaire par alter » pourrait demander « Où cette personne [fait-elle ses études / travaille-t-elle] ? », avec un attribut dynamique dont la logique est **Si … sinon** :
@@ -158,6 +160,8 @@ Un bloc de logique peut être ajouté à toute chaîne traduisible de plusieurs 
 4. Rédigez le contenu de chaque version dans le bloc.
 
 Le bloc affiche ses versions les unes sous les autres. Chaque version porte un libellé qui indique quand elle s’affiche, par exemple **Si :** suivi de ses règles, **Sinon**, le libellé d’une réponse, **Si inconnu** ou **Toute autre réponse**. Une version sans contenu affiche la mention **Rien n’est affiché.** Dans ce cas, la personne participante ne voit rien.
+
+![Un bloc de logique à la fin du texte d’une étape « Information ». Sa version « Si », affichée lorsque la réponse de la personne participante à preferred_contact_method inclut Email, se lit « We will email you a reminder before your next interview. » (Nous vous enverrons un rappel par e-mail avant votre prochain entretien). Sa version « Sinon » se lit « We will contact you before your next interview. » (Nous vous contacterons avant votre prochain entretien).](/assets/img/piped-text/logic-block.png 'Un bloc de logique avec une version « Si » et une version « Sinon »')
 
 Pour modifier un bloc de logique, choisissez son bouton de paramètres. Les paramètres contiennent la commande **Logique**, les règles ou l’attribut, et **Supprimer le bloc de logique**, qui supprime le bloc avec tout son contenu. Lorsqu’une modification de la logique retirerait des versions qui ont un contenu, Architect demande une confirmation avant de les supprimer. Dans un formulaire, les paramètres indiquent aussi que, lorsque la personne participante envoie le formulaire, les réponses aux champs des versions qui ne sont pas affichées sont effacées.
 

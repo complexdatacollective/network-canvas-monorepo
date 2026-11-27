@@ -2,7 +2,7 @@
 title: Texto dinámico
 navOrder: 14
 toc: true
-translatedFrom: 8e76d8bf143bde6b6aadcaa83db94da438941644
+translatedFrom: 865e3b7132f31d7833e712be22c311055d5b1f1d
 ---
 
 <Definition>
@@ -137,6 +137,8 @@ El atributo dinámico se coloca en el texto como una píldora que muestra sus ve
 
 Selecciona la píldora para abrir los ajustes del atributo dinámico, que contienen los mismos controles que el cuadro de diálogo. Un cambio se aplica en todos los lugares de la etapa en los que se usa el atributo dinámico, y los ajustes indican cuántos lugares son. **Quitar de esta redacción** quita la píldora de la cadena traducible que estás editando. Cualquier otra cadena traducible que use el atributo dinámico lo conserva. Al guardar la etapa, se elimina cualquier atributo dinámico que no se use en ninguna cadena traducible.
 
+![Los ajustes de un atributo dinámico en la pregunta «How long have you known this [person / family member / friend…]?» de una etapa «Formulario por álter». La lógica del atributo dinámico es «Redacción distinta para cada respuesta», y la respuesta a how_known decide qué versión se muestra. Las versiones son «person» (persona) si no se conoce la respuesta, «family member» (familiar) para Family, «friend» (amigo o amiga) para Friend, «colleague» (colega) para Colleague y «person» para cualquier otra respuesta.](/assets/img/piped-text/dynamic-attribute.png 'Los ajustes de un atributo dinámico')
+
 Las versiones de un atributo dinámico son palabras sin formato: no pueden llevar formato ni mostrar valores. Una versión se puede dejar vacía y, en ese caso, no se muestra nada en lugar de la píldora. En el editor, una versión vacía dice **No muestra nada**, y lo mismo dice la píldora de un atributo dinámico cuyas versiones están todas vacías.
 
 Por ejemplo, una pregunta de una etapa «Formulario por álter» podría preguntar «¿Dónde [estudia / trabaja] esta persona?», con un atributo dinámico cuya lógica es **Si … en caso contrario**:
@@ -156,6 +158,8 @@ Se puede añadir un bloque de lógica a cualquier cadena traducible de varias l�
 4. Escribe el contenido de cada versión en el bloque.
 
 El bloque muestra sus versiones una debajo de otra. Cada versión tiene una etiqueta que indica cuándo se muestra, como **Si:** seguido de sus reglas, **En caso contrario**, la etiqueta de una respuesta, **Si no se conoce** o **Cualquier otra respuesta**. Una versión sin contenido dice **No se muestra nada.** En ese caso, la persona participante no ve nada.
+
+![Un bloque de lógica al final del texto de una etapa «Información». Su versión «Si», que se muestra cuando la respuesta de la persona participante a preferred_contact_method incluye Email, dice «We will email you a reminder before your next interview.» (Te enviaremos un recordatorio por correo electrónico antes de tu próxima entrevista). Su versión «En caso contrario» dice «We will contact you before your next interview.» (Nos pondremos en contacto contigo antes de tu próxima entrevista).](/assets/img/piped-text/logic-block.png 'Un bloque de lógica con una versión «Si» y una versión «En caso contrario»')
 
 Para cambiar un bloque de lógica, elige su botón de ajustes. Los ajustes contienen el control **Lógica**, las reglas o el atributo, y **Eliminar bloque de lógica**, que elimina el bloque con todo su contenido. Cuando un cambio en la lógica quitaría versiones que tienen contenido, Architect pregunta antes de eliminarlas. En un formulario, los ajustes también indican que, cuando la persona participante envía el formulario, se borran las respuestas a los campos de las versiones que no se muestran.
 
