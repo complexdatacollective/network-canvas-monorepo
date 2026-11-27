@@ -36,7 +36,7 @@ export const STAGE_NODE_TYPE_CAPABILITY: Record<
   NodeTypeCapability
 > = {
   Sociogram: 'several',
-  Narrative: 'single',
+  Narrative: 'several',
   DyadCensus: 'single',
   OneToManyDyadCensus: 'single',
   TieStrengthCensus: 'single',
@@ -93,7 +93,7 @@ export const STAGE_EDGE_TYPE_SUPPORT: Record<
   { directed: boolean; endpointRules: boolean }
 > = {
   Sociogram: { directed: true, endpointRules: true },
-  Narrative: { directed: false, endpointRules: false },
+  Narrative: { directed: true, endpointRules: true },
   DyadCensus: { directed: false, endpointRules: false },
   OneToManyDyadCensus: { directed: false, endpointRules: false },
   TieStrengthCensus: { directed: false, endpointRules: false },

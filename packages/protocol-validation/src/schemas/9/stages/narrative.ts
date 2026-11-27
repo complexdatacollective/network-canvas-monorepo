@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { canvasBehavioursSchema } from '../common/behaviours.ts';
 import { imageOrCirclesBackgroundSchema } from '../common/index.ts';
+import { highlightAttributeSchema } from '../common/prompts.ts';
 import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
@@ -27,6 +28,8 @@ export const narrativeStage = withUniqueObjectIds(
           // The layout whose positions the preset shows. Only nodes of the
           // stage's types that hold a position in it are drawn.
           layout: layoutReference(),
+          // Groups are drawn only on a stage with one node type, which
+          // validation checks.
           groupVariable: entityAttributeReference({
             subject: 'stageSubject',
           }).optional(),
@@ -51,15 +54,19 @@ export const narrativeStage = withUniqueObjectIds(
                 .optional(),
             })
             .optional(),
+          // Each switch the participant can turn on, with its label and the
+          // boolean attribute it lights on each node type that takes part.
           highlight: z
             .array(
               z.strictObject({
                 id: protocolObjectId('narrativePresetHighlight'),
-                variable: entityAttributeReference({ subject: 'stageSubject' }),
                 label: localizedString(nonBlankText(), {
                   format: 'plain',
                   lines: 'single',
                 }),
+                attributes: z
+                  .array(highlightAttributeSchema({ writes: false }))
+                  .min(1),
               }),
             )
             .optional(),

@@ -40,15 +40,17 @@ const countTagged = (
 };
 
 // Update this number deliberately when adding/removing a tagged field.
-// (17: node + edge stage subjects; sociogram prompt edges.create +
+// (18: node + edge stage subjects; sociogram prompt edges.create +
 //  edges.display element; a highlight attribute's node type; DyadCensus / TieStrengthCensus /
 //  OneToManyDyadCensus createEdge; Narrative preset edges.display element;
 //  FamilyPedigree relationship.type; filter rule options.type
 //  on the type-level and attribute-level rule branches; a condition's
 //  edge-count rule options.type; an edge type's endpoint rule sourceType
 //  and targetType; a typed sort rule's node type and a node type order's
-//  element, on Sociogram prompts.)
-const EXPECTED_TAGGED_FIELD_COUNT = 17;
+//  element, on Sociogram prompts; a Narrative highlight attribute's node
+//  type, a separate instance because `highlightAttributeSchema` builds one
+//  per call.)
+const EXPECTED_TAGGED_FIELD_COUNT = 18;
 
 describe('entity-type reference coverage', () => {
   it('has tagged the expected number of reference fields', () => {

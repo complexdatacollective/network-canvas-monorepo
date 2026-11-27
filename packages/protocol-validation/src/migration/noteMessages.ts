@@ -590,6 +590,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Sociogram" is the name Architect gives the interface; use the same name Architect uses for it. A prompt is one instruction shown on the stage. To place a node is to drag it onto the canvas, which gives it a position. Laying nodes out automatically is a Sociogram setting that positions nodes without the participant. A layout is the set of positions that nodes are placed at on a canvas. A positioning prompt is a prompt whose task is Position nodes, the name Architect gives that task. The drawer is the tray at the edge of the canvas that holds the nodes not yet placed.',
   },
+  schema9NarrativeBooleanHighlights: {
+    id: 'protocolValidation.migrationNotes.schema9.narrativeBooleanHighlights',
+    defaultMessage:
+      'A highlight on a Narrative preset can now show only a Boolean attribute, as a highlighting task on a Sociogram does. A highlight of any other kind of attribute is removed, because the interview cannot show it. Each highlight that remains keeps its label.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Narrative" and "Sociogram" are the names Architect gives the interfaces; use the same names Architect uses for them. A preset is one of the saved views of a Narrative stage. A highlight marks the nodes whose attribute is true, and has a label that participants read. A Boolean attribute is an attribute whose answer is true or false. A highlighting task is a Sociogram prompt whose task is Highlight nodes, the name Architect gives that task.',
+  },
   schema9SingleLineText: {
     id: 'protocolValidation.migrationNotes.schema9.singleLineText',
     defaultMessage:
@@ -739,6 +746,7 @@ const migrationNoteSets: Record<
       migrationNoteMessages.schema9EgoAndEdgeLayouts,
       migrationNoteMessages.schema9SociogramTasks,
       migrationNoteMessages.schema9SociogramWithoutPlacing,
+      migrationNoteMessages.schema9NarrativeBooleanHighlights,
       migrationNoteMessages.schema9SingleLineText,
     ],
   },

@@ -327,7 +327,10 @@ describe('v8 to v9 localization migration', () => {
     setAt(
       expected,
       [...stagePath(expected, 'narrative'), 'presets', 0, 'highlight', 0],
-      { variable: 'flag', label: { en: 'Flag' } },
+      {
+        label: { en: 'Flag' },
+        attributes: [{ type: 'person', variable: 'flag' }],
+      },
     );
     setAt(
       expected,
@@ -637,29 +640,31 @@ describe('v8 to v9 localization migration', () => {
     it('labels each highlight with its attribute name, in English', () => {
       const document = schema8Protocol();
       const preset = presetPath(document);
-      setAt(document, [...preset, 'highlight'], ['flag', 'nickname']);
-      setAt(
-        document,
-        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
-        "Friend's {nickname}",
-      );
+      setAt(document, [...preset, 'highlight'], ['flag', 'trusted']);
+      setAt(document, ['codebook', 'node', 'person', 'variables', 'trusted'], {
+        name: "Friend's {nickname}",
+        type: 'boolean',
+      });
 
       const migrated = migrateReadable(document);
       expect(
         rowsWithMintedIds(getAt(migrated, [...preset, 'highlight'])),
       ).toEqual([
-        { variable: 'flag', label: { en: 'Flag' } },
         {
-          variable: 'nickname',
+          label: { en: 'Flag' },
+          attributes: [{ type: 'person', variable: 'flag' }],
+        },
+        {
           label: { en: escapeMessageText("Friend's {nickname}") },
+          attributes: [{ type: 'person', variable: 'trusted' }],
         },
       ]);
     });
 
-    it('uses the attribute id when the attribute has no name or is missing', () => {
+    it('uses the attribute id when the attribute has no name', () => {
       const document = schema8Protocol();
       const preset = presetPath(document);
-      setAt(document, [...preset, 'highlight'], ['flag', 'removed']);
+      setAt(document, [...preset, 'highlight'], ['flag']);
       setAt(
         document,
         ['codebook', 'node', 'person', 'variables', 'flag', 'name'],
@@ -671,8 +676,10 @@ describe('v8 to v9 localization migration', () => {
           getAt(migrateStep(document), [...preset, 'highlight']),
         ),
       ).toEqual([
-        { variable: 'flag', label: { en: 'flag' } },
-        { variable: 'removed', label: { en: 'removed' } },
+        {
+          label: { en: 'flag' },
+          attributes: [{ type: 'person', variable: 'flag' }],
+        },
       ]);
     });
 

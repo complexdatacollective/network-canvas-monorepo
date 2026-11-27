@@ -63,6 +63,9 @@ const countTagged = (
 // It counts the typed sort rule `property` (NodeTypeSortRuleSchema, a sort
 // key of the node type its rule names), reached by Sociogram prompts; the
 // shared sort rule stays in use by the bins.
+// A Narrative highlight entry's per-type `variable` (`highlightAttributeSchema`
+// without the writer usage, since a Narrative only shows it) replaced the
+// preset highlight's single `variable`, so the total is unchanged.
 // The value is verified against the runtime count computed below.
 const EXPECTED_TAGGED_FIELD_COUNT = 40;
 

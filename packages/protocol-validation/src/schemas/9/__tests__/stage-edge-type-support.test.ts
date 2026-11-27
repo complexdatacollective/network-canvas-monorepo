@@ -200,7 +200,6 @@ describe('stage edge type support', () => {
       `AlterEdgeForm subject.type: ${message}`,
       `DyadCensus prompts.0.createEdge: ${message}`,
       `TieStrengthCensus prompts.0.createEdge: ${message}`,
-      `Narrative presets.0.edges.display.0.type: ${message}`,
       `OneToManyDyadCensus prompts.0.createEdge: ${message}`,
     ]);
   });
@@ -229,6 +228,24 @@ describe('stage edge type support', () => {
       directed: true,
       endpointRules: true,
     });
+  });
+
+  it('lets a Narrative draw directed edge types and endpoint rules', async () => {
+    expect(STAGE_EDGE_TYPE_SUPPORT.Narrative).toEqual({
+      directed: true,
+      endpointRules: true,
+    });
+    const protocol = withEdgeTypeSettings(baseProtocol(), 'knows', {
+      directed: true,
+      endpointRules: [{ sourceType: 'person', targetType: 'person' }],
+    });
+    const index = stageIndexOf(protocol, 'Narrative');
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(
+      (await issuesOf(protocol)).filter(
+        (issue) => issue.path[0] === 'stages' && issue.path[1] === index,
+      ),
+    ).toEqual([]);
   });
 
   it('accepts a directed edge type on a Sociogram', async () => {

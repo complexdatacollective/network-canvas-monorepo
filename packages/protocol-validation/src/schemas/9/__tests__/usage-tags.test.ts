@@ -190,7 +190,15 @@ describe('attribute-writer usage tags', () => {
               label: localized('Preset'),
               layout: 'layoutPosition',
               groupVariable: 'category',
-              highlight: [{ variable: 'strength', label: localized('Strong') }],
+              highlight: [
+                {
+                  id: 'highlight-1',
+                  label: localized('Close'),
+                  attributes: [
+                    { id: 'attribute-1', type: 'person', variable: 'close' },
+                  ],
+                },
+              ],
             },
           ],
         },

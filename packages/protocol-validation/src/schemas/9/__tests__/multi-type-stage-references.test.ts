@@ -41,9 +41,48 @@ type SingleTypeOnlyField = {
   issuePath: readonly (string | number)[];
 };
 
+const loadAllInterfacesFixture = (): unknown =>
+  JSON.parse(
+    readFileSync(
+      resolve(
+        import.meta.dirname,
+        '../../../../../protocols/e2e/all-interfaces/protocol.json',
+      ),
+      'utf8',
+    ),
+  );
+
+// The all-interfaces Narrative, whose first preset draws groups, given a
+// second node type.
+const ALL_INTERFACES_NARRATIVE = 14;
+const narrativeShowingTwoTypes = () => {
+  const protocol = loadAllInterfacesFixture();
+  const stage = stageAt(protocol, ALL_INTERFACES_NARRATIVE);
+  if (stage?.type !== 'Narrative') throw new Error('No Narrative stage');
+  stage.subject = {
+    entity: 'node',
+    types: [...nodeTypesOf(stage), 'd2904722-c463-5fe3-8f6d-032114d8ed55'],
+  };
+  return protocol;
+};
+
 const SINGLE_TYPE_ONLY_FIELDS: Partial<
   Record<string, readonly SingleTypeOnlyField[]>
-> = {};
+> = {
+  Narrative: [
+    {
+      field: 'presets.[].groupVariable',
+      rejects: narrativeShowingTwoTypes,
+      issuePath: [
+        'stages',
+        ALL_INTERFACES_NARRATIVE,
+        'presets',
+        0,
+        'groupVariable',
+      ],
+    },
+  ],
+};
 
 const DYNAMIC_VALUES_SUFFIX = ' (dynamic values)';
 
@@ -294,17 +333,6 @@ const misplacedListedFields = (
     );
   });
 };
-
-const loadAllInterfacesFixture = (): unknown =>
-  JSON.parse(
-    readFileSync(
-      resolve(
-        import.meta.dirname,
-        '../../../../../protocols/e2e/all-interfaces/protocol.json',
-      ),
-      'utf8',
-    ),
-  );
 
 describe('stage-subject references on stages that run several node types', () => {
   it('reads a type from every stage schema', () => {

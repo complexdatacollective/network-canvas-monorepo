@@ -685,6 +685,50 @@ const sociogramSortRulesGainNodeType = (protocol: unknown) => {
   }
 };
 
+/**
+ * A schema 9 Narrative highlight is a switch with a label that lights one
+ * boolean attribute per node type, so each schema 8 highlight becomes an entry
+ * naming the stage's one node type. The interview can light only a boolean
+ * attribute, so a highlight of any other attribute is removed. Reads the
+ * schema 8 `subject.type`; runs after the labels are added and repaired.
+ */
+const narrativeHighlightEntries = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const { codebook } = protocol;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'Narrative') continue;
+    if (!Array.isArray(stage.presets)) continue;
+    const nodeType = isRecord(stage.subject) ? stage.subject.type : undefined;
+    const variables = subjectVariables(codebook, 'node', stage.subject);
+    for (const preset of stage.presets) {
+      if (!isRecord(preset) || !Array.isArray(preset.highlight)) continue;
+      const entries = preset.highlight.flatMap((highlight: unknown) => {
+        if (!isRecord(highlight) || typeof highlight.variable !== 'string') {
+          return [highlight];
+        }
+        const { variable, ...rest } = highlight;
+        const definition = variables[variable];
+        if (
+          typeof nodeType !== 'string' ||
+          !isRecord(definition) ||
+          definition.type !== 'boolean'
+        ) {
+          return [];
+        }
+        return [
+          {
+            ...rest,
+            attributes: [
+              { id: createProtocolObjectId(), type: nodeType, variable },
+            ],
+          },
+        ];
+      });
+      preset.highlight = entries;
+    }
+  }
+};
+
 /** The attribute definitions of the entity type a stage subject names. */
 const subjectVariables = (
   codebook: unknown,
@@ -1266,6 +1310,8 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   removeEgoAndEdgeLayoutVariables(migrated);
   sociogramPromptsToTasks(migrated);
   sociogramSortRulesGainNodeType(migrated);
+  // After the legend labels are added and repaired.
+  narrativeHighlightEntries(migrated);
   // After every step that reads a stage's schema 8 `subject.type`.
   nodeSubjectsToTypeLists(migrated);
   joinSingleLineText(migrated);
@@ -1352,6 +1398,7 @@ const migrationV8toV9 = createMigration({
 - Layout attributes of edge types and of the ego are removed, because only nodes can have positions and no stage could record one. Skip logic and filter rules that used these attributes are removed too.
 - Each prompt of a Sociogram stage is now one task: positioning nodes, highlighting nodes, or connecting nodes. A prompt that let participants create edges becomes a connecting task, one that let participants highlight nodes becomes a highlighting task, and any other becomes a positioning task. Participants can move nodes only during a positioning task. A highlight that participants could not change is removed, because a Sociogram now shows highlights only while participants highlight. The settings for repositioning nodes and for drawing on the canvas, which the interview did not use on a Sociogram, are removed.
 - A Sociogram stage whose prompts all connect or highlight nodes, and that does not lay nodes out automatically, now has no prompt where participants place nodes, so participants can highlight or connect only the nodes that already have a position. The other nodes stay in the drawer and cannot be used. Architect shows a warning on such a stage when no earlier stage uses its layout. Add a positioning prompt at the start of the stage if participants should place the nodes there.
+- A highlight on a Narrative preset can now show only a Boolean attribute, as a highlighting task on a Sociogram does. A highlight of any other kind of attribute is removed, because the interview cannot show it. Each highlight that remains keeps its label.
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
   migrate: migrateDocument,
 });

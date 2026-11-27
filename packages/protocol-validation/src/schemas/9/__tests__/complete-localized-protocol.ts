@@ -513,7 +513,14 @@ const protocolDocument = () => ({
           id: 'preset',
           label: localized('Preset'),
           layout: 'layoutPosition',
-          highlight: [{ variable: 'flag', label: localized('Flagged') }],
+          highlight: [
+            {
+              label: localized('Flagged'),
+              attributes: [
+                { id: 'preset-highlight-1', type: 'person', variable: 'flag' },
+              ],
+            },
+          ],
           edges: { display: [{ type: 'knows', label: localized('Knows') }] },
           groupVariable: 'category',
         },

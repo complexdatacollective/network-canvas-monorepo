@@ -28,15 +28,22 @@ export const codebookVariables = (
 };
 
 // A schema 8 Narrative preset named each highlighted attribute, and each edge
-// type its legend showed, by its id.
+// type its legend showed, by its id. A schema 8 Narrative showed one node
+// type, so each highlight entry named the attribute of its one row.
 const legendIds = (stage: unknown) => {
   if (!isRecord(stage) || !Array.isArray(stage.presets)) return;
   for (const preset of stage.presets) {
     if (!isRecord(preset)) continue;
     if (Array.isArray(preset.highlight)) {
-      preset.highlight = preset.highlight.map((highlight: unknown) =>
-        isRecord(highlight) ? highlight.variable : highlight,
-      );
+      preset.highlight = preset.highlight.map((highlight: unknown) => {
+        if (!isRecord(highlight)) return highlight;
+        const { attributes } = highlight;
+        if (!Array.isArray(attributes) || attributes.length !== 1) {
+          throw new Error('A schema 8 highlight names one attribute');
+        }
+        const [attribute] = attributes;
+        return isRecord(attribute) ? attribute.variable : attribute;
+      });
     }
     if (isRecord(preset.edges) && Array.isArray(preset.edges.display)) {
       preset.edges.display = preset.edges.display.map((edge: unknown) =>
@@ -192,8 +199,8 @@ const informationItems = (
 /**
  * A schema 9 protocol written in English, as schema 8 held it: each localized
  * string is its English text, put through `rewrite` (text with placeholders,
- * which schema 8 never held, stays localized), Narrative highlights and
- * legend edges are ids, Network Composer edges have no label, a node stage
+ * which schema 8 never held, stays localized), Narrative highlights (each
+ * the attribute of its entry's one row) and legend edges are ids, Network Composer edges have no label, a node stage
  * names its one node type as `subject.type`, each layout is a node attribute
 of type `layout` named by the stages that use it (a Sociogram that used
 several layouts stays split), an Anonymisation

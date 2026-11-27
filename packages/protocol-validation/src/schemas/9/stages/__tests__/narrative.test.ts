@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import { testId } from '../../../../__tests__/testIds.ts';
+import { findVariableRoleConflicts } from '../../../../utils/findVariableRoleConflicts.ts';
 import { createBaseProtocol, localized } from '../../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../../schema.ts';
 import { narrativeStage } from '../narrative.ts';
@@ -35,12 +36,36 @@ const stageWith = (settings: Record<string, unknown>) => ({
   ...settings,
 });
 
-// The base protocol with one Narrative stage after its own.
-const protocolWith = (settings: Record<string, unknown>) => {
+// The base protocol, with a Boolean attribute on each node type, and one
+// Narrative stage after its own stages.
+const protocolWith = (
+  settings: Record<string, unknown>,
+  stagesBefore: unknown[] = [],
+) => {
   const base = createBaseProtocol();
+  const { person, colleague } = base.codebook.node;
   return withFinishStage({
     ...base,
-    stages: [...base.stages, stageWith(settings)],
+    codebook: {
+      ...base.codebook,
+      node: {
+        person: {
+          ...person,
+          variables: {
+            ...person.variables,
+            close: { name: 'Close', type: 'boolean', component: 'Boolean' },
+          },
+        },
+        colleague: {
+          ...colleague,
+          variables: {
+            ...colleague.variables,
+            senior: { name: 'Senior', type: 'boolean' },
+          },
+        },
+      },
+    },
+    stages: [...base.stages, ...stagesBefore, stageWith(settings)],
   });
 };
 
@@ -170,5 +195,130 @@ describe('the filter of a Narrative preset', () => {
         message?.endsWith('Every id in a protocol must be unique.'),
       ),
     ).toBe(true);
+  });
+});
+
+const TWO_TYPES = { entity: 'node' as const, types: ['person', 'colleague'] };
+
+const highlightEntry = (attributes: { type: string; variable: string }[]) => ({
+  id: testId('highlight-entry'),
+  label: localized('Close'),
+  attributes: attributes.map((attribute, index) => ({
+    id: testId(`highlight-attribute-${index}`),
+    ...attribute,
+  })),
+});
+
+const issuePaths = (settings: Record<string, unknown>) =>
+  narrativeIssues(settings).map(({ path }) =>
+    path.replace(/^stages\.\d+\./, ''),
+  );
+
+describe('the groups of a Narrative preset', () => {
+  it('rejects groupVariable with two node types', () => {
+    const presets = [
+      preset('first', { groupVariable: 'category' }),
+      preset('second'),
+    ];
+
+    expect(issuePaths({ presets })).toEqual([]);
+    expect(issuePaths({ subject: TWO_TYPES, presets })).toEqual([
+      'presets.0.groupVariable',
+    ]);
+  });
+});
+
+describe('the highlights of a Narrative preset', () => {
+  it('accepts one attribute for each node type of the stage', () => {
+    expect(
+      issuePaths({
+        subject: TWO_TYPES,
+        presets: [
+          preset('first', {
+            highlight: [
+              highlightEntry([
+                { type: 'person', variable: 'close' },
+                { type: 'colleague', variable: 'senior' },
+              ]),
+            ],
+          }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('rejects an unknown variable on every per-type row of a two-type Narrative', () => {
+    expect(
+      issuePaths({
+        subject: TWO_TYPES,
+        presets: [
+          preset('first', {
+            highlight: [
+              highlightEntry([
+                { type: 'person', variable: 'senior' },
+                { type: 'colleague', variable: 'close' },
+              ]),
+            ],
+          }),
+        ],
+      }),
+    ).toEqual([
+      'presets.0.highlight.0.attributes.0.variable',
+      'presets.0.highlight.0.attributes.1.variable',
+    ]);
+  });
+
+  it('rejects an attribute about a type the stage does not show, or a type named twice', () => {
+    expect(
+      issuePaths({
+        presets: [
+          preset('first', {
+            highlight: [
+              highlightEntry([
+                { type: 'person', variable: 'close' },
+                { type: 'person', variable: 'close' },
+                { type: 'colleague', variable: 'senior' },
+              ]),
+            ],
+          }),
+        ],
+      }),
+    ).toEqual([
+      'presets.0.highlight.0.attributes.1.type',
+      'presets.0.highlight.0.attributes.2.type',
+    ]);
+  });
+
+  it('a boolean set by a form and highlighted by a Narrative is not a role conflict', () => {
+    const alterForm = {
+      id: testId('alter-form'),
+      type: 'AlterForm',
+      label: localized('About each person'),
+      subject: { entity: 'node', types: ['person'] },
+      form: {
+        fields: [
+          {
+            id: testId('field-close'),
+            variable: 'close',
+            prompt: localized('Are you close?'),
+          },
+        ],
+      },
+    };
+    const protocol = protocolWith(
+      {
+        presets: [
+          preset('first', {
+            highlight: [
+              highlightEntry([{ type: 'person', variable: 'close' }]),
+            ],
+          }),
+        ],
+      },
+      [alterForm],
+    );
+
+    expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
+    expect(findVariableRoleConflicts(protocol)).toEqual([]);
   });
 });

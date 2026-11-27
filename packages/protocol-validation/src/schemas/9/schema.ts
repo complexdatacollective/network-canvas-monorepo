@@ -1441,6 +1441,57 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       });
     }
 
+    // 3d.ii. Narrative presets: each highlight entry lights one attribute per
+    // node type it names, each one of the stage's node types and named once
+    // in the entry. Groups are drawn only for a stage with one node type.
+    if (stage.type === 'Narrative') {
+      const nodeTypes = getStageNodeTypes(stage);
+      const nodeTypeDefinitions = protocol.codebook.node ?? {};
+      const nameOf = (type: string) =>
+        Object.hasOwn(nodeTypeDefinitions, type)
+          ? (nodeTypeDefinitions[type]?.name ?? type)
+          : type;
+      stage.presets.forEach((preset, presetIndex) => {
+        const presetPath = ['stages', stageIndex, 'presets', presetIndex];
+        if (preset.groupVariable !== undefined && nodeTypes.length > 1) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message:
+              'A preset can draw groups only on a stage that shows one node type.',
+            path: [...presetPath, 'groupVariable'],
+          });
+        }
+        preset.highlight?.forEach((entry, entryIndex) => {
+          const seen = new Set<string>();
+          entry.attributes.forEach((attribute, attributeIndex) => {
+            const path = [
+              ...presetPath,
+              'highlight',
+              entryIndex,
+              'attributes',
+              attributeIndex,
+              'type',
+            ];
+            if (!nodeTypes.includes(attribute.type)) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `A highlight is about node type "${nameOf(attribute.type)}", which this stage does not show.`,
+                path,
+              });
+            }
+            if (seen.has(attribute.type)) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `A highlight names node type "${nameOf(attribute.type)}" more than once.`,
+                path,
+              });
+            }
+            seen.add(attribute.type);
+          });
+        });
+      });
+    }
+
     // 3e. NameGeneratorQuickAdd: quickAdd must reference an existing text
     // variable on the subject node type.
     if (

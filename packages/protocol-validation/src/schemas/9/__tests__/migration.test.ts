@@ -1722,6 +1722,93 @@ describe('Migrating a Narrative stage filter from schema 8 to 9', () => {
   });
 });
 
+// A schema 8 Narrative whose first preset highlights each variable given,
+// over a person type with a Boolean `close` attribute.
+const schema8NarrativeHighlighting = (...variables: string[]) => {
+  const document = schema8Narrative({});
+  const { person } = document.codebook.node;
+  const [stage] = document.stages;
+  return {
+    ...document,
+    codebook: {
+      ...document.codebook,
+      node: {
+        ...document.codebook.node,
+        person: {
+          ...person,
+          variables: {
+            ...person.variables,
+            close: { name: 'Close', type: 'boolean' },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        ...stage,
+        presets: stage?.presets.map((preset, index) =>
+          index === 0
+            ? {
+                ...preset,
+                highlight: variables.map((variable) => ({
+                  variable,
+                  label: `Highlight ${variable}`,
+                })),
+              }
+            : preset,
+        ),
+      },
+    ],
+  };
+};
+
+describe('Migrating Narrative preset highlights from schema 8 to 9', () => {
+  it('wraps each highlight in a per-type entry', () => {
+    const [stage] = stagesMigratedFrom(schema8NarrativeHighlighting('close'));
+
+    expect(stage).toMatchObject({
+      presets: [
+        {
+          highlight: [
+            {
+              label: localized('Highlight close'),
+              attributes: [
+                { id: expect.any(String), type: 'person', variable: 'close' },
+              ],
+            },
+          ],
+        },
+        {},
+      ],
+    });
+    expect(
+      ProtocolSchemaV9.safeParse(
+        migrateProtocol(schema8NarrativeHighlighting('close'), 9),
+      ).error?.issues ?? [],
+    ).toEqual([]);
+  });
+
+  it('drops a Narrative highlight naming a non-boolean variable', () => {
+    const [stage] = stagesMigratedFrom(
+      schema8NarrativeHighlighting('category', 'close', 'age'),
+    );
+
+    expect(withoutIds(stage)).toMatchObject({
+      presets: [
+        {
+          highlight: [
+            {
+              label: localized('Highlight close'),
+              attributes: [{ type: 'person', variable: 'close' }],
+            },
+          ],
+        },
+        {},
+      ],
+    });
+  });
+});
+
 // The base protocol with its Name Generator form titled as given, as schema 8
 // stored it.
 const migratedFormTitle = (title: string, nodeTypeName = 'Person') => {
