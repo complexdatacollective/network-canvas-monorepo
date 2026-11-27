@@ -139,6 +139,11 @@ function describeChange(
       ].filter(Boolean);
       return `Codebook ${change.entity} “${change.name ?? change.typeId ?? change.entity}” changed: ${parts.join('; ')}`;
     }
+    case 'layout-added':
+    case 'layout-removed':
+      return `Layout “${change.name ?? short(change.layoutId)}” ${change.kind === 'layout-added' ? 'added' : 'removed'}`;
+    case 'layout-changed':
+      return `Layout “${change.name ?? short(change.layoutId)}” changed: ${formatFields(change.changes)}`;
     case 'settings-changed':
       return `Protocol settings changed: ${formatFields(change.changes)}`;
     case 'assets-changed':

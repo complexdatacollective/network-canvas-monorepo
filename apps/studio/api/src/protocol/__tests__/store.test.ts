@@ -48,6 +48,7 @@ import {
   type StoreSchema,
   storeDb,
   testTypeId,
+  testVariableId,
   waitForLockWait,
 } from './helpers.ts';
 
@@ -655,6 +656,35 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     expect(Object.keys(document.codebook.node)).toEqual([
       BASE_CODEBOOK_IDS.person,
     ]);
+  });
+
+  it('adds and removes a layout', async () => {
+    const { draftId } = await create(baseProtocol());
+    const travel = testVariableId('travel');
+    await run(
+      addCodebookEntity(TEST_TEAM_ID, {
+        draftId,
+        ref: { entity: 'layout', layoutId: travel },
+        definition: { name: 'Travel' },
+      }),
+    );
+    expect(await run(getDraftDocument(TEST_TEAM_ID, draftId))).toHaveProperty(
+      ['codebook', 'layouts', travel],
+      { name: 'Travel' },
+    );
+
+    await run(
+      removeCodebookEntity(TEST_TEAM_ID, {
+        draftId,
+        ref: { entity: 'layout', layoutId: travel },
+      }),
+    );
+    expect(await run(getDraftDocument(TEST_TEAM_ID, draftId))).toHaveProperty(
+      ['codebook', 'layouts'],
+      {
+        [BASE_CODEBOOK_IDS.layoutPosition]: { name: 'Layout_Position' },
+      },
+    );
   });
 
   it('refuses a codebook type id the assembled protocol could never validate', async () => {

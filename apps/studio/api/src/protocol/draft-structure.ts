@@ -560,13 +560,19 @@ export const moveStage: (
 
 export type CodebookEntityRef =
   | { entity: 'node' | 'edge'; typeId: string }
-  | { entity: 'ego' };
+  | { entity: 'ego' }
+  | { entity: 'layout'; layoutId: string };
 
 const entitySectionId = (
   ref: CodebookEntityRef,
 ): Effect.Effect<string, DraftStructureError> => {
   if (ref.entity === 'ego') {
     return Effect.succeed(sectionId({ kind: 'codebookEgo' }));
+  }
+  if (ref.entity === 'layout') {
+    return Effect.succeed(
+      sectionId({ kind: 'codebookLayout', layoutId: ref.layoutId }),
+    );
   }
   if (!isEntityTypeId(ref.typeId)) {
     return Effect.fail(

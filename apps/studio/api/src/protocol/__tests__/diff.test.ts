@@ -429,6 +429,47 @@ describe('diffProtocolSections', () => {
     });
   });
 
+  it('reports an added layout', () => {
+    const before = baseProtocol();
+    const after = baseProtocol();
+    const travel = testVariableId('travel');
+    after.codebook.layouts = {
+      ...after.codebook.layouts,
+      [travel]: { name: 'Travel' },
+    };
+
+    expect(diff(before, after)).toEqual([
+      { kind: 'layout-added', layoutId: travel, name: 'Travel' },
+    ]);
+  });
+
+  it('reports a removed and a renamed layout', () => {
+    const before = baseProtocol();
+    const travel = testVariableId('travel');
+    before.codebook.layouts = {
+      ...before.codebook.layouts,
+      [travel]: { name: 'Travel' },
+    };
+    const after = baseProtocol();
+    after.codebook.layouts = {
+      [BASE_CODEBOOK_IDS.layoutPosition]: { name: 'Seating' },
+    };
+
+    const changes = diff(before, after);
+    expect(changes).toHaveLength(2);
+    expect(changes).toContainEqual({
+      kind: 'layout-removed',
+      layoutId: travel,
+      name: 'Travel',
+    });
+    expect(changes).toContainEqual({
+      kind: 'layout-changed',
+      layoutId: BASE_CODEBOOK_IDS.layoutPosition,
+      name: 'Seating',
+      changes: [{ path: ['name'], change: 'changed' }],
+    });
+  });
+
   it('reports a change to the declared languages as a settings change', () => {
     const before = baseProtocol();
     const after = baseProtocol();

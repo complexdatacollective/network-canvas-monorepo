@@ -58,6 +58,17 @@ export type ProtocolChange =
       changes: FieldChange[];
       variables: VariableChange[];
     }
+  | {
+      kind: 'layout-added' | 'layout-removed';
+      layoutId: string;
+      name?: string;
+    }
+  | {
+      kind: 'layout-changed';
+      layoutId: string;
+      name?: string;
+      changes: FieldChange[];
+    }
   | { kind: 'settings-changed'; changes: FieldChange[] }
   | {
       kind: 'assets-changed';
@@ -390,6 +401,34 @@ export function diffProtocolSections(
               (change) => change.path[0] !== 'variables',
             ),
             variables: diffVariables(aDoc, bDoc),
+          });
+        }
+        break;
+      }
+      case 'codebookLayout': {
+        if (aHash === undefined && bHash !== undefined) {
+          changes.push({
+            kind: 'layout-added',
+            layoutId: ref.layoutId,
+            name: stringField(getDoc(bHash), 'name'),
+          });
+        } else if (bHash === undefined && aHash !== undefined) {
+          changes.push({
+            kind: 'layout-removed',
+            layoutId: ref.layoutId,
+            name: stringField(getDoc(aHash), 'name'),
+          });
+        } else if (
+          aHash !== undefined &&
+          bHash !== undefined &&
+          aHash !== bHash
+        ) {
+          const bDoc = getDoc(bHash);
+          changes.push({
+            kind: 'layout-changed',
+            layoutId: ref.layoutId,
+            name: stringField(bDoc, 'name'),
+            changes: diffBody(getDoc(aHash), bDoc),
           });
         }
         break;
