@@ -51,13 +51,13 @@ The **Add node** tool opens the name box beside the palette. When the interviewe
 
 Pick an existing text attribute, or type a new name in the picker to create a new one.
 
-## Choose where layout is saved
+## Choose the layout
 
 <!-- section: composer-nodes -->
-<!-- field: layoutVariable -->
+<!-- field: layout -->
 <!-- scene: network-composer-positions -->
 
-The **layout attribute** stores where each node sits on the canvas, as a pair of coordinates. It updates every time a node is moved. Reusing the same layout attribute on a later [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram) or [Narrative](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative) stage carries the arrangement over.
+The **layout** stores where each node sits on the canvas, as a pair of coordinates. It updates every time a node is moved. Choosing the same layout on a later [Sociogram](https://documentation.networkcanvas.com/design-protocols/interface-documentation/sociogram) or [Narrative](https://documentation.networkcanvas.com/design-protocols/interface-documentation/narrative) stage carries the arrangement over.
 
 > Avoid: Treating where alters sit as if it were measured data. On-screen position is soft and is interpreted differently by different people. If ring or zone membership matters to your analysis, capture it as an explicit attribute instead of inferring it from coordinates.
 

@@ -35,6 +35,19 @@ const stageTypes = Object.keys(import.meta.glob('../content/*.md')).map(
   (path) => contentFile.exec(path)?.[1] ?? path,
 );
 
+/**
+ * Steps whose field is rendered without a `data-field-name` the walkthrough
+ * can find, so the step highlights its whole section. Each is a known gap to
+ * close, listed so that any other step naming a missing field fails.
+ */
+const KNOWN_UNMARKED_FIELDS = new Set([
+  'FamilyPedigree:nodeConfiguration.relationshipToParticipantAttribute',
+  'FamilyPedigree:form.fields',
+  'FamilyPedigree:completeness.scope',
+  'FamilyPedigree:completeness.enforcement',
+  'NetworkComposer:nodeForm.fields',
+]);
+
 /** Checked in StageLanguagesSection.test.tsx, with Architect's store. */
 const CHECKED_ELSEWHERE = new Set(['LanguageChooser']);
 
@@ -80,7 +93,7 @@ describe('walkthrough sections', () => {
   });
 
   it.each(stageTypes.filter((type) => !CHECKED_ELSEWHERE.has(type)))(
-    '%s names only sections its editor renders',
+    '%s names only sections and fields its editor renders',
     async (type) => {
       const walkthrough = await loadWalkthrough(type);
       const stage = fixtureStageOfType.get(type);
@@ -106,6 +119,22 @@ describe('walkthrough sections', () => {
           : [],
       );
       expect(missing).toEqual([]);
+
+      // A step naming a field that its section does not render falls back to
+      // highlighting the whole section, which hides a renamed field.
+      const missingFields = walkthrough.steps.flatMap((step) => {
+        if (step.section === undefined || step.field === undefined) return [];
+        if (KNOWN_UNMARKED_FIELDS.has(`${type}:${step.field}`)) return [];
+        const box = document.querySelector(
+          `[data-section-key="${CSS.escape(step.section)}"]`,
+        );
+        return box?.querySelector(
+          `[data-field-name="${CSS.escape(step.field)}"]`,
+        )
+          ? []
+          : [`"${step.title}" names field "${step.field}"`];
+      });
+      expect(missingFields).toEqual([]);
     },
     20_000,
   );

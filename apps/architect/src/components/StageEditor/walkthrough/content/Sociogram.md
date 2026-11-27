@@ -48,13 +48,22 @@ Use this stage when you want participants to build a visual picture of their net
 
 <!-- include: filter-network -->
 
+## Choose the layout
+
+<!-- section: sociogram-layout -->
+<!-- field: layout -->
+
+A **layout** is a named set of node positions in the codebook. The stage saves the position of each node that the participant places in the layout that you choose here, and every prompt on the stage uses it. A later Sociogram, Network Composer or Narrative preset that uses the same layout shows the nodes where they were placed.
+
+Pick an existing layout, or type a new name in the picker to create one.
+
 ## Write the prompts
 
 <!-- section: prompts -->
 
 Each prompt configures a task, such as placing nodes, connecting nodes, or assigning an attribute. The participant works through the prompts one at a time, in the order you set, on the same canvas. The Next and Back buttons control moving between prompts.
 
-Prompts that use the same **Layout attribute** share one spatial arrangement, so positions carry over from one prompt to the next. A prompt with a different layout attribute moves the nodes to the positions specified in the new attribute.
+Every prompt uses the stage's layout, so positions carry over from one prompt to the next. To show nodes in a different arrangement, add another Sociogram stage that uses a different layout.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 

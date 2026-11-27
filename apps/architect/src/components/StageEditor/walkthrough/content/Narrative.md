@@ -56,6 +56,8 @@ A preset is a customized view of the network designed to promote a specific kind
 
 A Narrative stage has no filter for the stage as a whole. Each preset has a **Preset filter** of its own instead, which narrows the nodes and edges that preset shows. A preset with no filter shows the whole network.
 
+Each preset shows the nodes in the **Layout** that you choose for it. A node appears where it was placed on an earlier stage that uses the same layout.
+
 > Do: Give each preset a single focus that maps to one question, and label it accordingly, for example a _Support_ preset that highlights who provides support, or a _Groups_ preset that shows how the network divides into communities.
 
 > Avoid: Crowding a single preset with every group, edge type and attribute at once. A dense view is hard to read and hard to discuss; separate concerns into distinct presets and switch between them.
@@ -67,7 +69,7 @@ A Narrative stage has no filter for the stage as a whole. Each preset has a **Pr
 <!-- section: canvas-permissions -->
 <!-- field: behaviours.automaticLayout -->
 
-With **Automatic layout** on, Network Canvas moves the nodes by simulating attraction and repulsion. The simulation starts from the nodes' saved positions and pulls grouped nodes together. A pause button in the toolbar at the bottom left stops and restarts the simulation. With **Automatic layout** off, nodes stay exactly where the layout attribute puts them. New Narrative stages start with **Automatic layout** and **Allow repositioning** switched on.
+With **Automatic layout** on, Network Canvas moves the nodes by simulating attraction and repulsion. The simulation starts from the nodes' saved positions and pulls grouped nodes together. A pause button in the toolbar at the bottom left stops and restarts the simulation. With **Automatic layout** off, nodes stay exactly where they were placed in the preset's layout. New Narrative stages start with **Automatic layout** and **Allow repositioning** switched on.
 
 ## Allow drawing on the canvas
 
@@ -82,7 +84,7 @@ With **Free-draw** on, the interviewer or participant can draw on the canvas wit
 <!-- section: canvas-permissions -->
 <!-- field: behaviours.allowRepositioning -->
 
-With **Allow repositioning** on, nodes can be dragged around the canvas while you talk. Moved nodes keep their new places only while the stage is on screen, and the positions saved in the layout attribute never change.
+With **Allow repositioning** on, nodes can be dragged around the canvas while you talk. Moved nodes keep their new places only while the stage is on screen, and the positions saved in the layout never change.
 
 <!-- include: built-in-wording -->
 
