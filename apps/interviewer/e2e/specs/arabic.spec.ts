@@ -130,6 +130,7 @@ test('every screen of Interviewer reads right to left in Arabic', async ({
   await audit(page, 'interview: text size');
   await page.keyboard.press('Escape');
   await expect(textSize).toBeHidden();
+  await interviewNav.nextPrompt('Link people who know each other.');
   await interviewNav.next();
   await interviewNav.finish();
   // The finished interview, shown in place with the app's way out.

@@ -37,6 +37,13 @@ const variableId = (name: string) => {
   }
   return id;
 };
+const [FAMILY_LAYOUT] =
+  Object.entries(codebook.layouts ?? {}).find(
+    ([, layout]) => layout.name === 'family_layout',
+  ) ?? [];
+if (!FAMILY_LAYOUT) {
+  throw new Error('The perceived-family protocol has no family_layout layout');
+}
 const FAMILY_CATEGORIES = variableId('family_categories');
 const CATEGORY_WORDS = variableId('category_words');
 
@@ -45,7 +52,7 @@ const person: NcNode = {
   type: personTypeId,
   [entityAttributesProperty]: {
     [variableId('name')]: 'Jo',
-    [variableId('family_layout')]: { x: 0.5, y: 0.5 },
+    [FAMILY_LAYOUT]: { x: 0.5, y: 0.5 },
   },
 };
 

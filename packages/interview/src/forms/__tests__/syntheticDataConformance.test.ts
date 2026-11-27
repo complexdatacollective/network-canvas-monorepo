@@ -1033,14 +1033,17 @@ const stages = [
     // at some seeds (weakness 1 in the review), which leaves `unique` on an
     // edge variable with no peer to collide with.
     prompts: [
+      { id: 'p3-place', text: { en: 'Place people' }, task: 'layout' },
       {
         id: 'p3',
         text: { en: 'Connect people' },
+        task: 'connect',
         edges: { create: FRIEND },
       },
       {
         id: 'p3b',
         text: { en: 'Connect people again' },
+        task: 'connect',
         edges: { create: FRIEND },
       },
     ],

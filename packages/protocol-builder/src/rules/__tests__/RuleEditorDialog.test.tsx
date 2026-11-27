@@ -1702,7 +1702,13 @@ describe('a layout in the node attribute picker', () => {
             subject: { entity: 'node', types: [PERSON] },
             layout: HOME,
             background: { concentricCircles: 3 },
-            prompts: [{ id: testId('prompt'), text: { en: 'Place people' } }],
+            prompts: [
+              {
+                id: testId('prompt'),
+                text: { en: 'Place people' },
+                task: 'layout',
+              },
+            ],
           },
           [sectionId({ kind: 'codebookNode', typeId: PLACE })]: {
             name: 'Place',

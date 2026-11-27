@@ -185,13 +185,13 @@ describe('golden hashes', () => {
         "codebook:node:62c26eae-2583-582b-9355-1a478554b68c": "cd8454f8fecb2dad2cdfe64a995e24f805be24fbd333c2e6cc8b99309102844e",
         "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
         "stage:3c07e726-388f-4af2-99ce-bbe2aa1b31eb": "d955c844e8a4c6f6f8a6730b07d6a3d307fab053f20f2d68b554d51d10ec53f8",
-        "stage:7f96f8ac-4f56-4f34-9195-dae7858b93f7": "b6a154f5d8a39e94195e3e9e69a67b564ba9b75d234131cb6cdff494cc21ea67",
+        "stage:7f96f8ac-4f56-4f34-9195-dae7858b93f7": "d1fd22be72d8230aed6340a8fc658eafeff680fda10a7cb6c3fce10854f7175f",
         "stage:8f480b11-39d0-4912-ade7-1d5040bf1f71": "954ea2a1e6a8b5428c4178f2b616631a0bdd4551b60174670fadc1ee29f55657",
         "stageOrder": "4c49e64f198d60f8f899dc13a92ef3c31f737dd35a89760449b611a107c4b814",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"3393cd6bafc30376878d8dfe871cf42f3649ba96088266913235968ec609baee"`,
+      `"55de615fec8687b4f5da03034864213822a000dc3d9720584df9245d44103410"`,
     );
   });
 });

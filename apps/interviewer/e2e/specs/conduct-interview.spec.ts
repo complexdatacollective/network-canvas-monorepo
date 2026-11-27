@@ -243,10 +243,11 @@ test.describe('conducting an interview', () => {
       await interviewNav.next();
 
       // Stage 3: Sociogram — placement/edges are exercised in the dedicated
-      // sociogram test below; here we simply advance to Finish. Nodes may
-      // remain unplaced in the drawer — the stage has no minNodes-placed
-      // behaviour.
+      // sociogram test below; here we pass its layout prompt and its connect
+      // prompt and advance to Finish. Nodes may remain unplaced in the
+      // drawer — the stage has no minNodes-placed behaviour.
       await capture('interview-stage-sociogram');
+      await interviewNav.nextPrompt('Link people who know each other.');
       await interviewNav.next();
 
       // FinishSession stage.
@@ -432,10 +433,7 @@ test.describe('conducting an interview', () => {
     await expect(page.getByText(/^0 unplaced$/)).toBeVisible();
 
     // Edges are created on the stage's second prompt, a connect task.
-    await page.getByTestId('next-button').click();
-    await expect(
-      page.getByText('Link people who know each other.'),
-    ).toBeVisible();
+    await interviewNav.nextPrompt('Link people who know each other.');
 
     await expect.poll(() => getEdgeCount(page)).toBe(0);
     await connectNodes(page, 'Alice', 'Bob');

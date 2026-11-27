@@ -221,6 +221,7 @@ test.describe('a Spanish browser', () => {
     await interviewNav.next();
     await interviewNav.quickAddNode('Irene');
     await interviewNav.next();
+    await interviewNav.nextPrompt('Link people who know each other.');
     await interviewNav.next();
     // The finish stage's title, its Finish button and the confirmation's
     // question are the protocol's own text, which this protocol has only in

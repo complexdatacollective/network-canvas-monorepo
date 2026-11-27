@@ -271,6 +271,7 @@ export function baseProtocol(): CurrentProtocol {
             {
               id: BASE_PROTOCOL_IDS.sociogramPrompt,
               text: { en: 'Position nodes' },
+              task: 'layout',
             },
           ],
         },

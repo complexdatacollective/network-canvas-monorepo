@@ -259,6 +259,7 @@ const seededWith = (
         {
           id: testId('sociogram-prompt-1'),
           text: en('Place the people who know each other close together'),
+          task: 'layout',
           sortOrder: rules,
         },
       ],

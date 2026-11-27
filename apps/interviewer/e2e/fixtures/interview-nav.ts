@@ -48,6 +48,13 @@ export class InterviewNav {
       .not.toBe(before);
   }
 
+  // Moves to the next prompt of the same stage: the stage step does not
+  // change, so this waits for the new prompt's text instead.
+  async nextPrompt(promptText: string): Promise<void> {
+    await this.page.getByTestId('next-button').click();
+    await expect(this.page.getByText(promptText)).toBeVisible();
+  }
+
   async back(): Promise<void> {
     const before = await this.stage.getAttribute('data-stage-step');
     await this.page.getByTestId('previous-button').click();

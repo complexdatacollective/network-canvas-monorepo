@@ -65,6 +65,7 @@ describe('PrismaProtocolRepository', () => {
         {
           id: '00000000-0000-4000-8000-000000000005',
           text: { en: 'Place people' },
+          task: 'layout',
         },
       ],
     };

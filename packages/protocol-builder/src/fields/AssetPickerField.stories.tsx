@@ -110,7 +110,11 @@ const STAGE_SCENARIOS: Readonly<
         label: 'Sociogram',
         subject: { entity: 'node', types: [PERSON] },
         prompts: [
-          { id: testId('prompt-1'), text: 'Place the people you know' },
+          {
+            id: testId('prompt-1'),
+            text: 'Place the people you know',
+            task: 'layout',
+          },
         ],
         background: { image: holding ?? '' },
       },
@@ -152,7 +156,11 @@ const STAGE_SCENARIOS: Readonly<
         label: 'Sociogram',
         subject: { entity: 'node', types: [PERSON] },
         prompts: [
-          { id: testId('prompt-1'), text: 'Place the people you know' },
+          {
+            id: testId('prompt-1'),
+            text: 'Place the people you know',
+            task: 'layout',
+          },
         ],
         background: { image: holding ?? '' },
       },
@@ -176,7 +184,11 @@ const STAGE_SCENARIOS: Readonly<
         label: 'Sociogram',
         subject: { entity: 'node', types: [PERSON] },
         prompts: [
-          { id: testId('prompt-1'), text: 'Place the people you know' },
+          {
+            id: testId('prompt-1'),
+            text: 'Place the people you know',
+            task: 'layout',
+          },
         ],
         background: { image: holding ?? '' },
       },

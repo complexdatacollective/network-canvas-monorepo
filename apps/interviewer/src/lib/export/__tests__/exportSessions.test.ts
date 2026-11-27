@@ -303,7 +303,7 @@ describe('runExport via the export worker', () => {
               label: 'Sociogram',
               subject: { entity: 'node', types: ['person'] },
               layout: 'map',
-              prompts: [],
+              prompts: [{ id: 'place', text: 'Place people', task: 'layout' }],
             },
             {
               id: 'narrative',

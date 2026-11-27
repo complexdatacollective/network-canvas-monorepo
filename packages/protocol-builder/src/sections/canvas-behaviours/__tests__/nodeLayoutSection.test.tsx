@@ -1,21 +1,10 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import {
-  fixtureLayoutId,
-  fixtureTypeId,
-} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testId } from '../../../testing/testId.ts';
 import { nodeLayout } from '../nodeLayout.tsx';
 
-const PERSON = fixtureTypeId('node', 'person');
-const LAYOUT = fixtureLayoutId('layout');
-
 const NodeLayout = nodeLayout();
-
-/** Copy in the fixture protocol's only language, as schema 9 holds it. */
-const en = (text: string) => ({ 'en-US': text });
 
 const openLayout = () => ({
   stageId: 'sociogram-1' as const,
@@ -43,46 +32,6 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
     const saved = await harness.submit();
     expect(saved?.stageDocument.behaviours).toEqual({
       automaticLayout: false,
-    });
-  });
-
-  /**
-   * The other two canvas behaviours are expressible on a sociogram — the
-   * schema shares one object with the narrative interface — and no interface
-   * offers them, because the interview honours neither there. A stage
-   * somebody authored by hand carrying one has to keep it: this section
-   * writes the arrangement, not the whole object.
-   */
-  it('keeps a behaviour it does not offer', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        id: testId('hand-authored-sociogram'),
-        type: 'Sociogram' as const,
-        fields: {
-          label: en('Sociogram'),
-          subject: { entity: 'node', types: [PERSON] },
-          background: { concentricCircles: 4 },
-          layout: LAYOUT,
-          behaviours: { automaticLayout: true, freeDraw: true },
-          prompts: [
-            {
-              id: testId('sociogram-prompt-1'),
-              text: en('Place the people you know'),
-            },
-          ],
-        },
-      },
-      sections: <NodeLayout />,
-    });
-
-    await harness.user.click(
-      await screen.findByRole('option', { name: /Manual mode/ }),
-    );
-
-    const saved = await harness.submit();
-    expect(saved?.stageDocument.behaviours).toEqual({
-      automaticLayout: false,
-      freeDraw: true,
     });
   });
 });

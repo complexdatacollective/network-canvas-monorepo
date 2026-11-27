@@ -118,7 +118,8 @@ const sociogram = {
     {
       id: testId('socio-p1'),
       text: { en: 'Place the people' },
-      edges: { create: KNOWS, display: [KNOWS] },
+      task: 'layout',
+      edges: { display: [KNOWS] },
     },
   ],
 };

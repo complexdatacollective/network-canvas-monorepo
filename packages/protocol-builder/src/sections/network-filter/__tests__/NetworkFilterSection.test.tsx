@@ -403,6 +403,7 @@ describe('rules that contradict the rest of the stage', () => {
         {
           id: testId('sociogram-prompt-1'),
           text: 'Who do you know?',
+          task: 'layout',
           // Displayed rather than created, and still hidden by rules that
           // require a different edge type to exist.
           edges: { display: [OTHER_EDGE] },
