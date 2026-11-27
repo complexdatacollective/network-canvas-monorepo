@@ -49,7 +49,7 @@ Constructing rules is the most fundamental part of creating skip logic. There ar
 
 The operators available for an attribute rule depend on the variable's type, just as they do for [network filtering](/en/design-protocols/key-concepts/network-filtering). Text variables can be matched with _is exactly_, _is not_, and — from schema 8 onwards — _contains_ and _does not contain_. For ordinal and categorical variables, the _includes_ and _excludes_ operators accept **multiple** selected values, so one rule can match against any of several options.
 
-For any attribute, a rule can also use **exists** or **does not exist** to check whether the attribute has been answered. An answer of 0 or "no" counts as an answer. Text that is empty or contains only spaces, and a categorical answer with no options selected, count as not answered. This is the same check that decides whether a required question has been answered.
+For any attribute, a rule can also use **exists** or **does not exist** to check whether the attribute has been answered. A number equal to 0, or a yes-or-no answer of no, counts as an answer. A text answer that is empty or contains only spaces, and a categorical answer with no options selected, count as not answered. This is the same check that decides whether a required question has been answered.
 
 ## The join operator
 

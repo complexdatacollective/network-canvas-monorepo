@@ -98,7 +98,7 @@ For example, the heading of an Information stage could thank the participant by 
 | If: Ego has first_name | "Thank you, " **first_name** "!" | Thank you, Sam!  |
 | Otherwise              | Thank you!                       | Thank you!       |
 
-Zero and "no" are answers, not missing values: a number equal to 0 is shown as 0, and a yes-or-no answer of no is shown by the label of the no answer. A text answer that is empty or contains only spaces, and a categorical answer with no options selected, count as missing. A rule that checks whether an attribute **exists** uses the same definition, in skip logic and filters as well as in logic.
+Zero and "no" are answers, not missing values: a number equal to 0 is shown as 0, and a yes-or-no answer of no is shown by the label of the no answer. A text answer that is empty or contains only spaces, and a categorical answer with no options selected, count as missing. Rules in skip logic, filters, dynamic attributes and logic blocks use the same definition when they check whether an attribute **exists**.
 
 Today's date and a node's label are never missing. The one exception is the prompt of an Ordinal Bin or Categorical Bin set to **Tap to place**: once every node has been placed, no node is being placed, so the label of the node being placed shows nothing.
 

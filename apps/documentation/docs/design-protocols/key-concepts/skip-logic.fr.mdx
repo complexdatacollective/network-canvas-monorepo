@@ -1,7 +1,7 @@
 ---
 title: Logique de saut
 navOrder: 10
-translatedFrom: 83ec6d783466689c459929d1e9c00f19a8f1b8cb
+translatedFrom: e4946284b695e3eabcd834702bb761ade89b0cd3
 ---
 
 <Definition>
@@ -50,6 +50,8 @@ La construction des règles est la partie la plus fondamentale de la création d
 - **Règles d’« attribut »** : ces règles vous permettent d’interroger la valeur d’un attribut sur un type d’entité donné. Par exemple, vous pouvez interroger la valeur d’un attribut appelé `age` sur un type d’alter appelé « Person » (personne). Vous pouvez évaluer le résultat à l’aide de l’un des opérateurs logiques proposés, qui varient selon le type d’attribut. Par exemple, les attributs numériques vous permettent d’utiliser des opérateurs comme _est supérieur à_ et _est inférieur à_. Ce type de règle ne s’applique qu’aux règles portant sur les alters et sur l’ego.
 
 Les opérateurs disponibles pour une règle d’attribut dépendent du type de l’attribut, exactement comme pour le [filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering). Les attributs de texte peuvent être comparés avec _est exactement_, _n’est pas_ et, à partir du schéma 8, _contient_ et _ne contient pas_. Pour les attributs ordinaux et catégoriels, les opérateurs _inclut_ et _exclut_ acceptent **plusieurs** valeurs sélectionnées, de sorte qu’une seule règle peut correspondre à n’importe laquelle de plusieurs options de réponse.
+
+Pour tout attribut, une règle peut aussi utiliser **existe** ou **n’existe pas** pour vérifier si l’attribut a reçu une réponse. Un nombre égal à 0, ou une réponse « non » à une question par oui ou non, compte comme une réponse. Une réponse textuelle vide ou qui ne contient que des espaces compte comme une absence de réponse, de même qu’une réponse catégorielle sans aucune option sélectionnée. C’est la même vérification que celle qui détermine si une question obligatoire a reçu une réponse.
 
 ## L’opérateur de jonction {#the-join-operator}
 
