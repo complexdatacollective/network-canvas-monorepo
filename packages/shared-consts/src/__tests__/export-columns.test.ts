@@ -5,6 +5,7 @@ import {
   type ExportColumnEntity,
   type ExportColumnVariable,
   findExportColumnConflicts,
+  findLayoutExportColumnConflicts,
   layoutColumn,
   variableExportColumnEntries,
 } from '../export-columns.ts';
@@ -562,5 +563,99 @@ describe('findExportColumnConflicts', () => {
         },
       ]);
     });
+  });
+});
+
+describe('findLayoutExportColumnConflicts', () => {
+  it('findLayoutExportColumnConflicts reports each derived column clash', () => {
+    const found = findLayoutExportColumnConflicts(
+      {
+        sociogram: { name: 'sociogram' },
+        other: { name: 'other' },
+      },
+      {
+        person: { posX: { name: 'sociogram_x', type: 'text' } },
+        place: {
+          size: {
+            name: 'size',
+            type: 'categorical',
+            options: [{ value: 'a' }],
+          },
+          posY: { name: 'other_Y', type: 'number' },
+        },
+      },
+    );
+
+    expect(
+      found.map(({ layoutId, conflict }) => ({
+        layoutId,
+        kind: conflict.kind,
+        column: conflict.column,
+        ...(conflict.kind === 'sibling'
+          ? {
+              sibling: conflict.sibling.id,
+              nodeType: conflict.sibling.nodeType,
+              formats: conflict.formats,
+            }
+          : {}),
+      })),
+    ).toEqual([
+      {
+        layoutId: 'sociogram',
+        kind: 'sibling',
+        column: 'sociogram_x',
+        sibling: 'posX',
+        nodeType: 'person',
+        formats: ['csv', 'graphml'],
+      },
+      {
+        layoutId: 'other',
+        kind: 'sibling',
+        column: 'other_y',
+        sibling: 'posY',
+        nodeType: 'place',
+        formats: ['csv', 'graphml'],
+      },
+    ]);
+  });
+
+  it('reports a clash between two layouts once, for the first', () => {
+    const found = findLayoutExportColumnConflicts(
+      { first: { name: 'a b' }, second: { name: 'a_b' } },
+      {},
+    );
+
+    expect(found.map(({ layoutId }) => layoutId)).not.toContain('second');
+    expect(found).toEqual(
+      expect.arrayContaining([
+        {
+          layoutId: 'first',
+          conflict: expect.objectContaining({
+            kind: 'sibling',
+            column: 'a b_X',
+            sibling: { id: 'second', name: 'a_b', type: 'layout' },
+            formats: ['graphml'],
+          }),
+        },
+      ]),
+    );
+  });
+
+  it('leaves a layout named like a variable or another layout to the duplicate-name check', () => {
+    expect(
+      findLayoutExportColumnConflicts(
+        { first: { name: 'pos' }, second: { name: 'POS' } },
+        { person: { pos: { name: 'pos', type: 'text' } } },
+      ),
+    ).toEqual([]);
+  });
+
+  it('accepts layouts whose columns meet nothing', () => {
+    expect(
+      findLayoutExportColumnConflicts(
+        { first: { name: 'pos' } },
+        { person: { x: { name: 'x', type: 'text' } } },
+      ),
+    ).toEqual([]);
   });
 });

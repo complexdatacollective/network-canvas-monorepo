@@ -47,5 +47,11 @@ export const findPrototypeCodebookKeys = (
     }
   }
   issues.push(...variablesIssues(codebook.ego, ['codebook', 'ego']));
+  if (
+    isRecord(codebook.layouts) &&
+    Object.hasOwn(codebook.layouts, PROTOTYPE_KEY)
+  ) {
+    issues.push(issueAt(['codebook', 'layouts']));
+  }
   return issues;
 };

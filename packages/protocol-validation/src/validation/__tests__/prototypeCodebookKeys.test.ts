@@ -53,6 +53,15 @@ const cases = [
       addPrototypeKey(protocol.codebook.edge.knows.variables, textVariable),
   },
   {
+    where: 'a layout id',
+    path: ['codebook', 'layouts', '__proto__'],
+    add: (protocol: ReturnType<typeof createBaseProtocol>) =>
+      addPrototypeKey(
+        Object.assign(protocol.codebook, { layouts: {} }).layouts,
+        { name: 'Proto' },
+      ),
+  },
+  {
     where: 'an ego variable id',
     path: ['codebook', 'ego', 'variables', '__proto__'],
     add: (protocol: ReturnType<typeof createBaseProtocol>) =>
@@ -76,6 +85,24 @@ describe('a __proto__ codebook id', () => {
 
     expect(result.error?.issues).toEqual([
       { code: 'custom', path, message: 'An id cannot be __proto__' },
+    ]);
+  });
+
+  it('finds a prototype key in codebook.layouts', async () => {
+    const protocol = {
+      ...createBaseProtocol(),
+      codebook: { ...createBaseProtocol().codebook, layouts: {} },
+    };
+    addPrototypeKey(protocol.codebook.layouts, { name: 'Proto' });
+
+    const result = await validateProtocol(withFinishStage(protocol));
+
+    expect(result.error?.issues).toEqual([
+      {
+        code: 'custom',
+        path: ['codebook', 'layouts', '__proto__'],
+        message: 'An id cannot be __proto__',
+      },
     ]);
   });
 

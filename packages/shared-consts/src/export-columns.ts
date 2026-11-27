@@ -465,3 +465,61 @@ export const findExportColumnConflicts = <
   }
   return [...found.values()].map(({ conflict }) => conflict);
 };
+
+/**
+ * Another layout, or a variable of one node type, as far as the columns a
+ * layout is exported to can meet it. `nodeType` names the type a variable
+ * belongs to, and is absent for a layout.
+ */
+export type LayoutExportColumnSibling = ExportColumnVariable &
+  Readonly<{ id: string; nodeType?: string }>;
+
+/** One way the columns of the layout stored under `layoutId` clash. */
+export type LayoutExportColumnConflict = Readonly<{
+  layoutId: string;
+  conflict: ExportColumnConflict<LayoutExportColumnSibling>;
+}>;
+
+const asLayoutSibling = ([id, { name }]: readonly [
+  string,
+  Readonly<{ name: string }>,
+]): LayoutExportColumnSibling => ({ id, name, type: 'layout' });
+
+/**
+ * Every export column a layout writes that a built-in node column, a
+ * variable of any node type or another layout also writes, in any export
+ * format.
+ *
+ * A layout's positions are written as columns of every node type that has
+ * it (`name_x` and `name_y`, the screen-space pair, and GraphML's `name_X`
+ * and `name_Y`), so each layout is compared with the variables of every node
+ * type. A clash between two layouts is reported once, for the first of them
+ * in record order. A layout named like a variable or like another layout is
+ * left to the duplicate-name check, as `findExportColumnConflicts` leaves it.
+ */
+export const findLayoutExportColumnConflicts = (
+  layouts: Readonly<Record<string, Readonly<{ name: string }>>>,
+  nodeVariablesByType: Readonly<
+    Record<string, Readonly<Record<string, ExportColumnVariable>>>
+  >,
+): LayoutExportColumnConflict[] => {
+  const entries = Object.entries(layouts);
+  const variables = Object.entries(nodeVariablesByType).flatMap(
+    ([nodeType, byId]) =>
+      Object.entries(byId).map(([id, variable]): LayoutExportColumnSibling => ({
+        ...variable,
+        id,
+        nodeType,
+      })),
+  );
+  return entries.flatMap((entry, index) =>
+    findExportColumnConflicts({
+      entity: 'node',
+      candidate: asLayoutSibling(entry),
+      siblings: [
+        ...entries.slice(index + 1).map(asLayoutSibling),
+        ...variables,
+      ],
+    }).map((conflict) => ({ layoutId: entry[0], conflict })),
+  );
+};

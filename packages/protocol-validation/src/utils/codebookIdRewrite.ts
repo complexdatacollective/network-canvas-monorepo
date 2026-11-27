@@ -30,6 +30,13 @@ export type CodebookIdRenames = {
    * types', then the ego's. Absent, every variable keeps its id.
    */
   variableId?: (variableId: string, owner: VariableOwner) => string;
+  /**
+   * The new id of the layout stored under `layoutId`. Called once for each
+   * layout, in codebook order, before `variableId` is called for any
+   * variable, so a caller giving out ids can let layouts claim theirs first.
+   * Absent, every layout keeps its id.
+   */
+  layoutId?: (layoutId: string) => string;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -105,12 +112,14 @@ const renamedAttributeName = (
 };
 
 /**
- * Gives every node type, edge type and variable in `root`'s codebook the id
- * `renames` names for it, and points every reference to each at its new id:
- * every site `schema` tags as an entity type reference or an entity
- * attribute reference, including each attribute text that shows dynamic
- * values names (`ego_<id>`), whose name in the text is rewritten.
- * `root` is changed in place: it must be a copy the caller owns.
+ * Gives every node type, edge type, variable and layout in `root`'s codebook
+ * the id `renames` names for it, and points every reference to each type and
+ * variable at its new id: every site `schema` tags as an entity type
+ * reference or an entity attribute reference, including each attribute text
+ * that shows dynamic values names (`ego_<id>`), whose name in the text is
+ * rewritten. No stage refers to a layout yet, so a layout is renamed in the
+ * codebook alone. `root` is changed in place: it must be a copy the caller
+ * owns.
  *
  * Every reference is resolved against the document as it was before any
  * renaming, so a variable is renamed by the type that owned it under that
@@ -137,6 +146,13 @@ export const rewriteCodebookIds = (
       new Map(Object.keys(types).map((type) => [type, rename(type, entity)])),
     );
   }
+
+  const layouts = isRecord(codebook) ? codebook.layouts : undefined;
+  const renameLayout = renames.layoutId;
+  const layoutRenames =
+    isRecord(layouts) && renameLayout !== undefined
+      ? new Map(Object.keys(layouts).map((key) => [key, renameLayout(key)]))
+      : undefined;
 
   const records = variableRecordsOf(codebook);
   const variableRenames = new Map<string, Map<string, string>>();
@@ -221,5 +237,8 @@ export const rewriteCodebookIds = (
     const types = isRecord(codebook) ? codebook[entity] : undefined;
     const byType = typeRenames.get(entity);
     if (isRecord(types) && byType !== undefined) renameKeys(types, byType);
+  }
+  if (isRecord(layouts) && layoutRenames !== undefined) {
+    renameKeys(layouts, layoutRenames);
   }
 };

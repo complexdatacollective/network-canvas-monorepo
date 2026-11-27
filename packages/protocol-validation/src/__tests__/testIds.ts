@@ -55,10 +55,10 @@ const asTestCodebookId =
 /**
  * A protocol fixture written with readable codebook keys, with each node or
  * edge type key that is not a UUID replaced by `testTypeId` of it, each
- * variable key that is not a UUID by `testVariableId` of it, and every
- * reference to them with them. A variable key used by two entities becomes
- * one id on both, so a fixture testing the rule against reused keys still
- * breaks it. A reference naming nothing in the codebook, and a `__proto__`
+ * variable or layout key that is not a UUID by `testVariableId` of it (a
+ * layout id is a variable id), and every reference to them with them. A key
+ * used by two entities, or by an entity and a layout, becomes one id on both,
+ * so a fixture testing the rule against reused keys still breaks it. A reference naming nothing in the codebook, and a `__proto__`
  * key (which a fixture uses to test the rule against it), are left as they
  * are. `withTestIds` does this too.
  */
@@ -69,6 +69,7 @@ export const withTestCodebookIds = <T>(protocol: T): T => {
   renameCodebookIds(copy, {
     typeId: asTestCodebookId(isEntityTypeId, testTypeId),
     variableId: asTestCodebookId(isVariableId, testVariableId),
+    layoutId: asTestCodebookId(isVariableId, testVariableId),
   });
   withTestOptionIds(copy);
   return copy;

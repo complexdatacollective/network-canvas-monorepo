@@ -27,7 +27,10 @@ import {
   dynamicValueReferencesIn,
   parseDynamicValueName,
 } from '../dynamic-values.ts';
-import { renameCodebookIds } from '../migration-codebook-ids.ts';
+import {
+  assignCodebookIds,
+  renameCodebookIds,
+} from '../migration-codebook-ids.ts';
 import migrationV8toV9 from '../migration.ts';
 import { ProtocolStructureSchema } from '../protocol-structure.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
@@ -705,6 +708,66 @@ describe('renaming codebook ids', () => {
     expect(
       valueAt(protocol, ['stages', 0, 'form', 'fields', 0, 'variable']),
     ).toBe(testVariableId('age'));
+  });
+
+  it('rewrites readable layout keys through layoutId', () => {
+    const protocol = {
+      codebook: {
+        node: { person: { name: 'Person', variables: { age: { name: 'A' } } } },
+        layouts: { sociogram: { name: 'sociogram' }, map: { name: 'map' } },
+      },
+      stages: [],
+    };
+    const calls: string[] = [];
+    renameCodebookIds(protocol, {
+      layoutId: (key) => {
+        calls.push(`layout ${key}`);
+        return testVariableId(`layout ${key}`);
+      },
+      variableId: (key) => {
+        calls.push(`variable ${key}`);
+        return testVariableId(key);
+      },
+    });
+
+    expect(calls).toEqual(['layout sociogram', 'layout map', 'variable age']);
+    expect(recordAt(protocol, ['codebook', 'layouts'])).toEqual({
+      [testVariableId('layout sociogram')]: { name: 'sociogram' },
+      [testVariableId('layout map')]: { name: 'map' },
+    });
+  });
+
+  it('assignCodebookIds gives a variable a new id when a layout holds its key', () => {
+    const shared = testVariableId('shared');
+    const protocol = {
+      codebook: {
+        node: {
+          [testTypeId('person')]: {
+            name: 'Person',
+            variables: { [shared]: { name: 'age' } },
+          },
+        },
+        layouts: { [shared]: { name: 'sociogram' }, map: { name: 'map' } },
+      },
+      stages: [],
+    };
+    assignCodebookIds(protocol);
+
+    const layoutIds = Object.keys(recordAt(protocol, ['codebook', 'layouts']));
+    const variableIds = Object.keys(
+      recordAt(protocol, [
+        'codebook',
+        'node',
+        testTypeId('person'),
+        'variables',
+      ]),
+    );
+    expect(layoutIds[0]).toBe(shared);
+    expect(layoutIds.every(isVariableId)).toBe(true);
+    expect(layoutIds[1]).not.toBe('map');
+    expect(variableIds).toEqual([
+      expect.toSatisfy((id: string) => isVariableId(id) && id !== shared),
+    ]);
   });
 });
 
