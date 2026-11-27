@@ -89,3 +89,44 @@ describe('PresetSwitcher highlight legend', () => {
     expect(marksOwnLanguage('Trusted')).toBe(false);
   });
 });
+
+describe('PresetSwitcher without a legend', () => {
+  it('opens no legend for a preset that only names a layout', () => {
+    const [preset] = PRESETS;
+    if (preset === undefined) throw new Error('No preset fixture.');
+    render(
+      <PresetSwitcher
+        presets={[{ ...preset, highlight: [] }]}
+        headings={HEADINGS}
+        activePreset={0}
+        highlightIndex={0}
+        showHighlighting={false}
+        showEdges={false}
+        showHulls={false}
+        onChangePreset={vi.fn()}
+        onToggleHulls={vi.fn()}
+        onToggleEdges={vi.fn()}
+        onChangeHighlightIndex={vi.fn()}
+        onToggleHighlighting={vi.fn()}
+        dragConstraints={{ current: null }}
+      />,
+      {
+        wrapper: ({ children }) => (
+          <TestProtocolLocalization
+            localization={{ defaultLocale: 'en', locales: ['en'] }}
+            locale="en"
+          >
+            {children}
+          </TestProtocolLocalization>
+        ),
+      },
+    );
+
+    expect(screen.getByText('Friends')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Friends' })).not.toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+});

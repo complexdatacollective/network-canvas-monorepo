@@ -191,6 +191,10 @@ export default function PresetSwitcher({
   const hasHighlights = highlights.length > 0;
   const hasEdges = edges.length > 0;
   const hasGroups = groupLegend.length > 0;
+  const hasLegend =
+    (hasHighlights && headings.attributes !== undefined) ||
+    (hasEdges && headings.links !== undefined) ||
+    (hasGroups && headings.groups !== undefined);
 
   // Controlled accordion: open sections correspond to enabled features
   const accordionValue = useMemo(() => {
@@ -242,122 +246,133 @@ export default function PresetSwitcher({
           disabled={activePreset === 0}
           onClick={() => onChangePreset(activePreset - 1)}
         />
-        <ToolbarPopover
-          open={popoverOpen}
-          onOpenChange={(open, event) => {
-            if (!open && event.reason !== 'trigger-press') return;
-            setPopoverOpen(open);
-          }}
-          trigger={
-            // A deliberately quieter `aria-expanded` treatment than the one
-            // `Button` gives every disclosure by default.
-            //
-            // That default — a solid `--selected` fill, which the interview
-            // theme resolves to pure WHITE, with contrast-flipped text — is
-            // sized for a TRANSIENT state: the brief moment a menu or popover
-            // is open. This popover is different. It opens itself on mount
-            // (`useState(true)` above) and a researcher normally leaves it
-            // open for the whole stage, so `aria-expanded` here is the
-            // RESTING state of the control, not a flash of one. At full
-            // strength it reads as the loudest thing on the canvas and
-            // competes with the network the participant is meant to be
-            // looking at.
-            //
-            // So: keep the fill, drop it to a tint, and keep the toolbar's own
-            // text colour instead of flipping to `--selected-contrast`. The
-            // segment still reads as active and still looks pressable; it just
-            // stops shouting. Scoped to this trigger on purpose — every other
-            // disclosure in the app is transient and wants the default.
-            <ToolbarButton className="aria-expanded:bg-selected/15 aria-expanded:text-(--component-text)">
-              <LocalizedText value={currentPreset.label} render={<span />} />
-            </ToolbarButton>
-          }
-          contentProps={{
-            align: 'center',
-            sideOffset: 14,
-            className: 'min-w-2xs',
-          }}
-        >
-          <Accordion
-            multiple
-            value={accordionValue}
-            onValueChange={handleAccordionValueChange}
+        {hasLegend ? (
+          <ToolbarPopover
+            open={popoverOpen}
+            onOpenChange={(open, event) => {
+              if (!open && event.reason !== 'trigger-press') return;
+              setPopoverOpen(open);
+            }}
+            trigger={
+              // A deliberately quieter `aria-expanded` treatment than the one
+              // `Button` gives every disclosure by default.
+              //
+              // That default — a solid `--selected` fill, which the interview
+              // theme resolves to pure WHITE, with contrast-flipped text — is
+              // sized for a TRANSIENT state: the brief moment a menu or popover
+              // is open. This popover is different. It opens itself on mount
+              // (`useState(true)` above) and a researcher normally leaves it
+              // open for the whole stage, so `aria-expanded` here is the
+              // RESTING state of the control, not a flash of one. At full
+              // strength it reads as the loudest thing on the canvas and
+              // competes with the network the participant is meant to be
+              // looking at.
+              //
+              // So: keep the fill, drop it to a tint, and keep the toolbar's own
+              // text colour instead of flipping to `--selected-contrast`. The
+              // segment still reads as active and still looks pressable; it just
+              // stops shouting. Scoped to this trigger on purpose — every other
+              // disclosure in the app is transient and wants the default.
+              <ToolbarButton className="aria-expanded:bg-selected/15 aria-expanded:text-(--component-text)">
+                <LocalizedText value={currentPreset.label} render={<span />} />
+              </ToolbarButton>
+            }
+            contentProps={{
+              align: 'center',
+              sideOffset: 14,
+              className: 'min-w-2xs',
+            }}
           >
-            {hasHighlights && headings.attributes !== undefined && (
-              <AccordionItem value={SECTION_ATTRIBUTES}>
-                <AccordionHeader>
-                  <AccordionTrigger>{headings.attributes}</AccordionTrigger>
-                </AccordionHeader>
-                <AccordionPanel>
-                  <RadioGroup
-                    value={String(highlightIndex)}
-                    onValueChange={(v) => onChangeHighlightIndex(Number(v))}
-                    className="flex flex-col gap-2"
-                  >
-                    {highlights.map((highlight, index) => {
-                      const radioId = `highlight-radio-${index}`;
-                      return (
-                        <RadioItem
-                          key={highlight.id}
-                          id={radioId}
-                          value={String(index)}
-                          label={resolve(highlight.label).text}
-                        />
-                      );
-                    })}
-                  </RadioGroup>
-                </AccordionPanel>
-              </AccordionItem>
-            )}
+            <Accordion
+              multiple
+              value={accordionValue}
+              onValueChange={handleAccordionValueChange}
+            >
+              {hasHighlights && headings.attributes !== undefined && (
+                <AccordionItem value={SECTION_ATTRIBUTES}>
+                  <AccordionHeader>
+                    <AccordionTrigger>{headings.attributes}</AccordionTrigger>
+                  </AccordionHeader>
+                  <AccordionPanel>
+                    <RadioGroup
+                      value={String(highlightIndex)}
+                      onValueChange={(v) => onChangeHighlightIndex(Number(v))}
+                      className="flex flex-col gap-2"
+                    >
+                      {highlights.map((highlight, index) => {
+                        const radioId = `highlight-radio-${index}`;
+                        return (
+                          <RadioItem
+                            key={highlight.id}
+                            id={radioId}
+                            value={String(index)}
+                            label={resolve(highlight.label).text}
+                          />
+                        );
+                      })}
+                    </RadioGroup>
+                  </AccordionPanel>
+                </AccordionItem>
+              )}
 
-            {hasEdges && headings.links !== undefined && (
-              <AccordionItem value={SECTION_LINKS}>
-                <AccordionHeader>
-                  <AccordionTrigger>{headings.links}</AccordionTrigger>
-                </AccordionHeader>
-                <AccordionPanel>
-                  <div className="flex flex-col gap-2">
-                    {edges.map((edge) => (
-                      <div
-                        key={edge.id}
-                        className="flex items-center gap-4 text-base"
-                      >
-                        <EdgeSwatch color={edge.color} />
-                        <LocalizedText value={edge.label} render={<span />} />
-                      </div>
-                    ))}
-                  </div>
-                </AccordionPanel>
-              </AccordionItem>
-            )}
+              {hasEdges && headings.links !== undefined && (
+                <AccordionItem value={SECTION_LINKS}>
+                  <AccordionHeader>
+                    <AccordionTrigger>{headings.links}</AccordionTrigger>
+                  </AccordionHeader>
+                  <AccordionPanel>
+                    <div className="flex flex-col gap-2">
+                      {edges.map((edge) => (
+                        <div
+                          key={edge.id}
+                          className="flex items-center gap-4 text-base"
+                        >
+                          <EdgeSwatch color={edge.color} />
+                          <LocalizedText value={edge.label} render={<span />} />
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionPanel>
+                </AccordionItem>
+              )}
 
-            {hasGroups && headings.groups !== undefined && (
-              <AccordionItem value={SECTION_GROUPS}>
-                <AccordionHeader>
-                  <AccordionTrigger>{headings.groups}</AccordionTrigger>
-                </AccordionHeader>
-                <AccordionPanel>
-                  <div className="flex flex-col gap-2">
-                    {groupLegend.map((entry) => (
-                      <div
-                        key={entry.colorIndex}
-                        className="flex items-center gap-4 text-base"
-                      >
-                        <span
-                          className="inline-block size-3 rounded-full"
-                          style={{
-                            backgroundColor: `var(--cat-${entry.colorIndex})`,
-                          }}
-                        />
-                        <RenderMarkdown>{entry.label}</RenderMarkdown>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionPanel>
-              </AccordionItem>
-            )}
-          </Accordion>
-        </ToolbarPopover>
+              {hasGroups && headings.groups !== undefined && (
+                <AccordionItem value={SECTION_GROUPS}>
+                  <AccordionHeader>
+                    <AccordionTrigger>{headings.groups}</AccordionTrigger>
+                  </AccordionHeader>
+                  <AccordionPanel>
+                    <div className="flex flex-col gap-2">
+                      {groupLegend.map((entry) => (
+                        <div
+                          key={entry.colorIndex}
+                          className="flex items-center gap-4 text-base"
+                        >
+                          <span
+                            className="inline-block size-3 rounded-full"
+                            style={{
+                              backgroundColor: `var(--cat-${entry.colorIndex})`,
+                            }}
+                          />
+                          <RenderMarkdown>{entry.label}</RenderMarkdown>
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionPanel>
+                </AccordionItem>
+              )}
+            </Accordion>
+          </ToolbarPopover>
+        ) : (
+          // A preset that only places nodes has nothing to explain, so its
+          // name is shown without a legend to open.
+          <ToolbarButton
+            disabled
+            className="ui-disabled:cursor-default ui-disabled:opacity-100"
+          >
+            <LocalizedText value={currentPreset.label} render={<span />} />
+          </ToolbarButton>
+        )}
         <ToolbarIconButton
           aria-label="Next preset"
           lang="en"
