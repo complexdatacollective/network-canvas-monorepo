@@ -112,6 +112,10 @@ type IssueReporter = (issue: {
  * `readsInterview` is false for an external-data panel, whose rules read the
  * researcher's own rows. Those rows are never encrypted, so a rule there may
  * compare an encrypted attribute's values.
+ *
+ * `allowLayoutRules` is false for a node type's label conditions. Deleting a
+ * layout looks for the rules naming it in stages only, and schema 8 had no
+ * label conditions that a migrated layout rule could be in.
  */
 const validateFilterRules = (
   rules: FilterRule[],
@@ -121,7 +125,12 @@ const validateFilterRules = (
   {
     allowEgoRules,
     readsInterview,
-  }: { allowEgoRules: boolean; readsInterview: boolean },
+    allowLayoutRules,
+  }: {
+    allowEgoRules: boolean;
+    readsInterview: boolean;
+    allowLayoutRules: boolean;
+  },
 ) => {
   rules.forEach((rule, ruleIndex) => {
     const rulePath = [...basePath, ruleIndex];
@@ -170,6 +179,14 @@ const validateFilterRules = (
       rule.options.attribute !== undefined &&
       Object.hasOwn(codebook.layouts ?? {}, rule.options.attribute);
     if (layoutAttribute) {
+      if (!allowLayoutRules) {
+        addIssue({
+          message:
+            'A node label condition cannot check a layout. Only a stage can check where a node is placed.',
+          path: [...rulePath, 'options', 'attribute'],
+        });
+        return;
+      }
       const operators: readonly string[] = LAYOUT_RULE_OPERATORS;
       if (!operators.includes(rule.options.operator)) {
         addIssue({
@@ -240,7 +257,10 @@ const validateConditions = (
   basePath: (string | number)[],
   codebook: Codebook,
   subject: { entity: 'node' | 'edge'; type: string } | undefined,
-  { allowEgoRules }: { allowEgoRules: boolean },
+  {
+    allowEgoRules,
+    allowLayoutRules,
+  }: { allowEgoRules: boolean; allowLayoutRules: boolean },
   addIssue: IssueReporter,
 ) => {
   for (const [conditionId, condition] of Object.entries(conditions ?? {})) {
@@ -308,7 +328,7 @@ const validateConditions = (
             ...issue,
             path: [...rulePath, ...issue.path.slice(rulePath.length)],
           }),
-        { allowEgoRules, readsInterview: true },
+        { allowEgoRules, readsInterview: true, allowLayoutRules },
       );
     });
   }
@@ -892,7 +912,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       ['codebook', 'node', nodeType, 'dynamicLabel', 'conditions'],
       protocol.codebook,
       { entity: 'node', type: nodeType },
-      { allowEgoRules: false },
+      { allowEgoRules: false, allowLayoutRules: false },
       reportIssue,
     );
   }
@@ -903,7 +923,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       ['stages', stageIndex, 'conditions'],
       protocol.codebook,
       subject === undefined || subject.entity === 'ego' ? undefined : subject,
-      { allowEgoRules: true },
+      { allowEgoRules: true, allowLayoutRules: true },
       reportIssue,
     );
   });
@@ -1608,7 +1628,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         protocol.codebook,
         ['stages', stageIndex, 'filter', 'rules'],
         (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-        { allowEgoRules: false, readsInterview: true },
+        { allowEgoRules: false, readsInterview: true, allowLayoutRules: true },
       );
     }
 
@@ -1622,7 +1642,11 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
             protocol.codebook,
             ['stages', stageIndex, 'presets', presetIndex, 'filter', 'rules'],
             (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-            { allowEgoRules: false, readsInterview: true },
+            {
+              allowEgoRules: false,
+              readsInterview: true,
+              allowLayoutRules: true,
+            },
           );
         }
       });
@@ -1636,7 +1660,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         protocol.codebook,
         ['stages', stageIndex, 'skipLogic', 'filter', 'rules'],
         (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
-        { allowEgoRules: true, readsInterview: true },
+        { allowEgoRules: true, readsInterview: true, allowLayoutRules: true },
       );
     }
 
@@ -1652,6 +1676,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
             {
               allowEgoRules: true,
               readsInterview: panel.dataSource === 'existing',
+              allowLayoutRules: true,
             },
           );
         }

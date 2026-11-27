@@ -432,6 +432,24 @@ describe('a protocol whose text chooses its wording by conditions', () => {
     expect(paths).toContain(`${base}.2.options.type`);
   });
 
+  it('refuses a label rule that names a layout', () => {
+    const { protocol, nodeType, setLabel } = fixture();
+    const [layoutId] = Object.keys(protocol.codebook.layouts ?? {});
+    if (layoutId === undefined) throw new Error('The fixture has no layout');
+    setLabel(
+      labelWith([
+        {
+          type: 'node',
+          id: testId('r1'),
+          options: { type: nodeType, attribute: layoutId, operator: 'EXISTS' },
+        },
+      ]),
+    );
+    expect(issuePathsOf(protocol)).toEqual([
+      `codebook.node.${nodeType}.dynamicLabel.conditions.${NAMED_ID}.rules.0.options.attribute`,
+    ]);
+  });
+
   it('lets a stage’s text ask about the participant, and refuses a condition about a node the stage does not have', () => {
     const { protocol, egoVariable } = fixture();
     const stages: Record<string, unknown>[] = protocol.stages;
