@@ -21,7 +21,7 @@ const nameRule = {
 const preset = (id: string, settings: Record<string, unknown> = {}) => ({
   id: testId(id),
   label: localized(id),
-  layoutVariable: 'layoutPosition',
+  layout: 'layoutPosition',
   ...settings,
 });
 

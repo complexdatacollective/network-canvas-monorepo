@@ -53,6 +53,7 @@ const protocolWith = (stages: Stage[]) => ({
   schemaVersion: 9 as const,
   localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
+    layouts: { fmLayout: { name: 'fmLayout' } },
     node: {
       family_member: {
         name: 'Family member',
@@ -79,7 +80,6 @@ const protocolWith = (stages: Stage[]) => ({
             name: 'hasConditionX',
             type: 'boolean',
           },
-          fmLayout: { name: 'fmLayout', type: 'layout' },
         },
       },
     },
@@ -129,12 +129,12 @@ describe('findExclusiveVariableConflicts', () => {
         label: localized('Map your family'),
         type: 'Sociogram',
         subject: { entity: 'node', types: ['family_member'] },
+        layout: 'fmLayout',
         background: { concentricCircles: 4 },
         prompts: [
           {
             id: 'p1',
             text: localized('Place your family'),
-            layout: { layoutVariable: 'fmLayout' },
             highlight: { allowHighlighting: false, variable: 'isEgo' },
           },
         ],
@@ -155,12 +155,12 @@ describe('findExclusiveVariableConflicts', () => {
         label: localized('Map your family'),
         type: 'Sociogram',
         subject: { entity: 'node', types: ['family_member'] },
+        layout: 'fmLayout',
         background: { concentricCircles: 4 },
         prompts: [
           {
             id: 'p1',
             text: localized('Place your family'),
-            layout: { layoutVariable: 'fmLayout' },
             highlight: { allowHighlighting: true, variable: 'isEgo' },
           },
         ],

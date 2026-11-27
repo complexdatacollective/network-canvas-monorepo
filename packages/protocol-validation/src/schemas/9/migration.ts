@@ -31,6 +31,11 @@ import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { combineInformationContent } from './information-content-migration.ts';
 import {
+  moveLayoutVariablesToLayouts,
+  removeEgoAndEdgeLayoutVariables,
+  splitSociogramsByLayout,
+} from './layout-migration.ts';
+import {
   legacyMarkdownAsStandard,
   type TextsWrittenAsStandard,
   textsWrittenAsStandard,
@@ -1181,6 +1186,10 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   repairDiseaseLabels(migrated);
   repairOtherBinText(migrated, localization);
   repairTieStrengthDeclineLabels(migrated, localization);
+  // Before the layout variables leave the codebook, which the split reads.
+  splitSociogramsByLayout(migrated);
+  moveLayoutVariablesToLayouts(migrated);
+  removeEgoAndEdgeLayoutVariables(migrated);
   // After every step that reads a stage's schema 8 `subject.type`.
   nodeSubjectsToTypeLists(migrated);
   joinSingleLineText(migrated);
@@ -1262,6 +1271,9 @@ const migrationV8toV9 = createMigration({
   - A Family Pedigree stage's own wording is now part of the stage, so you can change it and translate it like the rest of your protocol: the question asking each person's name and its hint, and, where the family must be complete, the list of what is still needed. It starts with the wording the interview has always shown.
 - A Narrative stage's filter now belongs to each of its presets, so each preset can show a different part of the network. A filter on an existing Narrative stage is copied to every preset of that stage, so the stage shows the same people as before.
 - A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
+- A Sociogram stage now places its nodes in one layout, which every prompt on the stage uses. A Sociogram whose prompts used different layout attributes is split into consecutive stages, one for each run of prompts that use the same layout attribute. Each new stage has the name and settings of the original, and skip logic that jumped to the original stage now jumps to the first of them.
+- Layouts are no longer attributes of a node type. Each layout attribute becomes a layout with the same name, which any stage that places nodes can use for nodes of every type. Positions already recorded are kept. Where several node types shared one layout attribute, it becomes one layout. Where the name of a layout would be the same as the name of another layout or of a node attribute, or would give an export column the same name as one of theirs, the name of the node type is added to it, followed by a number if that name is also taken.
+- Layout attributes of edge types and of the ego are removed, because only nodes can have positions and no stage could record one. Skip logic and filter rules that used these attributes are removed too.
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
   migrate: migrateDocument,
 });

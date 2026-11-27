@@ -308,3 +308,30 @@ describe('codebook layouts', () => {
     ]);
   });
 });
+
+describe('the variable type layout', () => {
+  it('rejects a variable of type layout on node, ego and edge types', () => {
+    const position = {
+      [testVariableId('position')]: { name: 'position', type: 'layout' },
+    };
+    const result = CodebookSchema.safeParse(
+      codebookWith({
+        layouts: {},
+        placeVariables: position,
+        edgeVariables: position,
+        egoVariables: position,
+      }),
+    );
+    const paths = (result.error?.issues ?? []).map(({ path }) =>
+      path.join('.'),
+    );
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        `node.${PLACE}.variables.${testVariableId('position')}`,
+        `edge.${ADVICE}.variables.${testVariableId('position')}`,
+        `ego.variables.${testVariableId('position')}`,
+      ]),
+    );
+    expect(result.success).toBe(false);
+  });
+});

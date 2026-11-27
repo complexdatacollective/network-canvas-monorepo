@@ -423,6 +423,37 @@ describe('Validation Helpers', () => {
   });
 
   describe('filterRuleAttributeExists', () => {
+    it('returns true for a node rule naming a layout, on any node type', () => {
+      for (const type of ['person', 'colleague']) {
+        const rule = {
+          id: 'rule1',
+          type: 'node' as const,
+          options: {
+            type,
+            attribute: 'layoutPosition',
+            operator: 'EXISTS' as const,
+          },
+        };
+        expect({
+          type,
+          exists: filterRuleAttributeExists(rule, codebook),
+        }).toEqual({ type, exists: true });
+      }
+    });
+
+    it('returns false for an edge rule naming a layout', () => {
+      const rule = {
+        id: 'rule1',
+        type: 'edge' as const,
+        options: {
+          type: 'knows',
+          attribute: 'layoutPosition',
+          operator: 'EXISTS' as const,
+        },
+      };
+      expect(filterRuleAttributeExists(rule, codebook)).toBe(false);
+    });
+
     it('returns true when no attribute is specified', () => {
       const rule = {
         id: 'rule1',

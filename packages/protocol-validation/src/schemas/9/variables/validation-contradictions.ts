@@ -1845,7 +1845,7 @@ const categoricalSetPinKey = (values: Set<string | number>): string => {
  *     runtime-faithfulness grounds; that broke uniformity with every other
  *     arm here and was reverted — a singleton effective domain pins the
  *     entered value regardless of `required`.)
- *   - text/scalar/layout: no rule on these types ever collapses to one
+ *   - text/scalar: no rule on these types ever collapses to one
  *     runtime value.
  */
 const pinnedValue = (

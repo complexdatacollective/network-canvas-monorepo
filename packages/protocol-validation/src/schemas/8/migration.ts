@@ -61,13 +61,21 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
 
 // String-keyed views of the per-type rule and control records, so migration
 // steps (which read raw, untyped v7 JSON) can index them with a plain string
-// without asserting the variable's `type` is a known member first.
+// without asserting the variable's `type` is a known member first. Schema 8
+// still has layout variables, which schema 9 moved out of the codebook's
+// variables: they take no rule and have no control.
 const VALIDATION_RULES_BY_TYPE: Record<
   string,
   Partial<Record<string, true>>
-> = VARIABLE_TYPE_VALIDATIONS;
-const COMPONENTS_BY_TYPE: Record<string, readonly string[]> =
-  VARIABLE_TYPE_COMPONENTS;
+> = { ...VARIABLE_TYPE_VALIDATIONS, layout: {} };
+const COMPONENTS_BY_TYPE: Record<string, readonly string[]> = {
+  ...VARIABLE_TYPE_COMPONENTS,
+  layout: [],
+};
+const NON_RENDERABLE_V8_VARIABLE_TYPES = new Set([
+  ...NON_RENDERABLE_VARIABLE_TYPES,
+  'layout',
+]);
 
 // The value kind each v8 validation rule requires. Together these cover every
 // key of the v8 `validations` record; anything else is an unknown rule.
@@ -1009,7 +1017,7 @@ const migrationV7toV8 = createMigration({
             )?.type;
             return (
               typeof type !== 'string' ||
-              !NON_RENDERABLE_VARIABLE_TYPES.has(type)
+              !NON_RENDERABLE_V8_VARIABLE_TYPES.has(type)
             );
           });
           // V8 rejects a form that names one variable twice

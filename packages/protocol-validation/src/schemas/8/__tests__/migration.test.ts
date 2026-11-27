@@ -7,6 +7,26 @@ import migrationV7toV8 from '../migration.ts';
 import ProtocolSchemaV8 from '../schema.ts';
 import { V8OutputSchema } from './v8-output-schema.ts';
 
+const isRecordValue = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+// Schema 9 has no layout variables (each node layout variable becomes a
+// layout, and an ego or edge one is removed), so a step's effect on one is
+// read from the version 8 document the 7 to 8 migration writes.
+const migrateEgoVariablesToV8 = (variables: Record<string, unknown>) => {
+  const migrated = migrationV7toV8.migrate(
+    {
+      schemaVersion: 7 as const,
+      codebook: { node: {}, edge: {}, ego: { variables } },
+      stages: [],
+    } as unknown as Protocol<7>,
+    { name: 'Test Protocol' },
+  );
+  const { codebook } = ProtocolSchemaV8.parse(migrated);
+  const ego = isRecordValue(codebook.ego) ? codebook.ego : {};
+  return isRecordValue(ego.variables) ? ego.variables : {};
+};
+
 // The schema 9 output wraps participant copy in English.
 const en = (text: string) => ({ en: text });
 
@@ -6165,7 +6185,7 @@ describe('Migration V7 to V8', () => {
     });
 
     it('removes validation from a layout variable entirely', () => {
-      const variables = migrateEgoVariables({
+      const variables = migrateEgoVariablesToV8({
         pos: {
           name: 'pos',
           type: 'layout',
@@ -6235,7 +6255,7 @@ describe('Migration V7 to V8', () => {
     });
 
     it('removes a component from a layout variable', () => {
-      const variables = migrateEgoVariables({
+      const variables = migrateEgoVariablesToV8({
         pos: { name: 'pos', type: 'layout', component: 'Text' },
       });
       expect(variables.pos).not.toHaveProperty('component');
@@ -6427,7 +6447,6 @@ describe('Migration V7 to V8', () => {
       { type: 'boolean', component: 'Boolean' },
       { type: 'ordinal', component: 'RadioGroup', options },
       { type: 'categorical', component: 'CheckboxGroup', options },
-      { type: 'layout' },
       { type: 'location' },
     ])('removes parameters from a $type variable', (variable) => {
       const migrated = migrateEgoVariable({
@@ -6435,6 +6454,14 @@ describe('Migration V7 to V8', () => {
         parameters: { type: 'full', minLabel: 'Low' },
       });
       expect(migrated).not.toHaveProperty('parameters');
+    });
+
+    it('removes parameters from a layout variable', () => {
+      const { v } = migrateEgoVariablesToV8({
+        v: { name: 'v', type: 'layout', parameters: { type: 'full' } },
+      });
+      expect(v).toBeDefined();
+      expect(v).not.toHaveProperty('parameters');
     });
 
     it('removes parameters from a node variable', () => {

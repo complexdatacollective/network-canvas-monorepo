@@ -67,6 +67,56 @@ const singularNodeSubject = (stage: unknown) => {
   stage.subject = { entity: 'node', type: types[0] };
 };
 
+// Schema 8 held a layout as a node attribute of type `layout`, on each node
+// type that a stage placed in it, and each stage named it as a layout
+// variable: a Sociogram on each of its prompts.
+const layoutVariables = (stage: unknown, codebook: unknown) => {
+  if (!isRecord(stage) || !isRecord(codebook)) return;
+  const layouts = isRecord(codebook.layouts) ? codebook.layouts : {};
+  const nodeTypes =
+    isRecord(stage.subject) && Array.isArray(stage.subject.types)
+      ? stage.subject.types.filter((type) => typeof type === 'string')
+      : [];
+  const declare = (layoutId: unknown) => {
+    if (typeof layoutId !== 'string') return;
+    const layout = layouts[layoutId];
+    const name = isRecord(layout) ? layout.name : layoutId;
+    for (const type of nodeTypes) {
+      const definition = isRecord(codebook.node)
+        ? codebook.node[type]
+        : undefined;
+      if (!isRecord(definition)) continue;
+      const variables = isRecord(definition.variables)
+        ? definition.variables
+        : {};
+      variables[layoutId] = { name, type: 'layout' };
+      definition.variables = variables;
+    }
+  };
+  if (stage.type === 'Sociogram' && Object.hasOwn(stage, 'layout')) {
+    declare(stage.layout);
+    if (Array.isArray(stage.prompts)) {
+      for (const prompt of stage.prompts) {
+        if (isRecord(prompt)) prompt.layout = { layoutVariable: stage.layout };
+      }
+    }
+    delete stage.layout;
+  }
+  if (stage.type === 'NetworkComposer' && Object.hasOwn(stage, 'layout')) {
+    declare(stage.layout);
+    stage.layoutVariable = stage.layout;
+    delete stage.layout;
+  }
+  if (stage.type === 'Narrative' && Array.isArray(stage.presets)) {
+    for (const preset of stage.presets) {
+      if (!isRecord(preset) || !Object.hasOwn(preset, 'layout')) continue;
+      declare(preset.layout);
+      preset.layoutVariable = preset.layout;
+      delete preset.layout;
+    }
+  }
+};
+
 // A schema 8 Anonymisation stage held its heading as a title of its own,
 // apart from the text below it.
 const explanationTitle = (stage: unknown) => {
@@ -117,7 +167,9 @@ const informationItems = (
  * string is its English text, put through `rewrite` (text with placeholders,
  * which schema 8 never held, stays localized), Narrative highlights and
  * legend edges are ids, Network Composer edges have no label, a node stage
- * names its one node type as `subject.type`, an Anonymisation
+ * names its one node type as `subject.type`, each layout is a node attribute
+of type `layout` named by the stages that use it (a Sociogram that used
+several layouts stays split), an Anonymisation
  * explanation's heading is a title of its own, an Information page is a title
  * and a list of items, and the language
  * chooser and language settings, which schema 8 did not have, are gone.
@@ -172,6 +224,7 @@ export const asSchema8Protocol = (
     Reflect.set(parent, key, rewrite(text));
   }
   for (const stage of document.stages) {
+    layoutVariables(stage, document.codebook);
     legendIds(stage);
     composerEdgeLabels(stage);
     singularNodeSubject(stage);
@@ -186,6 +239,7 @@ export const asSchema8Protocol = (
       stage.type !== 'LanguageChooser' &&
       stage.type !== 'FinishSession',
   );
+  if (isRecord(document.codebook)) delete document.codebook.layouts;
   delete document.localization;
   // Schema 8 has no interface text: the interview showed its own words.
   delete document.interfaceText;

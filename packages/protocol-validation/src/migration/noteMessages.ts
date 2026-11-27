@@ -555,6 +555,27 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Name Generator Roster" is the name Architect gives the interface; use the same name Architect uses for it. "Available to add" is the English text written into the protocol: keep it in English, in quotation marks.',
   },
+  schema9SociogramLayoutSplit: {
+    id: 'protocolValidation.migrationNotes.schema9.sociogramLayoutSplit',
+    defaultMessage:
+      'A Sociogram stage now places its nodes in one layout, which every prompt on the stage uses. A Sociogram whose prompts used different layout attributes is split into consecutive stages, one for each run of prompts that use the same layout attribute. Each new stage has the name and settings of the original, and skip logic that jumped to the original stage now jumps to the first of them.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Sociogram" is the name Architect gives the interface; use the same name Architect uses for it. A layout is the set of positions that nodes are placed at on a canvas. A layout attribute was the kind of node attribute that stored those positions in older protocols. A prompt is one instruction shown on the stage.',
+  },
+  schema9LayoutsLeaveNodeTypes: {
+    id: 'protocolValidation.migrationNotes.schema9.layoutsLeaveNodeTypes',
+    defaultMessage:
+      'Layouts are no longer attributes of a node type. Each layout attribute becomes a layout with the same name, which any stage that places nodes can use for nodes of every type. Positions already recorded are kept. Where several node types shared one layout attribute, it becomes one layout. Where the name of a layout would be the same as the name of another layout or of a node attribute, or would give an export column the same name as one of theirs, the name of the node type is added to it, followed by a number if that name is also taken.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A layout is the set of positions that nodes are placed at on a canvas, such as a Sociogram. A layout attribute was the kind of node attribute that stored those positions in older protocols. An export column is a column in the data files that Network Canvas exports.',
+  },
+  schema9EgoAndEdgeLayouts: {
+    id: 'protocolValidation.migrationNotes.schema9.egoAndEdgeLayouts',
+    defaultMessage:
+      'Layout attributes of edge types and of the ego are removed, because only nodes can have positions and no stage could record one. Skip logic and filter rules that used these attributes are removed too.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A layout attribute was the kind of attribute that stored positions on a canvas. The ego is the participant, as described in the protocol. Skip logic and filter rules are rules that decide whether a stage is shown and which people and relationships it shows.',
+  },
   schema9SingleLineText: {
     id: 'protocolValidation.migrationNotes.schema9.singleLineText',
     defaultMessage:
@@ -699,6 +720,9 @@ const migrationNoteSets: Record<
       },
       migrationNoteMessages.schema9NarrativePresetFilters,
       migrationNoteMessages.schema9RosterPanelTitle,
+      migrationNoteMessages.schema9SociogramLayoutSplit,
+      migrationNoteMessages.schema9LayoutsLeaveNodeTypes,
+      migrationNoteMessages.schema9EgoAndEdgeLayouts,
       migrationNoteMessages.schema9SingleLineText,
     ],
   },

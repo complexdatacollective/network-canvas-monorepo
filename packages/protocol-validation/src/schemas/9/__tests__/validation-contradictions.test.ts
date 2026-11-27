@@ -254,7 +254,7 @@ describe('findValidationContradictions — local checks', () => {
   it('ignores variables with no validation and non-numeric rule values', () => {
     expect(
       findValidationContradictions({
-        a: { name: 'layout', type: 'layout' },
+        a: { name: 'place', type: 'location' },
         b: {
           name: 'age',
           type: 'number',
@@ -3024,7 +3024,7 @@ describe('R2 — reference target type must equal the source type', () => {
       };
     };
     // Merge rather than replace: the base protocol's stages reference
-    // existing person variables (e.g. the Sociogram's layout variable), and
+    // existing person variables (e.g. the name generator form's name field), and
     // severing those references would fail the parse for unrelated reasons.
     protocol.codebook.node.person.variables = {
       ...protocol.codebook.node.person.variables,
@@ -4783,7 +4783,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
     type: 'NetworkComposer',
     subject: { entity: 'node', types: ['person'] },
     quickAdd: 'name',
-    layoutVariable: 'layoutPosition',
+    layout: 'layoutPosition',
     background: { concentricCircles: 4 },
     nodeForm: {
       fields: [
@@ -4948,7 +4948,7 @@ describe('findValidationContradictions — Twenty-first-wave Finding 1: componen
           type: 'NetworkComposer',
           subject: { entity: 'node', types: ['person'] },
           quickAdd: 'name',
-          layoutVariable: 'layoutPosition',
+          layout: 'layoutPosition',
           background: { concentricCircles: 4 },
           nodeForm: {
             fields: [

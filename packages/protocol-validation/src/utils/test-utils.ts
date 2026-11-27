@@ -17,6 +17,9 @@ export const createBaseProtocol = () => ({
   schemaVersion: 9 as const,
   localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
+    layouts: {
+      layoutPosition: { name: 'Layout_Position' },
+    },
     ego: {
       variables: {
         egoName: {
@@ -63,10 +66,6 @@ export const createBaseProtocol = () => ({
               { label: localized('Medium'), value: 2 },
               { label: localized('Strong'), value: 3 },
             ],
-          },
-          layoutPosition: {
-            name: 'Layout_Position',
-            type: 'layout',
           },
         },
       },
@@ -159,6 +158,7 @@ export const createBaseProtocol = () => ({
         entity: 'node',
         types: ['person'],
       },
+      layout: 'layoutPosition',
       background: {
         concentricCircles: 4,
       },
@@ -166,9 +166,6 @@ export const createBaseProtocol = () => ({
         {
           id: testId('socPrompt1'),
           text: localized('Position nodes'),
-          layout: {
-            layoutVariable: 'layoutPosition',
-          },
         },
       ],
     },

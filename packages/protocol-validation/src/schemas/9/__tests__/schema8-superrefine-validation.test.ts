@@ -1042,8 +1042,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
     });
   });
 
-  describe('Layout Variable Validation', () => {
-    it('validates string layoutVariable reference', () => {
+  describe('Layout Validation', () => {
+    it('validates a layout of the codebook', () => {
       const sociogramProtocol = {
         ...baseValidProtocol,
         stages: [
@@ -1055,6 +1055,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               entity: 'node',
               types: ['person'],
             },
+            layout: 'layoutPosition',
             background: {
               concentricCircles: 4,
             },
@@ -1062,9 +1063,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               {
                 id: 'prompt1',
                 text: localized('Position nodes'),
-                layout: {
-                  layoutVariable: 'layoutPosition',
-                },
               },
             ],
           },
@@ -1077,7 +1075,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(true);
     });
 
-    it("rejects string layoutVariable that doesn't exist", () => {
+    it("rejects a layout the codebook doesn't define", () => {
       const invalidProtocol = {
         ...baseValidProtocol,
         stages: [
@@ -1089,6 +1087,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               entity: 'node',
               types: ['person'],
             },
+            layout: 'nonexistentVariable',
             background: {
               concentricCircles: 4,
             },
@@ -1096,9 +1095,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               {
                 id: 'prompt1',
                 text: localized('Position nodes'),
-                layout: {
-                  layoutVariable: 'nonexistentVariable',
-                },
               },
             ],
           },
@@ -1112,22 +1108,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const layoutError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The attribute "nonexistentVariable" does not exist in the codebook',
+            'Layout "nonexistentVariable" is not defined in the codebook',
           ),
         );
         expect(layoutError).toBeDefined();
-        expect(layoutError?.path).toEqual([
-          'stages',
-          0,
-          'prompts',
-          0,
-          'layout',
-          'layoutVariable',
-        ]);
+        expect(layoutError?.path).toEqual(['stages', 0, 'layout']);
       }
     });
-
-    // Object layoutVariable support has been removed - only strings are supported
   });
 
   describe('Additional Attributes Validation', () => {

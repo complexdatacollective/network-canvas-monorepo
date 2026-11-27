@@ -302,7 +302,7 @@ describe('form field id uniqueness', () => {
           type: 'NetworkComposer',
           subject: { entity: 'node', types: ['person'] },
           quickAdd: 'name',
-          layoutVariable: 'layoutPosition',
+          layout: 'layoutPosition',
           background: { concentricCircles: 4 },
           nodeForm: { fields: [composerField('same', 'age', 'Number')] },
           edges: [

@@ -51,8 +51,10 @@ const countTagged = (
 // roster's data source), and the roster's three data-source column fields
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
+// The Sociogram, Narrative preset and Network Composer layout fields name a
+// layout (`layoutReference`), not an attribute, so they are not counted.
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 42;
+const EXPECTED_TAGGED_FIELD_COUNT = 39;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns, and every slot whose option LIST a stage manages. All drive

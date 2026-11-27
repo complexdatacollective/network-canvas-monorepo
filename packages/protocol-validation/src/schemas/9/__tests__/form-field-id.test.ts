@@ -70,7 +70,7 @@ describe('form field id retention', () => {
       type: 'NetworkComposer',
       subject: { entity: 'node', types: ['person'] },
       quickAdd: 'name',
-      layoutVariable: 'layoutPosition',
+      layout: 'layoutPosition',
       background: { concentricCircles: 4 },
       nodeForm: {
         fields: [

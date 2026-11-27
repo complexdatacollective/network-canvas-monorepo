@@ -312,7 +312,7 @@ describe('shared form stage-effective validation contradictions', () => {
           label: localized('Composer'),
           subject: { entity: 'node', types: ['person'] },
           quickAdd: 'name',
-          layoutVariable: 'layoutPosition',
+          layout: 'layoutPosition',
           background: { concentricCircles: 4 },
           nodeForm: {
             fields: [
@@ -351,7 +351,7 @@ describe('shared form stage-effective validation contradictions', () => {
           label: localized('Composer'),
           subject: { entity: 'node', types: ['person'] },
           quickAdd: 'name',
-          layoutVariable: 'layoutPosition',
+          layout: 'layoutPosition',
           background: { concentricCircles: 4 },
           nodeForm: {
             fields: [

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import { testId } from '../../../../__tests__/testIds.ts';
+import { createBaseProtocol } from '../../../../utils/test-utils.ts';
+import { ProtocolSchemaV9 } from '../../schema.ts';
 import {
   filterRuleSchema,
   FilterSchema,
@@ -163,5 +166,94 @@ describe('how the rules in a filter combine', () => {
     expect(
       parseIssues(FilterSchema.safeParse({ join: 'AND', rules: [] })),
     ).toEqual([{ path: 'rules', code: 'too_small' }]);
+  });
+});
+
+describe('a node rule naming a layout', () => {
+  // The base protocol's Sociogram places people in `layoutPosition`; the rule
+  // asks it of the stage's skip logic.
+  const withLayoutRule = (options: Record<string, unknown>) => {
+    const protocol = createBaseProtocol();
+    return withFinishStage({
+      ...protocol,
+      stages: protocol.stages.map((stage) =>
+        stage.type === 'Sociogram'
+          ? {
+              ...stage,
+              skipLogic: {
+                action: 'SHOW',
+                filter: {
+                  rules: [
+                    {
+                      id: testId('layout-rule'),
+                      type: 'node',
+                      options: { attribute: 'layoutPosition', ...options },
+                    },
+                  ],
+                },
+              },
+            }
+          : stage,
+      ),
+    });
+  };
+  const sociogramIndex = createBaseProtocol().stages.findIndex(
+    ({ type }) => type === 'Sociogram',
+  );
+  const optionsPath = `stages.${sociogramIndex}.skipLogic.filter.rules.0.options`;
+
+  it('accepts a node rule naming a layout on any node type', () => {
+    for (const type of ['person', 'colleague']) {
+      for (const operator of ['EXISTS', 'NOT_EXISTS']) {
+        expect({
+          type,
+          operator,
+          issues: parseIssues(
+            ProtocolSchemaV9.safeParse(withLayoutRule({ type, operator })),
+          ),
+        }).toEqual({ type, operator, issues: [] });
+      }
+    }
+  });
+
+  it('rejects a node rule naming an unknown layout', () => {
+    expect(
+      parseIssues(
+        ProtocolSchemaV9.safeParse(
+          withLayoutRule({
+            type: 'person',
+            attribute: 'elsewhere',
+            operator: 'EXISTS',
+          }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: `${optionsPath}.attribute`,
+        code: 'custom',
+        message: '"elsewhere" is not a valid attribute ID',
+      },
+    ]);
+  });
+
+  it('rejects a layout rule with an operator outside LAYOUT_RULE_OPERATORS', () => {
+    expect(
+      parseIssues(
+        ProtocolSchemaV9.safeParse(
+          withLayoutRule({
+            type: 'person',
+            operator: 'GREATER_THAN',
+            value: 1,
+          }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: `${optionsPath}.operator`,
+        code: 'custom',
+        message:
+          'Operator "GREATER_THAN" is not valid for a layout. Valid operators: EXISTS, NOT_EXISTS, EXACTLY, NOT',
+      },
+    ]);
   });
 });

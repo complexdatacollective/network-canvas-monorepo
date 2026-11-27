@@ -7,6 +7,7 @@ import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { layoutReference } from '../layout-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { protocolObjectId } from '../protocol-object-id.ts';
 import { baseStageSchema } from './base.ts';
@@ -23,9 +24,9 @@ export const narrativeStage = withUniqueObjectIds(
             format: 'plain',
             lines: 'single',
           }),
-          layoutVariable: entityAttributeReference({
-            subject: 'stageSubject',
-          }),
+          // The layout whose positions the preset shows. Only nodes of the
+          // stage's types that hold a position in it are drawn.
+          layout: layoutReference(),
           groupVariable: entityAttributeReference({
             subject: 'stageSubject',
           }).optional(),

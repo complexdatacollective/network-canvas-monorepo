@@ -13,7 +13,7 @@ const baseStage = {
   type: 'NetworkComposer',
   subject: { entity: 'node', types: ['person'] },
   quickAdd: 'name',
-  layoutVariable: 'layoutPosition',
+  layout: 'layoutPosition',
   background: { concentricCircles: 4 },
   nodeForm: {
     fields: [
@@ -73,40 +73,35 @@ describe('NetworkComposer cross-reference validation', () => {
     ]);
   });
 
-  it('rejects a layoutVariable referencing a missing node variable', () => {
+  it('rejects a layout the codebook does not define', () => {
     const result = ProtocolSchemaV9.safeParse(
-      withFinishStage(
-        composerProtocol({ ...baseStage, layoutVariable: 'missing' }),
-      ),
+      withFinishStage(composerProtocol({ ...baseStage, layout: 'missing' })),
     );
     expect(parseIssues(result)).toEqual([
       {
-        path: 'stages.0.layoutVariable',
+        path: 'stages.0.layout',
         code: 'custom',
-        message: 'The attribute "missing" does not exist in the codebook',
+        message: 'Layout "missing" is not defined in the codebook',
       },
     ]);
   });
 
-  // The canvas persists every node's { x, y } under layoutVariable, merging it
-  // into the node's attributes — a non-layout variable would be overwritten.
-  it.each(['name', 'age', 'category'])(
-    'rejects a layoutVariable naming the non-layout variable "%s"',
-    (variable) => {
-      const result = ProtocolSchemaV9.safeParse(
-        withFinishStage(
-          composerProtocol({ ...baseStage, layoutVariable: variable }),
+  // Positions are stored on each node under the layout's id, so a node
+  // variable cannot stand in for a layout.
+  it('rejects a layout naming a node variable', () => {
+    const result = ProtocolSchemaV9.safeParse(
+      withFinishStage(composerProtocol({ ...baseStage, layout: 'name' })),
+    );
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toContainEqual(
+      expect.objectContaining({
+        path: ['stages', 0, 'layout'],
+        message: expect.stringMatching(
+          /^Layout ".+" is not defined in the codebook$/,
         ),
-      );
-      expect(result.success).toBe(false);
-      expect(result.error?.issues).toContainEqual(
-        expect.objectContaining({
-          path: ['stages', 0, 'layoutVariable'],
-          message: `The attribute "${testVariableId(variable)}" must be of type layout`,
-        }),
-      );
-    },
-  );
+      }),
+    );
+  });
 
   it('accepts a categorical convexHullVariable', () => {
     const result = ProtocolSchemaV9.safeParse(
@@ -122,7 +117,7 @@ describe('NetworkComposer cross-reference validation', () => {
 
   // The Groups tool and lasso write a categorical membership array to this
   // variable directly, so it must be categorical.
-  it.each(['strength', 'layoutPosition', 'name'])(
+  it.each(['strength', 'name'])(
     'rejects a convexHullVariable naming the non-categorical variable "%s"',
     (variable) => {
       const result = ProtocolSchemaV9.safeParse(
@@ -830,31 +825,6 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
     expect(
       result.error.issues.some((candidate) =>
         candidate.message.includes('cannot render a categorical attribute'),
-      ),
-    ).toBe(true);
-  });
-
-  it('rejects a field for a layout variable as non-renderable', () => {
-    const result = ProtocolSchemaV9.safeParse(
-      withFinishStage(
-        composerProtocolWithPersonVariables(
-          {},
-          nodeFormOnly([
-            {
-              id: 'field-1',
-              variable: 'layoutPosition',
-              label: localized('layoutPosition'),
-              component: ComponentTypes.Text,
-            },
-          ]),
-        ),
-      ),
-    );
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(
-      result.error.issues.some((candidate) =>
-        candidate.message.includes('cannot be rendered as a form field'),
       ),
     ).toBe(true);
   });

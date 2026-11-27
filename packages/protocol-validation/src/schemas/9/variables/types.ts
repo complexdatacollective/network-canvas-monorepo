@@ -21,12 +21,10 @@ export const VariableTypes = {
   ordinal: 'ordinal',
   scalar: 'scalar',
   categorical: 'categorical',
-  layout: 'layout',
   location: 'location',
 } as const;
 
 export const NON_RENDERABLE_VARIABLE_TYPES = new Set<string>([
-  VariableTypes.layout,
   VariableTypes.location,
 ]);
 

@@ -8,6 +8,7 @@ import {
 } from '../common/index.ts';
 import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { FilterSchema } from '../filters/index.ts';
+import { layoutReference } from '../layout-reference.ts';
 import { baseStageSchema } from './base.ts';
 
 export const sociogramStage = withUniqueObjectIds(
@@ -15,6 +16,9 @@ export const sociogramStage = withUniqueObjectIds(
     type: z.literal('Sociogram'),
     subject: nodeStageSubjectFor('Sociogram'),
     filter: FilterSchema.optional(),
+    // The layout the stage places its nodes in: every prompt positions nodes
+    // under this one id, whatever their type.
+    layout: layoutReference(),
     background: imageOrCirclesBackgroundSchema,
     behaviours: canvasBehavioursSchema,
     prompts: z

@@ -8,6 +8,7 @@ import {
 import { renameKeys, setValueAt, valueAt } from './protocolObjectIdRewrite.ts';
 import {
   isAttributeHit,
+  isLayoutHit,
   isTypeHit,
   walkSchemaReferences,
 } from './schemaReferenceWalk.ts';
@@ -117,8 +118,8 @@ const renamedAttributeName = (
  * variable at its new id: every site `schema` tags as an entity type
  * reference or an entity attribute reference, including each attribute text
  * that shows dynamic values names (`ego_<id>`), whose name in the text is
- * rewritten. No stage refers to a layout yet, so a layout is renamed in the
- * codebook alone. `root` is changed in place: it must be a copy the caller
+ * rewritten. A layout is renamed in the codebook, at every site `schema` tags
+ * as a layout reference, and in every node filter rule naming it. `root` is changed in place: it must be a copy the caller
  * owns.
  *
  * Every reference is resolved against the document as it was before any
@@ -196,7 +197,26 @@ export const rewriteCodebookIds = (
         writes.push({ path: hit.path, value: renamed });
       continue;
     }
+    if (isLayoutHit(hit)) {
+      const renamed = layoutRenames?.get(hit.layoutId);
+      if (renamed !== undefined)
+        writes.push({ path: hit.path, value: renamed });
+      continue;
+    }
     if (!isAttributeHit(hit) || hit.dataSourceColumn) continue;
+    // A node rule may name a layout, which keeps the id of the layout
+    // variable it was in schema 8 (positions are stored under it).
+    if (
+      hit.subject === undefined &&
+      isRecord(layouts) &&
+      Object.hasOwn(layouts, hit.variableId) &&
+      filterRuleOwner(root, hit.path)?.entity === 'node'
+    ) {
+      const renamed = layoutRenames?.get(hit.variableId);
+      if (renamed !== undefined)
+        writes.push({ path: hit.path, value: renamed });
+      continue;
+    }
     const owner = hit.subject ?? filterRuleOwner(root, hit.path);
     const renamed =
       owner === undefined

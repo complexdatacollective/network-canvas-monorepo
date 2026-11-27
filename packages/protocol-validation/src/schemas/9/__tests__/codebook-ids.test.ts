@@ -10,6 +10,7 @@ import {
 import { valueAt } from '../../../utils/protocolObjectIdRewrite.ts';
 import {
   isAttributeHit,
+  isLayoutHit,
   isTypeHit,
   walkSchemaReferences,
 } from '../../../utils/schemaReferenceWalk.ts';
@@ -349,16 +350,13 @@ const EVERY_REFERENCE_KIND = [
   'A NameGeneratorQuickAdd stages.#.quickAdd',
   'A Narrative stages.#.presets.#.groupVariable',
   'A Narrative stages.#.presets.#.highlight.#.variable',
-  'A Narrative stages.#.presets.#.layoutVariable',
   'A NarrativePedigree stages.#.diseases.#.attribute',
   'A NetworkComposer stages.#.convexHullVariable',
   'A NetworkComposer stages.#.edges.#.form.fields.#.variable',
-  'A NetworkComposer stages.#.layoutVariable',
   'A NetworkComposer stages.#.nodeForm.fields.#.variable',
   'A NetworkComposer stages.#.quickAdd',
   'A OrdinalBin stages.#.prompts.#.variable',
   'A Sociogram stages.#.prompts.#.highlight.variable',
-  'A Sociogram stages.#.prompts.#.layout.layoutVariable',
   'A Sociogram stages.#.prompts.#.sortOrder.#.property',
   'A TieStrengthCensus stages.#.prompts.#.edgeVariable',
   'A $ codebook.node.*.dynamicLabel.text.en',
@@ -801,6 +799,67 @@ describe('renaming codebook ids', () => {
   });
 });
 
+describe('renaming layout ids', () => {
+  it('rewrites every layout reference', () => {
+    const protocol = withEveryReference();
+    const stages = arrayAt(protocol, ['stages']);
+    const sociogram = stageNamed(protocol, 'sociogram');
+    // A node rule names a layout by its id, as it named a layout variable.
+    sociogram.skipLogic = {
+      action: 'SHOW',
+      filter: {
+        join: 'AND',
+        rules: [
+          {
+            id: 'rule',
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'layoutPosition',
+              operator: 'EXISTS',
+            },
+          },
+        ],
+      },
+    };
+    const layoutHits = [
+      ...walkSchemaReferences(ProtocolStructureSchema, protocol),
+    ].filter(isLayoutHit);
+    expect(layoutHits.map(({ path }) => path.join('.')).toSorted()).toEqual(
+      [
+        `stages.${stages.indexOf(sociogram)}.layout`,
+        `stages.${stages.indexOf(stageNamed(protocol, 'composer'))}.layout`,
+        `stages.${stages.indexOf(stageNamed(protocol, 'narrative'))}.presets.0.layout`,
+      ].toSorted(),
+    );
+
+    const renamed = testVariableId('renamed layout');
+    renameCodebookIds(protocol, {
+      layoutId: (key) => (key === 'layoutPosition' ? renamed : key),
+    });
+
+    expect(Object.keys(recordAt(protocol, ['codebook', 'layouts']))).toEqual([
+      renamed,
+    ]);
+    for (const { path } of layoutHits) {
+      expect({ path, now: valueAt(protocol, path) }).toEqual({
+        path,
+        now: renamed,
+      });
+    }
+    expect(
+      valueAt(sociogram, [
+        'skipLogic',
+        'filter',
+        'rules',
+        0,
+        'options',
+        'attribute',
+      ]),
+    ).toBe(renamed);
+  });
+});
+
 describe('the schema 8 to 9 migration', () => {
   const schema8 = () => asSchema8Protocol(completeProtocol());
   const migrate = (document: unknown) =>
@@ -823,7 +882,12 @@ describe('the schema 8 to 9 migration', () => {
     variables.push(
       ...Object.keys(recordAt(protocol, ['codebook', 'ego', 'variables'])),
     );
-    return { types, variables };
+    // A layout was a node variable in schema 8, and its id is a variable id.
+    if (isRecord(codebook.layouts)) {
+      variables.push(...Object.keys(codebook.layouts));
+    }
+    // Schema 9 keeps a layout apart from the variables it came between.
+    return { types, variables: variables.toSorted() };
   };
 
   it('gives every node type, edge type and variable a UUID key, and the result validates', () => {

@@ -31,7 +31,7 @@ describe('Cross-reference conformance', () => {
               {
                 id: 'preset1',
                 label: localized('Overview'),
-                layoutVariable: 'layoutPosition',
+                layout: 'layoutPosition',
               },
             ],
           },
@@ -532,6 +532,7 @@ describe('Cross-reference conformance', () => {
             type: 'Sociogram',
             label: localized('Sociogram'),
             subject: { entity: 'node', types: ['person'] },
+            layout: 'layoutPosition',
             background: { concentricCircles: 4 },
             filter: {
               join: 'OR' as const,
@@ -551,7 +552,6 @@ describe('Cross-reference conformance', () => {
               {
                 id: 'socPrompt1',
                 text: localized('Position nodes'),
-                layout: { layoutVariable: 'layoutPosition' },
               },
             ],
           },

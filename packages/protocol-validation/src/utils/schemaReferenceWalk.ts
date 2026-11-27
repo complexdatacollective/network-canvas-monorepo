@@ -28,6 +28,7 @@ import {
   type EntityTypeReferenceDescriptor,
   getEntityTypeReferenceDescriptor,
 } from '../schemas/9/entity-type-reference.ts';
+import { isLayoutReference } from '../schemas/9/layout-reference.ts';
 import { getLocalizedStringDescriptor } from '../schemas/9/localized-string.ts';
 import {
   getProtocolObjectKind,
@@ -70,6 +71,11 @@ export type EntityTypeReferenceHit = {
   entity: 'node' | 'edge';
 };
 
+export type LayoutReferenceHit = {
+  path: (string | number)[];
+  layoutId: string;
+};
+
 export type AssetReferenceHit = {
   /**
    * The field holding the id, or, for a file shown as a block in text, the
@@ -101,6 +107,7 @@ export type ProtocolObjectIdHit = {
 export type ReferenceHit =
   | ({ kind: 'attribute' } & EntityAttributeReferenceHit)
   | ({ kind: 'type' } & EntityTypeReferenceHit)
+  | ({ kind: 'layout' } & LayoutReferenceHit)
   | ({ kind: 'asset' } & AssetReferenceHit)
   | ({ kind: 'stage' } & StageReferenceHit)
   | ({ kind: 'objectId' } & ProtocolObjectIdHit);
@@ -173,6 +180,7 @@ const hasReference = (schema: z.ZodType): boolean => {
   let result =
     getEntityAttributeReferenceDescriptor(node) !== undefined ||
     getEntityTypeReferenceDescriptor(node) !== undefined ||
+    isLayoutReference(node) ||
     getAssetReferenceDescriptor(node) !== undefined ||
     holdsAssetBlocks(node) ||
     dynamicValueSiteOf(node) !== undefined ||
@@ -331,6 +339,7 @@ type StringPlan = {
   node: z.ZodString;
   attribute: EntityAttributeReferenceDescriptor | undefined;
   type: EntityTypeReferenceDescriptor | undefined;
+  layout: boolean;
   asset: AssetReferenceDescriptor | undefined;
   stageSite: string | undefined;
 };
@@ -425,6 +434,7 @@ const buildPlan = (schema: z.ZodType): WalkPlan => {
       node,
       attribute: getEntityAttributeReferenceDescriptor(node),
       type: getEntityTypeReferenceDescriptor(node),
+      layout: isLayoutReference(node),
       asset: getAssetReferenceDescriptor(node),
       stageSite: getStageReferenceSite(node),
     };
@@ -518,6 +528,7 @@ const walkString = (
     if (entity === undefined) return [];
     return [{ kind: 'type', path, typeId: value, entity }];
   }
+  if (plan.layout) return [{ kind: 'layout', path, layoutId: value }];
   const assetDescriptor = plan.asset;
   if (assetDescriptor) {
     // The walker tolerates invalid partial documents, but only a value that
@@ -717,6 +728,10 @@ export const isAttributeHit = (
 export const isTypeHit = (
   hit: ReferenceHit,
 ): hit is { kind: 'type' } & EntityTypeReferenceHit => hit.kind === 'type';
+
+export const isLayoutHit = (
+  hit: ReferenceHit,
+): hit is { kind: 'layout' } & LayoutReferenceHit => hit.kind === 'layout';
 
 export const isAssetHit = (
   hit: ReferenceHit,

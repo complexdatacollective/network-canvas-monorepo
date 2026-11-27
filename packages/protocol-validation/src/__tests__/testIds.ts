@@ -22,6 +22,7 @@ import {
 import { findMarkedObjects } from '../utils/protocolObjectIds.ts';
 import {
   isAttributeHit,
+  isLayoutHit,
   isTypeHit,
   walkSchemaReferences,
 } from '../utils/schemaReferenceWalk.ts';
@@ -205,7 +206,7 @@ const keyNamed = (
 };
 
 /**
- * For each node type, edge type and variable of `migrated` (a migration's
+ * For each node type, edge type, variable and layout of `migrated` (a migration's
  * result), the key the same entry had in `original` (the document it was
  * migrated from), found by its name, and for a variable by the entity it
  * belongs to. An entry the migration added has none, and is given its name.
@@ -242,11 +243,32 @@ export const originalCodebookKeys = (
       keys.set(key, keyNamed(originalVariables, name) ?? name ?? key);
     }
   }
+  // A layout was a node variable of type `layout` before schema 9, so its key
+  // is found among the layouts of `original` or among its node variables.
+  const layoutsOf = (codebook: unknown) =>
+    isRecord(codebook) && isRecord(codebook.layouts) ? codebook.layouts : {};
+  // Layout variables that share a key on several node types become one
+  // layout named after the first.
+  const originalLayouts: Record<string, unknown> = {};
+  for (const definition of Object.values(typesOf(originalCodebook, 'node'))) {
+    if (!isRecord(definition) || !isRecord(definition.variables)) continue;
+    for (const [key, variable] of Object.entries(definition.variables)) {
+      if (isRecord(variable) && variable.type === 'layout') {
+        originalLayouts[key] ??= variable;
+      }
+    }
+  }
+  Object.assign(originalLayouts, layoutsOf(originalCodebook));
+  const layouts = layoutsOf(migratedCodebook);
+  for (const key of Object.keys(layouts)) {
+    const name = nameIn(layouts, key);
+    keys.set(key, keyNamed(originalLayouts, name) ?? name ?? key);
+  }
   return keys;
 };
 
 /**
- * `migrated` with each node type, edge type and variable stored under the
+ * `migrated` with each node type, edge type, variable and layout stored under the
  * key it had in `original`, and every reference to each naming that key, so
  * that a test can describe a migration's result in the readable keys its
  * fixture was written with.
@@ -268,7 +290,9 @@ export const withOriginalCodebookKeys = <T>(
       ? hit.typeId
       : isAttributeHit(hit) && !hit.dataSourceColumn
         ? hit.variableId
-        : undefined;
+        : isLayoutHit(hit)
+          ? hit.layoutId
+          : undefined;
     if (held === undefined || isVariableId(held) || !readable.has(held)) {
       continue;
     }
@@ -279,6 +303,7 @@ export const withOriginalCodebookKeys = <T>(
   renameCodebookIds(copy, {
     typeId: (key) => keys.get(key) ?? key,
     variableId: (key) => keys.get(key) ?? key,
+    layoutId: (key) => keys.get(key) ?? key,
   });
   return copy;
 };

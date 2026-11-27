@@ -123,12 +123,6 @@ asExclusiveVariants(sociogramHighlightSchema);
 export const sociogramPromptSchema = promptSchema
   .extend({
     sortOrder: SortOrderSchema.optional(),
-    layout: z.strictObject({
-      layoutVariable: entityAttributeReference({
-        subject: 'stageSubject',
-        usage: 'unvalidatedAttribute',
-      }),
-    }),
     edges: z
       .strictObject({
         display: z.array(entityTypeReference({ entity: 'edge' })).optional(),

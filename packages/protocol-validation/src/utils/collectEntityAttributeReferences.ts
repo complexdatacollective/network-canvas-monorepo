@@ -9,8 +9,10 @@ import {
   type AssetReferenceHit,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
+  type LayoutReferenceHit,
   isAssetHit,
   isAttributeHit,
+  isLayoutHit,
   isStageHit,
   isTypeHit,
   type StageReferenceHit,
@@ -72,6 +74,21 @@ export const collectEntityTypeReferences = (
     ({ entity, typeId, path }) =>
       !(path[0] === 'codebook' && path[1] === entity && path[2] === typeId),
   );
+
+/**
+ * Every stage setting naming a layout of `codebook.layouts`, discovered from
+ * the schema's `layoutReference` tags: the Sociogram's and Network Composer's
+ * `layout` and each Narrative preset's. A consumer asking which stages use a
+ * layout derives it from here (see `layoutUsage.ts`).
+ */
+export const collectLayoutReferences = (
+  protocol: unknown,
+): LayoutReferenceHit[] =>
+  walkSchemaReferences(ProtocolStructureSchema, protocol, {
+    readAssetBlocks: false,
+  })
+    .filter(isLayoutHit)
+    .map(({ kind: _kind, ...hit }) => hit);
 
 /**
  * Every `assetManifest` entry referenced by a protocol, discovered from the

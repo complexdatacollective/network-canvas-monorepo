@@ -9,6 +9,7 @@ import {
 } from '../common/index.ts';
 import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { layoutReference } from '../layout-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { protocolObjectId } from '../protocol-object-id.ts';
 import { ComponentTypes } from '../variables/types.ts';
@@ -160,14 +161,9 @@ export const networkComposerStage = withUniqueObjectIds(
       subject: 'stageSubject',
       usage: 'validatedAttribute',
     }),
-    // The layout variable that stores each node's { x, y } position. The canvas
-    // merges positions into node attributes under this key, so any other type
-    // would have its collected value overwritten.
-    layoutVariable: entityAttributeReference({
-      subject: 'stageSubject',
-      requireType: ['layout'],
-      usage: 'unvalidatedAttribute',
-    }),
+    // The layout the stage stores each node's { x, y } position in, under the
+    // layout's id on the node.
+    layout: layoutReference(),
     // Attribute form shown in the inspector when a node is selected.
     nodeForm: ComposerFormSchema.optional(),
     // The categorical variable whose values are drawn as convex hulls.

@@ -109,7 +109,7 @@ const categoricalValidations = {
  * entry here, and an authoring UI builds its per-type rule list from the same
  * record — so a UI can never offer a rule that would fail validation.
  *
- * Layout and location variables take no validation at all.
+ * Location variables take no validation at all.
  */
 export const VARIABLE_TYPE_VALIDATIONS = {
   text: textValidations,
@@ -119,7 +119,6 @@ export const VARIABLE_TYPE_VALIDATIONS = {
   boolean: booleanValidations,
   ordinal: ordinalValidations,
   categorical: categoricalValidations,
-  layout: {},
   location: {},
 } as const satisfies Record<VariableType, ValidationMask>;
 
@@ -156,8 +155,8 @@ const booleanToggleComponents = [ComponentTypes.Toggle] as const;
  * `component` cannot render the codebook variable it writes (thirteenth-wave
  * Finding 3).
  *
- * Layout and location variables have no participant-facing control at all, so
- * their lists are empty.
+ * Location variables have no participant-facing control at all, so their
+ * list is empty.
  */
 export const VARIABLE_TYPE_COMPONENTS = {
   text: textComponents,
@@ -167,7 +166,6 @@ export const VARIABLE_TYPE_COMPONENTS = {
   boolean: [...booleanChoiceComponents, ...booleanToggleComponents],
   ordinal: ordinalComponents,
   categorical: categoricalComponents,
-  layout: [],
   location: [],
 } as const satisfies Record<VariableType, readonly ComponentType[]>;
 
@@ -502,10 +500,6 @@ const categoricalVariableSchema = baseVariableSchema.extend({
     .optional(),
 });
 
-const layoutVariableSchema = baseVariableSchema.extend({
-  type: z.literal(VariableTypes.layout),
-});
-
 const locationVariableSchema = baseVariableSchema.extend({
   type: z.literal(VariableTypes.location),
 });
@@ -520,7 +514,6 @@ const variableSchemas = [
   categoricalVariableSchema,
   dateTimeDatePickerSchema,
   dateTimeRelativeDatePickerSchema,
-  layoutVariableSchema,
   locationVariableSchema,
 ] as const;
 export const VariableSchema = z.union([...variableSchemas]);

@@ -14,11 +14,11 @@ import { stageSchema } from '../stages/index.ts';
 /**
  * Tests for the schema-conformance logic-validation refinements:
  * - Form fields must reference a variable with a renderable component
- *   (reject layout/location variables)
+ *   (reject location variables)
  * - quickAdd must reference an existing text variable on the subject node type
  * - CategoricalBin requires otherOptionLabel when otherVariable is set
  * - sociogram highlight.variable must reference a boolean variable
- * - sociogram layout.layoutVariable must reference a layout-typed variable
+ * - a sociogram's layout must be a layout of the codebook
  * - RelativeDatePicker before/after must be non-negative (independent offsets);
  *   anchor must be a valid ISO date
  * - ordinal options must be non-empty
@@ -26,7 +26,7 @@ import { stageSchema } from '../stages/index.ts';
  */
 describe('Protocol Schema V8 - logic-validation refinements', () => {
   describe('form field renderable component', () => {
-    it('rejects a form field referencing a layout variable', () => {
+    it('rejects a form field referencing a location variable', () => {
       const base = createBaseProtocol();
       const protocol = {
         ...base,
@@ -40,7 +40,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 ...base.codebook.node.person.variables,
                 position: {
                   name: 'Position',
-                  type: 'layout',
+                  type: 'location',
                 },
               },
             },
@@ -289,33 +289,17 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: localized('Sociogram'),
             subject: { entity: 'node', types: ['person'] },
+            layout: 'layoutPosition',
             background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
                 text: localized('Highlight'),
-                layout: { layoutVariable: 'layoutPos' },
                 highlight: { allowHighlighting: true, variable: 'age' },
               },
             ],
           },
         ],
-        codebook: {
-          ...base.codebook,
-          node: {
-            ...base.codebook.node,
-            person: {
-              ...base.codebook.node.person,
-              variables: {
-                ...base.codebook.node.person.variables,
-                layoutPos: {
-                  name: 'LayoutPos',
-                  type: 'layout',
-                },
-              },
-            },
-          },
-        },
       };
 
       const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
@@ -340,10 +324,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.node.person,
               variables: {
                 ...base.codebook.node.person.variables,
-                layoutPos: {
-                  name: 'LayoutPos',
-                  type: 'layout',
-                },
                 flagged: {
                   name: 'Flagged',
                   type: 'boolean',
@@ -359,12 +339,12 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: localized('Sociogram'),
             subject: { entity: 'node', types: ['person'] },
+            layout: 'layoutPosition',
             background: { concentricCircles: 4 },
             prompts: [
               {
                 id: 'p1',
                 text: localized('Highlight'),
-                layout: { layoutVariable: 'layoutPos' },
                 highlight: { allowHighlighting: true, variable: 'flagged' },
               },
             ],
@@ -377,10 +357,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
     });
   });
 
-  describe('sociogram layout.layoutVariable type', () => {
-    it('rejects layoutVariable referencing a non-layout variable', () => {
+  describe('sociogram layout', () => {
+    const sociogramWithLayout = (layout: string) => {
       const base = createBaseProtocol();
-      const protocol = {
+      return {
         ...base,
         stages: [
           {
@@ -388,67 +368,31 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'Sociogram',
             label: localized('Sociogram'),
             subject: { entity: 'node', types: ['person'] },
+            layout,
             background: { concentricCircles: 4 },
-            prompts: [
-              {
-                id: 'p1',
-                text: localized('Position'),
-                layout: { layoutVariable: 'age' },
-              },
-            ],
+            prompts: [{ id: 'p1', text: localized('Position') }],
           },
         ],
       };
+    };
 
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
+    it('rejects a layout naming a node variable', () => {
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(sociogramWithLayout('age')),
+      );
       expect(result.success).toBe(false);
-      if (!result.success) {
-        const issue = result.error.issues.find((i) =>
-          i.path.includes('layoutVariable'),
-        );
-        expect(issue).toBeDefined();
-      }
+      expect(result.error?.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['stages', 0, 'layout'],
+          message: expect.stringMatching(/^Layout ".+" is not defined/),
+        }),
+      );
     });
 
-    it('accepts layoutVariable referencing a layout variable', () => {
-      const base = createBaseProtocol();
-      const protocol = {
-        ...base,
-        codebook: {
-          ...base.codebook,
-          node: {
-            ...base.codebook.node,
-            person: {
-              ...base.codebook.node.person,
-              variables: {
-                ...base.codebook.node.person.variables,
-                layoutPos: {
-                  name: 'LayoutPos',
-                  type: 'layout',
-                },
-              },
-            },
-          },
-        },
-        stages: [
-          {
-            id: 'sociogram1',
-            type: 'Sociogram',
-            label: localized('Sociogram'),
-            subject: { entity: 'node', types: ['person'] },
-            background: { concentricCircles: 4 },
-            prompts: [
-              {
-                id: 'p1',
-                text: localized('Position'),
-                layout: { layoutVariable: 'layoutPos' },
-              },
-            ],
-          },
-        ],
-      };
-
-      const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
+    it('accepts a layout of the codebook', () => {
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(sociogramWithLayout('layoutPosition')),
+      );
       expect(result.success).toBe(true);
     });
   });

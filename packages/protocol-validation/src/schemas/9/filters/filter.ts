@@ -72,9 +72,21 @@ export const OperatorsByVariableType: Record<string, readonly string[]> = {
   datetime: NumericOperators,
   ordinal: OrdinalOperators,
   categorical: CategoricalOperators,
-  layout: BaseOperators,
   location: BaseOperators,
 };
+
+/**
+ * The operators a node rule naming a layout may use, as it could when the
+ * layout was a variable in schema 8. A position has no value a rule can
+ * compare against, so the builder offers none of them; they are kept so a
+ * rule migrated from schema 8 stays valid.
+ */
+export const LAYOUT_RULE_OPERATORS = [
+  'EXISTS',
+  'NOT_EXISTS',
+  'EXACTLY',
+  'NOT',
+] as const;
 
 /**
  * What a rule's comparison value may be, whatever it is being compared

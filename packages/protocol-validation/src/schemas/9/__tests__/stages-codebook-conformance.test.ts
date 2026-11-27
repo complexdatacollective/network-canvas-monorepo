@@ -31,6 +31,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
     label: localized('Sociogram'),
     type: 'Sociogram' as const,
     subject: { entity: 'node' as const, types: ['person'] },
+    layout: 'pos',
     background: { concentricCircles: 4 },
   };
 
@@ -41,7 +42,6 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         {
           id: testId('p1'),
           text: localized('Connect'),
-          layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
         },
       ],
@@ -56,7 +56,6 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         {
           id: testId('p1'),
           text: localized('Highlight'),
-          layout: { layoutVariable: 'pos' },
           highlight: { allowHighlighting: true, variable: 'isClose' },
         },
       ],
@@ -71,7 +70,6 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         {
           id: testId('p1'),
           text: localized('Both'),
-          layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
           highlight: { allowHighlighting: true, variable: 'isClose' },
         },
@@ -93,7 +91,6 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         {
           id: testId('p1'),
           text: localized('Create only'),
-          layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
           highlight: { allowHighlighting: false },
         },
@@ -109,7 +106,6 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         {
           id: testId('p1'),
           text: localized('Highlight'),
-          layout: { layoutVariable: 'pos' },
           highlight: { allowHighlighting: true },
         },
       ],
@@ -130,7 +126,6 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         {
           id: testId('p1'),
           text: localized('Edges'),
-          layout: { layoutVariable: 'pos' },
           edges: {},
         },
       ],
@@ -151,7 +146,6 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
         {
           id: testId('p1'),
           text: localized('Edges'),
-          layout: { layoutVariable: 'pos' },
           edges: { display: [] },
         },
       ],
@@ -171,12 +165,12 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       label: localized('Sociogram'),
       type: 'Sociogram' as const,
       subject: { entity: 'node' as const, types: ['person'] },
+      layout: 'pos',
       background: { image: '' },
       prompts: [
         {
           id: testId('p1'),
           text: localized('Position'),
-          layout: { layoutVariable: 'pos' },
         },
       ],
     });
@@ -366,7 +360,7 @@ describe('Narrative preset label non-empty', () => {
         {
           id: testId('preset1'),
           label: localized('Overview'),
-          layoutVariable: 'pos',
+          layout: 'pos',
         },
       ],
     });
@@ -376,9 +370,7 @@ describe('Narrative preset label non-empty', () => {
   it('rejects a preset with an empty label', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
-      presets: [
-        { id: testId('preset1'), label: localized(''), layoutVariable: 'pos' },
-      ],
+      presets: [{ id: testId('preset1'), label: localized(''), layout: 'pos' }],
     });
     expect(parseIssues(result)).toEqual([
       { path: 'presets.0.label.en', code: 'too_small' },
@@ -393,7 +385,7 @@ describe('Narrative preset label non-empty', () => {
         {
           id: testId('preset1'),
           label: localized('Overview'),
-          layoutVariable: 'pos',
+          layout: 'pos',
         },
       ],
     });
@@ -408,7 +400,7 @@ describe('Narrative preset label non-empty', () => {
         {
           id: testId('preset1'),
           label: localized('Overview'),
-          layoutVariable: 'pos',
+          layout: 'pos',
         },
       ],
     });

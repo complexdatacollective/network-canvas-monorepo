@@ -8,6 +8,7 @@ import {
 import {
   collectEntityAttributeReferencesFromSchema,
   collectEntityTypeReferencesFromSchema,
+  collectLayoutReferences,
 } from '../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStringsFromSchema } from '../../utils/collectLocalizedStrings.ts';
 import {
@@ -30,6 +31,7 @@ import { findAssetBlockProblems } from './asset-block-validation.ts';
 import { type Conditions, isEdgeCountRule } from './conditions.ts';
 import { findDynamicValueProblems } from './dynamic-value-validation.ts';
 import {
+  LAYOUT_RULE_OPERATORS,
   OperatorsByVariableType,
   TypeLevelOperators,
 } from './filters/index.ts';
@@ -156,6 +158,26 @@ const validateFilterRules = (
             : `Rule option type "${rule.options.type}" is not defined in codebook`,
         path: [...rulePath, 'options', 'type'],
       });
+    }
+
+    // A node rule may name a layout, as it named a layout variable in schema
+    // 8: positions are stored on nodes under the layout's id. Whether a stage
+    // sets the layout for the rule's type is not asked, so a migrated rule
+    // stays valid when no stage does.
+    const layoutAttribute =
+      rule.type === 'node' &&
+      'attribute' in rule.options &&
+      rule.options.attribute !== undefined &&
+      codebook.layouts?.[rule.options.attribute] !== undefined;
+    if (layoutAttribute) {
+      const operators: readonly string[] = LAYOUT_RULE_OPERATORS;
+      if (!operators.includes(rule.options.operator)) {
+        addIssue({
+          message: `Operator "${rule.options.operator}" is not valid for a layout. Valid operators: ${LAYOUT_RULE_OPERATORS.join(', ')}`,
+          path: [...rulePath, 'options', 'operator'],
+        });
+      }
+      return;
     }
 
     // Check attribute exists
@@ -772,6 +794,16 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     ctx.addIssue(issue);
   }
 
+  // A stage setting naming a layout names one of the codebook's layouts.
+  for (const { path, layoutId } of collectLayoutReferences(protocol)) {
+    if (protocol.codebook.layouts?.[layoutId] !== undefined) continue;
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: `Layout "${layoutId}" is not defined in the codebook`,
+      path,
+    });
+  }
+
   // Each stage refuses the edge type settings it cannot yet run.
   for (const issue of stageEdgeTypeSupportIssues(
     protocol,
@@ -1190,7 +1222,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
 
     // Form field type validation: existence is covered by the
     // entity-attribute reference validator above; here we additionally reject
-    // variables whose type cannot be rendered as a form field (layout/location).
+    // variables whose type cannot be rendered as a form field (location).
     if ('form' in stage && stage.form?.fields) {
       const subject = stageSubject;
 
@@ -1304,38 +1336,6 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
                 'prompts',
                 promptIndex,
                 'createEdge',
-              ],
-            });
-          }
-        }
-
-        // layoutVariable type check (existence is covered by the
-        // entity-attribute reference validator). A sociogram layout variable
-        // must be of type "layout".
-        if (
-          'layout' in prompt &&
-          prompt.layout &&
-          'layoutVariable' in prompt.layout &&
-          prompt.layout.layoutVariable &&
-          typeof prompt.layout.layoutVariable === 'string' &&
-          stageSubject
-        ) {
-          const layoutVariable = prompt.layout.layoutVariable;
-          const variable = getVariablesForSubject(
-            protocol.codebook,
-            stageSubject,
-          )[layoutVariable];
-          if (variable && variable.type !== 'layout') {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `Layout attribute "${layoutVariable}" must be of type "layout", but is "${variable.type}".`,
-              path: [
-                'stages',
-                stageIndex,
-                'prompts',
-                promptIndex,
-                'layout',
-                'layoutVariable',
               ],
             });
           }

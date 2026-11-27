@@ -50,6 +50,7 @@ const protocolDocument = () => ({
     },
   },
   codebook: {
+    layouts: { layoutPosition: { name: 'LayoutPosition' } },
     ego: {
       variables: {
         egoName: {
@@ -123,10 +124,6 @@ const protocolDocument = () => ({
             name: 'Nickname',
             type: 'text',
             component: 'Text',
-          },
-          layoutPosition: {
-            name: 'LayoutPosition',
-            type: 'layout',
           },
           category: {
             name: 'Category',
@@ -349,12 +346,12 @@ const protocolDocument = () => ({
       label: localized('Sociogram'),
       subject: { entity: 'node', types: ['person'] },
       background: { concentricCircles: 3 },
+      layout: 'layoutPosition',
       behaviours: { automaticLayout: true },
       prompts: [
         {
           id: 'p1',
           text: localized('Place people'),
-          layout: { layoutVariable: 'layoutPosition' },
         },
       ],
     },
@@ -364,7 +361,7 @@ const protocolDocument = () => ({
       label: localized('Composer'),
       subject: { entity: 'node', types: ['person'] },
       quickAdd: 'name',
-      layoutVariable: 'layoutPosition',
+      layout: 'layoutPosition',
       background: { concentricCircles: 3 },
       convexHullVariable: 'category',
       nodeForm: {
@@ -502,7 +499,7 @@ const protocolDocument = () => ({
         {
           id: 'preset',
           label: localized('Preset'),
-          layoutVariable: 'layoutPosition',
+          layout: 'layoutPosition',
           highlight: [{ variable: 'flag', label: localized('Flagged') }],
           edges: { display: [{ type: 'knows', label: localized('Knows') }] },
           groupVariable: 'category',

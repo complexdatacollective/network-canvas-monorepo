@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import {
   testId,
+  testTypeId,
+  testVariableId,
   withOriginalCodebookKeys,
   withTestCodebookIds,
 } from '../../../__tests__/testIds.ts';
@@ -21,6 +23,7 @@ import ProtocolSchemaV8 from '../../8/schema.ts';
 import migrationV8toV9 from '../migration.ts';
 import { isProtocolObjectId } from '../protocol-object-id.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
+import type { Stage } from '../stages/index.ts';
 import { migratedStageId } from './migrated-stage-ids.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
@@ -1612,12 +1615,12 @@ const migratedNarrative = (label: string) => {
           {
             id: testId('first'),
             label: localized('Placeholder'),
-            layoutVariable: 'layoutPosition',
+            layout: 'layoutPosition',
           },
           {
             id: testId('second'),
             label: localized('Placeholder'),
-            layoutVariable: 'layoutPosition',
+            layout: 'layoutPosition',
           },
         ],
         background: { concentricCircles: 3 },
@@ -2202,6 +2205,397 @@ describe('Migrating stage subjects from schema 8 to 9', () => {
     expect(edgeStage && 'subject' in edgeStage && edgeStage.subject).toEqual({
       entity: 'edge',
       type: 'knows',
+    });
+  });
+});
+
+describe('Migrating layouts from schema 8 to 9', () => {
+  type Variables = Record<string, { name: string; type: string }>;
+
+  const textVariable = (name: string) => ({
+    name,
+    type: 'text',
+    component: 'Text',
+  });
+  const layoutVariable = (name: string) => ({ name, type: 'layout' });
+  const nodeType = (name: string, variables: Variables) => ({
+    name,
+    color: 'node-color-seq-1',
+    shape: { default: 'circle' },
+    variables: { name: textVariable('name'), ...variables },
+  });
+
+  const egoRule = (attribute: string) => ({
+    id: testId(`ego rule ${attribute}`),
+    type: 'ego',
+    options: { attribute, operator: 'EXISTS' },
+  });
+  const layoutNodeRule = (attribute: string, type = 'person') => ({
+    id: testId(`node rule ${type} ${attribute}`),
+    type: 'node',
+    options: { type, attribute, operator: 'EXISTS' },
+  });
+
+  const nameGenerator = (
+    id: string,
+    type = 'person',
+    settings: Record<string, unknown> = {},
+  ) => ({
+    id: testId(id),
+    type: 'NameGenerator',
+    label: 'Names',
+    subject: { entity: 'node', type },
+    form: {
+      title: 'Add',
+      fields: [{ id: testId(`${id} field`), variable: 'name', prompt: 'Name' }],
+    },
+    prompts: [{ id: testId(`${id} prompt`), text: 'Who?' }],
+    ...settings,
+  });
+
+  // A schema 8 Sociogram whose prompts name the layout variables given, in
+  // order; `undefined` is a prompt that names none.
+  const sociogram = (
+    id: string,
+    layouts: (string | undefined)[],
+    type = 'person',
+    settings: Record<string, unknown> = {},
+  ) => ({
+    id: testId(id),
+    type: 'Sociogram',
+    label: 'Map',
+    subject: { entity: 'node', type },
+    background: { concentricCircles: 4 },
+    prompts: layouts.map((layout, index) => ({
+      id: testId(`${id} prompt ${index}`),
+      text: `Prompt ${index}`,
+      ...(layout === undefined ? {} : { layout: { layoutVariable: layout } }),
+    })),
+    ...settings,
+  });
+
+  const schema8 = ({
+    node,
+    edge = {},
+    ego = {},
+    stages,
+  }: {
+    node: Record<string, ReturnType<typeof nodeType>>;
+    edge?: Record<string, unknown>;
+    ego?: Variables;
+    stages: unknown[];
+  }) => ({
+    ...asSchema8Protocol(createBaseProtocol()),
+    codebook: { node, edge, ego: { variables: ego } },
+    stages,
+  });
+
+  const sociogramsOf = (protocol: { stages: Stage[] }) =>
+    protocol.stages.filter(
+      (stage): stage is Extract<Stage, { type: 'Sociogram' }> =>
+        stage.type === 'Sociogram',
+    );
+
+  const layoutNames = (protocol: {
+    codebook: { layouts?: Record<string, { name: string }> };
+  }) =>
+    Object.values(protocol.codebook.layouts ?? {})
+      .map(({ name }) => name)
+      .toSorted();
+
+  it('splits a Sociogram at each change of layout variable', () => {
+    const migrated = migrateReadable(
+      schema8({
+        node: {
+          person: nodeType('Person', {
+            near: layoutVariable('near'),
+            far: layoutVariable('far'),
+          }),
+        },
+        stages: [
+          nameGenerator('names'),
+          sociogram('map', ['near', 'near', 'far', undefined, 'near']),
+        ],
+      }),
+      9,
+    );
+
+    const sociograms = sociogramsOf(migrated);
+    expect(
+      sociograms.map((stage) => ({
+        layout: stage.layout,
+        label: stage.label,
+        prompts: stage.prompts.map(({ text }) => text),
+      })),
+    ).toEqual([
+      {
+        layout: 'near',
+        label: localized('Map'),
+        prompts: [localized('Prompt 0'), localized('Prompt 1')],
+      },
+      {
+        layout: 'far',
+        label: localized('Map'),
+        prompts: [localized('Prompt 2'), localized('Prompt 3')],
+      },
+      {
+        layout: 'near',
+        label: localized('Map'),
+        prompts: [localized('Prompt 4')],
+      },
+    ]);
+    expect(new Set(sociograms.map(({ id }) => id)).size).toBe(3);
+    expect(findDuplicateProtocolObjectIds(migrated)).toEqual([]);
+  });
+
+  it('retargets skip logic to the first split stage', () => {
+    const document = schema8({
+      node: {
+        person: nodeType('Person', {
+          near: layoutVariable('near'),
+          far: layoutVariable('far'),
+        }),
+      },
+      ego: { egoName: textVariable('egoName') },
+      stages: [
+        nameGenerator('names', 'person', {
+          skipLogic: {
+            action: 'SKIP',
+            filter: { join: 'AND', rules: [egoRule('egoName')] },
+            destination: { type: 'stage', stageId: testId('map') },
+          },
+        }),
+        nameGenerator('more names'),
+        sociogram('map', ['near', 'far']),
+      ],
+    });
+    const migrated = migrateReadable(document, 9);
+
+    const [first, second] = sociogramsOf(migrated);
+    const names = migrated.stages.find(
+      ({ id }) => id === migratedStageId(document, migrated, testId('names')),
+    );
+    expect(names?.skipLogic?.destination).toEqual({
+      type: 'stage',
+      stageId: first?.id,
+    });
+    expect(second).toBeDefined();
+    expect(second?.id).not.toBe(first?.id);
+  });
+
+  it('moves layout variables into codebook.layouts with the same id', () => {
+    const position = testVariableId('position');
+    const person = testTypeId('person');
+    const migrated = migrateProtocol(
+      schema8({
+        node: {
+          [person]: nodeType('Person', {
+            [position]: layoutVariable('position'),
+          }),
+        },
+        stages: [
+          nameGenerator('names', person),
+          sociogram('map', [position], person),
+        ],
+      }),
+      9,
+    );
+
+    expect(migrated.codebook.layouts).toEqual({
+      [position]: { name: 'position' },
+    });
+    const variables = Object.values(migrated.codebook.node ?? {}).flatMap(
+      (definition) => Object.keys(definition.variables ?? {}),
+    );
+    expect(variables).not.toContain(position);
+    expect(sociogramsOf(migrated).map(({ layout }) => layout)).toEqual([
+      position,
+    ]);
+  });
+
+  it('migration renames layouts whose names would collide', () => {
+    const migrated = migrateProtocol(
+      schema8({
+        node: {
+          person: nodeType('Person', {
+            // The same name as a variable of another node type.
+            position: layoutVariable('position'),
+            // Whose x column would be the name of a variable.
+            home: layoutVariable('home'),
+            map: layoutVariable('map'),
+          }),
+          place: nodeType('Place', {
+            position: textVariable('position'),
+            home_x: textVariable('home_x'),
+            // The same name as another layout, whose renaming is taken.
+            placeMap: layoutVariable('map'),
+            map_Place: textVariable('map_Place'),
+          }),
+        },
+        stages: [
+          nameGenerator('names'),
+          sociogram('people', ['position']),
+          sociogram('homes', ['home']),
+          sociogram('maps', ['map']),
+          nameGenerator('places', 'place'),
+          sociogram('places map', ['placeMap'], 'place'),
+        ],
+      }),
+      9,
+    );
+
+    expect(layoutNames(migrated)).toEqual(
+      ['position_Person', 'home_Person', 'map', 'map_Place_2'].toSorted(),
+    );
+  });
+
+  it('merges layout variables that share a key across node types into one layout', () => {
+    const migrated = migrateReadable(
+      schema8({
+        node: {
+          person: nodeType('Person', { spot: layoutVariable('position') }),
+          place: nodeType('Place', { spot: layoutVariable('place_position') }),
+        },
+        stages: [
+          nameGenerator('names'),
+          nameGenerator('places', 'place'),
+          sociogram('people', ['spot']),
+          sociogram('places map', ['spot'], 'place'),
+        ],
+      }),
+      9,
+    );
+
+    expect(migrated.codebook.layouts).toEqual({ spot: { name: 'position' } });
+    expect(sociogramsOf(migrated).map(({ layout }) => layout)).toEqual([
+      'spot',
+      'spot',
+    ]);
+  });
+
+  it("a layout keeps its id when another entity's variable has the same key", () => {
+    const shared = testVariableId('shared');
+    const person = testTypeId('person');
+    const migrated = migrateProtocol(
+      schema8({
+        node: {
+          [person]: nodeType('Person', {
+            [shared]: layoutVariable('position'),
+          }),
+        },
+        ego: { [shared]: textVariable('nickname') },
+        stages: [
+          nameGenerator('names', person, {
+            skipLogic: {
+              action: 'SKIP',
+              filter: { join: 'AND', rules: [egoRule(shared)] },
+            },
+          }),
+          sociogram('map', [shared], person),
+        ],
+      }),
+      9,
+    );
+
+    expect(Object.keys(migrated.codebook.layouts ?? {})).toEqual([shared]);
+    const egoIds = Object.keys(migrated.codebook.ego?.variables ?? {});
+    expect(egoIds).toHaveLength(1);
+    expect(egoIds).not.toContain(shared);
+    const [rule] = migrated.stages[0]?.skipLogic?.filter.rules ?? [];
+    expect(rule?.options).toMatchObject({ attribute: egoIds[0] });
+  });
+
+  it('a rule naming a layout variable stays valid when only a Narrative preset used it', () => {
+    const migrated = migrateReadable(
+      schema8({
+        node: { person: nodeType('Person', { spot: layoutVariable('spot') }) },
+        stages: [
+          nameGenerator('names'),
+          {
+            id: testId('story'),
+            type: 'Narrative',
+            label: 'Story',
+            subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 3 },
+            presets: [
+              { id: testId('preset'), label: 'All', layoutVariable: 'spot' },
+            ],
+            skipLogic: {
+              action: 'SHOW',
+              filter: { join: 'AND', rules: [layoutNodeRule('spot')] },
+            },
+          },
+        ],
+      }),
+      9,
+    );
+
+    expect(migrated.codebook.layouts).toEqual({ spot: { name: 'spot' } });
+    const narrative = migrated.stages.find(({ type }) => type === 'Narrative');
+    expect(narrative?.skipLogic?.filter.rules).toEqual([
+      expect.objectContaining({
+        options: expect.objectContaining({ attribute: 'spot' }),
+      }),
+    ]);
+  });
+
+  it('drops ego and edge layout variables and rules naming them', () => {
+    const migrated = migrateReadable(
+      schema8({
+        node: { person: nodeType('Person', { spot: layoutVariable('spot') }) },
+        edge: {
+          knows: {
+            name: 'Knows',
+            color: 'edge-color-seq-1',
+            variables: { edgeSpot: layoutVariable('edgeSpot') },
+          },
+        },
+        ego: {
+          egoName: textVariable('egoName'),
+          egoSpot: layoutVariable('egoSpot'),
+        },
+        stages: [
+          nameGenerator('names', 'person', {
+            skipLogic: {
+              action: 'SKIP',
+              filter: { join: 'AND', rules: [egoRule('egoSpot')] },
+            },
+          }),
+          sociogram('map', ['spot'], 'person', {
+            filter: {
+              join: 'OR',
+              rules: [
+                {
+                  id: testId('edge rule'),
+                  type: 'edge',
+                  options: {
+                    type: 'knows',
+                    attribute: 'edgeSpot',
+                    operator: 'EXISTS',
+                  },
+                },
+                layoutNodeRule('name'),
+              ],
+            },
+          }),
+        ],
+      }),
+      9,
+    );
+
+    expect(Object.keys(migrated.codebook.ego?.variables ?? {})).toEqual([
+      'egoName',
+    ]);
+    expect(
+      Object.values(migrated.codebook.edge ?? {}).map(
+        ({ variables }) => variables ?? {},
+      ),
+    ).toEqual([{}]);
+    expect(migrated.stages[0]).not.toHaveProperty('skipLogic');
+    const [map] = sociogramsOf(migrated);
+    expect(withoutIds(map?.filter)).toEqual({
+      join: 'OR',
+      rules: [withoutIds(layoutNodeRule('name'))],
     });
   });
 });

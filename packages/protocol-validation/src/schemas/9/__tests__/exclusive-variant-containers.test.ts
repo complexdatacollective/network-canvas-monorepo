@@ -242,9 +242,6 @@ describe('the jointly constrained containers of a stage document', () => {
     // is not itself where the rule lives: it is the prompt row that carries
     // it, which is why the question is asked one level up.
     expect(schemaRefusesContainer(['edges'], {})).toBe(false);
-    expect(schemaRefusesContainer(['layout'], { layoutVariable: 'pos' })).toBe(
-      false,
-    );
     // A variant container is answered whole by `isExclusiveVariantContainer`,
     // so nothing is assembled at one for this to judge.
     expect(schemaRefusesContainer(['background'], {})).toBe(false);
@@ -258,7 +255,6 @@ describe('the jointly constrained containers of a stage document', () => {
     const prompt = (edges: unknown) => ({
       id: testId('p1'),
       text: localized('Who do you know?'),
-      layout: { layoutVariable: 'position' },
       edges,
     });
 

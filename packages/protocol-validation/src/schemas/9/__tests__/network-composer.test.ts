@@ -13,7 +13,7 @@ const validStage = {
   type: 'NetworkComposer',
   subject: { entity: 'node', types: ['person'] },
   quickAdd: 'name',
-  layoutVariable: 'layoutPosition',
+  layout: 'layoutPosition',
   background: { concentricCircles: 4 },
   edges: [
     {
@@ -40,15 +40,13 @@ describe('networkComposerStage schema', () => {
     }
   });
 
-  it('requires layoutVariable', () => {
-    const { layoutVariable: _layoutVariable, ...withoutLayout } = validStage;
+  it('requires layout', () => {
+    const { layout: _layout, ...withoutLayout } = validStage;
     const result = networkComposerStage.safeParse(withoutLayout);
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(
-        result.error.issues.some((issue) =>
-          issue.path.includes('layoutVariable'),
-        ),
+        result.error.issues.some((issue) => issue.path.includes('layout')),
       ).toBe(true);
     }
   });
@@ -176,7 +174,7 @@ const baseStageWithComponent = {
   label: localized('Compose'),
   subject: { entity: 'node' as const, types: ['person'] },
   quickAdd: 'name',
-  layoutVariable: 'layout',
+  layout: 'layout',
   background: { concentricCircles: 4 },
   edges: [],
 };

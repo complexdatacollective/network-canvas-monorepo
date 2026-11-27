@@ -175,6 +175,12 @@ export const filterRuleAttributeExists = (
     return Boolean(codebook.ego?.variables?.[rule.options.attribute]);
   }
 
+  // A node rule may name a layout, which a node of any type can hold a
+  // position in.
+  if (rule.type === 'node' && codebook.layouts?.[rule.options.attribute]) {
+    return true;
+  }
+
   const entity = codebook[rule.type]?.[rule.options.type || ''];
   return Boolean(entity?.variables?.[rule.options.attribute]);
 };

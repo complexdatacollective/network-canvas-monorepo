@@ -56,10 +56,7 @@ const cases = [
     where: 'a layout id',
     path: ['codebook', 'layouts', '__proto__'],
     add: (protocol: ReturnType<typeof createBaseProtocol>) =>
-      addPrototypeKey(
-        Object.assign(protocol.codebook, { layouts: {} }).layouts,
-        { name: 'Proto' },
-      ),
+      addPrototypeKey(protocol.codebook.layouts, { name: 'Proto' }),
   },
   {
     where: 'an ego variable id',
@@ -89,10 +86,7 @@ describe('a __proto__ codebook id', () => {
   });
 
   it('finds a prototype key in codebook.layouts', async () => {
-    const protocol = {
-      ...createBaseProtocol(),
-      codebook: { ...createBaseProtocol().codebook, layouts: {} },
-    };
+    const protocol = createBaseProtocol();
     addPrototypeKey(protocol.codebook.layouts, { name: 'Proto' });
 
     const result = await validateProtocol(withFinishStage(protocol));
