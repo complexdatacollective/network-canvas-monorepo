@@ -106,6 +106,7 @@ export default defineConfig({
         'messages': resolve(__dirname, 'src/messages.ts'),
         'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
         'schema-version': resolve(__dirname, 'src/schemaVersion.ts'),
+        'edge-type-rules': resolve(__dirname, 'src/utils/edgeTypeRules.ts'),
         'testing/information-pages': resolve(
           __dirname,
           'src/testing/informationPages.ts',

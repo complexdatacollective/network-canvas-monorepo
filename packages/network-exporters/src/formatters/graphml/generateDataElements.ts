@@ -1,6 +1,6 @@
 import { DOMImplementation, type DocumentFragment } from '@xmldom/xmldom';
 
-import { isDirectedEdgeType } from '@codaco/protocol-validation';
+import { isDirectedEdgeType } from '@codaco/protocol-validation/edge-type-rules';
 import {
   edgeExportIDProperty,
   edgeSourceProperty,

@@ -20,6 +20,7 @@
     "./messages": "./src/messages.ts",
     "./locales": "./src/locales/catalogs.ts",
     "./schema-version": "./src/schemaVersion.ts",
+    "./edge-type-rules": "./src/utils/edgeTypeRules.ts",
     "./testing/information-pages": "./src/testing/informationPages.ts"
   },
   "publishConfig": {
@@ -41,6 +42,10 @@
       "./schema-version": {
         "types": "./dist/schema-version.d.ts",
         "import": "./dist/schema-version.js"
+      },
+      "./edge-type-rules": {
+        "types": "./dist/edge-type-rules.d.ts",
+        "import": "./dist/edge-type-rules.js"
       },
       "./testing/information-pages": {
         "types": "./dist/testing/information-pages.d.ts",

@@ -1,4 +1,5 @@
-import { type Codebook, isDirectedEdgeType } from '@codaco/protocol-validation';
+import type { Codebook } from '@codaco/protocol-validation';
+import { isDirectedEdgeType } from '@codaco/protocol-validation/edge-type-rules';
 import {
   entityPrimaryKeyProperty,
   ncSourceUUID,

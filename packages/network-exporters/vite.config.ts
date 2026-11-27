@@ -39,6 +39,7 @@ export default defineConfig({
       external: [
         /^@codaco\/app-i18n(?:\/|$)/,
         '@codaco/protocol-validation',
+        '@codaco/protocol-validation/edge-type-rules',
         '@codaco/shared-consts',
         '@xmldom/xmldom',
         'effect',
