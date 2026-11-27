@@ -119,7 +119,7 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
     /**
      * The kind of answer the attribute this creates will record, where the
      * caller already knows it. Named on the create row, and judged against the
-     * export's columns: a layout attribute exports several, named after it.
+     * export's columns.
      */
     newVariableType?: string;
     /**

@@ -120,15 +120,14 @@ export type VariableChoiceQuery = Readonly<{
  * attribute a collaborator adds, renames or deletes while the editor is open
  * changes the list without the section using this doing anything.
  *
- * An attribute of another type than `types` is marked for its type. A picker
- * that needs one type says "Only Layout attributes can be used here."; the
- * one picker that takes several, a form field's, says which types a form
+ * An attribute of another type than `types` is marked for its type. The one
+ * picker that takes several types, a form field's, says which types a form
  * cannot collect.
  *
  * An attribute a form field collects is marked for a picker that WRITES it
  * without validation, and the other way round. A sociogram prompt names
  * attributes the interview writes around the codebook's validation rules — a
- * position the participant drags a node to, a mark a tap toggles — and two
+ * mark a tap toggles — and two
  * writers would disagree about whether the value was checked; a narrative
  * preset writes nothing at all, so `writerClass` says which of the three this
  * picker is.

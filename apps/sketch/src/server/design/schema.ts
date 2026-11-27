@@ -24,7 +24,7 @@ import { z } from 'zod';
 //
 // The compiler owns every mechanical decision: codebook keys, variable names,
 // variable types, input controls, option values, colours, shapes, icons, stage
-// and prompt ids, layout variables, panels, canvas layout mode and background,
+// and prompt ids, layouts, panels, canvas layout mode and background,
 // consent wiring, asset ids, skip destinations and auto-skips. This schema only
 // asks for study-design judgements and draft text.
 //

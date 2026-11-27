@@ -28,7 +28,7 @@ export type GenerationConfig = {
   dropOutFactor: number;
   /** Per-pair edge probability for Sociogram prompts. */
   sociogramEdgeProbability: Range;
-  /** {x, y} position range for Sociogram layout variables (unit-square inset). */
+  /** {x, y} position range for positions in a Sociogram's layout (unit-square inset). */
   sociogramLayoutRange: Range;
   /**
    * Chance a node is highlighted on a Sociogram prompt collecting one. Optional

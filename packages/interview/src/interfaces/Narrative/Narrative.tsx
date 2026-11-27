@@ -262,7 +262,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
   }, [nodeIdsKey, layoutVariable, store]);
 
   // Read-only but fully interactive layout. persist:false makes syncToRedux
-  // unreachable, so a node's layoutVariable is never written — but the layout is
+  // unreachable, so a node's position in the layout is never written — but it is
   // otherwise as interactive as the Sociogram's: it runs continuously (settling
   // then idling), dragging a node reheats it (via the simulation handlers wired
   // into the Canvas below), and the participant can pause/resume it from the

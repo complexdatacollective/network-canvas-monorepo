@@ -139,7 +139,7 @@ async function validateAttribute(options: {
  * A validation rule is a form-field mechanism: the interview enforces one only
  * where `useProtocolForm` builds a field for the variable. Interaction-driven
  * stages write attributes without a field — a binning stage assigns its prompt
- * variable by drag, a Sociogram writes a layout variable by drop — so this set
+ * variable by drag, a Sociogram writes a position in its layout by drop — so this set
  * is what a conformance assertion is entitled to check.
  */
 type FormScope = {

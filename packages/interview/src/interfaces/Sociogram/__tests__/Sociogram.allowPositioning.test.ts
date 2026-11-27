@@ -4,8 +4,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // Regression guard for #673 (decision #12): `layout.allowPositioning` is
-// vestigial — the schema's `layout` is a strictObject carrying only
-// `layoutVariable`, so the key is unexpressible and the interview's
+// vestigial — the schema's `layout` is the id of a codebook layout, so the
+// key is unexpressible and the interview's
 // disable-repositioning path was dead code. Node positioning is the only
 // behaviour the schema supports, so it must stay unconditionally enabled.
 const sociogramSource = readFileSync(

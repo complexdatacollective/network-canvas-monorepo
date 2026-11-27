@@ -270,13 +270,13 @@ function LegendLabelField({
  * are outlined together, which connections are drawn, and which stand out.
  * The filter is the preset's own — a narrative stage has none — so two
  * presets can show different parts of the network. Every other part names a
- * codebook attribute or an edge type, all read live from the protocol here, so
+ * codebook layout, attribute or edge type, all read live from the protocol here, so
  * a collaborator's change to the codebook changes what this dialog offers
  * without the dialog asking for it.
  *
- * No writer class is claimed on any of the three attribute controls, and that
- * is what a preset IS. The narrative runtime restores positions from the
- * layout attribute with `persist: false` and passes no drag handler, reads the
+ * No writer class is claimed on either attribute control, and that is what a
+ * preset IS. The narrative runtime restores positions from the preset's
+ * layout with `persist: false` and passes no drag handler, reads the
  * grouping attribute to draw hulls, and reads the highlight attributes to
  * highlight nodes; there is no path on which it stores a value under any of
  * them.
