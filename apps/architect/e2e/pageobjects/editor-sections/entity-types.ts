@@ -3,12 +3,15 @@ import { expect, type Page } from '@playwright/test';
 import { chooseAttribute } from './variables.js';
 
 // The subject picker (`@codaco/protocol-builder`'s `SubjectSection`, through
-// `EntityTypePickerField`) backs every stage's `subject` field. Each existing
-// type renders as a radio whose accessible name is the type's own label — the
-// picker's own story locates one that way (`EntityTypePickerField.stories.tsx`:
+// `EntityTypePickerField`) backs every stage's `subject` field. On a stage
+// with one type, each existing type renders as a radio whose accessible name
+// is the type's own label — the picker's own story locates one that way
+// (`EntityTypePickerField.stories.tsx`:
 // `getByRole('radio', { name: 'family member' })`) — inside a radiogroup named
 // "Node type" or "Edge type", which is what tells the two apart on a stage
-// that has both.
+// that has both. A stage that can show several node types, such as the
+// Sociogram, renders a tick box per type instead, inside a group named
+// "Node types"; choosing a type there ticks it and leaves the others ticked.
 //
 // "Create a new {node|edge} type" opens the package's `CodebookEntityEditor`,
 // whose name field is labelled "{Node|Edge} type name", whose icon is a
@@ -49,6 +52,22 @@ async function selectOrCreateEntityType(
       await expect(choice).toBeChecked();
     }
     return;
+  }
+  if (entityType === 'node') {
+    const ticked = page
+      .getByRole('group', { name: 'Node types', exact: true })
+      .getByRole('checkbox', { name, exact: true });
+    if (await ticked.count()) {
+      const box = ticked.first();
+      if (!(await box.isChecked())) {
+        // As with the radio, the tick box is `sr-only` inside the label that
+        // the researcher clicks.
+        await box.locator('xpath=ancestor::label[1]').click();
+        await confirmSubjectChange(page, entityType);
+      }
+      await expect(box).toBeChecked();
+      return;
+    }
   }
   const create = `Create new ${entityType} type`;
   await page.getByRole('button', { name: create }).click();

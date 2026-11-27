@@ -86,8 +86,10 @@ test('creates a valid Sociogram stage from scratch', async ({
 
   // `sociogramStageEditor` is [stage heading, subject picker, layout,
   // prompts, background, node layout, skip logic, interviewer guidance]. The
-  // subject picker is the shared one every stage uses, with a stage filter offered
-  // alongside it, so `selectOrCreateNodeType` covers it unchanged.
+  // subject picker is the shared one every stage uses, shown as a tick box
+  // per node type because a Sociogram can show several, with a stage filter
+  // offered alongside it. `selectOrCreateNodeType` ticks an existing type or
+  // creates a new one.
   await selectOrCreateNodeType(architectPage, 'person');
 
   // The Background section opens on concentric circles — a stage whose
@@ -155,4 +157,54 @@ test('keeps an image background saveable when the node type is chosen after it',
   const stage = await readStageJson(architectPage, 0);
   if (stage.type !== 'Sociogram') throw new Error('expected a Sociogram');
   expect(Object.keys(stage.background ?? {})).toEqual(['image']);
+});
+
+// A Sociogram can show several node types. Ticking a second type the protocol
+// already has keeps the first one ticked, and the stage saves both, in the
+// order they were ticked.
+test('shows two node types the protocol already has', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const typeIdNamed = (name: string): string => {
+    const found = Object.entries(protocol.codebook.node ?? {}).find(
+      ([, definition]) => definition.name === name,
+    );
+    if (!found) throw new Error(`all-interfaces fixture has no ${name} type`);
+    return found[0];
+  };
+  await seed(protocol, { assets });
+  await gotoProtocol(architectPage);
+
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('Sociogram');
+  await editor.setStageName('People and family');
+  await selectOrCreateNodeType(architectPage, 'person');
+  await selectOrCreateNodeType(architectPage, 'family member');
+
+  const types = architectPage.getByRole('group', {
+    name: 'Node types',
+    exact: true,
+  });
+  await expect(
+    types.getByRole('checkbox', { name: 'person', exact: true }),
+  ).toBeChecked();
+  await expect(
+    types.getByRole('checkbox', { name: 'family member', exact: true }),
+  ).toBeChecked();
+
+  await chooseStageLayout(editor, 'layout');
+  await addSociogramPrompt(editor, { text: 'Place them' });
+  await editor.expectNoIssues();
+  await editor.save();
+
+  const stage = await readStageJson(architectPage, 0, (candidate) =>
+    JSON.stringify(candidate.label).includes('People and family'),
+  );
+  if (stage.type !== 'Sociogram') throw new Error('expected a Sociogram');
+  expect(stage.subject).toEqual({
+    entity: 'node',
+    types: [typeIdNamed('person'), typeIdNamed('family member')],
+  });
 });
