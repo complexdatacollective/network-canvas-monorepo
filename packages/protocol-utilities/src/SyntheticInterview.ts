@@ -806,18 +806,31 @@ export class SyntheticInterview {
     return { id, name };
   }
 
-  /** The layouts a Sociogram or Network Composer sets for `nodeType`. */
+  /**
+   * The layouts a node of `nodeType` is given a position in: those a
+   * Sociogram or Network Composer sets for the type, and those a Narrative
+   * preset shows it in. A synthetic network stands for an interview whose
+   * earlier stages all ran, so a Narrative shows its nodes placed.
+   */
   private layoutsOfNodeType(nodeType: string): string[] {
     return [
       ...new Set(
-        this.stages.flatMap((stage) =>
-          (stage.type === 'Sociogram' || stage.type === 'NetworkComposer') &&
-          stage.layout !== undefined &&
-          stage.subject?.entity === 'node' &&
-          stage.subject.types.includes(nodeType)
+        this.stages.flatMap((stage) => {
+          if (
+            stage.subject?.entity !== 'node' ||
+            !stage.subject.types.includes(nodeType)
+          ) {
+            return [];
+          }
+          if (stage.type === 'Narrative') {
+            return stage.presets.map((preset) => preset.layout);
+          }
+          return (stage.type === 'Sociogram' ||
+            stage.type === 'NetworkComposer') &&
+            stage.layout !== undefined
             ? [stage.layout]
-            : [],
-        ),
+            : [];
+        }),
       ),
     ];
   }

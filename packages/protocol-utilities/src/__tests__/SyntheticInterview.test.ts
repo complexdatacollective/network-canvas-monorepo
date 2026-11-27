@@ -192,6 +192,28 @@ describe('SyntheticInterview', () => {
       expect(positionOf(place.id)).toEqual([undefined]);
     });
 
+    it('getNetwork writes positions for the layouts a Narrative preset shows', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const layout = si.addLayout({ name: 'story' });
+      si.addStage('NameGenerator', {
+        subject: { entity: 'node', types: [person.id] },
+        initialNodes: { count: 2 },
+      });
+      si.addStage('Narrative', {
+        subject: { entity: 'node', types: [person.id] },
+      }).addPreset({ layout: layout.id });
+
+      expect(
+        si
+          .getNetwork()
+          .nodes.map((node) => node[entityAttributesProperty][layout.id]),
+      ).toEqual([
+        expect.objectContaining({ x: expect.any(Number) }),
+        expect.objectContaining({ x: expect.any(Number) }),
+      ]);
+    });
+
     it('auto-creates edge type for Sociogram prompt with edges.create=true', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('Sociogram');
