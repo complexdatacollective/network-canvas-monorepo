@@ -3,7 +3,7 @@ title: Choisir un appareil pour Interviewer
 navOrder: 3
 wip: false
 toc: true
-translatedFrom: e172569169a1662f0d42f1623b4f90ac38be9f52
+translatedFrom: 3446fd08e7017ae2a67974344189946b600f0f31
 ---
 
 Le choix de l’appareil sur lequel exécuter Interviewer est une décision importante pour optimiser la qualité des données que vous recueillez, ainsi que le déroulement général d’une étude Network Canvas.

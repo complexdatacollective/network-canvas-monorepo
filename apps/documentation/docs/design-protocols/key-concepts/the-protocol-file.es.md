@@ -1,7 +1,7 @@
 ---
 title: El archivo de protocolo
 navOrder: 1
-translatedFrom: dcc860974d010f3a1b0539d30b0fa36dc902b62c
+translatedFrom: 896aa9b8ef3a7198722cf4aea7ce24c490f78908
 ---
 
 <Definition>

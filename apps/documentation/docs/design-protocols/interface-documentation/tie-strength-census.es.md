@@ -1,7 +1,7 @@
 ---
 title: Censo de fuerza de vínculos
 navOrder: 19
-translatedFrom: f357aca089c34831166e2c330d48ebd708f0eb21
+translatedFrom: cce8c57279b5e06c02adc2bc8b86d8901da8f5b5
 ---
 
 <InterfaceSummary type="TieStrengthCensus">

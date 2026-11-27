@@ -110,11 +110,11 @@ When a file contains a character that can't be used, the message says where Arch
 
 > Row 5 of the “notes” column contains a character that can’t be used (U+0007). Delete it from the file, then import the file again. The same problem appears in 2 other places in the file.
 
-Rows are numbered the way a spreadsheet numbers them, with the header row as row 1, so you can go straight to the row in your spreadsheet. A character in a heading is reported by the column's number, counting from 1 on the left. In a JSON roster, the message names the node by its position in the file's list of nodes, counting from 1, and the attribute that holds the character. If the character stops the file from being read at all, the message gives the line of the file instead.
+Rows are numbered the way a spreadsheet numbers them, with the header row as row 1, so you can go straight to the row in your spreadsheet. A character in a heading is reported by the column's number, counting from 1 on the left. In a JSON roster, the message names the node by its position in the file's list of nodes, counting from 1, and the attribute that contains the character. If the character stops the file from being read at all, the message gives the line of the file instead.
 
 To remove invisible control characters, open the file in a spreadsheet program and use its `CLEAN` function, which Microsoft Excel, Google Sheets and LibreOffice Calc all provide:
 
-1. In an empty column, enter `=CLEAN(C2)`, replacing `C2` with the cell Architect named.
+1. In an empty column, enter `=CLEAN(C2)`, replacing `C2` with the cell that Architect named.
 2. Copy the result, and use **Paste Special** to paste it over the original cell as values only.
 3. Delete the extra column, and save the file as CSV again.
 
@@ -122,18 +122,18 @@ To remove invisible control characters, open the file in a spreadsheet program a
 
 ## Adding the roster to a Network Canvas Interview
 
-Once you are satisfied with your roster, you can add it to a Network Canvas protocol from within Architect. Choose the version of Architect you are using below — the screenshots and version-specific notes update to match.
+Once you are satisfied with your roster, you can add it to a Network Canvas protocol from within Architect. Choose the version of Architect that you are using below — the screenshots and version-specific notes update to match.
 
 <AppSwitch>
   <AppOption label="Architect" icon="globe"></AppOption>
   <AppOption label="Architect Classic" icon="desktop"></AppOption>
 </AppSwitch>
 
-You can add the roster through the [Resource Library](/en/design-protocols/key-concepts/resources), which is available from the protocol overview screen of any protocol you are editing.
+You can add the roster through the [Resource Library](/en/design-protocols/key-concepts/resources), which is available from the protocol overview screen of any protocol that you are editing.
 
 <AppOnly app="current">
 
-In Architect, your protocol — including any roster resources you add — is saved automatically in your browser's [library](/en/design-protocols/saving-and-backing-up) as you work, and the roster is embedded into the `.netcanvas` file when you download the protocol.
+In Architect, your protocol — including any roster resources that you add — is saved automatically in your browser's [library](/en/design-protocols/saving-and-backing-up) as you work, and the roster is embedded into the `.netcanvas` file when you download the protocol.
 
 </AppOnly>
 
@@ -197,7 +197,7 @@ Finally, you can permit participants to search through the roster items using a 
 
 <AppOnly app="current">
 
-In a protocol written in more than one language (see [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol)), the labels given to card details and sort options are translated like any other text, but the roster's values are not. A roster is a resource, and its contents are the same in every language. Where participants will read values from the roster, such as occupations or course titles, check that participants using each of the protocol's languages will understand them.
+In a protocol written in more than one language (see [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol)), the labels given to card details and sort options are translated like any other translatable string, but the roster's values are not. A roster is a resource, and its contents are the same in every language. Where participants will read values from the roster, such as occupations or course titles, check that participants using each of the protocol's languages will understand them.
 
 </AppOnly>
 
@@ -209,7 +209,7 @@ Much like in other name generator interfaces, in order to select roster items th
 
 ## Considering additional prompt variables: What is an alter pool?
 
-A roster item can only be added to the interview once (or more strictly, once per node type per interview). This is consequential if you have multiple prompts that are not mutually exclusive. For example, imagine asking people to nominate classmates they study with. Then with a second prompt one might ask about classmates they knew before this current year. What about someone who is both? This is where we can think conceptually of an 'alter pool' and then draw upon this alter pool across prompts.
+A roster item can only be added to the interview once (or more strictly, once per node type per interview). This is consequential if you have multiple prompts that are not mutually exclusive. For example, imagine asking people to nominate classmates that they study with. Then with a second prompt one might ask about classmates that they knew before this current year. What about someone who is both? This is where we can think conceptually of an 'alter pool' and then draw upon this alter pool across prompts.
 
 In order to manage cases where alters could qualify for multiple prompts, it is useful to do two things:
 
@@ -230,7 +230,7 @@ Below is an example of such a screen in Interviewer Classic, with some of the Si
 
 </AppOnly>
 
-We recommend that you add all the nodes you can to the alter pool _before_ adding additional details so that you can add these details to _all_ the nominated nodes rather than zigzagging through the protocol. This is because all stages draw from the same alter pool if they use that type of node. Imagine the following scenario: the participant adds nodes on stage 3, adds some detail on stage 4 such as how close ego is to alter, and then adds more nodes on stage 5. These newly added nodes will be available if you go back to stage 4. Also note that the roster list does not change once it is in Interviewer. So all the data that you add about a node from a roster will be available when you export your case, but it will not be associated with that roster item in subsequent interview cases.
+We recommend that you add all the nodes that you can to the alter pool _before_ adding additional details so that you can add these details to _all_ the nominated nodes rather than zigzagging through the protocol. This is because all stages draw from the same alter pool if they use that type of node. Imagine the following scenario: the participant adds nodes on stage 3, adds some detail on stage 4 such as how close ego is to alter, and then adds more nodes on stage 5. These newly added nodes will be available if you go back to stage 4. Also note that the roster list does not change once it is in Interviewer. So all the data that you add about a node from a roster will be available when you export your case, but it will not be associated with that roster item in subsequent interview cases.
 
 ## How large is too large for a roster?
 

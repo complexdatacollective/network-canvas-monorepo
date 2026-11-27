@@ -2,7 +2,7 @@
 title: Utiliser Fresco
 date: 7th October 2026
 navOrder: 2
-translatedFrom: 2c19fe6c078a25ee6c8f0d0d11c3dbfb97cec4a9
+translatedFrom: 08b677773c9ceaa0faff2f3adba99b3e29997bd1
 ---
 
 Ce guide vous présente pas à pas le flux de travail de base pour mener votre étude avec Fresco.
@@ -296,7 +296,7 @@ Une fois les URL envoyées aux personnes participantes et les premiers entretien
 
 La **page des entretiens** donne une vue d’ensemble de tous les entretiens de l’étude. Chaque ligne correspond à un entretien, avec des colonnes pour l’**Identifiant de la personne participante**, le **Nom du protocole**, la date de début (**Commencé**), la date de mise à jour (**Mis à jour**), la **Progression**, le **Réseau** (le nombre de nœuds et de liens recueillis jusqu’ici) et le **Statut d’exportation**. Depuis cette page, vous pouvez aussi exporter les données des entretiens.
 
-La **Progression** correspond à l’étape que la personne participante a atteinte par rapport au nombre total d’étapes du protocole. L’étape « [Écran de fin](/fr/design-protocols/interface-documentation/finish-screen) » de votre protocole compte comme une étape : une personne participante n’atteint donc 100 % qu’une fois l’entretien terminé.
+La **Progression** indique l’étape que la personne participante a atteinte, en pourcentage du nombre total d’étapes du protocole. L’étape « [Écran de fin](/fr/design-protocols/interface-documentation/finish-screen) » de votre protocole compte comme une étape : une personne participante n’atteint donc 100 % qu’une fois l’entretien terminé.
 
 ### Rechercher et filtrer les entretiens {#finding-and-filtering-interviews}
 
@@ -397,9 +397,9 @@ Changer la langue de l’interface traduit l’interface propre à Fresco, y com
 
 ### La langue des entretiens {#language-in-interviews}
 
-La langue d’un entretien dépend du navigateur de la personne participante, et non du tableau de bord de Fresco. À son ouverture, un entretien utilise la première des langues préférées du navigateur dans laquelle votre protocole est rédigé (une variante régionale proche compte : un navigateur réglé sur l’espagnol du Mexique affiche ainsi la version espagnole de votre protocole), ou à défaut la langue par défaut de votre protocole. Un texte qui n’est pas traduit dans cette langue s’affiche dans la meilleure autre traduction disponible : dans une autre des langues préférées du navigateur qui le propose, à défaut dans la langue par défaut, ou à défaut dans n’importe quelle langue de votre protocole qui le propose. Consultez [La langue par défaut et la traduction que voient les personnes participantes](/fr/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see). Une langue choisie dans le tableau de bord ou sur l’écran de connexion, ou la langue d’un membre de l’équipe de recherche connecté au tableau de bord, n’a aucune incidence sur la langue de l’entretien.
+La langue d’un entretien dépend du navigateur de la personne participante, et non du tableau de bord de Fresco. À son ouverture, un entretien utilise la première des langues préférées du navigateur dans laquelle votre protocole est rédigé (une variante régionale proche compte : un navigateur réglé sur l’espagnol du Mexique affiche ainsi la version espagnole de votre protocole), ou à défaut la langue par défaut de votre protocole. Une chaîne traduisible qui n’est pas traduite dans cette langue s’affiche dans la meilleure autre traduction disponible : dans une autre des langues préférées du navigateur dans laquelle la chaîne est traduite, à défaut dans la langue par défaut, ou à défaut dans n’importe quelle langue de votre protocole dans laquelle elle est traduite. Consultez [La langue par défaut et la traduction que voient les personnes participantes](/fr/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see). Une langue choisie dans le tableau de bord ou sur l’écran de connexion, ou la langue d’un membre de l’équipe de recherche connecté au tableau de bord, n’a aucune incidence sur la langue de l’entretien.
 
-Tout ce qu’affiche un entretien, y compris ses boutons et ses messages, comme « Retour », « Continuer » et les messages de validation, s’affiche dans la langue de l’entretien : avec la formulation de votre protocole là où vous l’avez modifiée, et avec celle de Network Canvas ailleurs (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). La langue du tableau de bord n’a aucune incidence sur cet affichage.
+Tout ce qui apparaît pendant un entretien, y compris ses boutons et ses messages, comme « Retour », « Continuer » et les messages de validation, s’affiche dans la langue de l’entretien : avec la formulation de votre protocole là où vous l’avez modifiée, et ailleurs avec celle fournie par Network Canvas (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). La langue du tableau de bord n’a aucune incidence sur cet affichage.
 
 Le seul moyen pour une personne participante de changer de langue pendant un entretien est une étape « [Choix de la langue](/fr/design-protocols/interface-documentation/language-chooser) » dans votre protocole. Son choix est conservé jusqu’à la fermeture de l’onglet du navigateur : il est donc réutilisé si la personne participante recharge la page. Il n’est pas enregistré avec l’entretien ni inclus dans les données exportées : un entretien repris dans un autre onglet ou sur un autre appareil repart des langues de ce navigateur. Il ne modifie la préférence de langue d’aucun compte de l’équipe de recherche, et ne modifie pas les réponses déjà données.
 

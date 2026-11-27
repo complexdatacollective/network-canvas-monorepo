@@ -2,7 +2,7 @@
 title: Exportation des données
 navOrder: 1
 date: 5th October 2026
-translatedFrom: 43f70da1355c31484ccefd6eb1ddd9c51251d4b1
+translatedFrom: 23ad61618a0ac8035e31f3c7601159877fc425e4
 ---
 
 <Definition>
@@ -223,7 +223,7 @@ Les noms déjà valides, comme `close_friend` ou `género`, sont écrits sans mo
 Le XML, format sur lequel repose GraphML, ne peut pas stocker certains caractères de contrôle invisibles, comme le caractère nul. Les tabulations et les sauts de ligne ne posent pas de problème. Ces caractères de contrôle peuvent se retrouver dans une réponse lorsqu’une personne participante colle du texte copié depuis un autre logiciel. L’exportation GraphML les supprime et affiche un avertissement (voir [Avertissements d’exportation](#export-warnings)) :
 
 - Lorsqu’une réponse en contient un, l’avertissement s’intitule « Des caractères ont été supprimés des fichiers GraphML ». Il liste chaque entretien concerné, désigné par son identifiant de cas (ou par son identifiant de session s’il n’a pas d’identifiant de cas), avec les variables dont les réponses ont perdu des caractères. La liste comprend « Identifiant de cas » si l’identifiant de cas lui-même contenait un tel caractère.
-- Lorsque le texte du protocole lui-même en contient un, dans le nom du protocole, dans le nom d’un type de nœud ou de lien, ou dans un nom de colonne comme le nom d’une variable, l’avertissement s’intitule « Des caractères ont été supprimés du texte du protocole dans les fichiers GraphML ». Comme ces caractères sont invisibles, il désigne chacun par son point de code Unicode, par exemple U+0007.
+- Lorsque le nom du protocole, le nom d’un type de nœud ou de lien, ou un nom de colonne comme le nom d’une variable en contient un, l’avertissement s’intitule « Des caractères ont été supprimés du texte du protocole dans les fichiers GraphML ». Comme ces caractères sont invisibles, il désigne chacun par son point de code Unicode, par exemple U+0007.
 
 Les fichiers CSV conservent chaque réponse exactement telle qu’elle a été saisie : utilisez donc l’exportation CSV si vous avez besoin du texte d’origine.
 
@@ -296,7 +296,7 @@ Une exportation peut se terminer par des avertissements sur des modifications qu
 | Avertissement                                                                        | Ce qui s’est passé                                                                                                                                                       |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | « Des caractères ont été supprimés des fichiers GraphML »                            | Certaines réponses contenaient des caractères que GraphML ne peut pas stocker. Voir [Caractères supprimés des fichiers GraphML](#characters-removed-from-graphml-files). |
-| « Des caractères ont été supprimés du texte du protocole dans les fichiers GraphML » | Le texte du protocole lui-même, comme son nom ou le nom d’un type de nœud, contenait de tels caractères.                                                                 |
+| « Des caractères ont été supprimés du texte du protocole dans les fichiers GraphML » | Un nom figurant dans le protocole, comme le nom du protocole ou celui d’un type de nœud, contenait de tels caractères.                                                   |
 | « Certaines colonnes ont été renommées »                                             | Deux colonnes d’un même fichier auraient porté le même nom. Voir [Noms de colonnes en conflit](#column-names-that-clash).                                                |
 
 Chaque avertissement indique précisément ce qui a été touché. L’endroit où les avertissements apparaissent dépend de l’application :
@@ -672,7 +672,7 @@ G.edges(data=True)   # edges with their attributes
 
 **Problème : un avertissement indique que des caractères ont été supprimés des fichiers GraphML**
 
-- **Cause :** certaines réponses, ou le texte du protocole lui-même, contenaient des caractères de contrôle invisibles que GraphML ne peut pas stocker
+- **Cause :** certaines réponses, ou certains noms figurant dans le protocole, contenaient des caractères de contrôle invisibles que GraphML ne peut pas stocker
 - **Solution :** les fichiers CSV conservent ces réponses sans modification. Voir [Caractères supprimés des fichiers GraphML](#characters-removed-from-graphml-files)
 
 **Problème : un avertissement indique que certaines colonnes ont été renommées**

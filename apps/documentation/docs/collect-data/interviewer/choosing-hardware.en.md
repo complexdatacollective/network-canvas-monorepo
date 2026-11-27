@@ -52,7 +52,7 @@ The fourth is **connectivity**. If you plan to use **Interviewer** with internet
 
 ✅ Extremely powerful in terms of GPU and CPU, with high quality displays.  
 ✅ Potentially more acceptable in certain settings.  
-⛔️ **No longer generally available due to situation with Apple App Store Review.**  
+⛔️ **No longer generally available due to the situation with Apple App Store Review.**  
 👎 Can be difficult to import protocols and manage data.  
 👎 Expensive! Keyboard must be purchased separately.
 

@@ -2,7 +2,7 @@
 title: Trabajar con listas predefinidas
 wip: false
 navOrder: 2
-translatedFrom: fa44e23fe407f38525cf419e524a5cade0a0371d
+translatedFrom: 3fbd8c258b317e5d83e3be23d6fbe18668d6867e
 ---
 
 <SummaryCard duration="30 minutos">
@@ -198,7 +198,7 @@ Por último, puedes permitir que quienes participan busquen entre los elementos 
 
 <AppOnly app="current">
 
-En un protocolo escrito en más de un idioma (consulta [Traducir tu protocolo](/es/design-protocols/tutorials/translating-your-protocol)), las etiquetas de los datos de las tarjetas y de las opciones de ordenación se traducen como cualquier otro texto, pero los valores de la lista predefinida no. Una lista predefinida es un recurso, y su contenido es el mismo en todos los idiomas. Si quienes participan van a leer valores de la lista, como profesiones o nombres de asignaturas, comprueba que se entiendan en cada uno de los idiomas del protocolo.
+En un protocolo escrito en más de un idioma (consulta [Traducir tu protocolo](/es/design-protocols/tutorials/translating-your-protocol)), las etiquetas de los datos de las tarjetas y de las opciones de ordenación se traducen como cualquier otra cadena traducible, pero los valores de la lista predefinida no. Una lista predefinida es un recurso, y su contenido es el mismo en todos los idiomas. Si quienes participan van a leer valores de la lista, como profesiones o nombres de asignaturas, comprueba que se entiendan en cada uno de los idiomas del protocolo.
 
 </AppOnly>
 

@@ -35,7 +35,7 @@ Use this Interface as a simple way to systematically collect data on alters.
 
 <GoodPractice>
 
-Place an [Information](../interface-documentation/information) stage before this Interface to orient participants to the tasks within the form they will complete for each alter.
+Place an [Information](../interface-documentation/information) stage before this Interface to orient participants to the tasks within the form that they will complete for each alter.
 
 </GoodPractice>
 

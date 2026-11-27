@@ -27,7 +27,7 @@ An Ordinal Bin screen can include multiple [prompts](/en/design-protocols/key-co
 
 ### Customize built-in wording
 
-When **Require every node to be placed** is switched on in the stage's **Placing nodes** section, participants cannot continue until every node is in a bin. The notice they see when they try is under **Nodes not yet placed** in the **Customize built-in wording** section of the stage editor. Network Canvas fills in starting wording, in every language it has wording for, and you can change and translate it like any other text (see [Words Network Canvas supplies](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). The notice can show the name of the stage's node type, inserted as a pill with the field's piped text button.
+When **Require every node to be placed** is switched on in the stage's **Placing nodes** section, participants cannot continue until every node is in a bin. The notice they see when they try is under **Nodes not yet placed** in the **Customize built-in wording** section of the stage editor. Network Canvas fills in starting wording, in every language it has wording for, and you can change and translate it like any other translatable string (see [Words supplied by Network Canvas](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). The notice can show the name of the stage's node type, inserted as a pill with the field's piped text button.
 
 </AppOnly>
 
@@ -35,7 +35,7 @@ When **Require every node to be placed** is switched on in the stage's **Placing
 
 <GoodPractice>
 
-Use this Interface to collect ordinal or interval scale data on alters. Although a Likert Scale can be added as an [input control](../key-concepts/input-controls/) on other interfaces, the drag and drop functionality on the Ordinal Bin provides a tactile method to capturing these data that is engaging for participants.
+Use this Interface to collect ordinal or interval scale data on alters. Although a Likert Scale can be added as an [input control](../key-concepts/input-controls/) on other interfaces, the drag and drop functionality on the Ordinal Bin provides a tactile method for capturing these data that is engaging for participants.
 
 </GoodPractice>
 
@@ -45,7 +45,7 @@ Use this Interface to collect ordinal or interval scale data on alters. Although
 
 Due to size affordances, avoid using scales of more than six bins on this Interface. Larger scales cause bin labels to be difficult to read and the other visual components on the Interface become compromised.
 
-Bin labels can be a good deal longer than a word or two — a short sentence is fine. Each label shrinks, a step at a time, to fit the space its bin has rather than being cut off mid-word, and a screen reader always reads the whole label. That shrinking has a smallest size, though: a label long enough to overflow its bin even at that size is clipped, which is most likely with a larger scale or on a small screen. Check your longest label in [preview](/en/design-protocols/preview-mode) at the size participants will use. Labels can use **bold** and _italic_ text for emphasis. Short labels stay larger and are easier to read at a glance.
+Bin labels can be a good deal longer than a word or two — a short sentence is fine. Each label shrinks, a step at a time, to fit the space that its bin has rather than being cut off mid-word, and a screen reader always reads the whole label. That shrinking has a smallest size, though: a label long enough to overflow its bin even at that size is clipped, which is most likely with a larger scale or on a small screen. Check your longest label in [preview](/en/design-protocols/preview-mode) at the size that participants will use. Labels can use **bold** and _italic_ text for emphasis. Short labels stay larger and are easier to read at a glance.
 
 </BadPractice>
 

@@ -18,7 +18,7 @@ Open a stage in the editor and click **Preview**. The stage opens in a new brows
 
 When you reach the end of the interview, the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) finishes the preview as it would an interview: press **Finish** and confirm, or, if the Finish Screen finishes automatically, the preview finishes as soon as you reach it. The preview then shows the Finish Screen's finished text, and a **Start the preview again** action to run it again from the beginning.
 
-Nothing you enter in preview is saved. Close the tab when you are finished.
+Nothing that you enter in preview is saved. Close the tab when you are finished.
 
 ![The Preview button and settings menu in the stage editor.](/assets/img/architect/preview-settings.png)
 
@@ -26,16 +26,16 @@ Nothing you enter in preview is saved. Close the tab when you are finished.
 
 Next to the **Preview** button, a settings menu controls how previews behave:
 
-- **Start preview with example data** — on by default. Architect fills the preview with automatically generated example nodes and edges, so interfaces that rely on a network (such as sociograms and bins) have something to display. The data is randomly generated, so it differs each time you launch a preview and is purely illustrative — it is not representative of real participant responses. The stage you are previewing is left partly incomplete on purpose, so you can still exercise its interaction (for example sorting nodes into bins, or positioning them on a sociogram). Turn it off to preview with an empty network.
+- **Start preview with example data** — on by default. Architect fills the preview with automatically generated example nodes and edges, so interfaces that rely on a network (such as sociograms and bins) have something to display. The data is randomly generated, so it differs each time you launch a preview and is purely illustrative — it is not representative of real participant responses. The stage that you are previewing is left partly incomplete on purpose, so you can still exercise its interaction (for example sorting nodes into bins, or positioning them on a sociogram). Turn it off to preview with an empty network.
 - **Respect skip logic** — off by default. When it is off, skip logic is disabled throughout the preview, so every authored stage remains available as you move through the interview. Turn it on to test the routes defined by your protocol. Architect still opens the stage whose **Preview** button you clicked, even if the current example data would normally skip it; after you navigate away, skip logic applies normally.
 
 ## Choosing the preview language
 
-If your protocol is written in more than one language, use the **Preview language** menu above the preview to see it in each of them. The menu lists your protocol's languages in alphabetical order, each written in its own language. It starts in the language a participant with your browser's language settings would see: the best match among your browser's languages that the protocol has (a close regional match counts), or otherwise the protocol's default language. If your protocol has only one language, the menu shows it but can't be changed.
+If your protocol is written in more than one language, use the **Preview language** menu above the preview to see it in each of them. The menu lists your protocol's languages in alphabetical order, each written in its own language. It starts in the language that a participant with your browser's language settings would see: the best match among your browser's languages that the protocol has (a close regional match counts), or otherwise the protocol's default language. If your protocol has only one language, the menu shows it but can't be changed.
 
-Choosing a language shows the preview in that language straight away. A text with no translation in that language appears as it would to a participant using it (see [The default language and which translation participants see](/en/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see)). If the preview reaches a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage and you pick a language there, the menu follows your choice. The choice only lasts while the preview tab is open, and isn't saved.
+Choosing a language shows the preview in that language straight away. A translatable string that has no translation in that language appears as it would to a participant using that language (see [The default language and which translation participants see](/en/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see)). If the preview reaches a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage and you pick a language there, the menu follows your choice. The choice only lasts while the preview tab is open, and isn't saved.
 
-The buttons and messages that your protocol holds as its [interview text](/en/design-protocols/tutorials/translating-your-protocol#interview-text), such as Back, Continue and validation messages, follow the preview language like the rest of your protocol's text. None of it follows the language you have chosen for Architect itself.
+The buttons and messages that your protocol contains as its [interview text](/en/design-protocols/tutorials/translating-your-protocol#interview-text), such as Back, Continue and validation messages, follow the preview language like the rest of your protocol's text. None of it follows the language that you have chosen for Architect itself.
 
 ![A preview of a Language Chooser stage with the Preview language menu set to español.](/assets/img/architect/localization/preview-language.png)
 
@@ -47,7 +47,7 @@ Architect previews your stage in a browser tab at your current window size rathe
 
 ## Caveats
 
-- **Nothing is saved.** Preview is a throwaway session. Any data you enter is discarded as soon as you close the tab.
+- **Nothing is saved.** Preview is a throwaway session. Any data that you enter is discarded as soon as you close the tab.
 - **Network-dependent stages need data to display.** Interfaces such as the sociogram and the categorical and ordinal bins have nothing to show without a network. Keep **Start preview with example data** turned on so these stages have example nodes and edges to display.
 
 </AppOption>
@@ -55,15 +55,15 @@ Architect previews your stage in a browser tab at your current window size rathe
 
 ## Previewing a Stage
 
-To use preview mode, click the card of the stage you wish to preview. Once on the stage configuration screen, click the large pink button in the bottom left corner. A window will open which displays the stage as it would appear in the Interviewer app. From there, you can cycle through the stage prompts and complete any stage specific activities. If you wish to preview more than one stage, continue advancing to subsequent stage(s) until you reach the end of your protocol.
+To use preview mode, click the card of the stage that you wish to preview. Once on the stage configuration screen, click the large pink button in the bottom left corner. A window will open which displays the stage as it would appear in the Interviewer app. From there, you can cycle through the stage prompts and complete any stage specific activities. If you wish to preview more than one stage, continue advancing to subsequent stage(s) until you reach the end of your protocol.
 
 ![](/assets/img/key-concepts/preview-mode/Preview-Mode.png)
 
-You can exit preview mode at any time by closing the window. Data you enter will carry forward to subsequent stages so long as you keep the preview mode window open. As soon as the window is closed, any data entered will be lost as preview mode does not permanently store data.
+You can exit preview mode at any time by closing the window. Data that you enter will carry forward to subsequent stages so long as you keep the preview mode window open. As soon as the window is closed, any data entered will be lost as preview mode does not permanently store data.
 
 ## Caveats
 
-Please note that in order to preview certain screens effectively, such as the sociogram, you will need to begin the preview in a name generator stage and enter some dummy data that can be used to preview subsequent screens. If you do not generate nodes first, the subsequent screens you preview will appear blank since there will be no data to display objects.
+Please note that in order to preview certain screens effectively, such as the sociogram, you will need to begin the preview in a name generator stage and enter some dummy data that can be used to preview subsequent screens. If you do not generate nodes first, the subsequent screens that you preview will appear blank since there will be no data to display objects.
 
 </AppOption>
 </AppSwitch>

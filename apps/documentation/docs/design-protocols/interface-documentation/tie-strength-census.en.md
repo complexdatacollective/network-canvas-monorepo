@@ -20,7 +20,7 @@ If your interview uses the dyad census method (as opposed to creating edges usin
 To configure this interface in Architect, you will first determine the node type for which edges will be created. Next you will configure one or more prompts, with each prompt specifying:
 
 - An edge type that will be created
-- An ordinal variable that will receive a value when an edge is confirmed. This ordinal variable will be created on the edge type you specified.
+- An ordinal variable that will receive a value when an edge is confirmed. This ordinal variable will be created on the edge type that you specified.
 - A label to be used for the option that indicates that no tie is present
 
 ### Best Practices

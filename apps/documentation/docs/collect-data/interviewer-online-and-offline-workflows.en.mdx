@@ -8,7 +8,7 @@ toc: true
 <SummaryCard duration="20 minutes">
 <SummarySection>
 
-This tutorial covers in more detail the Interviewer online and offline workflows introduced in [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows): how to get your protocol onto every interview device, and how to get the data those devices collect back to you.
+This tutorial covers in more detail the Interviewer online and offline workflows introduced in [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows): how to get your protocol onto every interview device, and how to get the data that those devices collect back to you.
 
 </SummarySection>
 <PrerequisitesSection>
@@ -16,8 +16,8 @@ This tutorial covers in more detail the Interviewer online and offline workflows
 To follow along, you should:
 
 - Be familiar with [Interviewer or Interviewer Classic](/en/collect-data/interviewer) and how interviews are run.
-- Have created or obtained the `.netcanvas` protocol file you want to deploy (see [building a protocol](/en/design-protocols/tutorials/building-a-protocol)).
-- Have access to the devices you will use to run interviews.
+- Have created or obtained the `.netcanvas` protocol file that you want to deploy (see [building a protocol](/en/design-protocols/tutorials/building-a-protocol)).
+- Have access to the devices that you will use to run interviews.
 - For the online workflow, have an account with a cloud file sharing service — your institution's shared drive, or a third-party provider — that your whole team can use.
 - For the offline workflow, have a USB flash drive or other external storage that both your computer and your interview devices can read.
 
@@ -26,12 +26,12 @@ To follow along, you should:
 
 ## Introduction
 
-Interviewer keeps everything it stores — protocols, interviews, and settings — on the device it runs on. That means two things to plan for:
+Interviewer keeps everything that it stores — protocols, interviews, and settings — on the device on which it runs. That means two things to plan for:
 
 - **Protocol deployment** — getting the protocol file onto each interview device before data collection begins.
-- **Data export** — getting the data each device holds off it and back to a location you control.
+- **Data export** — getting the data that each device stores off it and back to a location that you control.
 
-How you bridge them depends on whether your interview devices can reach the internet. This tutorial describes both options:
+How you carry out both tasks depends on whether your interview devices can reach the internet. This tutorial describes both options:
 
 - **[The online workflow](#the-online-workflow)** — use a cloud file sharing service as the hub in both directions.
 - **[The offline workflow](#the-offline-workflow)** — carry files in both directions on a USB flash drive or other external storage.
@@ -59,7 +59,7 @@ If your interview devices can reach the internet — at least at the start and e
 
 This is the preferred method for deploying protocols. It has the significant advantage of providing a single location for the protocol file that can be updated as needed and which can be accessed by multiple people at the same time.
 
-1. Place your `.netcanvas` file on a cloud storage service (e.g., Box, Dropbox, Google Drive). You can generally accomplish this by dragging and dropping the file into a dedicated folder on the computer you are using to author the protocol. Alternatively, many providers allow you to upload files via a web interface.
+1. Place your `.netcanvas` file on a cloud storage service (e.g., Box, Dropbox, Google Drive). You can generally accomplish this by dragging and dropping the file into a dedicated folder on the computer that you are using to author the protocol. Alternatively, many providers allow you to upload files via a web interface.
 2. Install the cloud service's app on each interview device, or open the service in the device's web browser, and sign in.
 3. Import the protocol file on the interview device. Typically you accomplish this by browsing to a special location in the file browser that corresponds to the cloud storage provider (e.g., "Dropbox" or "Google Drive"). If your provider is not visible in the file browser, try to copy the protocol file to the storage of your device from within the provider's app.
 
@@ -73,7 +73,7 @@ Use the **Import a protocol** card on the start screen to open the file browser,
 
 Use the **Import from File** button on the start screen.
 
-Interviewer Classic can also import a protocol straight from a web address, which works well when the protocol is unlikely to change frequently, or where you want to document the setup process in writing. Generate a shareable link in your cloud service — or host the `.netcanvas` file on any file hosting service (e.g., GitHub Pages, SharePoint) — check the link is publicly accessible by opening it in a web browser, then use the **Import from URL** button on the start screen and paste it in. We recommend this method for teams distributing protocol files to multiple devices.
+Interviewer Classic can also import a protocol straight from a web address, which works well when the protocol is unlikely to change frequently, or where you want to document the setup process in writing. Generate a shareable link in your cloud service — or host the `.netcanvas` file on any file hosting service (e.g., GitHub Pages, SharePoint) — check that the link is publicly accessible by opening it in a web browser, then use the **Import from URL** button on the start screen and paste it in. We recommend this method for teams distributing protocol files to multiple devices.
 
 </AppOnly>
 
@@ -82,15 +82,15 @@ Interviewer Classic can also import a protocol straight from a web address, whic
 The same service can consolidate your interview data, by having each interviewer upload their exports directly to it.
 
 1. Create a dedicated folder on your cloud storage service to store the interview data. Choose a location that is easily accessible and organized. If you are operating within a large team, consider creating individual folders for each person conducting interviews, and consider setting permissions to "write only" (or similar) so that interviewers can only add files to their own folder.
-2. Install the cloud service's app on each interview device and ensure that the interviewer is logged in and has access to the folder you created in step 1.
+2. Install the cloud service's app on each interview device and ensure that the interviewer is logged in and has access to the folder that you created in step 1.
 3. Export sessions from the device, saving the resulting `.zip` archive into that folder.
 
 <AppOnly axis="interviewer" app="current">
 
-Select the sessions you want in the **Data** view and click **Export _n_ selected**. Interviewer builds the archive, then shows a button to save it (**Save…**, **Share…** or **Download**, depending on what the browser supports) — click that to save the file. The file formats and options are configured ahead of time in **Settings → Data export**, so nothing is chosen at export time. Where the `.zip` goes depends on the device and browser:
+Select the sessions that you want in the **Data** view and click **Export _n_ selected**. Interviewer builds the archive, then shows a button to save it (**Save…**, **Share…** or **Download**, depending on what the browser supports) — click that to save the file. The file formats and options are configured ahead of time in **Settings → Data export**, so nothing is chosen at export time. Where the `.zip` goes depends on the device and browser:
 
 - In a desktop browser, you are usually prompted to choose a location — navigate to the cloud service's synced folder on the device.
-- On a tablet, the system share sheet opens — choose the cloud service's app, then the folder you created in step 1.
+- On a tablet, the system share sheet opens — choose the cloud service's app, then the folder that you created in step 1.
 - Otherwise the archive is saved to the browser's downloads folder, and you upload it to the cloud service yourself.
 
 Sessions are marked as exported only once the file has actually been saved, so cancelling the save leaves them selectable for another attempt.
@@ -99,7 +99,7 @@ Sessions are marked as exported only once the file has actually been saved, so c
 
 <AppOnly axis="interviewer" app="classic">
 
-Navigate to the **Manage or Export Sessions** card on the Interviewer Classic start screen, select the files you wish to export, and choose your file types and export options. You will then be prompted to choose a location to save the export.
+Navigate to the **Manage or Export Sessions** card on the Interviewer Classic start screen, select the files that you wish to export, and choose your file types and export options. You will then be prompted to choose a location to save the export.
 
 - If you are using a tablet device, you will be prompted to choose an app to handle the export. Choose the cloud service's app. The app will then open and you will be prompted to choose a location to save the export.
 - If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the cloud service's folder that you created in step 1.
@@ -161,9 +161,9 @@ Open Interviewer Classic and use the **Import from File** button on the start sc
 <TipBox>
 
 Refer to the documentation from your operating system or device manufacturer
-(or simply test ahead of time) to ensure that the storage device you are using
+(or simply test ahead of time) to ensure that the storage device that you are using
 to transfer the protocol file can be read by the interview device _and_ the
-computer you used to author the protocol.
+computer that you used to author the protocol.
 
 </TipBox>
 
@@ -176,9 +176,9 @@ As above, the only option for exporting data in an offline setting is to use ext
 
 <AppOnly axis="interviewer" app="current">
 
-Select the sessions you want in the **Data** view, click **Export _n_ selected**, then click **Save…**, **Share…** or **Download** once the archive is ready.
+Select the sessions that you want in the **Data** view, click **Export _n_ selected**, then click **Save…**, **Share…** or **Download** once the archive is ready.
 
-- In a desktop browser, you are usually prompted to choose a location — navigate to the folder you created on the external storage device.
+- In a desktop browser, you are usually prompted to choose a location — navigate to the folder that you created on the external storage device.
 - On a tablet, the system share sheet opens — choose a file manager app, then navigate to the external storage device.
 - Otherwise the archive is saved to the browser's downloads folder, and you copy it to the external storage device yourself.
 
@@ -186,7 +186,7 @@ Select the sessions you want in the **Data** view, click **Export _n_ selected**
 
 <AppOnly axis="interviewer" app="classic">
 
-Navigate to the **Manage or Export Sessions** card on the start screen of Interviewer Classic and select the files you wish to export. You will be prompted to choose a location to save the export.
+Navigate to the **Manage or Export Sessions** card on the start screen of Interviewer Classic and select the files that you wish to export. You will be prompted to choose a location to save the export.
 
 - If you are using a PC or Mac, you will be prompted to choose a location on the device's filesystem to save the export. Navigate to the external storage device's folder that you created in step 1.
 - If you are using a tablet device, you will be prompted to choose an app to handle the export. The export functionality on tablet devices works using the "share" feature built into both Android and iOS. This means that options for saving exported data are determined by which apps you have installed on your device. You therefore need to install a third-party file management app such as "[CX File Explorer](https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer)". Once installed, choose the file manager app from the share menu. The app will then open and you will be prompted to choose a location to save the export. Navigate to the external storage device's folder that you created in step 1.

@@ -1,7 +1,7 @@
 ---
 title: Arbre généalogique narratif
 navOrder: 11
-translatedFrom: 9502c68f0712623cc0f478f6ef6b3d72a28fa71e
+translatedFrom: 25b247abce643755680828667d80a09532a395ba
 ---
 
 <InterfaceSummary type="NarrativePedigree">
@@ -49,13 +49,13 @@ L’étape doit comporter au moins une affection. L’ordre des lignes est celui
 
 ### Personnaliser la formulation intégrée {#customize-built-in-wording}
 
-La section **Personnaliser la formulation intégrée** contient les textes que les personnes participantes lisent dans l’étape. Chacun commence par la formulation de Network Canvas, dans chaque langue pour laquelle Network Canvas en fournit une, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (voir [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)).
+La section **Personnaliser la formulation intégrée** contient les textes que les personnes participantes lisent dans l’étape. Chaque réglage commence par la formulation de Network Canvas, dans chaque langue pour laquelle Network Canvas en fournit une, et vous pouvez le modifier et le traduire comme n’importe quelle autre chaîne traduisible. Votre protocole ne conserve que les formulations que vous modifiez (voir [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)).
 
 Sous **Propre à cette étape** se trouvent :
 
-- le texte du menu des affections tant qu’aucune affection n’est choisie, qui est aussi l’option de ce menu permettant de n’en afficher aucune (« Sélectionnez une affection ») ;
+- la formulation du menu des affections tant qu’aucune affection n’est choisie, qui est aussi l’option de ce menu permettant de n’en afficher aucune (« Sélectionnez une affection ») ;
 - le libellé du bouton **Enregistrer un instantané** ;
-- les titres des instantanés enregistrés, l’un pour l’instantané d’une affection et l’autre pour un instantané où une personne est sélectionnée. Ils affichent le libellé de l’étape et le nom de l’affection, et le second affiche aussi le nom de la personne, à l’emplacement de leurs espaces réservés.
+- les titres des instantanés enregistrés, l’un pour l’instantané d’une affection et l’autre pour un instantané où une personne est sélectionnée. Chaque titre affiche le libellé de l’étape et le nom de l’affection à l’emplacement de leurs espaces réservés, et le second titre affiche aussi le nom de la personne.
 
 Sous **Commun à toutes les étapes de ce type** se trouve la formulation que toutes les étapes « Arbre généalogique narratif » affichent à l’identique : le titre de la légende, la signification de chacun de ses symboles (« Présente cette affection », « Développera cette affection », « Est porteur ou porteuse de cette affection », « Pourrait développer cette affection », « Pourrait être porteur ou porteuse de cette affection » et « Inconnu »), et l’info-bulle du bouton **Annuler le centrage**. Chaque signification peut aussi nommer, à la place de « cette affection », l’affection affichée, insérée sous forme de pastille avec le bouton d’insertion de texte dynamique du champ (le texte dynamique, ou piped text, désigne des réponses ou des informations de l’entretien insérées automatiquement dans un texte). Les deux statuts possibles n’y figurent que tant qu’une étape « Arbre généalogique narratif » a activé **Afficher les statuts possibles (à risque)**. À côté se trouvent les descriptions des boutons de zoom, ainsi que le nom et la description du bouton **Afficher toute la famille**, que toutes les étapes « Arbre généalogique narratif » et « Arbre généalogique » affichent à l’identique. Une modification de l’un de ces textes est enregistrée avec l’étape et abandonnée si vous annulez l’étape. Une fois enregistrée, elle s’applique à toutes ces étapes.
 
@@ -120,7 +120,7 @@ Les lecteurs d’écran lisent le nom de chaque personne avec son statut pour l�
 
 ### Enregistrer un instantané {#saving-a-snapshot}
 
-**Enregistrer un instantané** enregistre une image PNG de toute la famille sur fond blanc, à sa taille naturelle, quelle que soit la partie affichée à l’écran. L’image est dessinée comme l’arbre généalogique l’est pour l’affection choisie et la personne sélectionnée, avec la légende dès qu’une affection est choisie. Elle a pour titre le libellé de l’étape et, dès qu’une affection est choisie, l’affection et la personne sélectionnée, selon les titres d’instantané de [Personnaliser la formulation intégrée](#customize-built-in-wording). Le fichier est enregistré sur l’appareil de la personne participante et ne fait pas partie des données d’entretien.
+**Enregistrer un instantané** enregistre une image PNG de toute la famille sur fond blanc, à sa taille naturelle, quelle que soit la partie affichée à l’écran. L’image montre l’arbre généalogique tel qu’il est dessiné pour l’affection choisie et la personne sélectionnée, avec la légende dès qu’une affection est choisie. Elle a pour titre le libellé de l’étape et, dès qu’une affection est choisie, l’affection et la personne sélectionnée, selon les titres d’instantané de [Personnaliser la formulation intégrée](#customize-built-in-wording). Le fichier est enregistré sur l’appareil de la personne participante et ne fait pas partie des données d’entretien.
 
 ## Comment les statuts sont déduits {#how-statuses-are-inferred}
 

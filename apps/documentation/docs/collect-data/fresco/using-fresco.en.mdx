@@ -25,7 +25,7 @@ We will now walk through each of these steps in more detail.
 
 ## Deployment
 
-Fresco is designed to be deployed on your own server(s) and infrastructure. This ensures you have full control over the data collected in your study and can comply with any relevant data protection regulations or Institutional Review Board (IRB) requirements.
+Fresco is designed to be deployed on your own server(s) and infrastructure. This ensures that you have full control over the data collected in your study and can comply with any relevant data protection regulations or Institutional Review Board (IRB) requirements.
 
 For many researchers, using our [basic deployment guide](/en/collect-data/fresco/guide) to deploy to the free Netlify plan will be sufficient. However, if you have specific requirements around data security, privacy, or compliance, you may need to deploy Fresco to your own server, or to specialist services.
 
@@ -100,13 +100,13 @@ In order to conduct your study, you will need to decide on a recruitment strateg
 1. Adding known participants, either individually or in bulk.
 2. Allowing participants to self-enroll anonymously.
 
-These approaches are not mutually exclusive, and can be used in combination. For example, you could have an initial "wave" of known participants which you add to Fresco manually, and then ask those participants to share the anonymous recruitment URL with anyone else they think might be interested in participating.
+These approaches are not mutually exclusive, and can be used in combination. For example, you could have an initial "wave" of known participants which you add to Fresco manually, and then ask those participants to share the anonymous recruitment URL with anyone else who they think might be interested in participating.
 
-Which approach you choose will depend on the specifics of your study, and the resources you have available for recruitment.
+Which approach you choose will depend on the specifics of your study, and the resources that you have available for recruitment.
 
 Regardless of the approach, Fresco defines all participants by their participant identifier and an optional label. For known participants, you can provide the participant identifier (which is useful for linking responses to external data sources), or Fresco can generate one at random. If you enable anonymous recruitment, Fresco assigns participants a random identifier when they begin an interview.
 
-Participant _labels_ are an optional attribute you can use to provide a human-readable label for the participant. This field is not exposed to participants and can store a name or an internal project label for the participant.
+Participant _labels_ are an optional attribute that you can use to provide a human-readable label for the participant. This field is not exposed to participants and can store a name or an internal project label for the participant.
 
 <TipBox danger>
 
@@ -192,24 +192,24 @@ In Fresco, you can share two kinds of URLs with participants: **Unique Participa
 
 ### Unique participant URLs
 
-Unique participant URLs are unique URLs you can generate for each participant per protocol and share with the participant to allow them to complete an interview. These URLs take the participant directly to the interview for the specified protocol and link their responses to their participant identifier.
+Unique participant URLs are unique URLs that you can generate for each participant per protocol and share with the participant to allow them to complete an interview. These URLs take the participant directly to the interview for the specified protocol and link their responses to their participant identifier.
 
 To share unique participant URLs with participants, you can either copy each URL individually or export a CSV file containing the URLs for your participants.
 
 #### Manually copying a unique participant URL
 
 1. Navigate to the participants page in the dashboard.
-2. Click the **Copy Unique URL** button for the participant you wish to generate a URL for.
-3. Select the protocol you wish to conduct the interview for from the dropdown.
+2. Click the **Copy Unique URL** button for the participant for whom you wish to generate a URL.
+3. From the dropdown, select the protocol for which you wish to conduct the interview.
 4. The URL will be copied to your clipboard. You can now share this URL with the participant.
 
 #### Exporting a CSV of unique participant URLs
 
 1. Navigate to the participants page in the dashboard.
-2. Click the **Export Participants** button to export every participant in the list (if you have typed in the filter box, only the participants that match it), or select the checkboxes next to the participants you want and click **Export Selected**.
+2. Click the **Export Participants** button to export every participant in the list (if you have typed in the filter box, only the participants that match it), or select the checkboxes next to the participants that you want and click **Export Selected**.
 3. Your browser will download a file named `participants.csv`.
 
-The CSV file will contain a row for each participant, with columns for the participant's internal ID, identifier, and label, followed by one `interview_url_<protocol name>` column for each installed protocol, holding that participant's unique URL for it. You can use this file to distribute the URLs to participants via email, SMS, or other methods.
+The CSV file will contain a row for each participant, with columns for the participant's internal ID, identifier, and label, followed by one `interview_url_<protocol name>` column for each installed protocol, containing that participant's unique URL for that protocol. You can use this file to distribute the URLs to participants via email, SMS, or other methods.
 
 ### Anonymous participant URLs
 
@@ -218,7 +218,7 @@ If you enable anonymous recruitment, participants can self-enroll in the study u
 #### To generate an anonymous participant URL:
 
 1. Navigate to the protocols page in the dashboard.
-2. In the **Anonymous Participation URL** column, which appears once anonymous recruitment is enabled, click the button for the protocol you wish to recruit participants for.
+2. In the **Anonymous Participation URL** column, which appears once anonymous recruitment is enabled, click the button for the protocol for which you wish to recruit participants.
 3. The URL will be copied to your clipboard and will be in the following format:
 
 ```bash
@@ -229,7 +229,7 @@ You can now share this URL with participants to allow them to self-enroll in the
 
 ### Limit interviews
 
-You may want to limit the number of interviews that a participant can complete for a given protocol. For this reason, Fresco includes this as an option you can enable on the settings page.
+You may want to limit the number of interviews that a participant can complete for a given protocol. For this reason, Fresco includes this as an option that you can enable on the settings page.
 
 If you enable this option, each participant will only be able to submit a single completed interview for each protocol (although they may have multiple incomplete interviews). Once a participant has completed an interview, attempting to start a new interview or to resume any other in-progress interview will instead show the finished interview's finished screen, with the finished text of the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) it ended at. This applies to both unique participant URLs and anonymous participant URLs.
 
@@ -240,7 +240,7 @@ To enable this feature:
 
 <TipBox danger>
 
-We prioritized privacy and security when designing this feature, meaning that we do not conduct sophisticated tracking of participants. Instead, we use the participant identifier (if available) and a cookie to determine when a participant has submitted an interview. The cookie holds the id of the finished interview, and scripts running in the page can't read it. A participant whose cookie names a finished interview of the same protocol is sent back to that interview's finished screen.
+We prioritized privacy and security when designing this feature, meaning that we do not conduct sophisticated tracking of participants. Instead, we use the participant identifier (if available) and a cookie to determine when a participant has submitted an interview. The cookie contains the id of the finished interview, and scripts running in the page can't read it. A participant whose cookie contains the id of a finished interview of the same protocol is sent back to that interview's finished screen.
 
 This means that if you enable anonymous recruitment and a participant clears their cookies, they will be able to submit another interview.
 
@@ -250,7 +250,7 @@ If you require more robust tracking, you should consider using unique participan
 
 ### Freeze completed interviews
 
-By default, Fresco freezes completed interviews: once a participant finishes an interview, the submitted data can no longer be altered. A participant who returns to the URL of an interview they have already finished sees its finished screen: the finished text of the Finish Screen it ended at. There is no way to move through the interview from there, and no button, so participants close the window. Any change that is somehow still sent is silently rejected, protecting your finished data from accidental or intentional changes after submission.
+By default, Fresco freezes completed interviews: once a participant finishes an interview, the submitted data can no longer be altered. A participant who returns to the URL of an interview that they have already finished sees its finished screen: the finished text of the Finish Screen it ended at. There is no way to move through the interview from there, and no button, so participants close the window. Any change that is somehow still sent is silently rejected, protecting your finished data from accidental or intentional changes after submission.
 
 If you would prefer that a re-opened interview keep syncing further changes back to your data, you can turn this setting off.
 
@@ -261,7 +261,7 @@ To disable this feature:
 
 <TipBox>
 
-This setting is distinct from [Limit Interviews](#limit-interviews). Limiting interviews prevents a participant from starting a _new_ interview once they have completed one, whereas freezing completed interviews prevents changes to an interview they have _already_ finished from being saved. You can enable either, both, or neither depending on the needs of your study.
+This setting is distinct from [Limit Interviews](#limit-interviews). Limiting interviews prevents a participant from starting a _new_ interview once they have completed one, whereas freezing completed interviews prevents changes to an interview that they have _already_ finished from being saved. You can enable either, both, or neither depending on the needs of your study.
 
 </TipBox>
 
@@ -295,11 +295,11 @@ Once you have sent out URLs to participants and they begin to complete interview
 
 The **interviews page** provides an overview of all interviews in the study. Each row corresponds to one interview, with columns for the **Participant Identifier**, **Protocol Name**, **Started** date, **Updated** date, **Progress**, **Network** (the number of nodes and edges captured so far), and **Export Status**. From this page you can also export data from the interviews.
 
-**Progress** is the stage the participant has reached out of the protocol's stages. Your protocol's [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) counts as a stage, so a participant is at 100% only once they have finished the interview.
+**Progress** shows the stage that the participant has reached, as a percentage of the protocol's stages. Your protocol's [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) counts as a stage, so a participant is at 100% only once they have finished the interview.
 
 ### Finding and filtering interviews
 
-For larger studies, the interviews table can be searched, sorted, and filtered so that you can find the interviews you are interested in. Importantly, all of this work happens **server-side across the whole dataset**, not just the rows currently visible on screen. This means the table count, sorting, and filtering always reflect every matching interview, even when the results span many pages.
+For larger studies, the interviews table can be searched, sorted, and filtered so that you can find the interviews that you are interested in. Importantly, all of this work happens **server-side across the whole dataset**, not just the rows currently visible on screen. This means that the table count, sorting, and filtering always reflect every matching interview, even when the results span many pages.
 
 ![Filtering and sorting the interviews table.](/assets/img/fresco-images/interviews-filtering.png)
 
@@ -347,7 +347,7 @@ You can generate a CSV file of incomplete interview URLs in bulk for multiple pa
 
 1. Navigate to the interviews page in the dashboard.
 2. Click on the **Export Incomplete Interview URLs** button.
-3. Select the protocol you wish to generate URLs for from the dropdown.
+3. From the dropdown, select the protocol for which you wish to generate URLs.
 4. Click the **Export** button.
 
 ## Exporting data
@@ -357,7 +357,7 @@ Once participants have completed interviews, you can export the data from the in
 ### To export selected interviews:
 
 1. Navigate to the interviews page in the dashboard.
-2. Select the checkboxes next to the interviews you wish to export.
+2. Select the checkboxes next to the interviews that you wish to export.
 3. Click the **Export Selected** button at the bottom of the table.
 4. Confirm the [file types and export options](/en/analyze-data/data-export) that you wish to use.
 5. Click **Start export process**.
@@ -396,9 +396,9 @@ Changing the interface language translates Fresco's own interface, including mes
 
 ### Language in interviews
 
-An interview's language comes from the participant's browser, not from Fresco's dashboard. When an interview opens, it uses the first of the browser's preferred languages that your protocol is written in (a close regional match counts, so a browser set to Mexican Spanish gets your Spanish), or your protocol's default language if there is none. A text that isn't translated into that language is shown in the best available other translation: in another of the browser's preferred languages that has it, or else the default language, or else any language of your protocol that has it. See [The default language and which translation participants see](/en/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see). A language chosen in the dashboard or on the sign-in screen, or the language of a researcher signed in to the dashboard, doesn't affect it.
+An interview's language comes from the participant's browser, not from Fresco's dashboard. When an interview opens, it uses the first of the browser's preferred languages that your protocol is written in (a close regional match counts, so a browser set to Mexican Spanish gets your Spanish), or your protocol's default language if there is none. A translatable string that isn't translated into that language is shown in the best available other translation: in another of the browser's preferred languages into which the string is translated, or else in the default language, or else in any language of your protocol into which the string is translated. See [The default language and which translation participants see](/en/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see). A language chosen in the dashboard or on the sign-in screen, or the language of a researcher signed in to the dashboard, doesn't affect it.
 
-Everything an interview shows, including its buttons and messages such as Back, Continue and validation messages, is shown in the interview's language: in your protocol's wording where you have changed it, and in Network Canvas's own otherwise (see [Words Network Canvas supplies](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). The dashboard's language does not change it.
+Everything that appears during an interview, including its buttons and messages such as Back, Continue and validation messages, is shown in the interview's language: in your protocol's wording where you have changed it, and otherwise in the wording supplied by Network Canvas (see [Words supplied by Network Canvas](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). The dashboard's language does not change it.
 
 The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in your protocol. Their choice lasts until the browser tab is closed, so it is used again if the participant reloads the page. It isn't saved with the interview or included in exported data: an interview resumed in another tab or on another device starts again from that browser's languages. It doesn't change any researcher account's language preference, and it doesn't change the answers already given.
 

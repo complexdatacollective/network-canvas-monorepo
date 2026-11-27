@@ -6,12 +6,12 @@ navOrder: 0
 
 <Paragraph variant="lead">
   Interviewer is the Network Canvas app for conducting in-person,
-  interviewer-assisted network interviews on a device you control.
+  interviewer-assisted network interviews on a device that you control.
 </Paragraph>
 
 It runs in your web browser — open it at [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com) with nothing to download — and can optionally be installed to your device as a Progressive Web App (PWA) for quick access and offline use.
 
-Everything Interviewer stores — protocols, interviews, and settings — stays on the device, with no cloud sync or server component. You import protocols, run interviews, and export data all from within the app itself.
+Everything that Interviewer stores — protocols, interviews, and settings — stays on the device, with no cloud sync or server component. You import protocols, run interviews, and export data all from within the app itself.
 
 ![The Interviewer dashboard.](/assets/img/interviewer-guide/start-screen.png)
 
@@ -23,25 +23,25 @@ Otherwise, read on to learn what Interviewer does and how it fits into the Netwo
 
 ## What is Interviewer?
 
-Interviewer is an interview administration tool designed to be simple and intuitive for research participants, and to integrate with the rest of the Network Canvas suite of tools. It is the cornerstone of the Network Canvas project: its interfaces are optimized for the specific needs of network interviews, and it configures itself using the protocol files you design for your study.
+Interviewer is an interview administration tool designed to be simple and intuitive for research participants, and to integrate with the rest of the Network Canvas suite of tools. It is the cornerstone of the Network Canvas project: its interfaces are optimized for the specific needs of network interviews, and it configures itself using the protocol files that you design for your study.
 
-Interviewer is built on the same platform as Fresco 4.0, bringing the updated interview experience to interviewer-assisted, on-device data collection. Where [Fresco](/en/collect-data/fresco/about) lets participants complete interviews remotely in their own browser, with data stored on a server you host, Interviewer is guided by a trained interviewer on a controlled device, with data stored on that device. See [Running Interviews](/en/collect-data) for a full comparison of the two apps.
+Interviewer is built on the same platform as Fresco 4.0, bringing the updated interview experience to interviewer-assisted, on-device data collection. Where [Fresco](/en/collect-data/fresco/about) lets participants complete interviews remotely in their own browser, with data stored on a server that you host, Interviewer is guided by a trained interviewer on a controlled device, with data stored on that device. See [Running Interviews](/en/collect-data) for a full comparison of the two apps.
 
 ## Two versions of Interviewer
 
 Interviewer comes in two supported versions:
 
-- The current app runs in your **web browser** — installable to a device you control as a PWA — supports **schemas 8 and 9**, and is recommended for all new studies.
-- **Interviewer Classic** is the established **desktop and tablet** app you download and install on each device. It runs schema 7 protocols and works fully offline.
+- The current app runs in your **web browser** — installable to a device that you control as a PWA — supports **schemas 8 and 9**, and is recommended for all new studies.
+- **Interviewer Classic** is the established **desktop and tablet** app that you download and install on each device. It runs schema 7 protocols and works fully offline.
 
 Which version can run a given protocol depends on its schema version — see [Protocol Schema Information](/en/get-started/protocol-schema-information). The [installation guide](/en/collect-data/interviewer/installing-interviewer) covers how to get each version, and [Using Interviewer](/en/collect-data/interviewer/using-interviewer) lets you switch between the two throughout the tutorial.
 
 ## Key capabilities
 
-- **Runs protocols from Architect** — Interviewer is compatible with your existing protocols. It runs schema 9 and schema 8 protocols on the schema they were made for, and never upgrades them. A schema 7 protocol from the Classic apps is migrated to schema 8 automatically on import. To use schema 9 features in an older protocol, upgrade it in Architect.
+- **Runs protocols from Architect** — Interviewer is compatible with your existing protocols. It runs schema 9 and schema 8 protocols on the schema for which they were made, and never upgrades them. A schema 7 protocol from the Classic apps is migrated to schema 8 automatically on import. To use schema 9 features in an older protocol, upgrade it in Architect.
 - **Offline-capable, with documented exceptions** — once installed as a PWA, Interviewer remains available offline. Interviewer has one offline status for the whole app, which reads **Ready for offline** once every protocol on the device, including schema 8 protocols, can be used without a connection. Some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection during the interview, and protocol cards show a **Requires internet** indicator when a protocol uses them.
 - **On-device data, with app-level security** — when you set up an app lock (a PIN, passphrase, or biometric), stored data is encrypted at rest with a key derived from your credential. See [Data Storage and Safety](/en/collect-data/interviewer/data-storage) for what this protects and what it doesn't.
-- **Data export to CSV and GraphML** — export the sessions you select as a single `.zip` archive, with formats and options configured once in **Settings → Data export**. See the [Data Export guide](/en/analyze-data/data-export) for what the exported files contain.
+- **Data export to CSV and GraphML** — export the sessions that you select as a single `.zip` archive, with formats and options configured once in **Settings → Data export**. See the [Data Export guide](/en/analyze-data/data-export) for what the exported files contain.
 - **Synthetic data** — generate fake interview sessions from any installed protocol so you can rehearse and validate your export pipeline before collecting real data.
 
 ## Next steps

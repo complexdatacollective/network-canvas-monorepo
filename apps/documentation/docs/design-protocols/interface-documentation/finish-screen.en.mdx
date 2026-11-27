@@ -18,15 +18,15 @@ A new protocol starts with a Finish Screen already in place. Protocols made befo
 
 ## What participants see
 
-What participants see depends on how you choose that they finish (see [How participants finish](#how-participants-finish)).
+What participants see depends on the way of finishing that you choose (see [How participants finish](#how-participants-finish)).
 
-When **participants confirm**, they see the closing screen: the closing text you wrote and a **Finish** button. They press **Finish** and are asked to confirm, because their answers can't be changed once the interview is finished. Until they confirm, they can go back and change their answers. If the interview can't be finished, they stay on the closing screen, see a message saying so, and can try again.
+When **participants confirm**, they see the closing screen: the closing text that you wrote and a **Finish** button. They press **Finish** and are asked to confirm, because their answers can't be changed once the interview is finished. Until they confirm, they can go back and change their answers. If the interview can't be finished, they stay on the closing screen, see a message saying so, and can try again.
 
 When the interview **finishes automatically**, it finishes as soon as participants reach the Finish Screen. There is no closing screen, no button and no question, and participants can't go back from it. If the interview can't be finished, they see a message saying so and a **Finish** button to try again.
 
-Once the interview is finished, it shows its **finished screen**:
+Once the interview is finished, participants see the **finished screen**. It has:
 
-- the finished text you wrote.
+- the finished text that you wrote.
 - no way to move through the interview. There are no navigation buttons and no way back to an earlier screen.
 
 Opening a finished interview again shows the finished screen again, rather than the interview from the start.
@@ -45,11 +45,11 @@ In Interviewer, when you review an interview that has been finished, its stages 
 
 The stage editor has these sections:
 
-- **Stage name** is the name you see in the timeline and the stages menu. It is not shown to participants as the screen's heading.
+- **Stage name** is the name that you see in the timeline and the stages menu. It is not shown to participants as the screen's heading.
 - **How participants finish** decides whether participants see a closing screen (see [How participants finish](#how-participants-finish)).
-- **Closing screen** holds what participants read before they finish. It is only shown when participants confirm. **Closing text** is a single text field whose first line is the screen's heading. You can format it with Markdown, such as headings, paragraphs, lists and links.
-- **Finished screen** holds what participants read once the interview has finished. **Finished text** works like the closing text: its first line is the heading, and you can format the rest with Markdown.
-- **Customize built-in wording** holds the words participants read while they finish (see [Finishing the interview](#finishing-the-interview)).
+- **Closing screen** contains what participants read before they finish. It is only shown when participants confirm. **Closing text** is a single text field whose first line is the screen's heading. You can format it with Markdown, such as headings, paragraphs, lists and links.
+- **Finished screen** contains what participants read once the interview has finished. **Finished text** works like the closing text: its first line is the heading, and you can format the rest with Markdown.
+- **Customize built-in wording** contains the words that participants read while they finish (see [Finishing the interview](#finishing-the-interview)).
 - **Outcome** has the choice **How the interview ended**. Participants never see it. It is saved with the interview and included in your exported data (see [Data](#data)). The choices are:
   - **Completed**: the participant reached the normal end of the interview.
   - **Ineligible**: the participant did not qualify for the study.
@@ -69,23 +69,23 @@ Whichever you choose, participants see the finished screen once the interview ha
 
 ### Finishing the interview
 
-The **Customize built-in wording** section holds the words participants read while they finish, apart from the closing and finished text:
+The **Customize built-in wording** section contains the words that participants read while they finish, apart from the closing and finished text:
 
-- **Finish button** is the words on the button that ends the interview. When the interview finishes automatically, participants only see the button if finishing fails, to try again.
-- **Confirmation question** is the question participants are asked after they press the button, before the interview ends. Participants are only asked it when they confirm, so the stage editor only shows it then.
+- **Finish button** is the words on the button that ends the interview. When the interview finishes automatically, participants only see the button if finishing fails, so that they can try again.
+- **Confirmation question** is the question that participants are asked after they press the button, before the interview ends. Participants are only asked it when they confirm, so the stage editor only shows it then.
 - **If finishing fails** is the message participants see when the interview could not be finished.
 
-Network Canvas supplies each of them in each language it has wording for, so a new Finish Screen is ready to use. Like the rest of your protocol, they are text you can change. When your protocol has more than one language, translate them with the closing and finished text (see [Words Network Canvas supplies](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)).
+Network Canvas supplies each of them in each language it has wording for, so a new Finish Screen is ready to use. Like the rest of your protocol, they are translatable strings that you can change. When your protocol has more than one language, translate them with the closing and finished text (see [Words supplied by Network Canvas](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)).
 
 ### Starting text
 
-A new protocol starts with a Finish Screen whose stage name is "Finish Interview". Its closing text has the heading "Finish Interview" and reads "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now." Its finished text has the heading "Interview Finished" and reads "Thank you for participating!" A Finish Screen you add yourself starts with the same closing and finished text. Network Canvas supplies this text in each language of your protocol that it has the text for. You can change all of it. The same goes for the words in **Customize built-in wording**.
+A new protocol starts with a Finish Screen whose stage name is "Finish Interview". Its closing text has the heading "Finish Interview" and reads "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now." Its finished text has the heading "Interview Finished" and reads "Thank you for participating!" A Finish Screen that you add yourself starts with the same closing and finished text. Network Canvas supplies this text in each language of your protocol that it has the text for. You can change all of it. The same goes for the words in **Customize built-in wording**.
 
-When you add a language to your protocol, Architect also adds the supplied text in that language: the closing and finished text, the stage name and each of the finishing texts get Network Canvas's wording in the new language wherever they have no translation in it, even if you have changed them in your other languages, so check that the new language says what your own text says. See [Adding languages](/en/design-protocols/tutorials/translating-your-protocol#adding-languages). When you [change the language your text is recorded as](/en/design-protocols/tutorials/translating-your-protocol#changing-the-language-your-text-is-recorded-as), supplied text you have not changed becomes the supplied text in the language you chose, or is removed where Network Canvas has none in that language, and text you have changed keeps your wording. Translate your own text like the rest of your protocol (see [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol)).
+When you add a language to your protocol, Architect also adds the supplied text in that language: the closing and finished text, the stage name and the words in **Customize built-in wording** are given the wording supplied by Network Canvas in the new language wherever they have no translation in it, even if you have changed them in your other languages, so check that the wording in the new language has the same meaning as your own wording. See [Adding languages](/en/design-protocols/tutorials/translating-your-protocol#adding-languages). When you [change the language in which your text is recorded](/en/design-protocols/tutorials/translating-your-protocol#changing-the-language-your-text-is-recorded-as), supplied text that you have not changed becomes the supplied text in the language that you chose, or is removed where Network Canvas has none in that language, and text that you have changed keeps your wording. Translate your own text like the rest of your protocol (see [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol)).
 
 ### Text needed before downloading
 
-Network Canvas doesn't supply closing and finished text in every language. If your protocol's default language is one it has no text for, or you clear the text, a Finish Screen can be left without text it needs. Architect then won't download the protocol until you add the text in your default language:
+Network Canvas doesn't supply closing and finished text in every language. If your protocol's default language is one it has no text for, or you clear the text, a Finish Screen can be left without text that it needs. Architect then won't download the protocol until you add the text in your default language:
 
 - a Finish Screen where participants confirm needs closing text and finished text.
 - a Finish Screen that finishes automatically needs finished text.
@@ -104,7 +104,7 @@ Finish Screens stay together at the end of the protocol:
 - You can reorder Finish Screens among themselves, but the timeline won't let you move another stage after them, or move a Finish Screen above another kind of stage.
 - **Add new stage** puts other stages before the Finish Screens.
 
-The interview reaches the first Finish Screen by default. Participants reach any later one through skip logic (see [Skip logic that ends the interview](#skip-logic-that-ends-the-interview)). No Finish Screen leads forward to another.
+By default, participants reach the first Finish Screen. They reach any later one through skip logic (see [Skip logic that ends the interview](#skip-logic-that-ends-the-interview)). No Finish Screen leads forward to another.
 
 ### Previewing
 
@@ -116,7 +116,7 @@ On any other stage, you can choose **End the interview** as the place to continu
 
 ## Data
 
-The Finish Screen does not create nodes or edges, and it doesn't add anything to the participant's network. The outcome you chose is recorded with each interview that is finished there and is included in your exported data: the CSV ego file has a `networkCanvasFinishOutcome` column, and GraphML files have an `nc:finishOutcome` attribute. The value is `completed`, `ineligible` or `terminated`. See [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended).
+The Finish Screen does not create nodes or edges, and it doesn't add anything to the participant's network. The outcome that you chose is recorded with each interview that is finished there and is included in your exported data: the CSV ego file has a `networkCanvasFinishOutcome` column, and GraphML files have an `nc:finishOutcome` attribute. The value is `completed`, `ineligible` or `terminated`. See [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended).
 
 The outcome is empty for interviews that were finished before your app recorded it, and for interviews that haven't been finished.
 
@@ -136,7 +136,7 @@ Check the closing text, the finished text and the words in **Customize built-in 
 
 <GoodPractice>
 
-Leave the outcome of the Finish Screen that ends a normal interview as **Completed**. Every interview that is finished at a Finish Screen is recorded with the outcome you choose there, so choose **Ineligible** or **Ended early** for a separate Finish Screen that only interviews ending that way reach, such as one that skip logic sends participants who didn't qualify to.
+Leave the outcome of the Finish Screen that ends a normal interview as **Completed**. Every interview that is finished at a Finish Screen is recorded with the outcome that you choose there, so choose **Ineligible** or **Ended early** for a separate Finish Screen that is reached only by interviews that end in that way, such as one to which skip logic sends participants who didn't qualify.
 
 </GoodPractice>
 

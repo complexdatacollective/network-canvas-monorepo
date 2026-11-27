@@ -3,7 +3,7 @@ title: Precios de los servicios en la nube
 date: 8th October 2025
 navOrder: 6
 wip: false
-translatedFrom: d5aea0aa8530dc7f42a20f198982c7bef95238af
+translatedFrom: 912f320bc949c5bddecfa330984461c96d510223
 ---
 
 Puedes implementar Fresco de forma totalmente gratuita usando los planes gratuitos de cada servicio. Si lo necesitas, puedes pasar a un plan superior en cualquiera de ellos.

@@ -3,7 +3,7 @@ title: Options communes des interfaces
 navOrder: 1
 
 layout: page
-translatedFrom: 46902ff86ef2c61eb91878599b8c35f2a8337703
+translatedFrom: 7c1225447c9be91e165eed4fe18842212940ba65
 ---
 
 Certaines options de configuration sont disponibles pour tous les écrans d’interface ou pour la plupart d’entre eux (selon la sous-catégorie d’interface, par exemple les générateurs de noms).

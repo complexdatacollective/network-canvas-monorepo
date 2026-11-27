@@ -40,13 +40,13 @@ study](/en/collect-data/interviewer/choosing-hardware).
 
 The roster interface is split into two panels. One panel displays ‘cards’ that represent each item in your roster. The other panel represents nodes in the interview, and will initially be empty. To nominate an alter, the participant must drag a card from the first panel on the left into the second panel on the right. The card will then be removed from the card list, and a node will be created representing the roster member in the interview network.
 
-The panel of cards has a title, which you set in the **Roster panel** section of the stage editor. The title reads "Available to add", in each of your protocol's languages that Network Canvas has wording for, until you change or translate it like any other text. The interview always shows a panel title, so if Network Canvas has no wording in your default language, write the title in that language before you download the protocol. When you add a language that Network Canvas has wording for, the title reads as Network Canvas words it in that language, even if you have changed the title in your other languages (see [Adding languages](/en/design-protocols/tutorials/translating-your-protocol#adding-languages)).
+The panel of cards has a title, which you set in the **Roster panel** section of the stage editor. The title reads "Available to add", in each of your protocol's languages that Network Canvas has wording for, until you change or translate it like any other translatable string. The interview always shows a panel title, so if Network Canvas has no wording in your default language, write the title in that language before you download the protocol. When you add a language that Network Canvas has wording for, the title shows the wording supplied by Network Canvas in that language, even if you have changed the title in your other languages (see [Adding languages](/en/design-protocols/tutorials/translating-your-protocol#adding-languages)).
 
-When using a small roster that contains less than 100 nodes, cards representing all members of the roster will be displayed on the interface according to the display and sort options you have configured. You can define both the default sort order of the cards and the properties that participants can use to sort the list themselves. Participants can scan the list displayed and select the appropriate card(s) to add to their network.
+When using a small roster that contains less than 100 nodes, cards representing all members of the roster will be displayed on the interface according to the display and sort options that you have configured. You can define both the default sort order of the cards and the properties that participants can use to sort the list themselves. Participants can scan the list displayed and select the appropriate card(s) to add to their network.
 
 When using a large roster that contains more than 100 nodes, participants must use the search function before any cards are shown. Nominating an alter from a large roster uses the following process:
 
-1. The participant types into the search box to search for roster members, based on the search options you have configured.
+1. The participant types into the search box to search for roster members, based on the search options that you have configured.
 2. As the participant begins typing, all node data that meets the criteria will be displayed as cards above the search box.
 3. The participant drags a matching card into the node panel to nominate that roster member.
 4. The participant can then search again, repeating this process until they have nominated all the roster members that the prompt asks about.
@@ -55,7 +55,7 @@ By default, the cards will display the **name** attribute from the roster data a
 
 The search function is also heavily configurable, allowing you to choose which attributes from the roster are indexed, as well as the accuracy (or 'fuzziness') of the search matching. These options are powerful, and should be configured carefully. Each attribute added to the searchable properties list will decrease the performance of the search function, and may make matches less accurate. Similarly, using too stringent or too lax search accuracy will compromise the ability of participants to locate nodes in the roster.
 
-As a general rule of thumb search accuracy should increase as roster size increases, and only attributes containing terms participants are likely to search by should be included as indexed attributes.
+As a general rule of thumb search accuracy should increase as roster size increases, and only attributes containing terms that participants are likely to search by should be included as indexed attributes.
 
 ![](/assets/img/interface-documentation/name-generators/architect-search.png)
 
@@ -63,12 +63,12 @@ As a general rule of thumb search accuracy should increase as roster size increa
 
 ### Customize built-in wording
 
-The **Customize built-in wording** section of the stage editor holds the words participants read about this stage. Each starts as Network Canvas words it, in every language it has wording for, and you can change and translate it like any other text. Your protocol keeps only the wording you change (see [Words Network Canvas supplies](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). A message is in the section only while the part of the stage it belongs to is set up.
+The **Customize built-in wording** section of the stage editor contains the words that participants read about this stage. Each one starts with the wording supplied by Network Canvas, in every language for which it has wording, and you can change and translate it like any other translatable string. Your protocol keeps only the wording that you change (see [Words supplied by Network Canvas](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). A message is in the section only while the part of the stage that it belongs to is set up.
 
 Each message can show the name of the stage's node type, as the codebook names it, and the limits can also show their number. Insert either as a pill with the field's piped text button.
 
-- **Minimum not reached** is shown when participants try to continue before they have added the fewest nodes the stage asks for. It is there only when the stage has a minimum.
-- **Maximum reached** is shown once participants have added the most nodes the stage allows. It is there only when the stage has a maximum.
+- **Minimum not reached** is shown when participants try to continue before they have added the fewest nodes that the stage asks for. It is there only when the stage has a minimum.
+- **Maximum reached** is shown once participants have added the most nodes that the stage allows. It is there only when the stage has a maximum.
 - **Everything added** is shown in the roster when every entry has already been added, or when the roster has no entries.
 - **Unnamed label** is the label given to an entry added without a name. It shows a number, so that unnamed entries can be told apart.
 
@@ -80,7 +80,7 @@ The message shown when the roster's data file could not be loaded, and the place
 
 <GoodPractice>
 
-Ensure that the roster data file used has `name` attribute to avoid seeing "No
+Ensure that the roster data file used has a `name` attribute to avoid seeing "No
 name variable!" on your cards. See our article on [node
 labeling](/en/design-protocols/key-concepts/node-labelling) for more information on this topic.
 

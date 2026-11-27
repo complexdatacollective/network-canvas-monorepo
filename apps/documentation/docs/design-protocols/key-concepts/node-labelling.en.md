@@ -5,7 +5,7 @@ navOrder: 13
 
 ## How a Node's Label Is Chosen
 
-Every node is shown with a label: on a sociogram, in a name generator's list, in a bin, and wherever a stage's text [pipes in](/en/design-protocols/key-concepts/piped-text) the **Node label**. The interview chooses the label for each node as follows:
+Every node is shown with a label: on a sociogram, in a name generator's list, in a bin, and wherever the **Node label** is [piped into](/en/design-protocols/key-concepts/piped-text) the wording of a stage. The label for each node is chosen as follows:
 
 1. If the node's type has a [dynamic label](#dynamic-labels), the node shows that label.
 2. Otherwise the node shows its default label, taken from the node's own data: an attribute named "name"; otherwise one whose name contains "name"; otherwise, for imported data, a column whose name contains "name" even if the [codebook](/en/design-protocols/key-concepts/codebook) does not list it; otherwise the first text attribute that has a value.
@@ -29,18 +29,18 @@ Dynamic labels work in Interviewer and in [Fresco](/en/collect-data/fresco/about
 
 ### Turning On a Dynamic Label
 
-1. In Architect, open the **Codebook** and edit the node type. You can also do this from a stage, when you create a node type or edit the one the stage uses.
+1. In Architect, open the **Codebook** and edit the node type. You can also do this from a stage, when you create a node type or edit the one that the stage uses.
 2. Switch on **Dynamic label**.
 3. Write the label in the **Label** field.
 4. Save the node type.
 
-Switching **Dynamic label** off again removes the label you wrote, and the node type goes back to its default label.
+Switching **Dynamic label** off again removes the label that you wrote, and the node type goes back to its default label.
 
 ### Writing the Label
 
 The label is a single line of text. You can type ordinary text and emoji, and insert two kinds of element from the field's toolbar.
 
-**Values, with the syringe button.** A value is a placeholder: on each node, the label shows that node's own value in its place. You can insert any attribute of the node type, or the **Default label**, which is the label the node would have had without a dynamic label. For example, a label of the default label followed by the node's age shows "Alice 34" on one node and "Bo 27" on another.
+**Values, with the syringe button.** A value is a placeholder: on each node, the label shows that node's own value in its place. You can insert any attribute of the node type, or the **Default label**, which is the label that the node would have had without a dynamic label. For example, a label of the default label followed by the node's age shows "Alice 34" on one node and "Bo 27" on another.
 
 An attribute may have no value for some nodes. When you insert one, select it in the label to write two versions of the text around it: one for when the value is known and one for when it is not. See [When information is missing](/en/design-protocols/key-concepts/piped-text#when-information-is-missing).
 
@@ -67,13 +67,13 @@ For example, to mark the best-connected person on a sociogram, write the default
 
 ### How Participants See a Dynamic Label
 
-Participants see only the finished label. It is shown wherever the node is drawn, and wherever a stage's text pipes in the node's label. The label is worked out again whenever the node's attributes or edges change, so it stays current as the interview goes on.
+Participants see only the finished label. It is shown wherever the node is drawn, and wherever the node's label is piped into the wording of a stage. The label is worked out again whenever the node's attributes or edges change, so it stays current as the interview goes on.
 
 A dynamic label changes only what is displayed. It is not stored with the node and is not exported: the node's attributes are exported as usual.
 
 ### Translating a Dynamic Label
 
-In a protocol with more than one language, a dynamic label is translated like any other text that shows values, in the [translation table](/en/design-protocols/tutorials/translating-your-protocol#the-translation-table). Its values and logic are kept in each translation, and the text of each case is translated.
+In a protocol with more than one language, a dynamic label is translated like any other translatable string that contains values, in the [translation table](/en/design-protocols/tutorials/translating-your-protocol#the-translation-table). Its values and logic are kept in each translation, and the wording of each case is translated.
 
 ### Protocols That Used a Node Label Worker
 

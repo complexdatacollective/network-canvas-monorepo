@@ -10,7 +10,7 @@ We welcome all code contributions, however small. These could take the form of b
 We will evaluate all requests to merge code into the main repositories according to the following criteria:
 
 1. Sustainability of proposed addition. It is essential that any contribution not hinder the overall sustainability of the project. Factors that may impact this include centralization, the use of paid third-party services, and the use of technologies that are obsolete or unmaintained.
-2. Maintainability of proposed addition. We must be capable of reasonably maintaining and upgrading the proposed addition. This means the contribution must be of a high technical quality, and must include accompanying technical documentation.
+2. Maintainability of proposed addition. We must be capable of reasonably maintaining and upgrading the proposed addition. This means that the contribution must be of a high technical quality, and must include accompanying technical documentation.
 3. General-purpose utility to Network Canvas end-users. The proposed addition must be of clear benefit to a significant element of our end-users. Features unique to individual research projects or experiments do not make good candidates for inclusion in the main repositories.
 4. Alignment with product purpose. The proposed addition must offer a meaningful enhancement to the tool for its intended purpose, which is to simplify complex network data collection.
 

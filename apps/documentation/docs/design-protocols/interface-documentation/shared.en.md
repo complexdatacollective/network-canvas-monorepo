@@ -13,7 +13,7 @@ Some configuration options are available to all or most interface screens (depen
 
 Beside the stage editor, Architect lists the stage's sections. Choose a section in the list to jump to it. Each entry is marked with a color and icon showing its state — finished, not finished, has a problem, switched off, or not available yet (a section that can't be filled in until something else on the stage has been chosen) — so you can see at a glance which parts of the stage still need attention. Screen readers announce the same state after the section's name. On a narrow screen, the list appears above the editor instead of beside it.
 
-If you try to save a stage that isn't finished, Architect doesn't save it and lists each problem above the form, naming the section it is in, as well as marking the problem next to the control that holds it.
+If you try to save a stage that isn't finished, Architect doesn't save it and lists each problem above the form, naming the section it is in, as well as marking the problem next to the control that it concerns.
 
 </AppOnly>
 

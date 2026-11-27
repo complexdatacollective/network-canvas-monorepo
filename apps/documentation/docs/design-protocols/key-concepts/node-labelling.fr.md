@@ -1,12 +1,12 @@
 ---
 title: Libellés des nœuds
 navOrder: 13
-translatedFrom: 44a0a050e6dfe7dcd627e657ba22133aae96cae4
+translatedFrom: 08eae4fcaf4a3eacc466cd5cf94b46c4257fa1bf
 ---
 
 ## Comment le libellé d’un nœud est choisi {#how-a-nodes-label-is-chosen}
 
-Chaque nœud est affiché avec un libellé : sur un sociogramme, dans la liste d’un générateur de noms, dans une case, et partout où le texte d’une étape [insère](/fr/design-protocols/key-concepts/piped-text) le **Libellé du nœud**. L’entretien choisit le libellé de chaque nœud de la façon suivante :
+Chaque nœud est affiché avec un libellé : sur un sociogramme, dans la liste d’un générateur de noms, dans une case, et partout où le **Libellé du nœud** est [inséré](/fr/design-protocols/key-concepts/piped-text) dans la formulation d’une étape. Le libellé de chaque nœud est choisi de la façon suivante :
 
 1. Si le type du nœud a un [libellé dynamique](#dynamic-labels), le nœud affiche ce libellé.
 2. Sinon, le nœud affiche son libellé par défaut, tiré des données propres au nœud : un attribut nommé « name » ; à défaut, un attribut dont le nom contient « name » ; à défaut, pour des données importées, une colonne dont le nom contient « name », même si le [livre de codes](/fr/design-protocols/key-concepts/codebook) ne la mentionne pas ; à défaut, le premier attribut de type texte qui a une valeur.
@@ -68,13 +68,13 @@ Par exemple, pour signaler la personne la mieux connectée sur un sociogramme, r
 
 ### Comment les personnes participantes voient un libellé dynamique {#how-participants-see-a-dynamic-label}
 
-Les personnes participantes ne voient que le libellé final. Il s’affiche partout où le nœud est dessiné, et partout où le texte d’une étape insère le libellé du nœud. Le libellé est recalculé chaque fois que les attributs ou les liens du nœud changent : il reste donc à jour tout au long de l’entretien.
+Les personnes participantes ne voient que le libellé final. Il s’affiche partout où le nœud est dessiné, et partout où le libellé du nœud est inséré dans la formulation d’une étape. Le libellé est recalculé chaque fois que les attributs ou les liens du nœud changent : il reste donc à jour tout au long de l’entretien.
 
 Un libellé dynamique ne change que ce qui est affiché. Il n’est pas enregistré avec le nœud et n’est pas exporté : les attributs du nœud sont exportés comme d’habitude.
 
 ### Traduire un libellé dynamique {#translating-a-dynamic-label}
 
-Dans un protocole en plusieurs langues, un libellé dynamique se traduit comme tout autre texte qui affiche des valeurs, dans le [tableau des traductions](/fr/design-protocols/tutorials/translating-your-protocol#the-translation-table). Ses valeurs et sa logique sont conservées dans chaque traduction, et le texte de chaque cas est traduit.
+Dans un protocole en plusieurs langues, un libellé dynamique se traduit comme toute autre chaîne traduisible qui contient des valeurs, dans le [tableau des traductions](/fr/design-protocols/tutorials/translating-your-protocol#the-translation-table). Ses valeurs et sa logique sont conservées dans chaque traduction, et la formulation de chaque cas est traduite.
 
 ### Protocoles qui utilisaient un script de libellés de nœuds {#protocols-that-used-a-node-label-worker}
 

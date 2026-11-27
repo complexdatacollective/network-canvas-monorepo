@@ -11,7 +11,7 @@ navOrder: 9
 
 </InterfaceSummary>
 
-The Sociogram and the [Narrative](/en/design-protocols/interface-documentation/narrative) are Network Canvas's two canvas-based visualization interfaces. On the Sociogram, participants build the spatial picture of their network — positioning alters on a canvas and drawing the ties between them. The Narrative is its display-only companion: it replays a network the participant has already laid out for open, researcher-led discussion, without collecting new data.
+The Sociogram and the [Narrative](/en/design-protocols/interface-documentation/narrative) are Network Canvas's two canvas-based visualization interfaces. On the Sociogram, participants build the spatial picture of their network — positioning alters on a canvas and drawing the ties between them. The Narrative is its display-only companion: it replays a network that the participant has already laid out for open, researcher-led discussion, without collecting new data.
 
 When using the Sociogram, participants position their alters and draw ties between them. The interface can create one or more edge types between alters, and can collect boolean attribute data by highlighting alters where a variable's value is true.
 
@@ -21,7 +21,7 @@ A Sociogram is built from one or more [prompts](/en/design-protocols/key-concept
 
 ### The layout variable
 
-Every prompt has a **layout variable**, which stores each node's position on the canvas as a pair of coordinates. This is where the spatial data you collect on the Sociogram is recorded.
+Every prompt has a **layout variable**, which stores each node's position on the canvas as a pair of coordinates. This is where the spatial data that you collect on the Sociogram is recorded.
 
 If you use the same layout variable across all of a stage's prompts, a node's position carries over as the participant moves between tasks, so they refine one shared arrangement. If you want separate spatial measures, give each prompt a different layout variable — reusing a variable replaces the earlier coordinates. Positions are stored as normalized coordinates that a [responsive SVG background](/en/design-protocols/tutorials/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) can turn into meaningful regions during analysis.
 
@@ -44,9 +44,9 @@ Consider customizing the background to orient participants to the activity or to
 
 ### Creating and displaying edges
 
-Tapping a node can let the participant draw ties. On a prompt configured for **edge creation**, tapping one node and then another creates an edge of the chosen type between them; tapping the pair again removes it. Each edge-creation prompt creates a single edge type, so use a separate prompt for each kind of relationship you want to collect.
+Tapping a node can let the participant draw ties. On a prompt configured for **edge creation**, tapping one node and then another creates an edge of the chosen type between them; tapping the pair again removes it. Each edge-creation prompt creates a single edge type, so use a separate prompt for each kind of relationship that you want to collect.
 
-Independently, a prompt can **display** one or more edge types, which is useful for showing ties the participant drew on an earlier prompt while they work on a new task. The edge type a prompt creates is always displayed on that prompt. Where two nodes are connected by more than one displayed edge type, only one of those edges is drawn.
+Independently, a prompt can **display** one or more edge types, which is useful for showing ties that the participant drew on an earlier prompt while they work on a new task. The edge type that a prompt creates is always displayed on that prompt. Where two nodes are connected by more than one displayed edge type, only one of those edges is drawn.
 
 ![Two alters connected by an edge on the Sociogram](/assets/img/interface-documentation/sociogram/sociogram-edges.png)
 
@@ -62,7 +62,7 @@ Edge creation and attribute toggling are the two tap behaviors, and a single pro
 
 ### Pause and resume tooltips
 
-The tooltips of the pause and resume buttons for the automatic layout simulation are [interview text](/en/design-protocols/tutorials/translating-your-protocol#interview-text), shared with the Narrative stage, so the stage editor has no section for them. They are reworded and translated in the translation table under **Buttons**, and a protocol holds them only while a stage uses automatic layout.
+The tooltips of the pause and resume buttons for the automatic layout simulation are [interview text](/en/design-protocols/tutorials/translating-your-protocol#interview-text), shared with the Narrative stage, so the stage editor has no section for them. They are reworded and translated in the translation table under **Buttons**, and a protocol contains them only while a stage uses automatic layout.
 
 </AppOnly>
 
@@ -70,7 +70,7 @@ The tooltips of the pause and resume buttons for the automatic layout simulation
 
 <GoodPractice>
 
-Keep the same layout variable across a stage's prompts when you want participants to build up one arrangement of their network, so the positions they set on an early prompt are still there on later ones.
+Keep the same layout variable across a stage's prompts when you want participants to build up one arrangement of their network, so that the positions that they set on an early prompt are still there on later ones.
 
 </GoodPractice>
 

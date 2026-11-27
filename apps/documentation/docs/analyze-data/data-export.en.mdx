@@ -17,7 +17,7 @@ The export process transforms your interview data—including ego attributes, al
 
 ## Where to export from
 
-This page describes what Network Canvas exports contain, regardless of which application produced them. The steps for actually running an export differ by application — Interviewer and Interviewer Classic store data on the device and export it as files you keep, while Fresco stores data centrally and exports from its dashboard. Each application's own guide walks through its export workflow:
+This page describes what Network Canvas exports contain, regardless of which application produced them. The steps for actually running an export differ by application — Interviewer and Interviewer Classic store data on the device and export it as files that you keep, while Fresco stores data centrally and exports from its dashboard. Each application's own guide walks through its export workflow:
 
 - **Interviewer** — see [Using Interviewer](/en/collect-data/interviewer/using-interviewer#resuming-exporting-and-managing-interview-sessions)
 - **Interviewer Classic** — see [Interviewer Online and Offline Workflows](/en/collect-data/interviewer-online-and-offline-workflows#exporting-data-to-a-cloud-file-sharing-service)
@@ -49,7 +49,7 @@ The CSV export creates separate files for each entity type in your protocol:
 - **One row** for the interview's ego (participant)
 - **Filename format:** `caseID_sessionUUID_ego.csv` (see [How export files are named](#how-export-files-are-named))
 - **Contains:**
-  - Ego-level variables you collected
+  - Ego-level variables that you collected
   - Session metadata (start time, finish time, protocol name, etc.)
   - How the interview ended (see [How the interview ended](#how-the-interview-ended))
   - Network Canvas identifiers (ego UUID, case ID, session ID)
@@ -68,7 +68,7 @@ The identifier and session columns always come first, in this order, followed by
 - **One row per alter** (nominated node)
 - **Filename format:** `caseID_sessionUUID_attributeList_nodeType.csv`, where `nodeType` is the node type's name as written in your codebook, in any language
 - **Contains:**
-  - All alter attributes you collected
+  - All alter attributes that you collected
   - Network Canvas identifiers (alter UUID, ego UUID)
   - A `nodeID` number that identifies the alter only within this interview
 
@@ -91,7 +91,7 @@ nodeID,networkCanvasEgoUUID,networkCanvasUUID,name,age,close_friend,contact_freq
 - **One row per edge** (relationship between alters)
 - **Filename format:** `caseID_sessionUUID_edgeList_edgeType.csv`, where `edgeType` is the edge type's name as written in your codebook
 - **Contains:**
-  - Edge attributes you collected
+  - Edge attributes that you collected
   - Source and target identifiers (both UUID and export ID)
   - Link to ego network (`networkCanvasEgoUUID`)
 
@@ -104,9 +104,9 @@ edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,ne
 
 **Important notes:**
 
-- The `from` and `to` columns hold the `nodeID` of the two alters the edge connects. `networkCanvasSourceUUID` and `networkCanvasTargetUUID` hold their `networkCanvasUUID`
+- The `from` and `to` columns contain the `nodeID` of the two alters that the edge connects. `networkCanvasSourceUUID` and `networkCanvasTargetUUID` contain their `networkCanvasUUID`
 - Each edge type gets its own file. The edge type is in the file name, not in a column
-- If the interview has no edges at all, the export still writes one edge file, `caseID_sessionUUID_edgeList.csv`, that holds only the header row
+- If the interview has no edges at all, the export still writes one edge file, `caseID_sessionUUID_edgeList.csv`, that contains only the header row
 
 #### Why some values start with an apostrophe
 
@@ -218,10 +218,10 @@ Names that are already valid, such as `close_friend` or `género`, are written u
 
 #### Characters removed from GraphML files
 
-XML, the format GraphML is built on, can't store some invisible control characters, such as the null character. Tabs and line breaks are fine. These characters can end up in an answer when a participant pastes text copied from other software. The GraphML export removes them, and shows a warning (see [Export warnings](#export-warnings)):
+XML, the format on which GraphML is built, can't store some invisible control characters, such as the null character. Tabs and line breaks are fine. These characters can end up in an answer when a participant pastes text copied from other software. The GraphML export removes them, and shows a warning (see [Export warnings](#export-warnings)):
 
 - When an answer contains one, the warning is titled "Some characters were removed from the GraphML files". It lists each affected interview by its case ID, or by its session ID if it has no case ID, with the variables whose answers lost characters. The list includes "Case ID" if the case ID itself contained such a character.
-- When the protocol's own text contains one, in the protocol's name, a node or edge type's name, or a column name such as a variable's name, the warning is titled "Some characters were removed from protocol text in the GraphML files". Because these characters are invisible, it names each one by its Unicode code point, such as U+0007.
+- When the protocol's name, a node or edge type's name, or a column name such as a variable's name contains one, the warning is titled "Some characters were removed from protocol text in the GraphML files". Because these characters are invisible, it names each one by its Unicode code point, such as U+0007.
 
 CSV files keep every answer exactly as it was entered, so use the CSV export if you need the original text.
 
@@ -240,7 +240,7 @@ CSV files keep every answer exactly as it was entered, so use the CSV export if 
 
 ### How the interview ended
 
-Every export records how each interview ended: the outcome you chose on the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) the interview ended at. Participants never see it.
+Every export records how each interview ended: the outcome you chose on the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) at which the interview ended. Participants never see it.
 
 - **CSV:** the ego file has a `networkCanvasFinishOutcome` column. It comes after `APP_VERSION` and `COMMIT_HASH`, and before your ego variables.
 - **GraphML:** the `<graph>` element has an `nc:finishOutcome` attribute.
@@ -259,7 +259,7 @@ Because the export writes this column itself, Architect won't let an ego variabl
 
 ### How export files are named
 
-Every file name starts with the interview's case ID and session ID. CSV file names also say what the file holds:
+Every file name starts with the interview's case ID and session ID. CSV file names also say what the file contains:
 
 | File                                      | Name                                            |
 | ----------------------------------------- | ----------------------------------------------- |
@@ -285,16 +285,16 @@ The export never merges two columns into one. When two columns in the same file 
 - the variable that comes first in your codebook keeps the name
 - each later column is renamed with the first free suffix of `_2`, `_3`, and so on, such as `support_emotional_2`
 
-Names that differ only in capitalization, such as `Age` and `age`, are not renamed. When the export renames a column, it shows a warning titled "Some columns were given new names", which lists each renamed column, the file format, and the name it was written as (see [Export warnings](#export-warnings)).
+Names that differ only in capitalization, such as `Age` and `age`, are not renamed. When the export renames a column, it shows a warning titled "Some columns were given new names", which lists each renamed column, the file format, and the name under which it was written (see [Export warnings](#export-warnings)).
 
 ### Export warnings
 
-An export can finish with warnings about changes it made to your data. The export still succeeds. There are three kinds of warning, each with its own title:
+An export can finish with warnings about changes that it made to your data. The export still succeeds. There are three kinds of warning, each with its own title:
 
 | Warning                                                                | What happened                                                                                                                                    |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | "Some characters were removed from the GraphML files"                  | Some answers contained characters that GraphML can't store. See [Characters removed from GraphML files](#characters-removed-from-graphml-files). |
-| "Some characters were removed from protocol text in the GraphML files" | The protocol's own text, such as its name or a node type's name, contained such characters.                                                      |
+| "Some characters were removed from protocol text in the GraphML files" | A name in the protocol, such as the protocol's name or a node type's name, contained such characters.                                            |
 | "Some columns were given new names"                                    | Two columns in the same file would have had the same name. See [Column names that clash](#column-names-that-clash).                              |
 
 Each warning lists exactly what was affected. Where you see the warnings depends on the app:
@@ -326,7 +326,7 @@ This option adds screen-specific pixel coordinates alongside the normalized node
 
 Network Canvas stores node positions from Sociogram layout variables as normalized x/y coordinates (values between 0 and 1) with the origin at the top-left. This normalization allows layouts to be displayed on screens of different sizes while maintaining relative positions.
 
-A layout variable is exported as two CSV columns named after the variable, with `_x` and `_y` suffixes—a layout variable named `layout` produces `layout_x` and `layout_y` columns containing the normalized values. When this option is enabled, the export keeps those normalized columns and **adds** two further columns, `layout_screenSpaceX` and `layout_screenSpaceY`, containing pixel values (rounded to two decimal places) based on a screen size. In Interviewer, it uses the screen layout width and height you set in **Settings → Data export** (default 1920 x 1080 pixels). In Interviewer Classic, it uses the screen dimensions configured in its export settings, which default to — and can be reset to — the device's own resolution. In Fresco, it uses a fixed size of 1920 x 1080 pixels. When disabled (the default), only the normalized 0-1 columns are exported. Note that the screen-space Y value is calculated as (1 − y) × screen height, so it is measured from the bottom of the screen—matching the coordinate convention of most visualization software—while the normalized `_y` column is measured from the top.
+A layout variable is exported as two CSV columns named after the variable, with `_x` and `_y` suffixes—a layout variable named `layout` produces `layout_x` and `layout_y` columns containing the normalized values. When this option is enabled, the export keeps those normalized columns and **adds** two further columns, `layout_screenSpaceX` and `layout_screenSpaceY`, containing pixel values (rounded to two decimal places) based on a screen size. In Interviewer, it uses the screen layout width and height that you set in **Settings → Data export** (default 1920 x 1080 pixels). In Interviewer Classic, it uses the screen dimensions configured in its export settings, which default to — and can be reset to — the device's own resolution. In Fresco, it uses a fixed size of 1920 x 1080 pixels. When disabled (the default), only the normalized 0-1 columns are exported. Note that the screen-space Y value is calculated as (1 − y) × screen height, so it is measured from the bottom of the screen—matching the coordinate convention of most visualization software—while the normalized `_y` column is measured from the top.
 
 Enable this option when you want to recreate the exact visual layout as it appeared during the interview, when you're importing into visualization software that expects pixel coordinates, or when you need coordinates that match specific screen dimensions. Disable it when you want device-independent coordinates that work on any canvas size, when you're comparing layouts created on different screen sizes, or when you want maximum flexibility for visualization.
 
@@ -365,7 +365,7 @@ Creator](/en/design-protocols/tutorials/responsive-svg-backgrounds#use-the-backg
 and defined zones there, leave **Use screen layout coordinates** disabled: its
 exported Python or R zone-assignment script reads the normalized
 `<layoutVariable>_x` / `<layoutVariable>_y` columns, which are exported by
-default, and adds a categorical variable naming the zone each node falls in,
+default, and adds a categorical variable naming the zone in which each node falls,
 so you do not have to write that classification by hand.
 
 ### Additional export considerations
@@ -374,7 +374,7 @@ so you do not have to write that classification by hand.
 
 - `networkCanvasEgoUUID` - Unique ego identifier across all sessions
 - `networkCanvasUUID` - Unique alter identifier
-- `networkCanvasCaseID` - Case identifier you provided or auto-generated
+- `networkCanvasCaseID` - Case identifier that you provided, or one generated automatically
 - `networkCanvasSessionID` - Unique session identifier
 
 These identifiers allow you to:
@@ -465,7 +465,7 @@ Network Canvas handles missing data as follows:
 
 ### Opening CSV files
 
-Network Canvas writes CSV files as UTF-8 without a byte order mark (BOM), the form most analysis software expects. The files can hold names and answers in any language.
+Network Canvas writes CSV files as UTF-8 without a byte order mark (BOM), the form most analysis software expects. The files can contain names and answers in any language.
 
 **Microsoft Excel:** When you double-click a CSV file, Excel only reads it as UTF-8 if it starts with a byte order mark. Otherwise accented letters and other scripts look garbled, for example `gÃ©nero` instead of `género`. The data in the file is fine. Import the file instead of double-clicking it ([Microsoft's guidance](https://support.microsoft.com/en-us/excel/opening-csv-utf-8-files-correctly-in-excel)):
 
@@ -609,7 +609,7 @@ G.edges(data=True)   # edges with their attributes
 ### During data collection
 
 1. **Export frequently:** Don't wait until all interviews are complete
-2. **Test exports early:** Export test data to verify format meets your needs
+2. **Test exports early:** Export test data to verify that the format meets your needs
 3. **Verify data structure:** Check that all expected variables appear in exports
 4. **Document your protocol:** Keep notes on variable names and their meanings
 
@@ -646,7 +646,7 @@ G.edges(data=True)   # edges with their attributes
 **Problem: Exported files are empty**
 
 - **Cause:** No data collected for that entity type
-- **Solution:** Verify your protocol collected the expected data; check that interviews were completed
+- **Solution:** Verify that your protocol collected the expected data; check that interviews were completed
 
 **Problem: Can't find exported files**
 
@@ -666,7 +666,7 @@ G.edges(data=True)   # edges with their attributes
 
 **Problem: A warning says characters were removed from the GraphML files**
 
-- **Cause:** Some answers, or the protocol's own text, contained invisible control characters that GraphML can't store
+- **Cause:** Some answers, or names in the protocol, contained invisible control characters that GraphML can't store
 - **Solution:** The CSV files keep those answers unchanged. See [Characters removed from GraphML files](#characters-removed-from-graphml-files)
 
 **Problem: A warning says some columns were given new names**
@@ -677,7 +677,7 @@ G.edges(data=True)   # edges with their attributes
 **Problem: Missing variables in export**
 
 - **Cause:** Variables defined but not used on any stages, or validation prevented completion
-- **Solution:** Verify variables are actually used in protocol; check that forms were completed
+- **Solution:** Verify that variables are actually used in the protocol; check that forms were completed
 
 **Problem: Alter IDs don't match between files**
 
@@ -714,13 +714,13 @@ After exporting, verify:
 - [Interviewer Online and Offline Workflows](/en/collect-data/interviewer-online-and-offline-workflows) - Deploying protocols to devices and collecting their data, with or without internet
 - [Using Fresco](/en/collect-data/fresco/using-fresco) - Export data from Fresco-based studies
 - [Working with Data in R](/en/analyze-data/working-with-data) - Detailed tutorial on analyzing Network Canvas data in R
-- [Variables](/en/design-protocols/key-concepts/variables) - Understanding the variables you'll see in exports
+- [Variables](/en/design-protocols/key-concepts/variables) - Understanding the variables that you'll see in exports
 
 ## Next steps
 
 Now that you understand data export, you can:
 
-1. Export test data from a sample interview to verify format
+1. Export test data from a sample interview to verify the format
 2. Practice importing exported data into your analysis software
 3. Review the [Working with Data tutorial](/en/analyze-data/working-with-data) for R analysis workflows
 4. Plan your data organization strategy for your study

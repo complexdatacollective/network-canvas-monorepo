@@ -11,7 +11,7 @@ date: 5th October 2026
 
 ## Overview
 
-Variables are the fundamental data elements in Network Canvas protocols. Every piece of information you collect—from an alter's name to the strength of a relationship—is stored in a variable. Understanding variables is essential for designing effective protocols and working with your exported data.
+Variables are the fundamental data elements in Network Canvas protocols. Every piece of information that you collect—from an alter's name to the strength of a relationship—is stored in a variable. Understanding variables is essential for designing effective protocols and working with your exported data.
 
 When you create a protocol in Architect, you define variables by:
 
@@ -58,7 +58,7 @@ Layout variables store the x/y position of nodes on Sociogram interfaces. There 
 
 ### Location
 
-Location variables store the geospatial area a participant selects for an alter on the [Geospatial interface](/en/design-protocols/interface-documentation/geospatial). Like layout variables, a Location variable has no input control of its own; although it appears in the variable type list, there is little reason to add one there on its own. In practice Architect creates one when you configure the "Selection Variable" of a Geospatial stage (you can pick an existing Location variable or create a new one inline). The selected area is recorded against the GeoJSON shapefile that defines the map.
+Location variables store the geospatial area that a participant selects for an alter on the [Geospatial interface](/en/design-protocols/interface-documentation/geospatial). Like layout variables, a Location variable has no input control of its own; although it appears in the variable type list, there is little reason to add one there on its own. In practice Architect creates one when you configure the "Selection Variable" of a Geospatial stage (you can pick an existing Location variable or create a new one inline). The selected area is recorded against the GeoJSON shapefile that defines the map.
 
 ## How variables work
 
@@ -118,7 +118,7 @@ When configuring bins:
 
 <AppOnly app="current">
 
-In Architect, the answer options of a categorical or ordinal attribute are edited directly under the attribute you chose, wherever you choose one: a bin prompt, a form field, a tie-strength prompt or a Network Composer row. They are saved by the same button that saves the rest of the prompt or field. A boolean attribute's two labels are edited the same way. Option labels accept **bold** and _italic_ text, which participants see as emphasis, and nothing else — a label can't contain headings, links or lists. An attribute whose options belong to an interface is shown read-only, with a note saying why.
+In Architect, the answer options of a categorical or ordinal attribute are edited directly under the attribute that you chose, wherever you choose one: a bin prompt, a form field, a tie-strength prompt or a Network Composer row. They are saved by the same button that saves the rest of the prompt or field. A boolean attribute's two labels are edited the same way. Option labels accept **bold** and _italic_ text, which participants see as emphasis, and nothing else — a label can't contain headings, links or lists. An attribute whose options belong to an interface is shown read-only, with a note saying why.
 
 </AppOnly>
 
@@ -144,7 +144,7 @@ Some variables are created automatically:
 
 ## Variable naming best practices
 
-A variable's name is how it appears in the codebook, and it becomes the column name in your exported data. This section covers what a name can contain, the names Architect refuses because they would clash in exported data, and some advice on choosing names that are easy to analyze.
+A variable's name is how it appears in the codebook, and it becomes the column name in your exported data. This section covers what a name can contain, the names refused by Architect because they would clash in exported data, and some advice on choosing names that are easy to analyze.
 
 ### What a name can contain
 
@@ -185,7 +185,7 @@ Most variables are exported as a single column named after the variable, but two
 - A **categorical** variable gets one column for each option, named `variable_option`. A variable `support` with the options `emotional` and `financial` gets the columns `support_emotional` and `support_financial`.
 - A **layout** variable gets one column for each coordinate: `_x` and `_y` in CSV files, `_X` and `_Y` in GraphML files, and `_screenSpaceX` and `_screenSpaceY` when screen layout coordinates are exported.
 
-This means two different names can still produce the same column. Architect checks for this whenever you name a variable, add an option, or change an option's value, and it explains which column would clash. As with duplicate names, capitalization is ignored. The check covers CSV and GraphML, including the screen layout columns, because you choose names long before you choose export options.
+This means that two different names can still produce the same column. Architect checks for this whenever you name a variable, add an option, or change an option's value, and it explains which column would clash. As with duplicate names, capitalization is ignored. The check covers CSV and GraphML, including the screen layout columns, because you choose names long before you choose export options.
 
 Architect refuses a name or option in each of these situations:
 
@@ -278,7 +278,7 @@ You can change the input control (if compatible with variable type), validation 
 
 To rename an attribute, open the [Codebook](/en/design-protocols/key-concepts/codebook) and click the attribute's name in the list of attributes, or focus it and press Enter or Space. Attributes can't be renamed from a stage editor. A box opens containing the current name; type the new name and click **Save Changes**. The new name follows the same rules as any other name: see [What a name can contain](#what-a-name-can-contain) and [Names that would clash in exported data](#names-that-would-clash-in-exported-data). Cancelling, pressing Escape, or clicking away keeps the old name. Stages that use the attribute keep using it under its new name, but remember that the name becomes the column name in exported data.
 
-Changes you make to the codebook while a stage is open — creating an attribute or editing its options or validation rules — are written to the codebook straight away. They are kept even if you then cancel your edits to the stage, because an attribute belongs to every stage that uses it rather than to the stage you are editing.
+Changes that you make to the codebook while a stage is open — creating an attribute or editing its options or validation rules — are written to the codebook straight away. They are kept even if you then cancel your edits to the stage, because an attribute belongs to every stage that uses it rather than to the stage that you are editing.
 
 To change the variable type, create a new variable with the desired settings, replace the old variable with the new one on all stages, and delete the old variable from the codebook.
 
@@ -306,7 +306,7 @@ You can only delete unused variables:
 
 ### CSV export structure
 
-Each CSV file starts with identifier columns that link the files together, followed by one or more columns for each variable. Most variables get one column. A categorical variable gets one column per option, named `variable_option` and holding `true` or `false`, so the `gender` variable below becomes three columns.
+Each CSV file starts with identifier columns that link the files together, followed by one or more columns for each variable. Most variables get one column. A categorical variable gets one column per option, named `variable_option` and containing `true` or `false`, so the `gender` variable below becomes three columns.
 
 **Ego file:** one row per interview, with the session details and then the ego variables
 
@@ -323,7 +323,7 @@ nodeID,networkCanvasEgoUUID,networkCanvasUUID,name,age,close_friend
 2,abc123,uvw456,Sarah,29,false
 ```
 
-**Edge files:** one row per edge, with its edge variables. `from` and `to` hold the `nodeID` of the two alters it connects.
+**Edge files:** one row per edge, with its edge variables. `from` and `to` contain the `nodeID` of the two alters that it connects.
 
 ```csv
 edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,relationship_strength,frequency
@@ -340,7 +340,7 @@ Variable names in your protocol become column names in exported data:
 - Categorical variables → one column per option, named `variable_option` with `true`/`false` values
 - Layout variables → columns named after the variable with `_x` and `_y` suffixes (e.g. `my_layout_x` and `my_layout_y`)
 
-CSV files use each name exactly as it appears in the codebook, including any spaces, punctuation, or letters from other languages. GraphML attribute names can't hold spaces or most punctuation, so a variable named `contact frequency (per week)` becomes `contact_frequency__per_week_` in a GraphML file, and the original name is kept alongside it. See [GraphML attribute names](/en/analyze-data/data-export#graphml-attribute-names).
+CSV files use each name exactly as it appears in the codebook, including any spaces, punctuation, or letters from other languages. GraphML attribute names can't contain spaces or most punctuation, so a variable named `contact frequency (per week)` becomes `contact_frequency__per_week_` in a GraphML file, and the original name is kept alongside it. See [GraphML attribute names](/en/analyze-data/data-export#graphml-attribute-names).
 
 <AppOnly app="current">
 

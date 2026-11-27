@@ -81,7 +81,7 @@ Illustrator, or write the file by hand. A file needs to follow a few rules.
   polygons, text, groups, gradients, clipping paths, and masks are all
   supported.
 
-Architect leaves out anything a node shape can't use: scripts, embedded images,
+Architect leaves out anything that a node shape can't use: scripts, embedded images,
 style sheets, filters, animations, and links or references to other files. When
 this happens, a notice under the shape lists what was left out. Check the
 preview, because a drawing that relied on one of these may look different.
@@ -128,7 +128,7 @@ text color. To choose where it goes, add a rectangle with the id `label-area`:
 <rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
 ```
 
-The rectangle is never drawn. Its position and size set the space the label may
+The rectangle is never drawn. Its position and size set the space that the label may
 use, and its `fill` sets the color of the label. Choose a fill that contrasts
 with whatever is drawn behind the label.
 
@@ -149,7 +149,7 @@ banner, you can let it grow with the label. Give that rectangle the id
 ```
 
 Unlike the label area, the label plate is drawn. When a label needs more lines
-than the label area holds, Network Canvas makes the plate taller, extending it
+than fit in the label area, Network Canvas makes the plate taller, extending it
 downwards, to fit up to four lines. Longer labels end in an ellipsis as before.
 
 A label plate must be a `rect` with a numeric `height`. It can't be rotated or
@@ -160,7 +160,7 @@ when the shape also has a label area.
 
 A plate that has grown extends below the shape. Leave a little space under the
 drawing's baseline if you expect long labels, and test with the longest labels
-you anticipate in [Preview Mode](/en/design-protocols/preview-mode).
+that you anticipate in [Preview Mode](/en/design-protocols/preview-mode).
 
 </TipBox>
 

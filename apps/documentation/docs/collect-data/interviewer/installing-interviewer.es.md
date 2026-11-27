@@ -3,7 +3,7 @@ title: Instalar Interviewer
 navOrder: 1
 toc: true
 date: 5th October 2026
-translatedFrom: 3f43b237910cc4a2cfceec8a6203a97714136b12
+translatedFrom: b7a1ac81479e33d5610a3a5fa8d4a1618ed15176
 ---
 
 Interviewer ejecuta tus protocolos de Network Canvas y recopila datos sobre el terreno. Para usarlo no necesitas ninguna de las otras aplicaciones de Network Canvas.

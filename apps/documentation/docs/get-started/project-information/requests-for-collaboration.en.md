@@ -46,7 +46,7 @@ Depending on the intended collaboration, one of the following will apply:
 
 - Individual Consultancy
   - Individual consultation agreements between a single member of our team and an external partner may be appropriate when the scope of collaboration is limited to a single activity that does not require involvement of more than one member (e.g., a limited scope software development request).
-  - Consultation agreement would be established between the member of the team and the external partner directly.
+  - A consultation agreement would be established between the member of the team and the external partner directly.
 
 All paid collaborations are considered based on the following:
 
