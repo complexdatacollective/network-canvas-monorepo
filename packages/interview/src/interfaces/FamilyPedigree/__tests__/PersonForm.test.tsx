@@ -13,6 +13,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import {
   asEntityAttributeReference,
   type FormField,
+  printContentDocument,
 } from '@codaco/protocol-validation';
 import { formOf } from '@codaco/protocol-validation/testing';
 import {
@@ -101,6 +102,8 @@ type Setup = {
   /** Overrides the codebook's definition of the nickname variable. */
   nicknameVariable?: Record<string, unknown>;
   formFields?: FormField[];
+  /** The researcher's form's text, in place of one that places each field. */
+  formContent?: string;
   /** Each encrypted name decrypted, by person id. */
   decryptedNames?: ReadonlyMap<string, string>;
   optionLabels?: OwnedOptionLabels;
@@ -126,6 +129,7 @@ function renderPersonForm(
     nameValidation,
     nicknameVariable = {},
     formFields = [],
+    formContent,
     decryptedNames = new Map(),
     optionLabels = OPTION_LABELS,
     submitted = Promise.resolve({ success: true }),
@@ -140,10 +144,13 @@ function renderPersonForm(
       ? undefined
       : {
           fields: formFields,
-          content: {
-            ...formOf(formFields).content,
-            ...formOf(formFields, { locale: protocolLocale }).content,
-          },
+          content:
+            formContent === undefined
+              ? {
+                  ...formOf(formFields).content,
+                  ...formOf(formFields, { locale: protocolLocale }).content,
+                }
+              : { en: formContent },
         };
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -464,6 +471,37 @@ describe('the person form', () => {
 
     expect(await screen.findByText('Must be unique.')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  // The name is asked by the panel itself, beside the researcher's fields,
+  // and its rules can name one of them. A field that logic hides has no
+  // answer while it is hidden, as saving leaves it: its stored answer, which
+  // saving clears, is never compared with in its place.
+  it('compares a name with a hidden researcher question as unanswered', async () => {
+    const { onSubmit, user } = renderPersonForm('sis', {
+      nodes: [person('sis', { name: 'Bea', nickname: 'Bea', sex: ['female'] })],
+      nameValidation: { differentFrom: NICKNAME },
+      formFields: [nicknameField],
+      // The nickname is asked only of the participant.
+      formContent: printContentDocument([
+        {
+          kind: 'logic',
+          logic: {
+            kind: 'participant',
+            participant: [{ kind: 'field', fieldId: nicknameField.id }],
+            otherwise: [],
+          },
+        },
+      ]),
+    });
+    expect(nameField()).toHaveValue('Bea');
+    expect(screen.queryByRole('textbox', { name: /Nickname/ })).toBeNull();
+
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const [result] = onSubmit.mock.calls[0] ?? [];
+    expect(result?.unset).toContain(NICKNAME);
   });
 
   // #2150: a researcher field is validated by the shared protocol form, which

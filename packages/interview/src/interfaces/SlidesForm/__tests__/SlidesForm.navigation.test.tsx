@@ -883,6 +883,7 @@ describe('SlidesForm moving on from a complete form', () => {
     saveTakes = 0,
     headerPlacement: 'top' | 'start' = 'top',
     slideForm: TitlelessForm = closenessForm,
+    nameValidation?: Record<string, string>,
   ) {
     const alterStage = {
       id: 'alter-form',
@@ -923,6 +924,12 @@ describe('SlidesForm moving on from a complete form', () => {
                     ],
                   },
                   [NOTE_VAR]: { name: 'Note', type: 'text', component: 'Text' },
+                  [NAME_VAR]: {
+                    name: 'Name',
+                    type: 'text',
+                    component: 'Text',
+                    ...(nameValidation && { validation: nameValidation }),
+                  },
                 },
               },
             },
@@ -1138,6 +1145,71 @@ describe('SlidesForm moving on from a complete form', () => {
       set: { [CLOSENESS_VAR]: 1 },
       unset: [NOTE_VAR],
     });
+  });
+
+  // A rule on a question that is shown can name a question that logic
+  // hides, which has no answer while it is hidden: its stored answer, which
+  // saving clears, is never compared with in its place.
+  it('saves a person whose answer a rule compares with a hidden question as unanswered', async () => {
+    const closeness = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: CLOSENESS_VAR,
+    });
+    const comparingForm: TitlelessForm = {
+      content: {
+        en: [
+          fieldBlockMarkdown(testId('field-1')),
+          `{${closeness}, select, missing {} ${optionCaseKey(VERY_CLOSE)} {${fieldBlockMarkdown(testId('field-2'))}} other {}}`,
+          fieldBlockMarkdown(testId('field-3')),
+        ].join('\n\n'),
+      },
+      fields: [
+        ...closenessForm.fields,
+        {
+          id: testId('field-2'),
+          variable: asEntityAttributeReference(NOTE_VAR),
+          prompt: { en: 'Why are you close?' },
+        },
+        {
+          id: testId('field-3'),
+          variable: asEntityAttributeReference(NAME_VAR),
+          prompt: { en: 'Their name' },
+        },
+      ],
+    };
+    const { updateItem, next } = renderClosenessSlides(
+      [
+        {
+          [entityPrimaryKeyProperty]: 'person-1',
+          type: PERSON_TYPE,
+          [entityAttributesProperty]: {
+            [CLOSENESS_VAR]: 1,
+            [NOTE_VAR]: 'Ada',
+            [NAME_VAR]: 'Ada',
+          },
+        },
+        unanswered('person-2'),
+      ],
+      0,
+      'top',
+      comparingForm,
+      { differentFrom: NOTE_VAR },
+    );
+    expect(await screen.findByDisplayValue('Ada')).toBeVisible();
+    expect(
+      screen.queryByRole('textbox', { name: /Why are you close/ }),
+    ).toBeNull();
+    await waitForAnswersToArrive();
+
+    await act(() => next());
+
+    await waitFor(() =>
+      expect(updateItem).toHaveBeenCalledWith('person-1', {
+        set: { [CLOSENESS_VAR]: 1, [NAME_VAR]: 'Ada' },
+        unset: [NOTE_VAR],
+      }),
+    );
   });
 
   it('stays on the person when an answer already given is changed', async () => {

@@ -323,4 +323,127 @@ describe('EgoForm logic', () => {
       expect(await screen.findByDisplayValue('Acme')).toBeVisible();
     });
   });
+
+  // A rule on a question that is shown can name a question that logic hides.
+  // The hidden question has no answer while it is hidden, as submitting
+  // saves it: its stored answer, which submitting clears, is never compared
+  // with in its place.
+  describe('a rule that compares with a hidden question', () => {
+    const CONFIRM = testVariableId('confirm employer');
+    const confirmField = testId('field confirm employer');
+    const comparing = (rule: 'sameAs' | 'differentFrom') => ({
+      stage: {
+        ...stage,
+        id: `${rule}-ego-form`,
+        form: {
+          content: {
+            en: [english, fieldBlockMarkdown(confirmField)].join('\n\n'),
+          },
+          fields: [
+            ...stage.form.fields,
+            {
+              id: confirmField,
+              variable: CONFIRM,
+              prompt: { en: 'Type the name again' },
+            },
+          ],
+        },
+      } as unknown as StageProps<'EgoForm'>['stage'],
+      egoVariables: {
+        ...egoVariables,
+        [CONFIRM]: {
+          name: 'confirm_employer',
+          type: 'text',
+          component: 'Text',
+          validation: { [rule]: EMPLOYER },
+        },
+      },
+    });
+    const confirm = () =>
+      screen.getByRole('textbox', { name: /Type the name again/ });
+
+    it.each([
+      // Matching the hidden employer's stored name would be required.
+      ['sameAs', 'Globex'],
+      // Differing from the hidden employer's stored name would be required.
+      ['differentFrom', 'Acme'],
+    ] as const)(
+      'ignores the stored answer of the question that %s names',
+      async (rule, given) => {
+        const { egoAttributes, submit, isReadyForNext } = renderEgoForm({
+          ...comparing(rule),
+          stored: {
+            [STATUS]: ['student'],
+            [EMPLOYER]: 'Acme',
+            [CONFIRM]: given,
+          },
+          localization,
+        });
+        expect(await screen.findByDisplayValue(given)).toBe(confirm());
+        expect(employer()).toBeNull();
+
+        // Next lights up: every answer on screen passes its checks. It
+        // starts unlit, so this waits for the check of the answers.
+        await waitFor(() => expect(isReadyForNext()).toBe(true));
+
+        submit();
+
+        await waitFor(() =>
+          expect(egoAttributes()).not.toHaveProperty(EMPLOYER),
+        );
+        expect(egoAttributes()?.[CONFIRM]).toBe(given);
+      },
+    );
+
+    it('does not require an answer to a hidden question', async () => {
+      const { egoAttributes, submit, isReadyForNext } = renderEgoForm({
+        stage,
+        egoVariables: {
+          ...egoVariables,
+          [EMPLOYER]: {
+            name: 'employer',
+            type: 'text',
+            component: 'Text',
+            validation: { required: true },
+          },
+        },
+        stored: { [STATUS]: ['employed'] },
+        localization,
+      });
+      // Shown and unanswered, the required question keeps Next unlit.
+      await waitFor(() => expect(employer()).not.toBeNull());
+      await waitFor(() => expect(isReadyForNext()).toBe(false));
+
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Employed' }));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Student' }));
+      await waitFor(() => expect(employer()).toBeNull());
+      await waitFor(() => expect(isReadyForNext()).toBe(true));
+
+      submit();
+
+      await waitFor(() =>
+        expect(egoAttributes()?.[STATUS]).toEqual(['student']),
+      );
+      expect(egoAttributes()).not.toHaveProperty(EMPLOYER);
+    });
+
+    it('compares with the answer while the question is shown', async () => {
+      const { egoAttributes, submit, isReadyForNext } = renderEgoForm({
+        ...comparing('sameAs'),
+        stored: { [STATUS]: ['employed'], [EMPLOYER]: 'Acme' },
+        localization,
+      });
+      expect(await screen.findByDisplayValue('Acme')).toBeVisible();
+      fireEvent.change(confirm(), { target: { value: 'Globex' } });
+
+      submit();
+
+      expect(
+        (await screen.findAllByText(/must be the same as your answer to/))
+          .length,
+      ).toBeGreaterThan(0);
+      expect(isReadyForNext()).toBe(false);
+      expect(egoAttributes()).not.toHaveProperty(CONFIRM);
+    });
+  });
 });

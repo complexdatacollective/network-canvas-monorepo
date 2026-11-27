@@ -397,6 +397,21 @@ export default function useProtocolForm({
     currentEntityId,
   );
 
+  // The variables whose answers this form gives: its fields' in the language
+  // shown, whether or not logic shows them now, and those of the controls its
+  // interface asks before them. While the form is on screen their answers are
+  // the form's alone: one that logic hides has none, whatever is stored. The
+  // form's text, logic and labels read them so (`FormDynamicValues`), and so
+  // do its validation rules, which never compare with a stored answer to one
+  // of them (`formVariables` in the validation context).
+  const formVariables = useMemo(
+    () => [
+      ...precedingVariables,
+      ...fieldsMetadata.map((field) => field.variable),
+    ],
+    [precedingVariables, fieldsMetadata],
+  );
+
   const validationContext = useMemo<ValidationContext | null>(() => {
     if (!baseValidationContext) return null;
 
@@ -412,6 +427,7 @@ export default function useProtocolForm({
       ...baseValidationContext,
       ...validationNetwork,
       stageSubject,
+      formVariables,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
       ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
@@ -419,6 +435,7 @@ export default function useProtocolForm({
     baseValidationContext,
     currentEntityId,
     formValueAliases,
+    formVariables,
     stableSubject,
     validationNetwork,
   ]);
@@ -503,13 +520,6 @@ export default function useProtocolForm({
 
   const dynamicValueSources = useDynamicValueSources();
   const stageShowsDynamicValues = useStageShowsDynamicValues();
-  const formVariables = useMemo(
-    () => [
-      ...precedingVariables,
-      ...fieldsMetadata.map((field) => field.variable),
-    ],
-    [precedingVariables, fieldsMetadata],
-  );
 
   const renderedFields =
     form === undefined ? (
@@ -579,5 +589,11 @@ export default function useProtocolForm({
     fieldComponents,
     variableByFieldPath,
     passphraseNeeded,
+    /**
+     * The variables whose answers this form gives, for the validation of a
+     * control that the interface renders in the same form (Family Pedigree's
+     * name): a rule naming one of them compares only with the form's answer.
+     */
+    formVariables,
   };
 }

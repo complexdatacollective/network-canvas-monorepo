@@ -18,7 +18,7 @@ import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
-import ui from '../../../store/modules/ui';
+import ui, { formIsReady } from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import EgoForm from '../EgoForm';
@@ -138,5 +138,7 @@ export const renderEgoForm = ({
   /** Shows the interview in `shownLocale`, as the participant's choice of language does. */
   const showLanguage = (shownLocale: LocaleTag) =>
     rerender(interviewIn(shownLocale));
-  return { egoAttributes, submit, moveForward, showLanguage };
+  /** Whether the Next button is highlighted as ready. */
+  const isReadyForNext = () => formIsReady(store.getState());
+  return { egoAttributes, submit, moveForward, showLanguage, isReadyForNext };
 };

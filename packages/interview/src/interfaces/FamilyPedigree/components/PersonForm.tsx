@@ -419,6 +419,49 @@ export default function PersonForm({
   const { required: _required, ...nameValidationProps } = nameValidation
     ? validationPropsFor(nameValidation)
     : {};
+
+  const formFields = form?.fields ?? NO_FIELDS;
+
+  const initialResearcherValues = useMemo(() => {
+    if (!person) return undefined;
+    const values: Record<string, FieldValue> = {};
+    for (const field of formFields) {
+      const value = readOwnProperty(person.attributes, field.variable);
+      if (value !== null && value !== undefined) {
+        writeOwnProperty(values, field.variable, value);
+      }
+    }
+    return values;
+  }, [person, formFields]);
+
+  // The name, gender identity and sex questions come before the
+  // researcher's fields, whose text can show their answers as given.
+  const builtInVariables = useMemo(
+    () => [
+      ...(asksName ? [config.nameAttribute] : []),
+      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
+      config.sexAssignedAtBirthAttribute,
+    ],
+    [
+      asksName,
+      config.nameAttribute,
+      config.genderIdentity,
+      config.sexAssignedAtBirthAttribute,
+    ],
+  );
+
+  const { formContent, toAttributePatch, passphraseNeeded, formVariables } =
+    useProtocolForm({
+      form,
+      subject: { entity: 'node', type: config.personType },
+      initialValues: initialResearcherValues,
+      currentEntityId: person?.id,
+      unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
+      precedingVariables: builtInVariables,
+      labelNode,
+      isParticipant: isEgo,
+    });
+
   const baseValidationContext = useStageSelector(getValidationContext);
   const personId = person?.id;
   const nameValidationContext = useMemo<ValidationContext | undefined>(() => {
@@ -452,6 +495,9 @@ export default function PersonForm({
         }),
       },
       stageSubject,
+      // A rule naming one of the researcher's questions compares only with
+      // the answer on the form: a question that logic hides has none.
+      formVariables,
       ...(personId !== undefined ? { currentEntityId: personId } : {}),
     };
   }, [
@@ -460,48 +506,8 @@ export default function PersonForm({
     generatedLabels,
     decryptedNames,
     config.nameAttribute,
+    formVariables,
   ]);
-
-  const formFields = form?.fields ?? NO_FIELDS;
-
-  const initialResearcherValues = useMemo(() => {
-    if (!person) return undefined;
-    const values: Record<string, FieldValue> = {};
-    for (const field of formFields) {
-      const value = readOwnProperty(person.attributes, field.variable);
-      if (value !== null && value !== undefined) {
-        writeOwnProperty(values, field.variable, value);
-      }
-    }
-    return values;
-  }, [person, formFields]);
-
-  // The name, gender identity and sex questions come before the
-  // researcher's fields, whose text can show their answers as given.
-  const builtInVariables = useMemo(
-    () => [
-      ...(asksName ? [config.nameAttribute] : []),
-      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
-      config.sexAssignedAtBirthAttribute,
-    ],
-    [
-      asksName,
-      config.nameAttribute,
-      config.genderIdentity,
-      config.sexAssignedAtBirthAttribute,
-    ],
-  );
-
-  const { formContent, toAttributePatch, passphraseNeeded } = useProtocolForm({
-    form,
-    subject: { entity: 'node', type: config.personType },
-    initialValues: initialResearcherValues,
-    currentEntityId: person?.id,
-    unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
-    precedingVariables: builtInVariables,
-    labelNode,
-    isParticipant: isEgo,
-  });
 
   const handleSubmit: FormSubmitHandler = (values) => {
     const set: PersonDetails = readOwnDetails(values, config);
