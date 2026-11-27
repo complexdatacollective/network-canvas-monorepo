@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type Stage,
+} from '@codaco/protocol-validation';
 
 import { testId } from '../../../__tests__/testId.ts';
 import { lastExistingWriterByType } from '../stageWrites.ts';
@@ -21,12 +24,12 @@ const sociogram: Extract<Stage, { type: 'Sociogram' }> = {
         {
           id: testId('stageWrites/highlight-person'),
           type: 'person',
-          variable: 'close',
+          variable: asEntityAttributeReference('close'),
         },
         {
           id: testId('stageWrites/highlight-place'),
           type: 'place',
-          variable: 'favourite',
+          variable: asEntityAttributeReference('favourite'),
         },
       ],
     },

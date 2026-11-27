@@ -5,6 +5,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import { testTypeId } from '../../__tests__/testIds';
