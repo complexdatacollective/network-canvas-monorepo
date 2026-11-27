@@ -2745,12 +2745,24 @@ describe('Migrating layouts from schema 8 to 9', () => {
   it('drops ego and edge layout variables and rules naming them', () => {
     const migrated = migrateReadable(
       schema8({
-        node: { person: nodeType('Person', { spot: layoutVariable('spot') }) },
+        // Another entity's variables share the keys of the removed ones,
+        // and rules naming those are kept.
+        node: {
+          person: nodeType('Person', {
+            spot: layoutVariable('spot'),
+            egoSpot: textVariable('egoSpot'),
+          }),
+        },
         edge: {
           knows: {
             name: 'Knows',
             color: 'edge-color-seq-1',
             variables: { edgeSpot: layoutVariable('edgeSpot') },
+          },
+          likes: {
+            name: 'Likes',
+            color: 'edge-color-seq-2',
+            variables: { edgeSpot: textVariable('edgeSpot') },
           },
         },
         ego: {
@@ -2778,6 +2790,16 @@ describe('Migrating layouts from schema 8 to 9', () => {
                   },
                 },
                 layoutNodeRule('name'),
+                layoutNodeRule('egoSpot'),
+                {
+                  id: testId('likes rule'),
+                  type: 'edge',
+                  options: {
+                    type: 'likes',
+                    attribute: 'edgeSpot',
+                    operator: 'EXISTS',
+                  },
+                },
               ],
             },
           }),
@@ -2790,15 +2812,22 @@ describe('Migrating layouts from schema 8 to 9', () => {
       'egoName',
     ]);
     expect(
-      Object.values(migrated.codebook.edge ?? {}).map(
-        ({ variables }) => variables ?? {},
+      Object.values(migrated.codebook.edge ?? {}).map(({ variables }) =>
+        Object.keys(variables ?? {}),
       ),
-    ).toEqual([{}]);
+    ).toEqual([[], ['edgeSpot']]);
     expect(migrated.stages[0]).not.toHaveProperty('skipLogic');
     const [map] = sociogramsOf(migrated);
     expect(withoutIds(map?.filter)).toEqual({
       join: 'OR',
-      rules: [withoutIds(layoutNodeRule('name'))],
+      rules: [
+        withoutIds(layoutNodeRule('name')),
+        withoutIds(layoutNodeRule('egoSpot')),
+        {
+          type: 'edge',
+          options: { type: 'likes', attribute: 'edgeSpot', operator: 'EXISTS' },
+        },
+      ],
     });
   });
 });
