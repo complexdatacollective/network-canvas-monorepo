@@ -13,7 +13,6 @@ import {
 } from '../../testing/testId.ts';
 import {
   type CodebookSubject,
-  DuplicateVariableIdError,
   DuplicateVariableNameError,
   documentForNewEntity,
   documentWithCreatedVariable,
@@ -519,7 +518,9 @@ describe('beside the codebook layouts', () => {
         layouts: LAYOUTS,
         draft: text('age'),
       }),
-    ).toThrow(DuplicateVariableIdError);
+    ).toThrow(
+      `Attribute record id "${testVariableId('seating layout')}" already exists`,
+    );
   });
 
   it('lets an attribute of an edge or of the participant take a layout’s name', () => {

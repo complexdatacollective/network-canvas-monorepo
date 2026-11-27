@@ -185,6 +185,13 @@ export function fixtureProtocolSections(): Record<string, SectionDoc> {
     if (isRecord(codebook.ego)) {
       sections[sectionId({ kind: 'codebookEgo' })] = codebook.ego;
     }
+    for (const [layoutId, definition] of Object.entries(
+      isRecord(codebook.layouts) ? codebook.layouts : {},
+    )) {
+      if (isRecord(definition)) {
+        sections[sectionId({ kind: 'codebookLayout', layoutId })] = definition;
+      }
+    }
   }
 
   return sections;
