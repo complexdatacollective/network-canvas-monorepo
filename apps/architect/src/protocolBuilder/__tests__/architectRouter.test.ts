@@ -393,7 +393,12 @@ describe("Architect's in-process protocol-builder host", () => {
             {
               ...prompts[0],
               sortOrder: [
-                { id: sortRule, property: '*', direction: 'sideways' },
+                {
+                  id: sortRule,
+                  type: PERSON_TYPE,
+                  property: '*',
+                  direction: 'sideways',
+                },
               ],
             },
             ...prompts.slice(1),

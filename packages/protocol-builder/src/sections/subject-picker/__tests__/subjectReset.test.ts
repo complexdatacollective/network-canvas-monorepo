@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { testVariableId } from '../../../testing/testId.ts';
 import {
+  fitPromptsToNodeTypes,
+  promptsNeedingNodeType,
   SUBJECT_INDEPENDENT_FIELDS,
   SUBJECT_INDEPENDENT_PARTS,
   subjectDependentPaths,
@@ -122,5 +124,80 @@ describe('what a subject change invalidates', () => {
       }),
     ).toEqual([]);
     expect(subjectDependentPaths('prompts', [])).toEqual(['prompts']);
+  });
+});
+
+describe('fitting prompts to the node types a stage shows', () => {
+  const [A, B, C] = ['type-a', 'type-b', 'type-c'];
+
+  it('takes a removed type out of a longer order and keeps the rest', () => {
+    expect(
+      fitPromptsToNodeTypes(
+        [{ task: 'layout', nodeTypeOrder: [C, B, A] }],
+        [B],
+      ),
+    ).toEqual([{ task: 'layout', nodeTypeOrder: [C, A] }]);
+  });
+
+  it('puts an added type at the end of an order', () => {
+    expect(
+      fitPromptsToNodeTypes(
+        [{ task: 'layout', nodeTypeOrder: [B, A] }],
+        [],
+        [C],
+      ),
+    ).toEqual([{ task: 'layout', nodeTypeOrder: [B, A, C] }]);
+  });
+
+  it('keeps an order that names two types after one goes and another comes', () => {
+    expect(
+      fitPromptsToNodeTypes(
+        [{ task: 'layout', nodeTypeOrder: [B, A] }],
+        [B],
+        [C],
+      ),
+    ).toEqual([{ task: 'layout', nodeTypeOrder: [A, C] }]);
+  });
+
+  it('writes nothing when adding a type to prompts that have no order', () => {
+    expect(
+      fitPromptsToNodeTypes([{ task: 'layout' }], [], [C]),
+    ).toBeUndefined();
+  });
+});
+
+describe('the prompts that need a node type', () => {
+  const [A, B] = ['type-a', 'type-b'];
+  const allowsOnly =
+    (pair: readonly string[]) =>
+    (_edgeType: string, types: readonly string[]) =>
+      pair.every((type) => types.includes(type));
+
+  it('names a highlight prompt that highlights only the type, by position', () => {
+    expect(
+      promptsNeedingNodeType(
+        [
+          { task: 'highlight', highlight: [{ type: A }, { type: B }] },
+          { task: 'highlight', highlight: [{ type: A }] },
+        ],
+        A,
+        [B],
+        () => true,
+      ),
+    ).toEqual({ highlight: [2], connect: [] });
+  });
+
+  it('names a connect prompt whose edge type joins none of the types left', () => {
+    expect(
+      promptsNeedingNodeType(
+        [
+          { task: 'connect', edges: { create: 'knows' } },
+          { task: 'layout', edges: { display: ['knows'] } },
+        ],
+        A,
+        [B],
+        allowsOnly([A, B]),
+      ),
+    ).toEqual({ highlight: [], connect: [1] });
   });
 });

@@ -428,7 +428,14 @@ describe('the in-memory host', () => {
       prompts: [
         {
           ...prompts[0],
-          sortOrder: [{ id: sortRule, property: '*', direction: 'sideways' }],
+          sortOrder: [
+            {
+              id: sortRule,
+              type: PERSON_TYPE,
+              property: '*',
+              direction: 'sideways',
+            },
+          ],
         },
         ...prompts.slice(1),
       ],

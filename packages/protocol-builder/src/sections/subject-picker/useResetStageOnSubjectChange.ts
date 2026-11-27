@@ -25,7 +25,7 @@ import {
 import { useOnResearcherChange } from '../researcherChange.ts';
 import { draftSubjectNodeTypes } from '../useStageSubject.ts';
 import {
-  pruneRemovedNodeTypes,
+  fitPromptsToNodeTypes,
   SUBJECT_INDEPENDENT_FIELDS,
   subjectDependentPaths,
   subjectDependentResets,
@@ -191,7 +191,7 @@ export function useResetStageOnSubjectChange(): void {
   useOnResearcherChange('subject', (subject, previous) => {
     // A stage that keeps one of the types it showed and gains or loses others
     // still describes the types it keeps: only what is about a removed type
-    // goes.
+    // goes, and a node type order a prompt has gains each added type.
     const before = draftSubjectNodeTypes(previous);
     const after = draftSubjectNodeTypes(subject);
     if (
@@ -199,9 +199,10 @@ export function useResetStageOnSubjectChange(): void {
       after !== undefined &&
       after.some((type) => before.includes(type))
     ) {
-      const pruned = pruneRemovedNodeTypes(
+      const pruned = fitPromptsToNodeTypes(
         stageAnswerAt(storeApi.getState(), committedFields, 'prompts'),
         before.filter((type) => !after.includes(type)),
+        after.filter((type) => !before.includes(type)),
       );
       applyOwnCommands([
         { op: 'set', key: 'subject', value: subject },

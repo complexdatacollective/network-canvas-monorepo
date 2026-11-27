@@ -60,6 +60,12 @@ export type EntityTypeChangeConfirmation = Readonly<{
   confirmLabel: string;
 }>;
 
+/** What the researcher is told when a removal is refused, and why. */
+type EntityTypeRemovalRefusal = Readonly<{
+  title: string;
+  description: string;
+}>;
+
 /**
  * The type a confirmed change would land on.
  *
@@ -984,6 +990,7 @@ function NodeTypesPicker({
   onFocus,
   confirmChange,
   confirmRemoval,
+  refuseRemoval,
   blockChangeReason,
   disabled,
   readOnly: readOnlyProp,
@@ -1000,6 +1007,10 @@ function NodeTypesPicker({
   onFocus?: EntitySubjectPickerFieldProps['onFocus'];
   confirmChange?: () => EntityTypeChangeConfirmation | undefined;
   confirmRemoval?: (typeId: string) => EntityTypeChangeConfirmation | undefined;
+  refuseRemoval?: (
+    typeId: string,
+    remaining: readonly string[],
+  ) => EntityTypeRemovalRefusal | undefined;
   blockChangeReason?: string;
   disabled: boolean;
   readOnly: boolean;
@@ -1080,8 +1091,32 @@ function NodeTypesPicker({
     if (!current.includes(typeId)) onChange([...current, typeId]);
   };
 
+  const refuseNeededType = (typeId: string): boolean => {
+    const current = live().types;
+    if (current.length <= 1) return false;
+    const refusal = refuseRemoval?.(
+      typeId,
+      current.filter((type) => type !== typeId),
+    );
+    if (refusal === undefined) return false;
+    void openDialog({
+      type: 'acknowledge',
+      intent: 'warning',
+      title: refusal.title,
+      description: refusal.description,
+      actions: {
+        primary: {
+          label: intl.formatMessage(commonMessages.continue),
+          value: true,
+        },
+      },
+    });
+    return true;
+  };
+
   const remove = async (typeId: string): Promise<void> => {
     if (refuseBlockedChange()) return;
+    if (refuseNeededType(typeId)) return;
     const question =
       live().types.length === 1 ? confirmChange?.() : confirmRemoval?.(typeId);
     if (!(await askFirst(question))) return;
@@ -1177,6 +1212,15 @@ export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
     confirmRemoval?: (
       typeId: string,
     ) => EntityTypeChangeConfirmation | undefined;
+    /**
+     * Why one of several ticked types may not be removed, given the types
+     * that would be left, or `undefined` while it may. Asked before
+     * `confirmRemoval`.
+     */
+    refuseRemoval?: (
+      typeId: string,
+      remaining: readonly string[],
+    ) => EntityTypeRemovalRefusal | undefined;
   }
 >;
 
@@ -1195,6 +1239,7 @@ export function EntitySubjectPickerField({
   entityType,
   multiple = false,
   confirmRemoval,
+  refuseRemoval,
   ...props
 }: EntitySubjectPickerFieldProps) {
   if (multiple && entityType === 'node') {
@@ -1214,6 +1259,7 @@ export function EntitySubjectPickerField({
         onFocus={props.onFocus}
         confirmChange={props.confirmChange}
         confirmRemoval={confirmRemoval}
+        refuseRemoval={refuseRemoval}
         blockChangeReason={props.blockChangeReason}
         disabled={props.disabled ?? false}
         readOnly={props.readOnly ?? false}

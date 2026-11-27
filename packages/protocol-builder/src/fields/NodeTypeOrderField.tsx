@@ -8,7 +8,7 @@ import ArrayField, {
 
 type NodeTypeItem = { id: string; label: string };
 
-export type NodeTypeOrderFieldProps = CreateFormFieldProps<
+type NodeTypeOrderFieldProps = CreateFormFieldProps<
   string[],
   'ul',
   {

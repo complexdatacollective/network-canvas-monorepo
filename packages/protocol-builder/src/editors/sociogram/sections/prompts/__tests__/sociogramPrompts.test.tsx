@@ -1077,6 +1077,35 @@ describe('a sociogram that shows several node types', () => {
     ]);
   });
 
+  it('completes a saved node type order that misses a type the stage shows', async () => {
+    const PLACE = testTypeId('place');
+    const harness = renderStageEditor(
+      sociogramHolding(SORTED_PROMPT, {
+        subject: { entity: 'node', types: [PERSON, FAMILY, PLACE] },
+      }),
+    );
+    harness.receiveCodebookUpdate({
+      node: {
+        [PLACE]: {
+          name: 'place',
+          color: 'node-color-seq-3',
+          shape: { default: 'square' },
+          variables: {},
+        },
+      },
+    });
+
+    const prompt = await openPrompt(harness);
+    await saveDialog(harness, prompt);
+
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.nodeTypeOrder).toEqual([
+      FAMILY,
+      PERSON,
+      PLACE,
+    ]);
+  });
+
   it('saves a rule added for one type as a rule about that type', async () => {
     const harness = renderStageEditor(severalTypes(HIGHLIGHT_PROMPT));
 
@@ -1108,6 +1137,34 @@ describe('a sociogram that shows several node types', () => {
         direction: 'asc',
       },
     ]);
+  });
+
+  it('keeps showing the edge type a prompt holds after its rules stop fitting the stage', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding({
+        id: testId('connect'),
+        task: 'connect',
+        text: { 'en-US': 'Who knows whom?' },
+        edges: { create: KNOWS, display: [KNOWS] },
+      }),
+    );
+    harness.receiveCodebookUpdate({
+      edge: {
+        [KNOWS]: {
+          name: 'knows',
+          color: 'edge-color-seq-1',
+          endpointRules: [{ sourceType: FAMILY, targetType: FAMILY }],
+        },
+      },
+    });
+
+    const prompt = await openPrompt(harness);
+    const created = within(
+      prompt.getByRole('radiogroup', { name: 'Created edge type' }),
+    );
+    await waitFor(() =>
+      expect(created.getByRole('radio', { name: 'knows' })).toBeChecked(),
+    );
   });
 
   it('does not offer an edge type that no pair of the stage’s node types may have', async () => {

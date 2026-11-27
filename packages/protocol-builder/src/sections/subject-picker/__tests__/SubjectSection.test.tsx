@@ -28,6 +28,7 @@ import { changeSubjectTo } from './changeSubject.ts';
 const PLACE = testTypeId('place');
 const PERSON = fixtureTypeId('node', 'person');
 const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const KNOWS = fixtureTypeId('edge', 'knows');
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
 const en = (text: string) => ({ 'en-US': text });
@@ -1233,6 +1234,132 @@ describe('the node types a Sociogram shows', () => {
         sortOrder: [personRule],
       },
     ]);
+  });
+
+  it('adding a type completes the node type order a prompt has', async () => {
+    const harness = renderStageEditor(
+      sociogram(
+        [PERSON, FAMILY_MEMBER],
+        [
+          {
+            id: testId('layout-prompt'),
+            task: 'layout',
+            text: en('Place everyone'),
+            nodeTypeOrder: [FAMILY_MEMBER, PERSON],
+          },
+        ],
+      ),
+    );
+    harness.receiveCodebookUpdate({
+      node: {
+        [PLACE]: {
+          name: 'place',
+          color: 'node-color-seq-3',
+          shape: { default: 'square' },
+          variables: {},
+        },
+      },
+    });
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'place' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'place' })).toBeChecked(),
+    );
+
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({
+      entity: 'node',
+      types: [PERSON, FAMILY_MEMBER, PLACE],
+    });
+    expect(saved.prompts).toEqual([
+      {
+        id: testId('layout-prompt'),
+        task: 'layout',
+        text: en('Place everyone'),
+        nodeTypeOrder: [FAMILY_MEMBER, PERSON, PLACE],
+      },
+    ]);
+  });
+
+  it('refuses to remove the only type a highlight prompt highlights', async () => {
+    const prompts = [
+      {
+        id: testId('layout-prompt'),
+        task: 'layout',
+        text: en('Place everyone'),
+      },
+      {
+        id: testId('highlight-prompt'),
+        task: 'highlight',
+        text: en('Tap everyone you trust'),
+        highlight: [personEntry],
+      },
+    ];
+    const harness = renderStageEditor(
+      sociogram([PERSON, FAMILY_MEMBER], prompts),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'person' }),
+    );
+    expect(
+      await screen.findByText('This node type cannot be removed yet'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Prompt 2 highlights only this node type. Choose an attribute to highlight for another node type in that prompt, or delete it, first.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Remove this node type?')).toBeNull();
+    await harness.user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(screen.getByRole('checkbox', { name: 'person' })).toBeChecked();
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({
+      entity: 'node',
+      types: [PERSON, FAMILY_MEMBER],
+    });
+    expect(saved.prompts).toEqual(prompts);
+  });
+
+  it('refuses to remove a type a connect prompt needs for its edge type', async () => {
+    const prompts = [
+      {
+        id: testId('connect-prompt'),
+        task: 'connect',
+        text: en('Who knows whom?'),
+        edges: { create: KNOWS, display: [KNOWS] },
+      },
+    ];
+    const harness = renderStageEditor(
+      sociogram([PERSON, FAMILY_MEMBER], prompts),
+    );
+    harness.receiveCodebookUpdate({
+      edge: {
+        [KNOWS]: {
+          name: 'knows',
+          color: 'edge-color-seq-1',
+          endpointRules: [{ sourceType: PERSON, targetType: FAMILY_MEMBER }],
+        },
+      },
+    });
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    expect(
+      await screen.findByText(
+        'Prompt 1 creates edges that cannot join the node types this stage would still show. Choose another edge type in that prompt, or delete it, first.',
+      ),
+    ).toBeInTheDocument();
+    await harness.user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(
+      screen.getByRole('checkbox', { name: 'family member' }),
+    ).toBeChecked();
+    expect((await savedFields(harness)).prompts).toEqual(prompts);
   });
 
   it('removing a type the prompts say nothing about asks nothing', async () => {

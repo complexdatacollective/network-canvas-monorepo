@@ -239,12 +239,19 @@ export default function SociogramPromptsSection() {
           direction: rule.direction,
         })),
       );
-      const order = Array.isArray(nodeTypeOrder)
+      // A kept order names every type the stage shows, as the order list
+      // displays it: the saved order's shown types, then the rest in subject
+      // order.
+      const saved = Array.isArray(nodeTypeOrder)
         ? nodeTypeOrder.filter(
             (type): type is string =>
               typeof type === 'string' && types.includes(type),
           )
         : [];
+      const order =
+        saved.length === 0
+          ? []
+          : [...saved, ...types.filter((type) => !saved.includes(type))];
       return {
         ...rest,
         ...(Object.keys(keptEdges).length === 0 ? {} : { edges: keptEdges }),

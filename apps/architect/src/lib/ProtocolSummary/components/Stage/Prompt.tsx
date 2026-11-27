@@ -112,7 +112,7 @@ const extraMessages = defineMessages({
     id: 'architect.summary.prompt.nodeTypeOrder',
     defaultMessage: 'Order of node types',
     description:
-      "Row label in a Sociogram prompt's table in the printable protocol summary, on a stage that shows several node types; its value lists the node types in the order their unplaced nodes are handed to participants.",
+      "Row label in a Sociogram prompt's table in the printable protocol summary, read by the researcher or anyone reviewing the printed protocol, on a stage that shows several node types; its value lists the node types in the order their unplaced nodes are handed to participants.",
   },
   otherattribute: {
     id: 'architect.summary.prompt.otherattribute',

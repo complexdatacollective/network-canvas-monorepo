@@ -1,3 +1,5 @@
+import { isEqual } from 'es-toolkit';
+
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 
 /**
@@ -141,24 +143,27 @@ const isAboutOneOf = (row: unknown, types: readonly string[]): boolean =>
   isRecord(row) && typeof row.type === 'string' && types.includes(row.type);
 
 /**
- * A stage's prompts once the node types in `removed` are no longer shown: the
- * highlight entries and sort rules about them removed, and each removed type
- * taken out of a node type order. A list left empty goes, as does an order
- * left naming one type, because absence is how the schema spells "none".
+ * A stage's prompts once the node types in `removed` are no longer shown and
+ * those in `added` are: the highlight entries and sort rules about a removed
+ * type removed, each removed type taken out of a node type order, and each
+ * added type put at the end of one, in the order given. An order must name
+ * every type the stage shows, so one a prompt already has is completed rather
+ * than left short. A list left empty goes, as does an order left naming one
+ * type, because absence is how the schema spells "none".
  *
- * `undefined` when nothing in the prompts is about a removed type, so a
- * caller writes nothing.
+ * `undefined` when nothing in the prompts changes, so a caller writes nothing.
  */
-export function pruneRemovedNodeTypes(
+export function fitPromptsToNodeTypes(
   prompts: unknown,
   removed: readonly string[],
+  added: readonly string[] = [],
 ): Record<string, FieldValue>[] | undefined {
   if (!Array.isArray(prompts)) return undefined;
   const records = prompts.filter(isRecord);
   // A list holding anything but prompts is not one this can rewrite safely.
   if (records.length !== prompts.length) return undefined;
   let changed = false;
-  const pruned = records.map((prompt) => {
+  const fitted = records.map((prompt) => {
     const next: Record<string, FieldValue> = { ...prompt };
     for (const key of ['highlight', 'sortOrder']) {
       const rows = prompt[key];
@@ -174,19 +179,67 @@ export function pruneRemovedNodeTypes(
       const kept = order.filter(
         (type) => typeof type !== 'string' || !removed.includes(type),
       );
-      if (kept.length !== order.length) {
+      const fitOrder = [
+        ...kept,
+        ...added.filter((type) => !kept.includes(type)),
+      ];
+      if (!isEqual(fitOrder, order)) {
         changed = true;
-        if (kept.length <= 1) delete next.nodeTypeOrder;
-        else next.nodeTypeOrder = kept;
+        if (fitOrder.length <= 1) delete next.nodeTypeOrder;
+        else next.nodeTypeOrder = fitOrder;
       }
     }
     return next;
   });
-  return changed ? pruned : undefined;
+  return changed ? fitted : undefined;
 }
 
 /** Whether the prompts say anything about `type` that removing it would lose. */
 export const promptsDescribeNodeType = (
   prompts: unknown,
   type: string,
-): boolean => pruneRemovedNodeTypes(prompts, [type]) !== undefined;
+): boolean => fitPromptsToNodeTypes(prompts, [type]) !== undefined;
+
+/**
+ * The prompts, by position from 1, that removing `type` would leave unable to
+ * do their task: a highlight task that highlights only that type, and a
+ * connect task whose edge type cannot join any pair of the `remaining` types.
+ * Pruning cannot repair either, so the removal is refused until the
+ * researcher changes those prompts.
+ */
+export function promptsNeedingNodeType(
+  prompts: unknown,
+  type: string,
+  remaining: readonly string[],
+  edgeTypeAllowsAnyPair: (
+    edgeType: string,
+    types: readonly string[],
+  ) => boolean,
+): Readonly<{ highlight: number[]; connect: number[] }> {
+  const highlight: number[] = [];
+  const connect: number[] = [];
+  if (!Array.isArray(prompts)) return { highlight, connect };
+  prompts.forEach((prompt: unknown, index) => {
+    if (!isRecord(prompt)) return;
+    const rows = prompt.highlight;
+    if (
+      prompt.task === 'highlight' &&
+      Array.isArray(rows) &&
+      rows.length > 0 &&
+      rows.every((row) => isAboutOneOf(row, [type]))
+    ) {
+      highlight.push(index + 1);
+    }
+    const edges = prompt.edges;
+    const create = isRecord(edges) ? edges.create : undefined;
+    if (
+      prompt.task === 'connect' &&
+      typeof create === 'string' &&
+      remaining.length > 0 &&
+      !edgeTypeAllowsAnyPair(create, remaining)
+    ) {
+      connect.push(index + 1);
+    }
+  });
+  return { highlight, connect };
+}

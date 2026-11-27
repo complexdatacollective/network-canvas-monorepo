@@ -5,6 +5,7 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { nodeTypeCapabilityOf } from '@codaco/protocol-validation';
+import { edgeTypeAllowsAnyPair } from '@codaco/protocol-validation/edge-type-rules';
 
 import {
   type EntitySubject,
@@ -17,10 +18,14 @@ import {
   stageAnswerAt,
   useAskStageHasAnyValue,
 } from '../../form/stageFormHooks.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import type { SectionKey } from '../sectionKeys.ts';
-import { promptsDescribeNodeType } from './subjectReset.ts';
+import {
+  promptsDescribeNodeType,
+  promptsNeedingNodeType,
+} from './subjectReset.ts';
 import {
   useResetStageOnSubjectChange,
   useSubjectChangeDiscards,
@@ -95,14 +100,20 @@ const messages = defineMessages({
     id: 'protocolBuilder.subjectSection.nodesDescription',
     defaultMessage: 'Choose the node types that this stage shows.',
     description:
-      'Description of the node-type section on a stage that can show more than one kind of network member, such as people and places together. A stage is one step of an interview.',
+      'Description of the node-type section in the stage editor, read by the researcher designing a stage that can show more than one kind of network member, such as people and places together. A stage is one step of an interview.',
+  },
+  nodesFieldLabel: {
+    id: 'protocolBuilder.subjectSection.nodesFieldLabel',
+    defaultMessage: 'Node types',
+    description:
+      'Label of the group of tick boxes in the stage editor where the researcher chooses which kinds of network member a stage shows, on a stage that can show more than one. Plural form of the "Node type" label.',
   },
   nodesFieldHint: {
     id: 'protocolBuilder.subjectSection.nodesFieldHint',
     defaultMessage:
       'Select each type of node that this stage shows. The prompts on this stage can sort and highlight each type separately.',
     description:
-      'Guidance under the control choosing which kinds of network member a stage shows, on a stage that can show more than one. Prompts are the questions or tasks the stage sets the participant.',
+      'Guidance under the control in the stage editor where the researcher chooses which kinds of network member a stage shows, on a stage that can show more than one. Read by the researcher designing the stage. Prompts are the questions or tasks the stage sets the participant.',
   },
   nodeRemoveTitle: {
     id: 'protocolBuilder.subjectSection.nodeRemoveTitle',
@@ -121,7 +132,27 @@ const messages = defineMessages({
     id: 'protocolBuilder.subjectSection.nodeRemoveConfirm',
     defaultMessage: 'Remove the node type',
     description:
-      'Button that goes ahead with removing one of several kinds of network member a stage shows, along with the settings its prompts have about that kind.',
+      'Button in the confirmation the researcher sees in the stage editor, which goes ahead with removing one of several kinds of network member a stage shows, along with the settings its prompts have about that kind.',
+  },
+  nodeRemoveBlockedTitle: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveBlockedTitle',
+    defaultMessage: 'This node type cannot be removed yet',
+    description:
+      'Title of the message shown to the researcher in the stage editor when they try to remove one of several kinds of network member a stage shows, and a prompt of the stage depends on that kind, so the removal is refused.',
+  },
+  nodeRemoveBlockedHighlight: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveBlockedHighlight',
+    defaultMessage:
+      '{count, plural, one {Prompt {prompts} highlights} other {Prompts {prompts} highlight}} only this node type. Choose an attribute to highlight for another node type in {count, plural, one {that prompt} other {those prompts}}, or delete {count, plural, one {it} other {them}}, first.',
+    description:
+      'Shown to the researcher in the stage editor when they try to remove a kind of network member from a stage, and some highlight prompts highlight nodes of that kind only. prompts is a list of prompt numbers, such as "1 and 3"; count is how many there are. To highlight is to mark the people or places a participant taps.',
+  },
+  nodeRemoveBlockedConnect: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveBlockedConnect',
+    defaultMessage:
+      '{count, plural, one {Prompt {prompts} creates} other {Prompts {prompts} create}} edges that cannot join the node types this stage would still show. Choose another edge type in {count, plural, one {that prompt} other {those prompts}}, or delete {count, plural, one {it} other {them}}, first.',
+    description:
+      'Shown to the researcher in the stage editor when they try to remove a kind of network member from a stage, and some prompts ask the participant to draw a kind of relationship (an edge) that is only allowed to or from that kind of member. prompts is a list of prompt numbers, such as "1 and 3"; count is how many there are.',
   },
   edgeTitle: {
     id: 'protocolBuilder.subjectSection.edgeTitle',
@@ -359,6 +390,44 @@ export default function SubjectSection({
         : undefined,
     [committedFields, intl, storeApi],
   );
+  // Refused when a prompt could no longer do its task without the type:
+  // pruning would leave a highlight task marking nothing, or a connect task
+  // whose edge type joins none of the types left.
+  const protocolContext = useProtocolContext();
+  const refuseRemoval = useCallback(
+    (typeId: string, remaining: readonly string[]) => {
+      const needing = promptsNeedingNodeType(
+        stageAnswerAt(storeApi.getState(), committedFields, 'prompts'),
+        typeId,
+        remaining,
+        (edgeType, types) =>
+          edgeTypeAllowsAnyPair(protocolContext.codebook, edgeType, types),
+      );
+      const reasons = [
+        [messages.nodeRemoveBlockedHighlight, needing.highlight],
+        [messages.nodeRemoveBlockedConnect, needing.connect],
+      ] as const;
+      const sentences = reasons.flatMap(([message, positions]) =>
+        positions.length === 0
+          ? []
+          : [
+              intl.formatMessage(message, {
+                count: positions.length,
+                prompts: intl.formatList(positions.map(String), {
+                  type: 'conjunction',
+                }),
+              }),
+            ],
+      );
+      return sentences.length === 0
+        ? undefined
+        : {
+            title: intl.formatMessage(messages.nodeRemoveBlockedTitle),
+            description: sentences.join(' '),
+          };
+    },
+    [committedFields, intl, protocolContext, storeApi],
+  );
   const fieldHint = multiple ? messages.nodesFieldHint : words.fieldHint;
 
   return (
@@ -376,9 +445,11 @@ export default function SubjectSection({
           component={EntitySubjectPickerField}
           entityType={entity}
           confirmChange={confirmChange}
-          {...(multiple ? { multiple, confirmRemoval } : {})}
+          {...(multiple ? { multiple, confirmRemoval, refuseRemoval } : {})}
           {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
-          label={intl.formatMessage(words.fieldLabel)}
+          label={intl.formatMessage(
+            multiple ? messages.nodesFieldLabel : words.fieldLabel,
+          )}
           hint={fieldHint && intl.formatMessage(fieldHint)}
           required={REQUIRED}
         />

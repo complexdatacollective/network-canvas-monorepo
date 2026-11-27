@@ -39,8 +39,8 @@ export function useStageNodeTypes(): readonly string[] {
 }
 
 /**
- * The stage's node type when its draft subject lists exactly one, which every
- * stage does while each stage type runs a single node type.
+ * The stage's node type when its draft subject lists exactly one. A stage that
+ * shows several node types (a Sociogram) has none.
  */
 function useSingleStageNodeType(): string | undefined {
   const types = useStageNodeTypes();
