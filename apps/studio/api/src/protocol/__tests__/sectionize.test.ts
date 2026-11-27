@@ -84,7 +84,11 @@ describe('sectionize/assemble round trip', () => {
       ...base,
       codebook: {
         ...base.codebook,
-        layouts: { [sociogram]: { name: 'sociogram' }, [map]: { name: 'map' } },
+        layouts: {
+          ...base.codebook.layouts,
+          [sociogram]: { name: 'sociogram' },
+          [map]: { name: 'map' },
+        },
       },
     };
     const sections = sectionizeProtocol(protocol);
@@ -177,16 +181,17 @@ describe('golden hashes', () => {
       {
         "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "codebook:edge:1d966f2b-32fc-51de-8d8d-334de4009e6c": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
-        "codebook:node:62c26eae-2583-582b-9355-1a478554b68c": "3d71952a42cd3a858e8bcb56a81fe8e394502eddc45a765add99e133598ad8af",
+        "codebook:layout:64f05305-c27c-50b6-948f-bb13f70ce47b": "a5a802d40b4cc9917af8e7bcd668bb1a310677402c2011ca447119603c88a72f",
+        "codebook:node:62c26eae-2583-582b-9355-1a478554b68c": "cd8454f8fecb2dad2cdfe64a995e24f805be24fbd333c2e6cc8b99309102844e",
         "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
         "stage:3c07e726-388f-4af2-99ce-bbe2aa1b31eb": "d955c844e8a4c6f6f8a6730b07d6a3d307fab053f20f2d68b554d51d10ec53f8",
-        "stage:7f96f8ac-4f56-4f34-9195-dae7858b93f7": "16366cffd5936f9a2d1059f2dff27daf289bfd5ce64f766d21eb6780e71b37cc",
+        "stage:7f96f8ac-4f56-4f34-9195-dae7858b93f7": "b6a154f5d8a39e94195e3e9e69a67b564ba9b75d234131cb6cdff494cc21ea67",
         "stage:8f480b11-39d0-4912-ade7-1d5040bf1f71": "954ea2a1e6a8b5428c4178f2b616631a0bdd4551b60174670fadc1ee29f55657",
         "stageOrder": "4c49e64f198d60f8f899dc13a92ef3c31f737dd35a89760449b611a107c4b814",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"eb1e6043a496c699cfb54163b62ab8d833752c33d372505d8cbbc4eaf568ef9e"`,
+      `"3393cd6bafc30376878d8dfe871cf42f3649ba96088266913235968ec609baee"`,
     );
   });
 });

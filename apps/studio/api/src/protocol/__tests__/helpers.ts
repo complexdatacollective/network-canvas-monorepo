@@ -224,10 +224,6 @@ export function baseProtocol(): CurrentProtocol {
                 type: 'text',
                 component: 'Text',
               },
-              [BASE_CODEBOOK_IDS.layoutPosition]: {
-                name: 'Layout_Position',
-                type: 'layout',
-              },
             },
           },
         },
@@ -236,6 +232,9 @@ export function baseProtocol(): CurrentProtocol {
             name: 'Knows',
             color: 'edge-color-seq-1',
           },
+        },
+        layouts: {
+          [BASE_CODEBOOK_IDS.layoutPosition]: { name: 'Layout_Position' },
         },
       },
       stages: [
@@ -266,12 +265,12 @@ export function baseProtocol(): CurrentProtocol {
           type: 'Sociogram',
           label: { en: 'Sociogram' },
           subject: { entity: 'node', types: [BASE_CODEBOOK_IDS.person] },
+          layout: BASE_CODEBOOK_IDS.layoutPosition,
           background: { concentricCircles: 4 },
           prompts: [
             {
               id: BASE_PROTOCOL_IDS.sociogramPrompt,
               text: { en: 'Position nodes' },
-              layout: { layoutVariable: BASE_CODEBOOK_IDS.layoutPosition },
             },
           ],
         },

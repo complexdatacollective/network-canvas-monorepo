@@ -4,6 +4,8 @@ import type { SectionDoc } from '../apply.ts';
 import {
   assembledProtocol,
   entityTypeReferences,
+  layoutReferences,
+  sectionReferenceAt,
   sweepReferences,
 } from '../section-references.ts';
 import { sectionId } from '../taxonomy.ts';
@@ -182,6 +184,158 @@ describe('deleting a node type that a stage is about', () => {
     expect(rewritten.get(STAGE_SECTION)?.subject).toEqual({
       entity: 'node',
       types: [PLACE],
+    });
+  });
+});
+
+describe('deleting a layout', () => {
+  const SEATING = crypto.randomUUID();
+  const NAMES = crypto.randomUUID();
+  const STORY = crypto.randomUUID();
+  const NAMES_SECTION = sectionId({ kind: 'stage', stageId: NAMES });
+  const STORY_SECTION = sectionId({ kind: 'stage', stageId: STORY });
+  const PLACED = crypto.randomUUID();
+  const NAMED = crypto.randomUUID();
+
+  const nameGenerator: SectionDoc = {
+    id: NAMES,
+    type: 'NameGenerator',
+    label: { en: 'Names' },
+    subject: { entity: 'node', types: [PERSON] },
+    form: {
+      title: { en: 'About them' },
+      fields: [
+        {
+          id: crypto.randomUUID(),
+          variable: crypto.randomUUID(),
+          prompt: { en: 'Name' },
+        },
+      ],
+    },
+    prompts: [{ id: crypto.randomUUID(), text: { en: 'Who?' } }],
+    skipLogic: {
+      action: 'SKIP',
+      filter: {
+        join: 'OR',
+        rules: [
+          {
+            id: PLACED,
+            type: 'node',
+            options: { type: PERSON, attribute: SEATING, operator: 'EXISTS' },
+          },
+          {
+            id: NAMED,
+            type: 'node',
+            options: { type: PERSON, operator: 'EXISTS' },
+          },
+        ],
+      },
+    },
+  };
+
+  const narrative: SectionDoc = {
+    id: STORY,
+    type: 'Narrative',
+    label: { en: 'Story' },
+    subject: { entity: 'node', types: [PERSON] },
+    background: { concentricCircles: 4 },
+    presets: [
+      { id: crypto.randomUUID(), label: { en: 'Seats' }, layout: SEATING },
+    ],
+  };
+
+  // The layout's section is gone, as a host removes it before asking what
+  // still names it.
+  const documentsWith = (
+    stages: Record<string, SectionDoc>,
+  ): Record<string, SectionDoc> => ({
+    [sectionId({ kind: 'settings' })]: {},
+    [sectionId({ kind: 'stageOrder' })]: {
+      stages: Object.values(stages).map(({ id }) => id),
+    },
+    [sectionId({ kind: 'codebookNode', typeId: PERSON })]: nodeType('Person'),
+    ...stages,
+  });
+
+  const ruleIds = (documents: Record<string, SectionDoc>) => {
+    const rules: unknown = Reflect.get(
+      Reflect.get(
+        Reflect.get(documents[NAMES_SECTION] ?? {}, 'skipLogic') ?? {},
+        'filter',
+      ) ?? {},
+      'rules',
+    );
+    return Array.isArray(rules)
+      ? rules.map((rule: unknown) =>
+          typeof rule === 'object' && rule !== null
+            ? Reflect.get(rule, 'id')
+            : undefined,
+        )
+      : [];
+  };
+
+  it('deleting a layout removes a filter rule that names it', () => {
+    const documents = documentsWith({ [NAMES_SECTION]: nameGenerator });
+
+    expect(
+      layoutReferences(assembledProtocol(documents), SEATING).stages,
+    ).toEqual([]);
+    const { rewritten, remaining } = sweepReferences(
+      documents,
+      (current) => layoutReferences(assembledProtocol(current), SEATING).rules,
+    );
+
+    expect(remaining).toEqual([]);
+    expect([...rewritten.keys()]).toEqual([NAMES_SECTION]);
+    expect(ruleIds(documents)).toEqual([NAMED]);
+  });
+
+  it('refuses deleting a layout a Narrative preset names and keeps the preset', () => {
+    const documents = documentsWith({ [STORY_SECTION]: narrative });
+
+    const { stages, rules } = layoutReferences(
+      assembledProtocol(documents),
+      SEATING,
+    );
+
+    expect(stages).toEqual([
+      { sectionId: STORY_SECTION, path: ['presets', 0, 'layout'] },
+    ]);
+    // A preset is an entry of its list, so only asking for the stage
+    // references first keeps the sweep from dropping it.
+    expect(rules).toEqual([]);
+    expect(documents[STORY_SECTION]).toEqual(narrative);
+  });
+
+  it('a layout named by a stage and by a filter rule is refused and the rule is kept', () => {
+    const documents = documentsWith({
+      [NAMES_SECTION]: nameGenerator,
+      [STORY_SECTION]: narrative,
+    });
+
+    const { stages, rules } = layoutReferences(
+      assembledProtocol(documents),
+      SEATING,
+    );
+
+    expect(stages).toEqual([
+      { sectionId: STORY_SECTION, path: ['presets', 0, 'layout'] },
+    ]);
+    expect(rules).toEqual([
+      {
+        sectionId: NAMES_SECTION,
+        path: ['skipLogic', 'filter', 'rules', 0, 'options', 'attribute'],
+      },
+    ]);
+    expect(ruleIds(documents)).toEqual([PLACED, NAMED]);
+  });
+
+  it('routes a path under codebook.layouts to the layout’s section', () => {
+    expect(
+      sectionReferenceAt(['codebook', 'layouts', SEATING, 'name'], []),
+    ).toEqual({
+      sectionId: sectionId({ kind: 'codebookLayout', layoutId: SEATING }),
+      path: ['name'],
     });
   });
 });

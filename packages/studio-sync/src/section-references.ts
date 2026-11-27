@@ -10,7 +10,9 @@
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectLayoutReferences,
   collectStageReferences,
+  findRulesNamingLayout,
 } from '@codaco/protocol-validation';
 
 import type { SectionDoc } from './apply.ts';
@@ -73,6 +75,13 @@ export function sectionReferenceAt(
     }
   }
   if (path[0] === 'codebook') {
+    const layoutId = path[2];
+    if (path[1] === 'layouts' && typeof layoutId === 'string') {
+      return {
+        sectionId: sectionId({ kind: 'codebookLayout', layoutId }),
+        path: path.slice(3),
+      };
+    }
     if (path[1] === 'ego') {
       return {
         sectionId: sectionId({ kind: 'codebookEgo' }),
@@ -167,6 +176,32 @@ export function stageReferences(
     .filter((hit) => hit.stageId === stageId)
     .map((hit) => sectionReferenceAt(hit.path, stageIds))
     .filter((reference) => reference.sectionId !== own);
+}
+
+/**
+ * Every reference to one codebook layout, split by what a deletion does with
+ * it.
+ *
+ * `stages` are the stage fields that store or show positions in the layout: a
+ * Sociogram's or Network Composer's `layout` and a Narrative preset's. A stage
+ * without its layout is not one the researcher would recognise, so each of
+ * them refuses the deletion, and a host asks for them before it sweeps
+ * anything: the sweep would otherwise drop a Narrative preset as a list entry.
+ * `rules` are node rules naming the layout, which go with it as a rule naming
+ * a deleted variable does.
+ */
+export function layoutReferences(
+  { protocol, stageIds }: AssembledProtocol,
+  layoutId: string,
+): { stages: SectionReference[]; rules: SectionReference[] } {
+  return {
+    stages: collectLayoutReferences(protocol)
+      .filter((hit) => hit.layoutId === layoutId)
+      .map((hit) => sectionReferenceAt(hit.path, stageIds)),
+    rules: findRulesNamingLayout(protocol, layoutId).map((hit) =>
+      sectionReferenceAt(hit.path, stageIds),
+    ),
+  };
 }
 
 /**

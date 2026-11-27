@@ -28,6 +28,7 @@ import { SYNC_TABLES } from '@codaco/studio-sync/schema';
 import {
   assembledProtocol,
   entityTypeReferences,
+  layoutReferences,
   stageReferences,
   sweepReferences,
   variableReferences,
@@ -1575,8 +1576,13 @@ export function deleteStage(session: ProtocolBuilderSession, stageId: string) {
 }
 
 /**
- * Removes a codebook layout. No stage can name a layout yet, so nothing
- * refuses it but an editor holding its section, this connection included.
+ * Removes a codebook layout and the filter rules that name it.
+ *
+ * A stage that stores or shows positions in the layout refuses it, and is
+ * asked for before the sweep, so a Narrative preset is never dropped as a
+ * list entry. The layout is not open in a dialog the way a codebook type is,
+ * so `owned` is empty: an editor holding its section, this connection
+ * included, refuses the change.
  */
 export function deleteLayout(
   session: ProtocolBuilderSession,
@@ -1584,20 +1590,30 @@ export function deleteLayout(
 ) {
   return refactor(
     session,
-    (head: HeadState) => {
+    Effect.fnUntraced(function* (head: HeadState) {
       const target = makeSectionId({ kind: 'codebookLayout', layoutId });
-      return Effect.succeed(
-        head.sectionHashes[target] === undefined
-          ? undefined
-          : {
-              writes: new Map<ProtocolSectionId, SectionDoc | undefined>([
-                [target, undefined],
-              ]),
-              owned: new Set<ProtocolSectionId>(),
-            },
+      if (head.sectionHashes[target] === undefined) return undefined;
+      const documents = yield* headDocuments(session, head);
+      delete documents[target];
+      const { stages } = layoutReferences(
+        assembledProtocol(documents),
+        layoutId,
       );
-    },
-    ['unset'],
+      if (stages.length > 0) {
+        return {
+          writes: new Map<ProtocolSectionId, SectionDoc | undefined>(),
+          owned: new Set<ProtocolSectionId>(),
+          remaining: stages,
+        };
+      }
+      const plan = sweptPlan(
+        documents,
+        [[target, undefined]],
+        (swept) => layoutReferences(assembledProtocol(swept), layoutId).rules,
+      );
+      return { ...plan, owned: new Set<ProtocolSectionId>() };
+    }),
+    ['unset', 'set'],
   );
 }
 

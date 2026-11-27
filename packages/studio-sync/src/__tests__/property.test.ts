@@ -12,7 +12,9 @@ import {
   contentHash,
   type SectionDoc,
 } from '../apply.ts';
+import { assembledProtocol, layoutReferences } from '../section-references.ts';
 import { LeaseRejectedError } from '../server.ts';
+import { sectionId } from '../taxonomy.ts';
 import {
   assertLinearChain,
   dbAvailable,
@@ -70,6 +72,87 @@ function applyLenient(
   }
   return { doc, applied };
 }
+
+const LAYOUT = crypto.randomUUID();
+const OTHER_LAYOUT = crypto.randomUUID();
+const PERSON = crypto.randomUUID();
+
+/** A stage that stores or shows positions in one layout, or in none. */
+const layoutStage = (
+  kind: 'Sociogram' | 'NetworkComposer' | 'Narrative',
+  layout: string,
+): SectionDoc => {
+  const base = {
+    id: crypto.randomUUID(),
+    label: { en: kind },
+    subject: { entity: 'node', types: [PERSON] },
+  };
+  if (kind === 'Narrative') {
+    return {
+      ...base,
+      type: kind,
+      presets: [{ id: crypto.randomUUID(), label: { en: 'Seats' }, layout }],
+    };
+  }
+  return { ...base, type: kind, layout };
+};
+
+describe('layout deletion properties (pure)', () => {
+  it('refuses deleting a layout a stage references', () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.record({
+            kind: fc.constantFrom(
+              'Sociogram' as const,
+              'NetworkComposer' as const,
+              'Narrative' as const,
+            ),
+            namesIt: fc.boolean(),
+          }),
+          { minLength: 1, maxLength: 6 },
+        ),
+        (stages) => {
+          const built = stages.map(({ kind, namesIt }) =>
+            layoutStage(kind, namesIt ? LAYOUT : OTHER_LAYOUT),
+          );
+          const documents: Record<string, SectionDoc> = {
+            [sectionId({ kind: 'settings' })]: {},
+            [sectionId({ kind: 'stageOrder' })]: {
+              stages: built.map(({ id }) => id),
+            },
+            [sectionId({ kind: 'codebookNode', typeId: PERSON })]: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              shape: { default: 'circle' },
+            },
+            ...Object.fromEntries(
+              built.map((stage) => [
+                sectionId({ kind: 'stage', stageId: String(stage.id) }),
+                stage,
+              ]),
+            ),
+          };
+
+          const refusing = layoutReferences(
+            assembledProtocol(documents),
+            LAYOUT,
+          ).stages.map((reference) => reference.sectionId);
+
+          expect(refusing.toSorted()).toEqual(
+            built
+              .filter((_, at) => stages[at]?.namesIt === true)
+              .map(({ id }) =>
+                sectionId({ kind: 'stage', stageId: String(id) }),
+              )
+              .toSorted(),
+          );
+        },
+      ),
+      { numRuns: 200 },
+    );
+  });
+});
 
 describe('apply engine properties (pure, 300 cases each)', () => {
   it('is deterministic: same commands, same hash', () => {
