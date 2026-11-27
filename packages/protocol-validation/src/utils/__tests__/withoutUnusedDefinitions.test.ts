@@ -9,6 +9,7 @@ import { withoutUnusedTextDefinitions } from '../withoutUnusedDefinitions.ts';
 
 const ENGLISH = { defaultLocale: 'en', locales: ['en'] };
 const BILINGUAL = { defaultLocale: 'en', locales: ['en', 'es'] };
+const TRILINGUAL = { defaultLocale: 'en', locales: ['en', 'es', 'fr'] };
 
 const USED = 'dynamic-used';
 const UNUSED = 'dynamic-unused';
@@ -282,6 +283,71 @@ describe('withoutUnusedTextDefinitions: form fields', () => {
       variable: 'age',
       prompt: { en: 'Age?' },
       showValidationHints: true,
+    });
+  });
+
+  // The participant's browser may list any language after the one that they
+  // read in, and those languages are not known when the protocol is saved.
+  describe('whatever languages the participant’s browser lists', () => {
+    const both = [NAME_FIELD, AGE_FIELD].map(fieldBlockMarkdown).join('\n\n');
+
+    // French has no form of its own. With the browser's languages French,
+    // Spanish, English, the participant is shown the Spanish form, which
+    // asks the age, and asks it in French.
+    it('keeps the question of a language that may be shown another language’s form that places the field', () => {
+      const stage = twoFields(
+        {
+          en: fieldBlockMarkdown(NAME_FIELD),
+          es: fieldBlockMarkdown(AGE_FIELD),
+        },
+        { es: '¿Edad?', fr: 'Âge ?' },
+      );
+      expect(withoutUnusedTextDefinitions(stage, TRILINGUAL)).toBe(stage);
+    });
+
+    // The Spanish form asks the age, but the question has no Spanish words.
+    // With the browser's languages Spanish, French, English, the participant
+    // is shown the French question, although the French form does not ask
+    // the age.
+    it('keeps each translation that a language whose form places the field may fall back to', () => {
+      const stage = twoFields(
+        {
+          en: fieldBlockMarkdown(NAME_FIELD),
+          es: both,
+          fr: fieldBlockMarkdown(NAME_FIELD),
+        },
+        { en: 'Age?', fr: 'Âge ?' },
+      );
+      expect(withoutUnusedTextDefinitions(stage, TRILINGUAL)).toBe(stage);
+    });
+
+    it('still drops a question in a language whose own form does not place the field, when each form that places it has its own question', () => {
+      const stage = twoFields(
+        { en: both, es: both, fr: fieldBlockMarkdown(NAME_FIELD) },
+        { en: 'Age?', es: '¿Edad?', fr: 'Âge ?' },
+      );
+      expect(
+        withoutUnusedTextDefinitions(stage, TRILINGUAL).form.fields[1],
+      ).toEqual({
+        id: AGE_FIELD,
+        variable: 'age',
+        prompt: { en: 'Age?', es: '¿Edad?' },
+      });
+    });
+
+    it('still drops a field that no form places, although a language may be shown any of them', () => {
+      const stage = twoFields(
+        {
+          en: fieldBlockMarkdown(NAME_FIELD),
+          es: fieldBlockMarkdown(NAME_FIELD),
+        },
+        { en: 'Age?', fr: 'Âge ?' },
+      );
+      expect(
+        withoutUnusedTextDefinitions(stage, TRILINGUAL).form.fields.map(
+          ({ id }) => id,
+        ),
+      ).toEqual([NAME_FIELD]);
     });
   });
 

@@ -11,13 +11,13 @@
 import { isRecord } from '@codaco/shared-consts';
 
 import { dynamicValueNamesIn } from '../localization/dynamicValueMessages.ts';
-import { formFieldPlacement } from '../localization/formFieldLocales.ts';
+import { formFieldPossiblePlacement } from '../localization/formFieldLocales.ts';
 import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../localization/localeTag.ts';
 import { logicReads } from '../localization/logic.ts';
-import { resolveLocalizedString } from '../localization/resolveLocalizedString.ts';
+import { localesThatMayBeShown } from '../localization/resolveLocalizedString.ts';
 import { readDynamicAttributeLogic } from '../schemas/9/dynamic-attributes.ts';
 import { dynamicValueNameFor } from '../schemas/9/dynamic-value-names.ts';
 import { NodeLabelSchema } from '../schemas/9/node-label.ts';
@@ -58,9 +58,12 @@ const hitsOf = (owner: Owner) => {
 };
 
 /**
- * The languages of `translations` that a participant is shown in a form that
- * places the field in `placing`: each placing language's own translation,
- * else the one that it falls back to (`resolveLocalizedString`).
+ * The languages of `translations` that a participant may be shown in a form
+ * that may place the field in `placing`, whatever languages their browser
+ * lists: each placing language's own translation, else each one that it may
+ * fall back to (`localesThatMayBeShown`). A placing language that the
+ * protocol does not declare, whose document the interview never shows,
+ * keeps its own translation.
  */
 const shownTranslations = (
   translations: Readonly<Record<LocaleTag, string>>,
@@ -68,27 +71,28 @@ const shownTranslations = (
   localization: LocalizationDeclaration | undefined,
 ): Set<LocaleTag> => {
   const shown = new Set<LocaleTag>();
-  const resolvable =
-    localization !== undefined &&
-    localization.locales.some((locale) => Object.hasOwn(translations, locale));
   for (const locale of placing) {
-    if (Object.hasOwn(translations, locale)) shown.add(locale);
-    else if (resolvable && localization.locales.includes(locale)) {
-      shown.add(
-        resolveLocalizedString(translations, localization, [locale]).locale,
-      );
-    }
+    if (localization?.locales.includes(locale) === true) {
+      for (const translation of localesThatMayBeShown(
+        translations,
+        localization,
+        locale,
+      )) {
+        shown.add(translation);
+      }
+    } else if (Object.hasOwn(translations, locale)) shown.add(locale);
   }
   return shown;
 };
 
 /**
- * `owner` without the fields of its form that the form places in no
- * language (`formFieldPlacement`), and without each translation of a
- * field's question and hint that no language whose form places the field is
- * shown: a language without its own translation is shown the one that it
- * falls back to, which is kept. A form that is not written as documents,
- * such as a Network Composer's, is left as it is.
+ * `owner` without the fields of its form that no language's form may place
+ * (`formFieldPossiblePlacement`), and without each translation of a field's
+ * question and hint that no participant may be shown, whatever languages
+ * their browser lists: a language without its own document or translation
+ * may be shown any that it can fall back to, and each of those is kept. A
+ * form that is not written as documents, such as a Network Composer's, is
+ * left as it is.
  */
 const withoutUnusedFormFields = <T extends Owner>(
   owner: T,
@@ -97,7 +101,7 @@ const withoutUnusedFormFields = <T extends Owner>(
   const { form } = owner;
   if (!isRecord(form) || !isRecord(form.content) || !Array.isArray(form.fields))
     return owner;
-  const placement = formFieldPlacement(
+  const placement = formFieldPossiblePlacement(
     translationsOf(form.content),
     localization,
   );

@@ -4,6 +4,7 @@ import { fieldBlockMarkdown } from '../fieldBlock.ts';
 import {
   fieldIdsInDocument,
   formFieldPlacement,
+  formFieldPossiblePlacement,
   localesPlacingFieldText,
 } from '../formFieldLocales.ts';
 
@@ -72,6 +73,55 @@ describe('formFieldPlacement', () => {
 
   it('places nothing for a form without documents', () => {
     expect(placed(formFieldPlacement(undefined, TRILINGUAL), 'en')).toEqual([]);
+  });
+});
+
+describe('formFieldPossiblePlacement', () => {
+  it('places the fields of a language’s own document only', () => {
+    const placement = formFieldPossiblePlacement(
+      { en: documentOf(NAME, AGE), es: documentOf(NAME) },
+      TRILINGUAL,
+    );
+    expect(placed(placement, 'en')).toEqual([NAME, AGE]);
+    expect(placed(placement, 'es')).toEqual([NAME]);
+  });
+
+  // The browser may list Spanish after French, so French may be shown the
+  // Spanish form as well as the English one.
+  it('gives a declared language without a document the fields of every document that it may be shown', () => {
+    const placement = formFieldPossiblePlacement(
+      { en: documentOf(NAME), es: documentOf(AGE) },
+      TRILINGUAL,
+    );
+    expect(placed(placement, 'fr').toSorted()).toEqual([AGE, NAME].toSorted());
+    expect(
+      placed(
+        formFieldPlacement(
+          { en: documentOf(NAME), es: documentOf(AGE) },
+          TRILINGUAL,
+        ),
+        'fr',
+      ),
+    ).toEqual([NAME]);
+  });
+
+  it('places the fields of a document in a language that the protocol does not declare, and nothing from it in a declared one', () => {
+    const placement = formFieldPossiblePlacement(
+      { en: documentOf(NAME), de: documentOf(AGE) },
+      TRILINGUAL,
+    );
+    expect(placed(placement, 'de')).toEqual([AGE]);
+    expect(placed(placement, 'fr')).toEqual([NAME]);
+  });
+
+  it('places nothing in a declared language when no declared language has a document', () => {
+    const placement = formFieldPossiblePlacement(
+      { de: documentOf(NAME) },
+      TRILINGUAL,
+    );
+    for (const locale of TRILINGUAL.locales) {
+      expect(placed(placement, locale)).toEqual([]);
+    }
   });
 });
 

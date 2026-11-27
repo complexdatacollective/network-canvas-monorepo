@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  localesThatMayBeShown,
   resolveLocalizedString,
   resolveTextsInEachLocale,
 } from '../resolveLocalizedString.ts';
@@ -356,5 +357,81 @@ describe('resolveTextsInEachLocale', () => {
     expect(resolveTextsInEachLocale([{ de: 'Hallo' }, {}], 'en')).toEqual({
       de: ['Hallo', ''],
     });
+  });
+});
+
+describe('localesThatMayBeShown', () => {
+  const regional = {
+    defaultLocale: 'en',
+    locales: ['en', 'es', 'fr', 'pt', 'pt-BR'],
+  };
+
+  // Every browser list of up to three of the declared languages, in every
+  // order, the empty list included.
+  const browserLists = (locales: readonly string[]): string[][] => {
+    const lists: string[][] = [[]];
+    const extend = (list: readonly string[]) => {
+      if (list.length === 3) return;
+      for (const locale of locales) {
+        if (list.includes(locale)) continue;
+        const next = [...list, locale];
+        lists.push(next);
+        extend(next);
+      }
+    };
+    extend([]);
+    return lists;
+  };
+
+  // What the interview shows, under every browser list: exactly the
+  // languages that this gives.
+  const shownUnderAnyList = (
+    value: Readonly<Record<string, string>>,
+    locale: string,
+  ) =>
+    new Set(
+      browserLists(regional.locales).map(
+        (list) =>
+          resolveLocalizedString(value, regional, [locale, ...list]).locale,
+      ),
+    );
+
+  it.each([
+    [{ en: 'Hi', es: 'Hola' }, 'es'],
+    [{ en: 'Hi', es: 'Hola' }, 'fr'],
+    [{ es: 'Hola', fr: 'Salut' }, 'en'],
+    [{ en: 'Hi', fr: 'Salut', pt: 'Olá' }, 'pt-BR'],
+    [{ 'en': 'Hi', 'pt-BR': 'Oi' }, 'pt'],
+    [{ en: 'Hi', es: 'Hola', fr: 'Salut' }, 'pt'],
+  ])(
+    'gives what the interview shows under any browser list: %o in %s',
+    (value, locale) => {
+      expect(localesThatMayBeShown(value, regional, locale)).toEqual(
+        shownUnderAnyList(value, locale),
+      );
+    },
+  );
+
+  it('gives only the selected language’s own translation, or its closest related language’s', () => {
+    expect([
+      ...localesThatMayBeShown({ en: 'Hi', es: 'Hola' }, regional, 'es'),
+    ]).toEqual(['es']);
+    expect([
+      ...localesThatMayBeShown({ en: 'Hi', pt: 'Olá' }, regional, 'pt-BR'),
+    ]).toEqual(['pt']);
+  });
+
+  it('gives every declared translation to a language that has no related one', () => {
+    expect([
+      ...localesThatMayBeShown(
+        { en: 'Hi', es: 'Hola', de: 'Hallo' },
+        regional,
+        'fr',
+      ),
+    ]).toEqual(['en', 'es']);
+  });
+
+  it('gives nothing when no declared language has the text', () => {
+    expect(localesThatMayBeShown({ de: 'Hallo' }, regional, 'fr').size).toBe(0);
   });
 });
