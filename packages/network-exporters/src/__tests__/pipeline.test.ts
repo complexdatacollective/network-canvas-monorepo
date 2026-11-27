@@ -1,7 +1,10 @@
 import { type Cause, Effect, Layer, Queue, Result } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
 import { DatabaseError, describeExportError } from '../errors';
 import type { ExportEvent } from '../events';
@@ -12,13 +15,17 @@ import { InterviewRepository } from '../services/InterviewRepository';
 import { Output } from '../services/Output';
 import { ProtocolRepository } from '../services/ProtocolRepository';
 import type * as GetFormatterModule from '../utils/getFormatter';
+import { runRecordedExport } from './exportHarness';
+import { testTypeId, testVariableId } from './testIds';
+
+const mockFormatters = vi.hoisted(() => ({ failAttributeList: true }));
 
 vi.mock('../utils/getFormatter', async (importOriginal) => {
   const original = await importOriginal<typeof GetFormatterModule>();
   return {
     ...original,
     getFormatter: (format: Parameters<typeof original.getFormatter>[0]) => {
-      if (format === 'attributeList') {
+      if (format === 'attributeList' && mockFormatters.failAttributeList) {
         return () => {
           throw new Error('mock formatter failure');
         };
@@ -252,5 +259,118 @@ describe('exportPipeline', () => {
     expect(missingFailures).toHaveLength(1);
     expect(missingFailures[0]?.sessionId).toBe('s-missing');
     expect(result.successfulExports.length).toBeGreaterThan(0);
+  });
+
+  it('no export file contains endpoint rules', async () => {
+    const person = testTypeId('person');
+    const place = testTypeId('place');
+    const visits = testTypeId('visits');
+    const knows = testTypeId('knows');
+    const nameVariable = testVariableId('name');
+    const node = (uid: string, type: string, name: string) => ({
+      [entityPrimaryKeyProperty]: uid,
+      type,
+      [entityAttributesProperty]: { [nameVariable]: name },
+    });
+    const session: InterviewExportInput = {
+      id: 'interview-rules',
+      participantIdentifier: 'p-rules',
+      startTime: new Date('2025-01-01'),
+      finishTime: new Date('2025-01-01'),
+      network: {
+        nodes: [
+          node('n1', person, 'Dee'),
+          node('n2', person, 'Carl'),
+          node('n3', place, 'Park'),
+        ],
+        edges: [
+          {
+            [entityPrimaryKeyProperty]: 'e1',
+            from: 'n1',
+            to: 'n3',
+            type: visits,
+            [entityAttributesProperty]: {},
+          },
+          {
+            [entityPrimaryKeyProperty]: 'e2',
+            from: 'n2',
+            to: 'n1',
+            type: knows,
+            [entityAttributesProperty]: {},
+          },
+        ],
+        ego: {
+          [entityPrimaryKeyProperty]: 'ego',
+          [entityAttributesProperty]: {},
+        },
+      },
+      protocolHash: 'rules',
+      finishOutcome: 'completed',
+    };
+    const nodeType = (name: string) => ({
+      name,
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' as const },
+      variables: { [nameVariable]: { name: 'name', type: 'text' as const } },
+    });
+
+    mockFormatters.failAttributeList = false;
+    try {
+      const { files, result } = await runRecordedExport(
+        { ...defaultExportOptions, exportCSV: true },
+        [session],
+        {
+          hash: 'rules',
+          name: 'Rules',
+          codebook: {
+            node: { [person]: nodeType('Person'), [place]: nodeType('Place') },
+            edge: {
+              [visits]: {
+                name: 'Visits',
+                color: 'edge-color-seq-1',
+                directed: true,
+                endpointRules: [{ sourceType: person, targetType: place }],
+              },
+              [knows]: {
+                name: 'Knows',
+                color: 'edge-color-seq-2',
+                endpointRules: [{ sourceType: person, targetType: person }],
+              },
+            },
+          },
+          layoutNodeTypes: {},
+        },
+      );
+
+      expect(result.status).toBe('success');
+      const names = [...files.keys()];
+      for (const ending of [
+        '.graphml',
+        '_attributeList_Person.csv',
+        '_attributeList_Place.csv',
+        '_edgeList_Visits.csv',
+        '_edgeList_Knows.csv',
+        '_ego.csv',
+      ]) {
+        expect({
+          ending,
+          written: names.some((name) => name.endsWith(ending)),
+        }).toEqual({
+          ending,
+          written: true,
+        });
+      }
+      for (const [name, text] of files) {
+        for (const word of ['endpointRules', 'sourceType', 'targetType']) {
+          expect({ name, word, found: text.includes(word) }).toEqual({
+            name,
+            word,
+            found: false,
+          });
+        }
+      }
+    } finally {
+      mockFormatters.failAttributeList = true;
+    }
   });
 });

@@ -136,6 +136,24 @@ document, and every `<data>` element uses the allocated ID. If the same external
 attribute appears on more than one entity kind, GraphML emits one `for="all"`
 key rather than conflicting node and edge keys.
 
+### Directed edge types
+
+An edge type can be directed in the codebook. Each edge of a directed type is
+exported from its source node to its target node.
+
+- **Edge list CSV**: each edge has its own row, with the source node in the
+  `from` column and the target node in the `to` column. No column is added for
+  direction, so a pair of nodes connected in both directions has two rows.
+- **GraphML**: the `<graph>` element keeps `edgedefault="undirected"`, and each
+  edge of a directed type has a `directed="true"` attribute.
+- **Adjacency matrix** (registered, but not written by the pipeline): rows are
+  sources and columns are targets. An edge of a directed type sets only the
+  cell for its source row and target column, so the matrix need not be
+  symmetric. An edge of an undirected type sets both cells.
+
+The endpoint rules of an edge type, which limit the node types that it
+connects, are not written to any export file.
+
 ### How an interview ended
 
 Each interview is exported with the outcome of the finish stage it ended at,

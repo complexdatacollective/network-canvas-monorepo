@@ -1,4 +1,4 @@
-import type { Codebook } from '@codaco/protocol-validation';
+import { type Codebook, isDirectedEdgeType } from '@codaco/protocol-validation';
 import {
   entityPrimaryKeyProperty,
   ncSourceUUID,
@@ -37,7 +37,7 @@ class AdjacencyMatrix {
     this.arrayView[byteIndex] = current | (1 << (7 - bitIndex));
   }
 
-  calculateEdges(edges: readonly EdgeWithResequencedID[]) {
+  calculateEdges(edges: readonly EdgeWithResequencedID[], codebook: Codebook) {
     this.indexMap = {};
     this.uniqueNodeIds.forEach((id, i) => {
       this.indexMap[id] = i;
@@ -46,7 +46,9 @@ class AdjacencyMatrix {
       const source = edge[ncSourceUUID];
       const target = edge[ncTargetUUID];
       this.setAdjacent(source, target);
-      this.setAdjacent(target, source);
+      if (!isDirectedEdgeType(codebook, edge.type)) {
+        this.setAdjacent(target, source);
+      }
     });
   }
 
@@ -75,11 +77,11 @@ class AdjacencyMatrix {
 
 export function* adjacencyMatrixRows(
   network: SessionWithResequencedIDs,
-  _codebook: Codebook,
+  codebook: Codebook,
   _options: ExportOptions,
 ): Generator<string, void, void> {
   const matrix = new AdjacencyMatrix(network);
-  matrix.calculateEdges(network.edges);
+  matrix.calculateEdges(network.edges, codebook);
   yield* matrix.rows();
 }
 

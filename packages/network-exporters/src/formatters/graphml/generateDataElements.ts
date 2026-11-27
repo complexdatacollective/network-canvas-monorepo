@@ -1,5 +1,6 @@
 import { DOMImplementation, type DocumentFragment } from '@xmldom/xmldom';
 
+import { isDirectedEdgeType } from '@codaco/protocol-validation';
 import {
   edgeExportIDProperty,
   edgeSourceProperty,
@@ -109,6 +110,10 @@ function generateDataElementsForEntity(
     );
     domElement.setAttribute('source', edge[edgeSourceProperty]);
     domElement.setAttribute('target', edge[edgeTargetProperty]);
+    // The graph is declared undirected; each edge of a directed type says so.
+    if (isDirectedEdgeType(codebook, edge.type)) {
+      domElement.setAttribute('directed', 'true');
+    }
     domElement.appendChild(
       createDataElement({ key: ncSourceUUID }, edge[ncSourceUUID]),
     );

@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Codebook } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  entityPrimaryKeyProperty,
   ncSourceUUID,
   ncTargetUUID,
   ncTypeProperty,
@@ -275,6 +276,78 @@ describe('buildGraphML', () => {
         testVariableId('mock-uuid-5'),
       ]),
     );
+  });
+
+  it('marks edges of a directed type directed', async () => {
+    const directedType = testTypeId('mock-edge-type-2');
+    const directedDefinition = codebook.edge?.[directedType];
+    if (!directedDefinition) throw new Error('Missing edge type');
+    const directedCodebook: Codebook = {
+      ...codebook,
+      edge: {
+        ...codebook.edge,
+        [directedType]: { ...directedDefinition, directed: true },
+      },
+    };
+    const processedNetworks = processMockNetworks([
+      {
+        ...mockNetwork,
+        edges: [
+          ...mockNetwork.edges,
+          {
+            [entityPrimaryKeyProperty]: 'edge-directed',
+            from: '3',
+            to: '1',
+            type: directedType,
+            [entityAttributesProperty]: {},
+          },
+        ],
+      },
+    ]);
+    const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];
+    if (!protocolNetwork) throw new Error('Missing protocol network');
+
+    const directedXml = await buildXML(
+      protocolNetwork,
+      directedCodebook,
+      exportOptions,
+    );
+
+    const uuidOf = (element: Element) =>
+      getDataElementByKey(
+        getChildElements(element, element.getElementsByTagName('data')),
+        ncUUIDProperty,
+      )?.textContent;
+    const edges = Array.from(directedXml.getElementsByTagName('edge'));
+    const exportIdOfNode = (uuid: string) =>
+      Array.from(directedXml.getElementsByTagName('node'))
+        .find((node) => uuidOf(node) === uuid)
+        ?.getAttribute('id');
+
+    expect(
+      edges.map((edge) => ({
+        uuid: uuidOf(edge),
+        directed: edge.getAttribute('directed'),
+        source: edge.getAttribute('source'),
+        target: edge.getAttribute('target'),
+      })),
+    ).toEqual([
+      {
+        uuid: 'edge-1',
+        directed: null,
+        source: exportIdOfNode('1'),
+        target: exportIdOfNode('2'),
+      },
+      {
+        uuid: 'edge-directed',
+        directed: 'true',
+        source: exportIdOfNode('3'),
+        target: exportIdOfNode('1'),
+      },
+    ]);
+    expect(
+      directedXml.getElementsByTagName('graph')[0]?.getAttribute('edgedefault'),
+    ).toBe('undirected');
   });
 
   it('includes node base keys when there are zero nodes', async () => {

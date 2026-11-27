@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Codebook } from '@codaco/protocol-validation';
 import { ncSourceUUID, ncTargetUUID } from '@codaco/shared-consts';
 
+import { testTypeId } from '../../../__tests__/testIds';
 import type { SessionWithResequencedIDs } from '../../../input';
 import { adjacencyMatrixRows } from '../adjacencyMatrix';
 import { mockCodebook, mockExportOptions } from './mockObjects';
@@ -73,6 +75,36 @@ describe('adjacencyMatrixRows', () => {
       '10,0,0,0,0,0,0,0,0,1,0\r\n',
     ].join('\r\n');
     expect(rows.join('')).toBe(expected);
+  });
+
+  it('a directed type yields an asymmetric matrix', () => {
+    const directedType = testTypeId('mock-edge-type-2');
+    const undirectedType = testTypeId('mock-edge-type');
+    const directedDefinition = mockCodebook.edge?.[directedType];
+    if (!directedDefinition) throw new Error('Missing edge type');
+    const codebook: Codebook = {
+      ...mockCodebook,
+      edge: {
+        ...mockCodebook.edge,
+        [directedType]: { ...directedDefinition, directed: true },
+      },
+    };
+    const rows = Array.from(
+      adjacencyMatrixRows(
+        mockNetwork([
+          { [ncSourceUUID]: '1', [ncTargetUUID]: '2', type: directedType },
+          { [ncSourceUUID]: '3', [ncTargetUUID]: '4', type: undirectedType },
+        ]) as unknown as SessionWithResequencedIDs,
+        codebook,
+        mockExportOptions,
+      ),
+    );
+    // Rows are sources and columns are targets.
+    expect(rows.join('')).toBe(
+      [',1,2,3,4', '1,0,1,0,0', '2,0,0,0,0', '3,0,0,0,1', '4,0,0,1,0\r\n'].join(
+        '\r\n',
+      ),
+    );
   });
 
   it('neutralizes a formula-injection node id in header and row labels', () => {
