@@ -120,6 +120,7 @@ jobs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
       studio: ${{ steps.flags.outputs.studio }}
+      publications: ${{ steps.flags.outputs.publications }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -280,6 +281,28 @@ jobs:
             echo "Studio stack inputs changed in ${gate_base:-(no base)}..$CURR."
           fi
 
+          # The website's list of publications, for website-preview-checks.
+          # Each entry links to a publisher's page, and only the website's
+          # dead-link crawl checks those links, so a pull request that changes
+          # the list crawls the website preview. Otherwise a link that the
+          # checker cannot open is found only on the next Documentation or
+          # Website release PR. The flag is judged on the whole pull request,
+          # not push to push, so that every push re-runs the crawl: the usual
+          # fix for a failure is a push that adds the link to
+          # .github/dead-link-refusals.json, which changes no package, and
+          # carry-forward-statuses would otherwise republish the failure.
+          # Such a pull request also needs `website` to be true, which keeps
+          # carry-forward-statuses from republishing an earlier verdict over
+          # the job that runs on this commit.
+          publications=false
+          if [[ -z "$gate_base" ]] \
+            || ! git diff --quiet "$gate_base" "$CURR" -- \
+              apps/networkcanvas.com/content/publications.csv; then
+            publications=true
+            website=true
+            echo "The website's publications changed in ${gate_base:-(no base)}..$CURR."
+          fi
+
           # Either public site can contain inbound links to routes owned by the
           # other. Crawl both paired previews whenever either site changes so a
           # removed route cannot escape the link check on the unchanged peer.
@@ -291,6 +314,7 @@ jobs:
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
           echo "studio=$studio" >> "$GITHUB_OUTPUT"
+          echo "publications=$publications" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether E2E must run for this ref. Feature PRs select the
   # suites whose subject package or workspace dependency closure changed.
@@ -1096,20 +1120,24 @@ jobs:
           # which otherwise first runs when its release PR has merged. The dry
           # run bundles it the same way and needs no Cloudflare credentials.
           pnpm --filter=@codaco/protocol-review-worker bundle
-      # Every other Storybook is built in CI as Chromatic's upload input
-      # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
-      # Builder has no Chromatic project by design, and the build step above
-      # skips it because a private, source-first package has no `build` script
-      # — so without this step nothing in CI runs its static build at all.
-      # `test:storybook` is not a substitute: it serves stories through Vite's
-      # dev server and never bundles, and it does not read the generated docs
-      # entries either (a CSF file with `autodocs` and no story exports is
-      # skipped). Cached through turbo like the other build tasks, so it
-      # replays on the PRs that do not touch the package.
-      - name: Build the Protocol Builder Storybook
-        id: protocol_builder_storybook
+      # The build step above skips the Storybooks, because a source-first
+      # package has no `build` script, and Chromatic builds three of them only
+      # when someone requests a release review. So without this step nothing
+      # in CI runs their static builds before a release. `test:storybook` is
+      # not a substitute: it serves stories through Vite's dev server and
+      # never bundles, and it does not read the generated docs entries either
+      # (a CSF file with `autodocs` and no story exports is skipped). Cached
+      # through turbo like the other build tasks, so it replays on the PRs
+      # that do not touch these packages.
+      - name: Build the Storybooks
+        id: storybooks
         continue-on-error: true
-        run: pnpm exec turbo run build-storybook --filter=@codaco/protocol-builder
+        run: >-
+          pnpm exec turbo run build-storybook
+          --filter=@codaco/protocol-builder
+          --filter=@codaco/fresco-ui
+          --filter=@codaco/interview
+          --filter=@codaco/interviewer
       - name: Typecheck workspaces
         id: typecheck
         continue-on-error: true
@@ -1130,7 +1158,7 @@ jobs:
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           INVARIANTS_OUTCOME: ${{ steps.invariants.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
-          PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
+          STORYBOOKS_OUTCOME: ${{ steps.storybooks.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
           failed=false
@@ -1148,7 +1176,7 @@ jobs:
             "scripts=$SCRIPTS_OUTCOME" \
             "invariants=$INVARIANTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
-            "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
+            "storybooks=$STORYBOOKS_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
             if [[ "${result#*=}" != "success" ]]; then
@@ -1942,7 +1970,7 @@ jobs:
   test-storybook:
     # Storybook's play functions and their assertions, executed in a real
     # browser by vitest. Chromatic captures stories for three of these
-    # projects, but TurboSnap only re-captures the ones a PR changed, and
+    # projects, but only when someone requests a release review, and
     # Architect and Fresco have no Chromatic project at all — so this is the
     # only check that runs every play function on every change.
     #
@@ -2090,10 +2118,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           PR_HEAD_REF: ${{ github.head_ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           release_pr=false
+          release_head=''
           if [[ "$EVENT_NAME" == 'pull_request' ]]; then
             [[ "$PR_HEAD_REF" == 'changeset-release/main' ]] && release_pr=true
+            release_head=$PR_HEAD_SHA
           else
             # The queue only ever merges the open PR's current head (a push
             # to the branch dequeues it), so this tree merges the release PR
@@ -2112,10 +2143,12 @@ jobs:
               case "$status" in
                 ahead | identical) release_pr=true ;;
               esac
+              release_head=$vp_head
               echo "Open Version Packages PR head $vp_head is '$status' relative to this tree"
             fi
           fi
           echo "release_pr=$release_pr" >> "$GITHUB_OUTPUT"
+          echo "release_head=$release_head" >> "$GITHUB_OUTPUT"
           if [[ "$release_pr" == 'true' ]]; then
             echo "This tree merges the Version Packages PR — checking it"
           else
@@ -2148,6 +2181,34 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin "$BASE_SHA"
           node scripts/release/check-app-release-notes.mjs --base "$BASE_SHA"
+      # Visual review. Chromatic runs only when someone asks for it on the
+      # release branch (chromatic.yml), and fails while a rendering change
+      # waits for acceptance, so a successful run for this exact head is the
+      # approval. Each push to main regenerates the branch, so the review is
+      # requested again for the head that will merge. While the repository
+      # variable CHROMATIC_RELEASE_REVIEW is not `required` (until the
+      # workflow has been verified against a live snapshot quota), a missing
+      # review is reported as a warning instead.
+      - name: Refuse a release PR whose visual review has not passed
+        if: steps.head.outputs.release_pr == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_HEAD: ${{ steps.head.outputs.release_head }}
+          ENFORCEMENT: ${{ vars.CHROMATIC_RELEASE_REVIEW }}
+        run: |
+          passed=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/chromatic.yml/runs?event=workflow_dispatch&branch=changeset-release/main&head_sha=${RELEASE_HEAD}&status=success&per_page=1" \
+            --jq '.total_count')
+          if [[ "$passed" -gt 0 ]]; then
+            echo "Chromatic passed for release head $RELEASE_HEAD"
+            exit 0
+          fi
+          message="Chromatic has not passed for release head $RELEASE_HEAD. Run 'gh workflow run chromatic.yml --ref changeset-release/main', accept or fix every change it reports, and run it again until it succeeds."
+          if [[ "$ENFORCEMENT" == 'required' ]]; then
+            echo "::error title=Visual review missing::$message"
+            exit 1
+          fi
+          echo "::warning title=Visual review missing::$message The repository variable CHROMATIC_RELEASE_REVIEW is not 'required', so this does not block the merge."
 
   quality:
     needs:
@@ -2292,8 +2353,11 @@ jobs:
   docs-preview-checks:
     needs: detect
     # Documentation and Website are separately gated products. Crawl both
-    # paired previews only when one of their generated release PRs is being
-    # validated; ordinary feature PRs must not run the dead-link checker.
+    # paired previews when one of their generated release PRs is being
+    # validated. Other pull requests do not run the documentation crawl.
+    # website-preview-checks also runs for a pull request that changes the
+    # website's list of publications; that list adds or removes no route on
+    # either site, so this crawl does not run for it (see that job).
     if: >-
       github.event_name == 'pull_request'
       && github.base_ref == 'main'
@@ -2411,14 +2475,23 @@ jobs:
 
   website-preview-checks:
     needs: detect
-    # Keep this condition paired with docs-preview-checks: either public-site
-    # release validates both sites because they link to each other's routes.
+    # Keep the release branches in this condition paired with
+    # docs-preview-checks: either public-site release validates both sites
+    # because they link to each other's routes.
+    #
+    # This job alone also runs for a pull request that changes the website's
+    # list of publications (the detect job's `publications` flag), so that a
+    # publication whose link fails the checker is found on the pull request
+    # that adds it. The list changes only the website's links to publishers'
+    # pages. It adds or removes no route on either site, so no link between
+    # the two sites can break and the documentation crawl is not needed.
     if: >-
       github.event_name == 'pull_request'
       && github.base_ref == 'main'
       && needs.detect.outputs.website == 'true'
       && (github.head_ref == 'changeset-release/documentation'
-      || github.head_ref == 'changeset-release/website')
+      || github.head_ref == 'changeset-release/website'
+      || needs.detect.outputs.publications == 'true')
     runs-on: ubuntu-latest
     # Budgets two sequential 15-minute Netlify status polls (website, then
     # documentation) plus the reachability probes and the crawl itself. Every

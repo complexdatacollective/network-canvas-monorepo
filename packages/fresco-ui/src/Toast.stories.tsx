@@ -347,6 +347,123 @@ export const LongDescription: Story = {
   },
 };
 
+type ToastOptions = Parameters<ReturnType<typeof useToast>['add']>[0];
+
+function SingleToastDemo({ options }: { options: ToastOptions }) {
+  const toast = useToast();
+  // `useToast()` returns a fresh object every render, so guard with a ref
+  // instead of an effect dependency on `toast` itself.
+  const shown = useRef(false);
+
+  useEffect(() => {
+    if (shown.current) return;
+    shown.current = true;
+    toast.add({ timeout: 0, ...options });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+}
+
+const LONG_TITLE = 'Thanks for your feedback. It has been sent to our team.';
+
+/** The rectangle of each line of text inside `element`. */
+function lineBoxes(element: HTMLElement) {
+  const range = element.ownerDocument.createRange();
+  range.selectNodeContents(element);
+  return Array.from(range.getClientRects()).filter((box) => box.width > 0);
+}
+
+/**
+ * Asserts that no line of the toast's title runs into its Close control: each
+ * line beside the control ends at least the toast's own column gap before the
+ * control's start edge, in either reading direction.
+ */
+async function expectTitleClearOfClose({
+  canvasElement,
+}: {
+  canvasElement: HTMLElement;
+}) {
+  const doc = canvasElement.ownerDocument;
+  const close = await within(doc.body).findByLabelText('Close');
+  const toastRoot = toastRootFor(close);
+  const titleId = toastRoot.getAttribute('aria-labelledby');
+  if (!titleId) throw new Error('Toast has no aria-labelledby');
+
+  await waitForRestingBox(toastRoot, () => {
+    const title = doc.getElementById(titleId);
+    if (!title) throw new Error('Toast title element not found');
+    expect(title).toHaveTextContent(LONG_TITLE);
+
+    // A title on one line may never reach the end of its column, which would
+    // pass whatever the layout. Wrapping proves the first line filled it.
+    const lines = lineBoxes(title);
+    expect(lines.length).toBeGreaterThan(1);
+
+    const closeBox = close.getBoundingClientRect();
+    const besideClose = lines.filter(
+      (line) => line.top < closeBox.bottom && line.bottom > closeBox.top,
+    );
+    expect(besideClose.length).toBeGreaterThan(0);
+
+    const content = close.parentElement;
+    if (!content) throw new Error('Close control has no parent');
+    const gap = Number.parseFloat(getComputedStyle(content).columnGap);
+    expect(gap).toBeGreaterThan(0);
+    const rightToLeft = getComputedStyle(toastRoot).direction === 'rtl';
+    for (const line of besideClose) {
+      const clearance = rightToLeft
+        ? line.left - closeBox.right
+        : closeBox.left - line.right;
+      expect(clearance).toBeGreaterThanOrEqual(gap);
+    }
+  });
+}
+
+/**
+ * A title long enough to wrap stops short of the Close control, with the same
+ * gap that separates the icon from the text, rather than running up to it.
+ */
+export const LongTitle: Story = {
+  render: () => (
+    <SingleToastDemo options={{ title: LONG_TITLE, variant: 'success' }} />
+  ),
+  play: expectTitleClearOfClose,
+};
+
+/**
+ * With a description and an action, and no icon, the title still stops short
+ * of the Close control.
+ */
+export const LongTitleWithDescription: Story = {
+  render: () => (
+    <SingleToastDemo
+      options={{
+        title: LONG_TITLE,
+        description:
+          'A member of the team will read it and reply on the community forum.',
+        onCancel: () => undefined,
+      }}
+    />
+  ),
+  play: expectTitleClearOfClose,
+};
+
+/** In a right-to-left language the Close control and the gap swap sides. */
+export const LongTitleRightToLeft: Story = {
+  globals: { appDirection: 'rtl' },
+  render: () => (
+    <SingleToastDemo
+      options={{
+        title: LONG_TITLE,
+        description: 'Here is some helpful information.',
+        variant: 'info',
+      }}
+    />
+  ),
+  play: expectTitleClearOfClose,
+};
+
 // Oldest first: each one is added in turn, so the first sits at the top of
 // the expanded stack and the last at the front.
 const STACKED_WARNINGS = [

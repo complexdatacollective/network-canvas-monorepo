@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Database, Layers } from 'lucide-react';
+import { cancelFrame, frame } from 'motion/react';
 import { useState } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
+
+import { awaitPassiveEffects } from '../storybook-support/awaitPassiveEffects';
 import SegmentedSwitcher, { type SegmentedOption } from './SegmentedSwitcher';
 
 type Value = 'protocols' | 'data';
@@ -218,3 +223,92 @@ export const Glass: Story = {
 
 // Every segment off at once, as a disabled field's control is.
 export const Disabled: Story = { args: { disabled: true } };
+
+/**
+ * The switcher centred in a container whose contents depend on the choice, as
+ * in a dialog whose fields change with it. Picking "Data" adds a panel below,
+ * so the whole switcher moves up in the same render that moves the highlight.
+ * The highlight must still slide along the track only, never away from it.
+ */
+export const InsideAResizingContainer: Story = {
+  render: () => {
+    const [value, setValue] = useState<Value>('protocols');
+    return (
+      <div className="flex h-120 w-96 flex-col items-center justify-center gap-4">
+        <SegmentedSwitcher
+          aria-label="Resizing container switcher"
+          value={value}
+          onValueChange={setValue}
+          options={ICON_OPTIONS}
+        />
+        {value === 'data' && (
+          <div className="h-40 w-full rounded bg-current opacity-10" />
+        )}
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const group = canvas.getByRole('group', {
+      name: 'Resizing container switcher',
+    });
+    const track = group.parentElement!;
+    const data = canvas.getByRole('button', { name: 'Data' });
+    const highlight = () =>
+      group.querySelector<HTMLElement>('span[aria-hidden]');
+
+    const rest = highlight()!.getBoundingClientRect();
+    const restTrack = track.getBoundingClientRect();
+    const restInset = rest.top - restTrack.top;
+
+    // One sample per frame, after Motion has written that frame's styles.
+    const frames: { trackTop: number; inset: number; left: number }[] = [];
+    const sample = () => {
+      const box = highlight()?.getBoundingClientRect();
+      const trackBox = track.getBoundingClientRect();
+      if (box && frames.length < 40) {
+        frames.push({
+          trackTop: trackBox.top,
+          inset: box.top - trackBox.top,
+          left: box.left - trackBox.left,
+        });
+      }
+    };
+
+    // The Storybook host skips Motion animations; this story is about one.
+    await withAnimationsEnabled(async () => {
+      frame.postRender(sample, true);
+      try {
+        await userEvent.click(data);
+        await waitFor(() => expect(frames).toHaveLength(40));
+      } finally {
+        cancelFrame(sample);
+      }
+    });
+
+    const end =
+      data.getBoundingClientRect().left - track.getBoundingClientRect().left;
+    const start = rest.left - restTrack.left;
+
+    // The panel moved the switcher…
+    await expect(
+      restTrack.top - track.getBoundingClientRect().top,
+    ).toBeGreaterThan(40);
+    // …yet the highlight stayed inside the track in every frame…
+    for (const { inset } of frames) {
+      await expect(inset).toBeCloseTo(restInset, 0);
+    }
+    // …while it slid across, rather than jumping, to the picked segment.
+    await expect(
+      frames.some(({ left }) => left > start + 1 && left < end - 1),
+    ).toBe(true);
+    await waitFor(() =>
+      expect(
+        highlight()!.getBoundingClientRect().left -
+          track.getBoundingClientRect().left,
+      ).toBeCloseTo(end, 0),
+    );
+  },
+};

@@ -107,14 +107,16 @@ import {
 
 const REPORT_SCHEMA_VERSION = 2;
 // "Understood, and refusing you" — not "gone". A 401/403 from someone else's
-// host says the client was turned away, and no content marker separates a bot
-// wall from a permanent refusal: Cloudflare serves its attestation script on
+// host says the client was turned away, and so does a 405 from AWS WAF, which
+// answers a CAPTCHA with 405 (De Gruyter Brill's CloudFront does this to the
+// checker's Chrome). No content marker separates a bot wall from a permanent
+// refusal: Cloudflare serves its attestation script on
 // block pages and ordinary 200s alike, and some publishers send no marker at
 // all. So a refusal is excused only when the SPECIFIC URL is listed as known
 // to refuse us (see --allow-refused). An unlisted one is a failure, which
 // means a link that starts refusing us is never absorbed by a link that
 // stopped — the reason this is a list of URLs and not a count.
-const REFUSED_STATUSES = new Set([401, 403]);
+const REFUSED_STATUSES = new Set([401, 403, 405]);
 const TRANSIENT_STATUSES = new Set([429, 502, 503, 504]);
 const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 500;
@@ -246,7 +248,7 @@ Options:
   --retries=<number>         Retries after the first attempt (default: 3)
   --max-redirects=<number>   Maximum redirect hops (default: 10)
   --allow-refused=<path>     JSON listing external URLs known to answer
-                             401/403 because they refuse automation. A
+                             401, 403 or 405 because they refuse automation. A
                              refusal from any other URL is a failure.
   --headless                 Launch Chrome headless (challenge providers
                              reject headless Chrome; for local use only)
@@ -1307,7 +1309,7 @@ export async function crawl(
     }
 
     if (outcome.status >= 400) {
-      // A 401/403 from someone else's host tells us about the client, not the
+      // A 401/403/405 from someone else's host tells us about the client, not the
       // link — but only for the URLs we have checked by hand and listed. An
       // unlisted refusal is a failure, so a publisher that starts refusing us
       // can never be hidden by one that stopped. The same status from a host
@@ -1468,7 +1470,7 @@ export function formatTextReport(
   if (report.refusals.count > 0) {
     lines.push(
       '',
-      `Refused by ${report.refusals.count} listed external link(s) — answered 401/403, so they could not be verified:`,
+      `Refused by ${report.refusals.count} listed external link(s) — answered 401, 403 or 405, so they could not be verified:`,
     );
     for (const refusal of report.refusals.links) {
       lines.push(
@@ -1563,7 +1565,7 @@ export function formatGitHubSummary(report) {
   // publisher's bot wall spreads unnoticed.
   if (report.refusals.count > 0) {
     lines.push(
-      `<details><summary>${report.refusals.count} listed external link(s) refused us — 401/403, not verified</summary>`,
+      `<details><summary>${report.refusals.count} listed external link(s) refused us — 401, 403 or 405, not verified</summary>`,
       '',
       '| Refused URL | Status | Host |',
       '| --- | --- | --- |',

@@ -453,7 +453,9 @@ test('detect never runs on push-to-main (its consumers are PR/dispatch only)', (
   assert.match(detectIf, /inputs\.interview_e2e_benchmark == true/);
 });
 
-test('both public sites are crawled only for their generated release PRs', () => {
+// The website is also crawled for a pull request that changes its
+// publications; see the publications tests below.
+test('both public sites are crawled for their generated release PRs', () => {
   const detectJob = ciJob('detect');
   assert.equal(detectJob.outputs.docs, '${{ steps.flags.outputs.docs }}');
   assert.equal(detectJob.outputs.website, '${{ steps.flags.outputs.website }}');
@@ -1570,6 +1572,10 @@ test('turbo runs at the one version the root package.json pins', () => {
   const netlifyConfigs = readdirSync(appsDir)
     .map((app) => new URL(`${app}/netlify.toml`, appsDir))
     .filter((url) => existsSync(url));
+  const netlifyIgnore = new URL(
+    'netlify-ignore-deploy-preview.sh',
+    import.meta.url,
+  );
   const sources = [
     ...workflowFiles().map((file) => new URL(file, WORKFLOW_DIR)),
     ...readdirSync(actionDir, { recursive: true })
@@ -1577,6 +1583,7 @@ test('turbo runs at the one version the root package.json pins', () => {
       .map((file) => new URL(file, actionDir)),
     dockerfile,
     ...netlifyConfigs,
+    netlifyIgnore,
   ];
   // Raw text: a comment naming a version can only make this stricter.
   for (const url of sources) {
@@ -1596,23 +1603,51 @@ test('turbo runs at the one version the root package.json pins', () => {
   assert.match(detectCode, readsPin);
   assert.match(detectCode, /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
 
-  // Each ignore command has already changed to the repository root, so
-  // ./package.json is the root manifest.
+  // The shared deploy-preview ignore script has already changed to the
+  // repository root, so ./package.json is the root manifest.
+  const ignoreCode = codeOf(readFileSync(netlifyIgnore, 'utf8'));
+  assert.match(ignoreCode, /cd "\$root"/);
+  assert.match(
+    ignoreCode,
+    /turbo_version="\$\(node -p "require\('\.\/package\.json'\)\.devDependencies\.turbo"\)"/,
+  );
+  assert.match(
+    ignoreCode,
+    /npx --yes "turbo@\$\{turbo_version\}" query affected/,
+  );
+});
+
+test('every Netlify deploy preview is skipped through the shared ignore script', () => {
+  // One script decides every site's preview, so a fix to the decision (such
+  // as measuring from where the pull request left main) reaches all of them.
+  const appsDir = new URL('../../apps/', import.meta.url);
   let ignoreCommands = 0;
-  for (const url of netlifyConfigs) {
+  for (const app of readdirSync(appsDir)) {
+    const url = new URL(`${app}/netlify.toml`, appsDir);
+    if (!existsSync(url)) continue;
     const source = codeOf(readFileSync(url, 'utf8'));
-    if (!source.includes('query affected')) continue;
+    const preview = source
+      .split('[context.deploy-preview]')[1]
+      ?.split(/^\[/m)[0];
+    if (preview === undefined) continue;
+    assert.doesNotMatch(
+      preview,
+      /query affected/,
+      `${url.pathname} decides its deploy preview inline instead of through the shared script`,
+    );
     assert.match(
-      source,
-      /npx --yes \\"turbo@\$\(node -p \\"require\('\.\/package\.json'\)\.devDependencies\.turbo\\"\)\\" query affected/,
-      `${url.pathname} queries turbo without reading the root pin`,
+      preview,
+      new RegExp(
+        String.raw`ignore = ".*bash \\"\$\(git rev-parse --show-toplevel\)/scripts/ci/netlify-ignore-deploy-preview\.sh\\" --config apps/${app.replace('.', String.raw`\.`)}/netlify\.toml `,
+      ),
+      `${url.pathname} does not skip its deploy preview through the shared script with its own config`,
     );
     ignoreCommands += 1;
   }
   // A move of the Netlify configs must not silently empty this loop.
   assert.ok(
-    ignoreCommands >= 5,
-    `expected the five Netlify ignore commands, saw ${ignoreCommands}`,
+    ignoreCommands >= 6,
+    `expected six Netlify ignore commands, saw ${ignoreCommands}`,
   );
 });
 
@@ -3489,17 +3524,17 @@ test('every job quality requires on a detect flag is decided by a cumulative fla
   );
 });
 
-// Runs detect's gate block — the merge base and the studio flag — against a
-// throwaway repository. `flag` is stubbed by the package's paths — studio-api and
-// studio-sync stand in for its dependency closure — and diffs over whatever
-// PREV it is handed, so the block's merge-base range is exercised for real.
-// Each entry of `pushes` is one commit; PREV is the last push's parent, as on
-// a `synchronize`, and origin/main is the commit before the first push.
-function runGateSelection({ pushes = [] }) {
-  const block = detectFlagsScript().match(
-    /^(?<indent> *)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio=false\n[\s\S]*?^\k<indent>fi$/m,
-  );
-  assert.ok(block, 'detect computes the gate flags in one block');
+// Runs one block of detect's flags step against a throwaway repository.
+// `flag` is stubbed by the package's paths — studio-api and studio-sync stand
+// in for its dependency closure — and diffs over whatever PREV it is handed,
+// so a block's merge-base range is exercised for real. Each entry of `pushes`
+// is one commit; PREV is the last push's parent, as on a `synchronize`, and
+// origin/main is the commit before the first push. `preamble` sets the values
+// that earlier lines of the step would have computed, and the result has the
+// final value of each name in `outputs`.
+function runDetectBlock({ pattern, pushes = [], preamble = [], outputs }) {
+  const block = detectFlagsScript().match(pattern);
+  assert.ok(block, `detect contains the block ${pattern}`);
   const stub = [
     'flag() {',
     '  [[ -z "$PREV" ]] && { echo true; return; }',
@@ -3508,13 +3543,14 @@ function runGateSelection({ pushes = [] }) {
   ].join('\n');
   const body = [
     stub,
+    ...preamble,
     block[0]
       .split('\n')
       .map((line) => line.slice(block.groups.indent.length))
       .join('\n'),
-    ...GATE_FLAGS.map((flag) => `echo "${flag}=$${flag}"`),
+    ...outputs.map((name) => `echo "${name}=$${name}"`),
   ].join('\n');
-  const repo = mkdtempSync(join(tmpdir(), 'gate-flags-detect-'));
+  const repo = mkdtempSync(join(tmpdir(), 'detect-flags-'));
   try {
     const git = (...args) =>
       execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
@@ -3549,9 +3585,9 @@ function runGateSelection({ pushes = [] }) {
     });
     assert.equal(result.status, 0, result.stderr);
     return Object.fromEntries(
-      GATE_FLAGS.map((flag) => [
-        flag,
-        result.stdout.match(new RegExp(`^${flag}=(?<value>.*)$`, 'm'))?.groups
+      outputs.map((name) => [
+        name,
+        result.stdout.match(new RegExp(`^${name}=(?<value>.*)$`, 'm'))?.groups
           ?.value,
       ]),
     );
@@ -3559,6 +3595,196 @@ function runGateSelection({ pushes = [] }) {
     rmSync(repo, { recursive: true, force: true });
   }
 }
+
+// Runs detect's gate block: the merge base and the studio flag.
+const runGateSelection = ({ pushes }) =>
+  runDetectBlock({
+    pattern:
+      /^(?<indent> *)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio=false\n[\s\S]*?^\k<indent>fi$/m,
+    pushes,
+    outputs: GATE_FLAGS,
+  });
+
+const PUBLICATIONS_CSV = 'apps/networkcanvas.com/content/publications.csv';
+
+// Runs detect from the merge base through the pairing of the two public
+// sites, with `docs` and `website` set to the push-to-push answers that the
+// package flags would have given.
+const runPublicationsSelection = ({ pushes, website }) =>
+  runDetectBlock({
+    pattern:
+      /^(?<indent> *)gate_base="\$PREV"\n[\s\S]*?^\k<indent>if \[\[ "\$docs" == "true" \|\| "\$website" == "true" \]\]; then\n[\s\S]*?^\k<indent>fi$/m,
+    pushes,
+    preamble: [`docs=${website}`, `website=${website}`],
+    outputs: ['publications', 'website', 'docs'],
+  });
+
+test('detect flags a pull request that changes the publications on the whole pull request', () => {
+  // The first push adds a publication: the package flag already says the
+  // website changed.
+  assert.deepEqual(
+    runPublicationsSelection({ pushes: [[PUBLICATIONS_CSV]], website: true }),
+    { publications: 'true', website: 'true', docs: 'true' },
+  );
+  // A later push that changes no package, such as one that adds a refusing
+  // link to the refusals list, still selects the crawl. `website` is forced
+  // true with it, so carry-forward-statuses does not republish an earlier
+  // verdict over the crawl that runs on this commit.
+  assert.deepEqual(
+    runPublicationsSelection({
+      pushes: [[PUBLICATIONS_CSV], ['.github/dead-link-refusals.json']],
+      website: false,
+    }),
+    { publications: 'true', website: 'true', docs: 'true' },
+  );
+  // Other website changes do not select the crawl on a feature PR.
+  assert.deepEqual(
+    runPublicationsSelection({
+      pushes: [['apps/networkcanvas.com/content/grants.csv']],
+      website: true,
+    }),
+    { publications: 'false', website: 'true', docs: 'true' },
+  );
+  assert.deepEqual(
+    runPublicationsSelection({ pushes: [['README.md']], website: false }),
+    { publications: 'false', website: 'false', docs: 'false' },
+  );
+}, 60_000);
+
+// Evaluates the subset of the GitHub Actions expression syntax that the
+// preview-check conditions use: string literals, context properties, ==, !=,
+// !, && , || and parentheses. A context property missing from `context`
+// throws, so a condition that comes to read something new fails loudly.
+function evaluateCondition(expression, context) {
+  const tokens = [
+    ...expression.matchAll(
+      /\s*(?:(?<operator>\|\||&&|==|!=|!|\(|\))|'(?<literal>[^']*)'|(?<path>[A-Za-z_][\w.-]*)|(?<other>\S))/g,
+    ),
+  ].map(({ groups }) => {
+    assert.equal(groups.other, undefined, `unparsed text in ${expression}`);
+    return groups;
+  });
+  let position = 0;
+  const peek = () => tokens[position]?.operator;
+  const take = (operator) => {
+    assert.equal(peek(), operator, `expected ${operator} in ${expression}`);
+    position += 1;
+  };
+  const primary = () => {
+    if (peek() === '!') {
+      take('!');
+      return !primary();
+    }
+    if (peek() === '(') {
+      take('(');
+      const value = or();
+      take(')');
+      return value;
+    }
+    const { literal, path } = tokens[position] ?? {};
+    position += 1;
+    if (literal !== undefined) return literal;
+    assert.ok(path, `expected a value in ${expression}`);
+    assert.ok(Object.hasOwn(context, path), `the condition reads ${path}`);
+    return context[path];
+  };
+  const equality = () => {
+    const left = primary();
+    if (peek() === '==' || peek() === '!=') {
+      const operator = peek();
+      take(operator);
+      const right = primary();
+      return operator === '==' ? left === right : left !== right;
+    }
+    return left;
+  };
+  const and = () => {
+    let value = equality();
+    while (peek() === '&&') {
+      take('&&');
+      value = equality() && value;
+    }
+    return value;
+  };
+  const or = () => {
+    let value = and();
+    while (peek() === '||') {
+      take('||');
+      value = and() || value;
+    }
+    return value;
+  };
+  const result = or();
+  assert.equal(position, tokens.length, `unparsed text in ${expression}`);
+  return Boolean(result);
+}
+
+const previewPullRequest = ({ head, docs, website, publications }) => ({
+  'github.event_name': 'pull_request',
+  'github.base_ref': 'main',
+  'github.head_ref': head,
+  'needs.detect.outputs.docs': docs,
+  'needs.detect.outputs.website': website,
+  'needs.detect.outputs.publications': publications,
+});
+
+const previewJobRuns = (jobName, context) =>
+  evaluateCondition(ciJob(jobName).if, context);
+
+test('a pull request that changes the publications crawls the website preview and not the documentation preview', () => {
+  const detectJob = ciJob('detect');
+  assert.equal(
+    detectJob.outputs.publications,
+    '${{ steps.flags.outputs.publications }}',
+  );
+  assert.match(
+    detectFlagsScript(),
+    /^echo "publications=\$publications" >> "\$GITHUB_OUTPUT"$/m,
+  );
+
+  // The weekly publications PR, and a later push to it.
+  const publicationsPR = previewPullRequest({
+    head: 'pr/laughing-brown-s5phpl',
+    docs: 'true',
+    website: 'true',
+    publications: 'true',
+  });
+  assert.ok(previewJobRuns('website-preview-checks', publicationsPR));
+  assert.ok(
+    !previewJobRuns('docs-preview-checks', publicationsPR),
+    'the publications list adds no route that the documentation links to',
+  );
+  // An ordinary website change still does not crawl either site.
+  const websitePR = {
+    ...publicationsPR,
+    'needs.detect.outputs.publications': 'false',
+  };
+  assert.ok(!previewJobRuns('website-preview-checks', websitePR));
+  assert.ok(!previewJobRuns('docs-preview-checks', websitePR));
+  // Both release PRs still crawl both sites, with or without the flag.
+  for (const head of [
+    'changeset-release/documentation',
+    'changeset-release/website',
+  ]) {
+    for (const publications of ['true', 'false']) {
+      const releasePR = previewPullRequest({
+        head,
+        docs: 'true',
+        website: 'true',
+        publications,
+      });
+      assert.ok(previewJobRuns('website-preview-checks', releasePR), head);
+      assert.ok(previewJobRuns('docs-preview-checks', releasePR), head);
+    }
+  }
+  // A pull request into an integration branch is not crawled.
+  assert.ok(
+    !previewJobRuns('website-preview-checks', {
+      ...publicationsPR,
+      'github.base_ref': 'schema-9',
+    }),
+  );
+});
 
 test('detect selects studio-stack on the whole pull request', () => {
   // Anything in the api image's package graph, the stack's files outside it,

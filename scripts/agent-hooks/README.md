@@ -6,11 +6,12 @@ the whole-tree gates themselves. Both harnesses run a hook as a subprocess
 with one JSON event on stdin and read a JSON verdict from stdout, and both
 accept the same verdict fields, so one script serves both.
 
-| Event                     | Script           | What it does                                                                                                                                                                                                                                                   |
-| ------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PostToolUse` (file edit) | `post-edit.mjs`  | Runs `oxfmt` and `oxlint --fix` on the edited file(s); reports reformatting and remaining lint errors as extra context. Under a second per edit. A shell command names no path, so for those it formats the uncommitted files modified since the previous run. |
-| `Stop`, `SubagentStop`    | `stop-check.mjs` | Typechecks the packages changed on the branch plus their dependents via turbo (cached); skipped when nothing changed since the last clean run; returns a block decision so the agent fixes failures.                                                           |
-| `PreToolUse` (shell)      | `pre-bash.mjs`   | Refuses whole-tree `pnpm lint`/`typecheck`/`knip`, bare `oxlint`/`oxfmt`, and `git commit --no-verify`, explaining the alternative. `AGENT_GATES=1` bypasses.                                                                                                  |
+| Event                       | Script              | What it does                                                                                                                                                                                                                                                                                                   |
+| --------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PostToolUse` (file edit)   | `post-edit.mjs`     | Runs `oxfmt` and `oxlint --fix` on the edited file(s); reports reformatting and remaining lint errors as extra context. Under a second per edit. A shell command names no path, so for those it formats the uncommitted files modified since the previous run. Also adds the wording reminder described below. |
+| `SessionStart` (any source) | `session-start.mjs` | In a linked worktree, names the project skills that the main checkout's `.claude/skills` lacks or has with different text, and tells the agent to read those skills from the worktree. Silent otherwise.                                                                                                       |
+| `Stop`, `SubagentStop`      | `stop-check.mjs`    | Typechecks the packages changed on the branch plus their dependents via turbo (cached); skipped when nothing changed since the last clean run; returns a block decision so the agent fixes failures.                                                                                                           |
+| `PreToolUse` (shell)        | `pre-bash.mjs`      | Refuses whole-tree `pnpm lint`/`typecheck`/`knip`, bare `oxlint`/`oxfmt`, and `git commit --no-verify`, explaining the alternative. `AGENT_GATES=1` bypasses.                                                                                                                                                  |
 
 `pnpm agent:test` (`agent-test.mjs`) runs, in each package that contains
 changed files, only the vitest tests whose import graph touches the changed
@@ -27,13 +28,40 @@ and lints and format-checks the changed files. `knip` itself is a pre-push
 gate (`.husky/pre-push`): once per branch push, the last local moment before
 CI.
 
+## Wording reminder
+
+When an edit changes English text that people read, `post-edit.mjs` adds a
+reminder to follow the `writing-user-facing-text` skill. The files that it
+covers are listed in `isReaderFacingText` in `lib.mjs`: changesets,
+`README.md`, `CHANGELOG.md` and `RELEASING.md` files, English documentation
+and website pages (`*.en.mdx`, `*.en-US.md`, `*.en-GB.md`), the English
+message catalogs of the documentation and the website, and the `en-GB`
+overrides of app-i18n catalogs. The English app-i18n catalogs are generated
+from `defaultMessage`, so an edit to a code file whose added text contains a
+`defaultMessage` also gets the reminder. Other locales are covered by the
+`verifying-translations` skill.
+
+The first reminder in a session contains the "Checking a sentence" section of
+`.agents/skills/writing-user-facing-text/SKILL.md`, read from the tree that the
+hook inspects, so the rules exist in one place. Later reminders in the same
+session are one line long. An empty marker file in
+`$TMPDIR/network-canvas-agent-hooks/`, named from a hash of the session id,
+records that the session has had the full checklist. An error leaves the
+reminder out and never affects the edit.
+
 ## Wiring
 
 - Claude Code: `.claude/settings.json`. Hooks apply to subagents, teammates,
   and headless runs. `$CLAUDE_PROJECT_DIR` only locates the scripts: in a
   linked worktree session it is the main checkout, not the worktree, so the
   scripts take the repository they inspect from the hook event's `cwd` and
-  fall back to the variable only when an event carries none.
+  fall back to the variable only when an event carries none. The
+  `SessionStart` hook is the exception: it checks for a stale main checkout,
+  so its command runs the worktree's copy of `session-start.mjs`
+  (`git rev-parse --show-toplevel`) and uses the variable only outside a
+  repository. It runs on every session source (startup, resume, clear and
+  compact), because the warning is lost when the context is cleared or
+  compacted. Codex does not run it.
 - Codex: `.codex/hooks.json`. File edits arrive as `apply_patch` (or as
   `Bash` when the model applies a patch through the shell), and the touched
   paths are read from the patch text and from the tool response's `A/M/D`

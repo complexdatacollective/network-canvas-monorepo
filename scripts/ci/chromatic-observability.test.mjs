@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -9,6 +9,7 @@ import { test } from 'vitest';
 
 import {
   formatChromaticSummary,
+  isUntested,
   parseChromaticLog,
 } from './chromatic-observability.mjs';
 
@@ -93,6 +94,45 @@ test('reports a full-build file-change reason and quota state from audited outpu
     bailoutReason:
       'Storybook config change in packages/fresco-ui/.storybook/main.ts',
   });
+  assert.equal(isUntested(result), true);
+});
+
+// Lines from fresco-ui build 3236 (CI run 45796485449, 26 Nov 2026), which
+// the CLI and the workflow both reported as successful.
+const BILLED_LIMIT_LOG = `
+  09:58:31.891     → Found a change in apps/community-theme/package.json or one of its 13 siblings
+  09:58:43.746 ⚠ Billed snapshot limit reached
+               This build is limited because your account reached its billed snapshot limit for this billing period.
+  09:58:43.747 ✔ Storybook published
+               We found 105 components with 872 stories.
+  09:58:43.748 Finalizing build
+  09:58:43.748     → No tests run
+  09:58:43.748 Test your stories
+  09:58:43.748     → No UI tests or UI review enabled
+`;
+
+test('a build limited by the billed snapshot limit is untested', () => {
+  const result = parseChromaticLog(BILLED_LIMIT_LOG);
+  assert.equal(result.state, 'quota-limited');
+  assert.equal(isUntested(result), true);
+});
+
+test('a project without UI Tests is untested', () => {
+  const result = parseChromaticLog(`
+    ✔ Storybook published
+    → No UI tests or UI review enabled
+  `);
+  assert.equal(result.state, 'ui-tests-disabled');
+  assert.equal(isUntested(result), true);
+});
+
+test('a build that compared its snapshots is tested', () => {
+  for (const log of [
+    'Capturing 12 snapshots, copying 517 TurboSnaps.',
+    'Bypassed 529 snapshots because no frontend files were changed.',
+  ]) {
+    assert.equal(isUntested(parseChromaticLog(log)), false);
+  }
 });
 
 test('reports other explicit TurboSnap bailout reasons without guessing', () => {
@@ -120,18 +160,8 @@ test('does not treat unrelated story and upload counts as snapshot metrics', () 
   assert.equal(result.buildScope, 'unavailable');
 });
 
-test('uses skipped mode even when no optional Chromatic metrics exist', () => {
-  assert.deepEqual(parseChromaticLog('', { mode: 'skipped' }), {
-    state: 'skipped',
-    snapshotsCaptured: null,
-    snapshotsInherited: null,
-    buildScope: 'skipped',
-    bailoutReason: null,
-  });
-});
-
 test('formats unavailable metrics and escapes Markdown cells', () => {
-  const summary = formatChromaticSummary('Interview | Storybook', 'affected', {
+  const summary = formatChromaticSummary('Interview | Storybook', {
     state: 'quota-limited',
     snapshotsCaptured: null,
     snapshotsInherited: null,
@@ -142,33 +172,56 @@ test('formats unavailable metrics and escapes Markdown cells', () => {
   assert.match(summary, /Interview \\| Storybook/);
   assert.match(summary, /unavailable \| unavailable/);
   assert.match(summary, /full: config \\| static file/);
-  assert.match(summary, /did not report optional snapshot counts/);
-  assert.match(summary, /Target: fewer than 10% of affected builds/);
+  assert.match(summary, /did not report snapshot counts/);
+  assert.match(summary, /captured every story in this project/);
+  assert.match(summary, /does not count as a review/);
 });
 
-test('CLI appends a summary and succeeds when optional metrics are unavailable', () => {
+function runCli(log, project = 'Interviewer') {
   const directory = mkdtempSync(join(tmpdir(), 'chromatic-observability-'));
-  const logPath = join(directory, 'chromatic.log');
   const summaryPath = join(directory, 'summary.md');
-  writeFileSync(logPath, 'Published your Storybook\n');
   writeFileSync(summaryPath, '# Existing summary\n');
-
+  const logPath = join(directory, 'chromatic.log');
+  if (log !== null) writeFileSync(logPath, log);
   try {
-    execFileSync(
+    const invocation = spawnSync(
       process.execPath,
-      [scriptPath, 'Interviewer', logPath, 'affected'],
+      [scriptPath, project, logPath],
       {
+        encoding: 'utf8',
         env: { ...process.env, GITHUB_STEP_SUMMARY: summaryPath },
       },
     );
-
-    const summary = readFileSync(summaryPath, 'utf8');
-    assert.match(summary, /^# Existing summary/m);
-    assert.match(summary, /\| Interviewer \| affected \| reported \|/);
-    assert.match(summary, /unavailable/);
+    return { invocation, summary: readFileSync(summaryPath, 'utf8') };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+}
+
+test('CLI appends a summary and succeeds for a build that compared its snapshots', () => {
+  const { invocation, summary } = runCli(
+    'Capturing 12 snapshots, copying 517 TurboSnaps.\n',
+  );
+  assert.equal(invocation.status, 0, invocation.stderr);
+  assert.match(summary, /^# Existing summary/m);
+  assert.match(summary, /\| Interviewer \| reported \| 12 \| 517 \|/);
+});
+
+test('CLI fails a build that Chromatic did not test', () => {
+  const { invocation, summary } = runCli(BILLED_LIMIT_LOG);
+  assert.equal(invocation.status, 1);
+  assert.match(
+    invocation.stdout,
+    /::error title=Chromatic did not test the stories::/,
+  );
+  assert.match(summary, /\| Interviewer \| quota-limited \|/);
+});
+
+test('CLI fails when the log is missing', () => {
+  const { invocation, summary } = runCli(null, 'Interview');
+  assert.equal(invocation.status, 1);
+  assert.match(invocation.stdout, /::error title=Chromatic log missing::/);
+  assert.equal(summary, '# Existing summary\n');
 });
 
 test('CLI fails for invalid invocation', () => {
@@ -177,36 +230,4 @@ test('CLI fails for invalid invocation', () => {
   });
   assert.notEqual(invocation.status, 0);
   assert.match(invocation.stderr, /Usage:/);
-});
-
-test('CLI warns without failing when the optional log file is absent', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'chromatic-observability-'));
-  const summaryPath = join(directory, 'summary.md');
-  writeFileSync(summaryPath, '# Existing summary\n');
-
-  try {
-    const missingFile = spawnSync(
-      process.execPath,
-      [scriptPath, 'Interview', join(directory, 'missing.log'), 'affected'],
-      {
-        encoding: 'utf8',
-        env: { ...process.env, GITHUB_STEP_SUMMARY: summaryPath },
-      },
-    );
-    assert.equal(missingFile.status, 0);
-    assert.match(
-      missingFile.stdout,
-      /::warning title=Chromatic diagnostics unavailable::/,
-    );
-
-    const summary = readFileSync(summaryPath, 'utf8');
-    assert.match(summary, /^# Existing summary/m);
-    assert.match(
-      summary,
-      /\| Interview \| affected \| diagnostics-unavailable \|/,
-    );
-    assert.match(summary, /unavailable/);
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
 });

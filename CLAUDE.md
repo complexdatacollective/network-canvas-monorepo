@@ -327,6 +327,11 @@ a README, in any app, package or website — invoke the
 - Do not use "holds" for "contains". Write "the protocol contains the wording",
   not "the protocol holds the wording".
 
+**If a skill that this file names is not in your skill list, read
+`.agents/skills/<name>/SKILL.md` directly and follow it. Never skip it.** A
+worktree session lists skills from the main checkout, which can be older than
+the worktree.
+
 ### Code Standards
 
 - **NO `any` types** - explicitly forbidden, always use proper TypeScript typing

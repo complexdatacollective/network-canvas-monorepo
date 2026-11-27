@@ -1,9 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { LayoutGroup } from 'motion/react';
+import { cancelFrame, frame, LayoutGroup } from 'motion/react';
 import { useState } from 'react';
 import { useArgs } from 'storybook/preview-api';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
+
+import { awaitPassiveEffects } from '../../storybook-support/awaitPassiveEffects';
 import Heading from '../../typography/Heading';
 import ToggleField from './ToggleField';
 
@@ -260,7 +263,8 @@ export const IsolatedFromEnclosingLayoutGroup: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const neighbour = canvas.getByRole('switch', { name: 'Neighbour toggle' });
-    const thumb = neighbour.firstElementChild;
+    // Base UI marks the thumb with the switch's state.
+    const thumb = neighbour.querySelector('[data-checked], [data-unchecked]');
 
     await expect(thumb).not.toBeNull();
 
@@ -271,19 +275,106 @@ export const IsolatedFromEnclosingLayoutGroup: Story = {
     const nextFrame = () =>
       new Promise((resolve) => requestAnimationFrame(resolve));
 
-    await userEvent.click(
-      canvas.getByRole('switch', { name: 'Expanding toggle' }),
-    );
-
+    // The Storybook host skips Motion animations, which would leave nothing
+    // here to replay.
     const samples: number[] = [];
-    for (let frame = 0; frame < 8; frame++) {
-      await nextFrame();
-      samples.push(thumbOffset());
-    }
+    await withAnimationsEnabled(async () => {
+      await userEvent.click(
+        canvas.getByRole('switch', { name: 'Expanding toggle' }),
+      );
+      for (let count = 0; count < 8; count++) {
+        await nextFrame();
+        samples.push(thumbOffset());
+      }
+    });
 
     for (const sample of samples) {
       await expect(sample).toBeCloseTo(samples[0]!, 1);
     }
+  },
+};
+
+/**
+ * A toggle centred in a container whose contents depend on it, as in a dialog
+ * that shows more fields once something is switched on. Switching it on adds a
+ * panel below, so the whole toggle moves up in the same render that moves its
+ * thumb. The thumb must still slide along the track only, never away from it.
+ */
+export const InsideAResizingContainer: Story = {
+  render: () => {
+    const [on, setOn] = useState(false);
+    return (
+      <div className="flex h-120 w-96 flex-col items-center justify-center gap-4">
+        <ToggleField
+          value={on}
+          onChange={(v) => setOn(v ?? false)}
+          aria-label="Show details"
+        />
+        {on && <div className="h-40 w-full rounded bg-current opacity-10" />}
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const toggle = canvas.getByRole('switch', { name: 'Show details' });
+    // Base UI marks the thumb with the switch's state.
+    const thumb = toggle.querySelector<HTMLElement>(
+      '[data-checked], [data-unchecked]',
+    )!;
+
+    const rest = thumb.getBoundingClientRect();
+    const restTrack = toggle.getBoundingClientRect();
+    const restInset = rest.top - restTrack.top;
+    const start = rest.left - restTrack.left;
+
+    // One sample per frame, after Motion has written that frame's styles.
+    const frames: { inset: number; left: number }[] = [];
+    const sample = () => {
+      const box = thumb.getBoundingClientRect();
+      const trackBox = toggle.getBoundingClientRect();
+      if (frames.length < 30) {
+        frames.push({
+          inset: box.top - trackBox.top,
+          left: box.left - trackBox.left,
+        });
+      }
+    };
+
+    // The Storybook host skips Motion animations; this story is about one.
+    await withAnimationsEnabled(async () => {
+      frame.postRender(sample, true);
+      try {
+        await userEvent.click(toggle);
+        await waitFor(() => expect(frames).toHaveLength(30));
+      } finally {
+        cancelFrame(sample);
+      }
+    });
+
+    // The thumb rests as far from the end of the track as it started from
+    // the start.
+    const end = restTrack.width - rest.width - start;
+
+    // The panel moved the toggle…
+    await expect(
+      restTrack.top - toggle.getBoundingClientRect().top,
+    ).toBeGreaterThan(40);
+    // …yet the thumb stayed inside the track in every frame…
+    for (const { inset } of frames) {
+      await expect(inset).toBeCloseTo(restInset, 0);
+    }
+    // …while it slid across, rather than jumping, to the other end.
+    await expect(
+      frames.some(({ left }) => left > start + 1 && left < end - 1),
+    ).toBe(true);
+    await waitFor(() =>
+      expect(
+        thumb.getBoundingClientRect().left -
+          toggle.getBoundingClientRect().left,
+      ).toBeCloseTo(end, 0),
+    );
   },
 };
 

@@ -1,7 +1,7 @@
 ---
 title: Genealogía narrativa
 navOrder: 11
-translatedFrom: 58538ac00a54262661c70e9170e234af2116eae8
+translatedFrom: 25b247abce643755680828667d80a09532a395ba
 ---
 
 <InterfaceSummary type="NarrativePedigree">
@@ -36,7 +36,7 @@ Cada afección que puede elegir la persona participante es una fila de **Asignac
 
 - **Etiqueta de enfermedad**: el nombre de la afección, que se muestra en el menú de afecciones de la persona participante. Cada afección necesita un nombre distinto, en todos los idiomas del protocolo.
 - **Color**: uno de los ocho colores de nodo. Los estados de la afección, y sus símbolos en la leyenda, se dibujan en ese color.
-- **Atributo de nodo**: el atributo **booleano** que registra quién está afectado. Solo se ofrecen los atributos que registra alguna de las [preguntas de nominación](/es/design-protocols/interface-documentation/family-pedigree#nomination-prompts-1) de la etapa de origen, y cada uno solo puede corresponder a una afección. Si no se ofrece ninguno, añade a la etapa «Genealogía familiar» una pregunta de nominación que pregunte quién tiene la afección.
+- **Atributo de nodo**: el atributo **booleano** que registra quién está afectado. Debe ser un atributo registrado por alguna de las [preguntas de nominación](/es/design-protocols/interface-documentation/family-pedigree#nomination-prompts-1) de la etapa de origen, y un mismo atributo no puede corresponder a más de una afección. La lista también muestra los demás atributos del tipo de persona en el apartado **No disponibles aquí**. Elige uno de ellos para ver por qué no se puede usar. Si no se puede elegir ningún atributo, añade a la etapa de origen una pregunta de nominación sobre quién tiene la afección.
 - **Patrón de herencia**: cómo se transmite la afección de progenitores a descendientes. Todas las inferencias que hace la interfaz dependen de él (consulta [Cómo se infieren los estados](#how-statuses-are-inferred)).
 
 Los ocho patrones de herencia son autosómico dominante, autosómico recesivo, dominante ligado al cromosoma X, recesivo ligado al cromosoma X, ligado al cromosoma Y, mitocondrial, multifactorial y desconocido. Con **Multifactorial** y **Desconocido**, la interfaz solo muestra quién se registró como persona afectada y no infiere ningún otro estado.
@@ -57,7 +57,7 @@ En **Textos exclusivos de esta etapa** están:
 - la etiqueta del botón **Guardar imagen**;
 - los títulos de las capturas guardadas, uno para la captura de una afección y otro para la captura centrada en una persona. Cada título muestra la etiqueta de la etapa y el nombre de la afección en el lugar donde están sus marcadores, y el segundo título también muestra el nombre de la persona.
 
-En **Textos comunes a todas las etapas de este tipo** está la redacción que muestran por igual todas las etapas «Genealogía narrativa»: el encabezado de la leyenda, el significado de cada símbolo de la leyenda («Tiene esta afección», «Desarrollará esta afección», «Es portador/a de esta afección», «Puede desarrollar esta afección», «Puede ser portador/a de esta afección» y «No se sabe») y la información emergente del botón **Quitar el foco**. En lugar de eso, cada significado puede nombrar la afección que se muestra, insertada como un marcador con el botón de texto dinámico (piped text) del campo. Los dos estados posibles solo aparecen ahí mientras alguna etapa «Genealogía narrativa» tiene activado **Mostrar estados posibles (de riesgo)**. Junto a ellos están las descripciones de los botones de zoom y el nombre y la descripción del botón **Mostrar toda la familia**, que muestran por igual todas las etapas «Genealogía narrativa» y «Genealogía familiar». Un cambio en cualquiera de estos textos se aplica a todas esas etapas, y se guarda en cuanto sales del campo.
+En **Textos comunes a todas las etapas de este tipo** está la redacción que muestran por igual todas las etapas «Genealogía narrativa»: el encabezado de la leyenda, el significado de cada símbolo de la leyenda («Tiene esta afección», «Desarrollará esta afección», «Es portador/a de esta afección», «Puede desarrollar esta afección», «Puede ser portador/a de esta afección» y «No se sabe») y la información emergente del botón **Quitar el foco**. En lugar de eso, cada significado puede nombrar la afección que se muestra, insertada como un marcador con el botón de texto dinámico (piped text) del campo. Los dos estados posibles solo aparecen ahí mientras alguna etapa «Genealogía narrativa» tiene activado **Mostrar estados posibles (de riesgo)**. Junto a ellos están las descripciones de los botones de zoom y el nombre y la descripción del botón **Mostrar toda la familia**, que muestran por igual todas las etapas «Genealogía narrativa» y «Genealogía familiar». Un cambio en cualquiera de estos textos se guarda con la etapa y se descarta si cancelas la etapa. Una vez guardado, se aplica a todas esas etapas.
 
 ## Qué ve la persona participante {#what-the-participant-sees}
 

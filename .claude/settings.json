@@ -10,6 +10,15 @@
             "statusMessage": "Setting up the Network Canvas workspace"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel 2>/dev/null || printf '%s' \"$CLAUDE_PROJECT_DIR\")\"/scripts/agent-hooks/session-start.mjs",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "PreToolUse": [

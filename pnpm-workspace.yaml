@@ -118,7 +118,7 @@ catalog:
   # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2), and 1.7.5 is the first to declare
   # a Vitest 5 peer, so stay on 1.7.5 or newer.
   better-auth: 1.7.12
-  chromatic: ^18.13.2
+  chromatic: ^18.15.3
   # Matches the range `cva` itself depends on, so the joiner it hands `cva`'s
   # `cx` config option stays in lock-step with what `cva` was built against.
   clsx: ^2.1.1

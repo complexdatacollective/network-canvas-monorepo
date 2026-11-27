@@ -3,7 +3,8 @@
 // and tells the agent what changed on disk and which lint errors remain.
 // Shell commands that write files (redirects, sed -i, generators) name no
 // path in the event, so for those the hook formats the uncommitted files
-// modified since the previous hook run.
+// modified since the previous hook run. An edit to English text that people
+// read also brings the checklist of the `writing-user-facing-text` skill.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -12,8 +13,10 @@ import {
   changedFiles,
   emit,
   extractEditedFiles,
+  interfaceCopyFiles,
   isFormattable,
   isLintable,
+  isReaderFacingText,
   isUnderRepo,
   lintReportFrom,
   modifiedSince,
@@ -24,6 +27,7 @@ import {
   takeCommandStart,
   truncateLines,
   updateState,
+  wordingReminder,
 } from './lib.mjs';
 
 const input = readHookInput();
@@ -57,12 +61,41 @@ if (since !== null) {
 }
 if (files.length === 0) process.exit(0);
 
+const relative = (file) => path.relative(root, file);
+
+// Worked out before formatting and reported even when the formatters are
+// missing. It never stops the edit: any error leaves it empty.
+let reminder = '';
+try {
+  const copy = new Set(interfaceCopyFiles(input, root));
+  const wording = files
+    .filter((file) => copy.has(file) || isReaderFacingText(relative(file)))
+    .map(relative);
+  reminder = wordingReminder(root, wording, {
+    sessionId: input.session_id ?? input.sessionId,
+  });
+} catch {
+  reminder = '';
+}
+
+const finish = (parts) => {
+  if (reminder) parts.push(reminder);
+  if (parts.length === 0) process.exit(0);
+  emit({
+    hookSpecificOutput: {
+      hookEventName: 'PostToolUse',
+      additionalContext: parts.join('\n\n'),
+    },
+  });
+  process.exit(0);
+};
+
 const oxfmt = binPath(root, 'oxfmt');
 const oxlint = binPath(root, 'oxlint');
-// Dependencies not installed yet (fresh worktree before setup): stay silent.
-if (!oxfmt || !oxlint) process.exit(0);
+// Dependencies not installed yet (fresh worktree before setup): nothing to
+// format, so only the wording reminder, if any, is reported.
+if (!oxfmt || !oxlint) finish([]);
 
-const relative = (file) => path.relative(root, file);
 const before = new Map(files.map((file) => [file, readFileSync(file, 'utf8')]));
 
 // oxlint's fixers can change a line's shape, so it runs first and oxfmt
@@ -109,11 +142,4 @@ if (lintReport) {
     `oxlint errors remain (fix them before you finish):\n${truncateLines(lintReport, 30)}`,
   );
 }
-if (parts.length === 0) process.exit(0);
-
-emit({
-  hookSpecificOutput: {
-    hookEventName: 'PostToolUse',
-    additionalContext: parts.join('\n\n'),
-  },
-});
+finish(parts);

@@ -14,6 +14,18 @@ const FULL_BUILD_REASON_PATTERN =
   /\bA full build is required because ([^\r\n]+?)(?:\.|$)/i;
 const FILE_CHANGE_PATTERN = /\bFound a (.+ change in .+)$/i;
 
+/**
+ * States in which Chromatic published the Storybook without comparing it
+ * with its baselines. The CLI still exits 0 for them, so a review run that
+ * ends in one of them would otherwise read as a pass.
+ */
+const UNTESTED_STATES = new Set([
+  'quota-limited',
+  'payment-limited',
+  'limited',
+  'ui-tests-disabled',
+]);
+
 function cleanLog(log) {
   return log
     .replace(ANSI_ESCAPE_PATTERN, '')
@@ -79,26 +91,24 @@ function findBailout(lines) {
   return disabledReason ?? 'TurboSnap disabled';
 }
 
-function findState(log, mode) {
+function findState(log) {
   if (
-    mode === 'skipped' ||
-    /\bSkipped build for commit [0-9a-f]+ due to --skip\b/i.test(log) ||
-    /\bSkipping Chromatic build locally because --skip is enabled\b/i.test(log)
+    /\b(?:Billed snapshot limit|Snapshot quota) reached\b/i.test(log) ||
+    /\bThis build is limited because your account\b/i.test(log)
   ) {
-    return 'skipped';
+    return 'quota-limited';
   }
-  if (/\bSnapshot quota reached\b/i.test(log)) return 'quota-limited';
   if (/\bPayment required\b/i.test(log)) return 'payment-limited';
   if (/\bBuild limited\b/i.test(log)) return 'limited';
+  if (/\bNo UI tests or UI review enabled\b/i.test(log)) {
+    return 'ui-tests-disabled';
+  }
   return 'reported';
 }
 
-export function parseChromaticLog(log, { mode = 'affected' } = {}) {
+export function parseChromaticLog(log) {
   if (typeof log !== 'string') {
     throw new TypeError('Chromatic log must be a string');
-  }
-  if (!['affected', 'skipped'].includes(mode)) {
-    throw new TypeError('Chromatic mode must be affected or skipped');
   }
 
   const lines = cleanLog(log);
@@ -108,19 +118,20 @@ export function parseChromaticLog(log, { mode = 'affected' } = {}) {
   const turboSnapEnabled = /\bTurboSnap enabled\b/i.test(clean);
 
   return {
-    state: findState(clean, mode),
+    state: findState(clean),
     snapshotsCaptured: counts?.captured ?? null,
     snapshotsInherited: counts?.inherited ?? null,
-    buildScope:
-      mode === 'skipped'
-        ? 'skipped'
-        : bailoutReason
-          ? 'full'
-          : turboSnapEnabled || counts
-            ? 'partial'
-            : 'unavailable',
+    buildScope: bailoutReason
+      ? 'full'
+      : turboSnapEnabled || counts
+        ? 'partial'
+        : 'unavailable',
     bailoutReason,
   };
+}
+
+export function isUntested(result) {
+  return UNTESTED_STATES.has(result.state);
 }
 
 function markdownCell(value) {
@@ -131,7 +142,7 @@ function displayedCount(value) {
   return value === null ? 'unavailable' : value.toLocaleString('en-US');
 }
 
-export function formatChromaticSummary(project, mode, result) {
+export function formatChromaticSummary(project, result) {
   const scope = result.bailoutReason
     ? `${result.buildScope}: ${result.bailoutReason}`
     : result.buildScope;
@@ -139,21 +150,27 @@ export function formatChromaticSummary(project, mode, result) {
     result.snapshotsCaptured === null || result.snapshotsInherited === null;
 
   return [
-    '### Chromatic observability',
+    '### Chromatic',
     '',
-    '| Project | Selection | Status | Snapshots captured | TurboSnapped / inherited | Build scope |',
-    '| --- | --- | --- | ---: | ---: | --- |',
-    `| ${markdownCell(project)} | ${mode} | ${result.state} | ${displayedCount(result.snapshotsCaptured)} | ${displayedCount(result.snapshotsInherited)} | ${markdownCell(scope)} |`,
+    '| Project | Status | Snapshots captured | TurboSnapped / inherited | Build scope |',
+    '| --- | --- | ---: | ---: | --- |',
+    `| ${markdownCell(project)} | ${result.state} | ${displayedCount(result.snapshotsCaptured)} | ${displayedCount(result.snapshotsInherited)} | ${markdownCell(scope)} |`,
     ...(countsUnavailable
       ? [
           '',
-          `> ${markdownCell(project)}: Chromatic did not report optional snapshot counts; unavailable values are left explicit.`,
+          `> ${markdownCell(project)}: Chromatic did not report snapshot counts.`,
         ]
       : []),
     ...(result.buildScope === 'full'
       ? [
           '',
-          '> TurboSnap full-build bailout detected. Target: fewer than 10% of affected builds.',
+          '> TurboSnap captured every story in this project. The reason is in the Build scope column.',
+        ]
+      : []),
+    ...(isUntested(result)
+      ? [
+          '',
+          `> ${markdownCell(project)}: Chromatic published the Storybook without comparing it with the baselines (${result.state}). This run does not count as a review.`,
         ]
       : []),
     '',
@@ -162,45 +179,45 @@ export function formatChromaticSummary(project, mode, result) {
 
 function usageError(message) {
   throw new Error(
-    `${message}\nUsage: node scripts/ci/chromatic-observability.mjs <project> <log-path> <affected|skipped>`,
+    `${message}\nUsage: node scripts/ci/chromatic-observability.mjs <project> <log-path>`,
   );
 }
 
 function main() {
-  const [project, logPath, mode, ...extraArguments] = process.argv.slice(2);
-  if (!project || !logPath || !mode || extraArguments.length > 0) {
-    usageError('Expected project, log path, and mode');
-  }
-  if (!['affected', 'skipped'].includes(mode)) {
-    usageError(`Invalid mode: ${mode}`);
+  const [project, logPath, ...extraArguments] = process.argv.slice(2);
+  if (!project || !logPath || extraArguments.length > 0) {
+    usageError('Expected project and log path');
   }
   if (!process.env.GITHUB_STEP_SUMMARY) {
     usageError('GITHUB_STEP_SUMMARY is not set');
   }
 
-  let result;
+  let log;
   try {
-    const log = readFileSync(logPath, 'utf8');
-    result = parseChromaticLog(log, { mode });
+    log = readFileSync(logPath, 'utf8');
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
-
-    result = {
-      state: 'diagnostics-unavailable',
-      snapshotsCaptured: null,
-      snapshotsInherited: null,
-      buildScope: 'unavailable',
-      bailoutReason: null,
-    };
+    // The log is the only evidence that the build compared anything, so a
+    // run without one cannot count as a review.
     process.stdout.write(
-      `::warning title=Chromatic diagnostics unavailable::${project} did not create its optional diagnostic log; the Chromatic step remains authoritative.\n`,
+      `::error title=Chromatic log missing::${project} wrote no Chromatic log, so this run cannot show that the stories were compared.\n`,
     );
+    process.exitCode = 1;
+    return;
   }
 
+  const result = parseChromaticLog(log);
   appendFileSync(
     process.env.GITHUB_STEP_SUMMARY,
-    formatChromaticSummary(project, mode, result),
+    formatChromaticSummary(project, result),
   );
+
+  if (isUntested(result)) {
+    process.stdout.write(
+      `::error title=Chromatic did not test the stories::${project}: Chromatic published the Storybook without comparing it with the baselines (${result.state}). Check the account's snapshot quota and the project's UI Tests setting, then run the workflow again.\n`,
+    );
+    process.exitCode = 1;
+  }
 }
 
 if (
