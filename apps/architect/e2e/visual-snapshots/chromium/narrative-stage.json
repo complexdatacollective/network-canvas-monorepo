@@ -16,7 +16,7 @@
       "label": {
         "en": "Default view"
       },
-      "layoutVariable": "id-3"
+      "layout": "id-3"
     }
   ],
   "subject": {

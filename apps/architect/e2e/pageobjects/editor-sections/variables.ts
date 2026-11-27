@@ -50,8 +50,8 @@ export type OptionRow = { label: string; value: string };
  * depends on the kind of answer the slot binds
  * (`sections/create-variable/useCreateAttributeForSlot.ts`):
  *
- * - A kind a name finishes — `text`, `boolean`, `layout`, `location`,
- *   `datetime`, `number` — is made and bound with no dialog at all, and kept
+ * - A kind a name finishes — `text`, `boolean`, `location`, `datetime`,
+ *   `number`, and a layout — is made and bound with no dialog at all, and kept
  *   with the stage's draft until the stage is saved.
  * - A kind a name cannot finish — a list of values, a scale, or a value set
  *   the interface owns — escalates to the codebook's own editor, which opens
@@ -129,8 +129,12 @@ export type AttributeEscalation = Readonly<{
   author?: (editor: Locator) => Promise<void>;
 }>;
 
-/** The two names the popup's search box goes by. */
-const SEARCH_BOX_NAME = /^Find (?:or create )?an attribute$/;
+/**
+ * The names the popup's search box goes by: the attribute picker's two, and
+ * the layout picker's two (`fields/LayoutPickerField.tsx`), which renders the
+ * same popup over the codebook's layouts.
+ */
+const SEARCH_BOX_NAME = /^Find (?:or create )?(?:an attribute|a layout)$/;
 
 /** The open popup's search box. */
 const searchBox = (window: Locator): Locator =>

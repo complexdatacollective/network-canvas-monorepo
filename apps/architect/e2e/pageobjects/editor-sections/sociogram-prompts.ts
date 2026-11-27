@@ -4,15 +4,13 @@ import { chooseOrCreateAttribute } from './variables.js';
 
 // One sociogram prompt, as `@codaco/protocol-builder`'s `SociogramPromptFields`
 // renders it inside the shared prompt row dialog ("Create prompt", submitted
-// with "Add"). Four groups; only "Node interaction" carries a switch, because
+// with "Add"). The layout is not a prompt setting: the stage's own "Layout"
+// section chooses it once for every prompt (`chooseStageLayout`). Three
+// groups; only "Node interaction" carries a switch, because
 // a prompt that does nothing when a node is tapped is how a sociogram says so
 // — the rest are questions the researcher answers rather than ones they turn
 // on:
 // - "Participant prompt" holds the rich-text field "Prompt text" (`text`).
-// - "Node layout" holds the picker "Layout attribute"
-//   (`layout.layoutVariable`). There is no create control beside it: the slot
-//   binds a `layout` attribute, which a name finishes, so the picker's own
-//   create row makes it (kept with the stage's draft) and no editor opens.
 // - "Node interaction" is toggleable, and switched off is how a prompt says
 //   tapping does nothing. Switched on it holds one choice, "Interaction type",
 //   between "Edge creation" and "Attribute toggling" — mutually exclusive,
@@ -28,7 +26,6 @@ import { chooseOrCreateAttribute } from './variables.js';
 //   already satisfied — hence the guarded check rather than a blind one.
 export type SociogramPromptSpec = {
   text: string;
-  layoutVariable: string;
   interaction?:
     | { kind: 'createEdge'; edgeName: string; createNewEdgeType?: boolean }
     | { kind: 'highlight'; variableName: string };
@@ -41,12 +38,6 @@ export async function addSociogramPrompt(
 ): Promise<void> {
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichTextMarkdown('Prompt text', spec.text);
-    // A position attribute is finished by its name, so the create row writes
-    // it and binds it with no editor in between.
-    await chooseOrCreateAttribute(
-      editor.field('layout.layoutVariable'),
-      spec.layoutVariable,
-    );
 
     const interaction = spec.interaction;
     if (interaction) {
@@ -102,4 +93,17 @@ export async function addSociogramPrompt(
       }
     }
   });
+}
+
+/**
+ * Chooses the layout a sociogram or network composer stage stores positions
+ * in, from the stage's `layout` field, creating it when the codebook has no
+ * layout of that name. A layout is finished by its name, so the picker's create
+ * row writes it with the stage's draft and no editor opens.
+ */
+export async function chooseStageLayout(
+  editor: StageEditor,
+  layoutName: string,
+): Promise<void> {
+  await chooseOrCreateAttribute(editor.field('layout'), layoutName);
 }

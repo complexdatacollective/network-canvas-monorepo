@@ -73,7 +73,7 @@ test('creates a valid Narrative stage from scratch', async ({
   // codebook's own attribute editor — the empty codebook offers none.
   await addNarrativePreset(editor, architectPage, {
     label: 'Default view',
-    layoutVariable: 'layout',
+    layout: 'layout',
   });
 
   await editor.expectNoIssues();

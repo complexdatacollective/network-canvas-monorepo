@@ -7,12 +7,10 @@
   "label": {
     "en": "Draw Your Network"
   },
+  "layout": "id-2",
   "prompts": [
     {
-      "id": "id-2",
-      "layout": {
-        "layoutVariable": "id-3"
-      },
+      "id": "id-3",
       "text": {
         "en": "Place them"
       }

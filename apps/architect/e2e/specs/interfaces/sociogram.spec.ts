@@ -7,7 +7,10 @@ import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
 import { setImageBackground } from '../../pageobjects/editor-sections/background.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
-import { addSociogramPrompt } from '../../pageobjects/editor-sections/sociogram-prompts.js';
+import {
+  addSociogramPrompt,
+  chooseStageLayout,
+} from '../../pageobjects/editor-sections/sociogram-prompts.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const BACKGROUND_IMAGE = path.resolve(
@@ -81,9 +84,9 @@ test('creates a valid Sociogram stage from scratch', async ({
   await editor.createNew('Sociogram');
   await editor.setStageName('Draw Your Network');
 
-  // `sociogramStageEditor` is [stage heading, subject picker, prompts,
-  // background, node layout, skip logic, interviewer guidance]. The subject
-  // picker is the shared one every stage uses, with a stage filter offered
+  // `sociogramStageEditor` is [stage heading, subject picker, layout,
+  // prompts, background, node layout, skip logic, interviewer guidance]. The
+  // subject picker is the shared one every stage uses, with a stage filter offered
   // alongside it, so `selectOrCreateNodeType` covers it unchanged.
   await selectOrCreateNodeType(architectPage, 'person');
 
@@ -97,15 +100,12 @@ test('creates a valid Sociogram stage from scratch', async ({
     .getByRole('spinbutton')
     .fill('4');
 
-  // The prompt is written through the same page object the whole-protocol
-  // build uses, so both drive one description of this dialog: the text, and
-  // the position attribute created from inside it through the codebook's own
-  // attribute editor. A prompt that says nothing about tapping carries no
-  // `highlight` and no `edges` at all.
-  await addSociogramPrompt(editor, {
-    text: 'Place them',
-    layoutVariable: 'layout',
-  });
+  // The stage's one layout, created from its picker's create row.
+  await chooseStageLayout(editor, 'layout');
+
+  // A prompt that says nothing about tapping carries no `highlight` and no
+  // `edges` at all.
+  await addSociogramPrompt(editor, { text: 'Place them' });
 
   await editor.expectNoIssues();
   await editor.save();
@@ -146,10 +146,8 @@ test('keeps an image background saveable when the node type is chosen after it',
   ).toHaveValue('4');
 
   await setImageBackground(editor, architectPage, { upload: BACKGROUND_IMAGE });
-  await addSociogramPrompt(editor, {
-    text: 'Place them',
-    layoutVariable: 'layout',
-  });
+  await chooseStageLayout(editor, 'layout');
+  await addSociogramPrompt(editor, { text: 'Place them' });
 
   await editor.expectNoIssues();
   await editor.save();

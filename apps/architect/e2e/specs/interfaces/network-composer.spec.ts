@@ -24,20 +24,19 @@ test('creates a valid NetworkComposer stage from scratch', async ({
   await selectOrCreateNodeType(architectPage, 'person');
 
   // "Node configuration" holds three pickers at once — the attribute
-  // the quick-add box fills in (`quickAdd`), the one that stores each node's
-  // position (`layoutVariable`) and the one nodes are grouped by
-  // (`convexHullVariable`). No create control sits beside any of them: each
+  // the quick-add box fills in (`quickAdd`), the layout of the codebook that
+  // stores each node's position (`layout`) and the attribute nodes are grouped
+  // by (`convexHullVariable`). No create control sits beside any of them: each
   // picker's own create row invents what the slot needs. The section is
-  // disabled until the node type is chosen, because every one of them names
-  // that type's attributes.
+  // disabled until the node type is chosen.
   //
-  // The two filled here are a `text` and a `layout` attribute, and both kinds
-  // are finished by a name — so each create row writes the codebook and binds
+  // The two filled here are a `text` attribute and a layout, and both are
+  // finished by a name — so each create row writes the codebook and binds
   // the result without opening anything. (The grouping slot binds a
   // `categorical`, which a name cannot finish, so its row would escalate to
   // the codebook's editor; it is left untouched below.)
   await createAttribute(editor.field('quickAdd'), 'name');
-  await createAttribute(editor.field('layoutVariable'), 'layout');
+  await createAttribute(editor.field('layout'), 'layout');
 
   // The Background section opens on concentric circles for this interface too
   // (a background holding no `image` key is a circles background), so the

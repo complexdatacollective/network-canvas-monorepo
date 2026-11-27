@@ -14,8 +14,8 @@ import { chooseAttribute, chooseOrCreateAttribute } from './variables.js';
 // there are no capability switches inside it any more, so nothing has to be
 // turned on before it can be filled in:
 // - "Preset identity" holds "Preset label" (`label`).
-// - "Node layout" holds the picker "Layout attribute" (`layoutVariable`),
-//   whose create row writes the `layout` attribute itself — a position is
+// - "Node layout" holds the picker "Layout" (`layout`), which chooses a
+//   layout of the codebook and whose create row adds one — a layout is
 //   finished by its name, so no editor opens.
 // - "Node grouping" holds the picker "Grouping attribute" (`groupVariable`),
 //   which offers no creation at all: a preset groups by a categorical
@@ -34,7 +34,7 @@ export async function addNarrativePreset(
   page: Page,
   spec: {
     label: string;
-    layoutVariable: string;
+    layout: string;
     groupVariable?: string;
     displayEdges?: string[];
     highlight?: string[];
@@ -46,10 +46,7 @@ export async function addNarrativePreset(
       await page
         .getByRole('textbox', { name: 'Preset label', exact: true })
         .fill(spec.label);
-      await chooseOrCreateAttribute(
-        editor.field('layoutVariable'),
-        spec.layoutVariable,
-      );
+      await chooseOrCreateAttribute(editor.field('layout'), spec.layout);
       if (spec.groupVariable) {
         // Chosen and never created: this picker has no create row, so a
         // grouping attribute the codebook does not hold fails on the row that
