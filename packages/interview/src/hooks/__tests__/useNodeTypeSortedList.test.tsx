@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { createElement, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
@@ -71,8 +71,9 @@ const payload: InterviewPayload = {
 };
 const store = createStore(payload, { onSync: () => Promise.resolve() });
 
-const wrapper = ({ children }: { children: ReactNode }) =>
-  createElement(Provider, { store }, children);
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <Provider store={store}>{children}</Provider>
+);
 
 const node = (
   id: string,

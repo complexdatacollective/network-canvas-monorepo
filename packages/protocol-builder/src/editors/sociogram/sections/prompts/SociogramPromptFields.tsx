@@ -65,10 +65,10 @@ const CREATE_EDGE_FIELD = 'edges.create';
 export const TASK_FIELD = 'task';
 /**
  * The attribute a highlight task marks, held in the dialog under its own name.
- * The saved prompt keeps it in its one highlight entry, which
+ * The saved prompt keeps it in a highlight entry, which
  * `SociogramPromptsSection` builds from this value when the row is saved.
  */
-export const HIGHLIGHT_VARIABLE_FIELD = 'highlightVariable';
+const HIGHLIGHT_VARIABLE_FIELD = 'highlightVariable';
 
 /**
  * The dialog field holding the highlight attribute for the stage's node type
