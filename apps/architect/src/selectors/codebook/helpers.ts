@@ -1,5 +1,3 @@
-import { flatMap } from 'es-toolkit/compat';
-
 import type {
   Codebook,
   EdgeDefinition,
@@ -16,28 +14,8 @@ const getIdsFromEntity = (
  * @param codebook - The codebook to extract variable IDs from
  * @returns Array of variable IDs
  */
-export const getIdsFromCodebook = (codebook: Codebook): string[] => {
-  const result: string[] = [];
-
-  Object.entries(codebook).forEach(([type, entityOrEntities]) => {
-    if (
-      type === 'ego' &&
-      entityOrEntities &&
-      !Array.isArray(entityOrEntities)
-    ) {
-      result.push(...getIdsFromEntity(entityOrEntities as EgoDefinition));
-    } else if (
-      Array.isArray(entityOrEntities) ||
-      (entityOrEntities && typeof entityOrEntities === 'object')
-    ) {
-      const ids = flatMap(
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ego is handled by the branch above, so what is left is node or edge: a map of type id to definition; TypeScript does not narrow Object.entries' value by its key
-        entityOrEntities as Record<string, NodeDefinition | EdgeDefinition>,
-        getIdsFromEntity,
-      );
-      result.push(...ids);
-    }
-  });
-
-  return result;
-};
+export const getIdsFromCodebook = (codebook: Codebook): string[] => [
+  ...Object.values(codebook.node ?? {}).flatMap(getIdsFromEntity),
+  ...Object.values(codebook.edge ?? {}).flatMap(getIdsFromEntity),
+  ...(codebook.ego ? getIdsFromEntity(codebook.ego) : []),
+];

@@ -111,6 +111,37 @@ describe('getIsUsed', () => {
     });
   });
 
+  it('lists only the variables of the node, edge and ego definitions, never a layout', () => {
+    const layoutId = testVariableId('seating layout');
+    const result = getIsUsed(
+      asState({
+        activeProtocol: {
+          present: {
+            ...mockProtocolWithoutUse.present,
+            codebook: {
+              ...mockCodebookWithoutUse,
+              layouts: { [layoutId]: { name: 'seating' } },
+            },
+          },
+        },
+      }),
+    );
+
+    expect(Object.keys(result).toSorted()).toEqual(
+      [
+        variable1,
+        variable2,
+        variable3,
+        variable4,
+        variable5,
+        variable6,
+        variable7,
+        variable8,
+      ].toSorted(),
+    );
+    expect(result).not.toHaveProperty(layoutId);
+  });
+
   it('returns true when a variable is present at known paths in the protocol', () => {
     // Uses AlterForm stage (form.fields[].variable) and OrdinalBin stage (prompts[].variable).
     // Stages must be schema-valid so collectEntityAttributeReferences can extract references.
