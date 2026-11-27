@@ -2160,6 +2160,56 @@ describe('instrument attributes', () => {
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
   });
 
+  it('lays a map out automatically unless its first prompt positions people', async () => {
+    const connectPrompt = {
+      task: 'connect',
+      text: 'Link the people who know each other.',
+      relationshipId: 'knows',
+      attributeId: '',
+    };
+    const positionPrompt = {
+      task: 'position',
+      text: 'Place the people you are close to near the centre.',
+      relationshipId: '',
+      attributeId: '',
+    };
+    const map = (id: string, prompts: Json[]) => ({
+      kind: 'sociogram',
+      ...c(id),
+      nodeTypeId: 'person',
+      filter: noFilter,
+      prompts,
+    });
+    const r = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [ng(), map('m1', [connectPrompt, positionPrompt])],
+      }),
+    );
+    expect(
+      r.validation.success,
+      JSON.stringify(r.validation.error?.issues),
+    ).toBe(true);
+    // the connect prompt comes first, so nobody would be on the map for it
+    expect(stageById(r.stages, 'm1').behaviours).toEqual({
+      automaticLayout: true,
+    });
+
+    const placedFirst = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [ng(), map('m1', [positionPrompt, connectPrompt])],
+      }),
+    );
+    expect(stageById(placedFirst.stages, 'm1').behaviours).toEqual({
+      automaticLayout: false,
+    });
+  });
+
   it('drops a second highlight question on the same attribute', async () => {
     const map = (id: string, text: string) => ({
       kind: 'sociogram',

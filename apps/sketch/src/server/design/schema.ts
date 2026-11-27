@@ -377,7 +377,7 @@ const SociogramStage = z
         }),
       )
       .describe(
-        '1-4 prompts on one shared map. Without a position prompt the layout is automatic.',
+        '1-4 prompts on one shared map. Unless a position prompt comes first, the layout is automatic.',
       ),
   })
   .describe(

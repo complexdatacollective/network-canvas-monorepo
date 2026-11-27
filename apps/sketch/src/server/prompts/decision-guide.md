@@ -105,7 +105,7 @@ Further rules:
 
 One shared map, up to 4 prompts, each with one task:
 
-- **position**: drag people onto concentric circles, closer to the centre = closer to the participant. Use it when where people sit is itself a measure or the map is used again (a narrative). If closeness will be analysed, also record it with an ordered attribute in bins. Without a position prompt the layout is automatic.
+- **position**: drag people onto concentric circles, closer to the centre = closer to the participant. Use it when where people sit is itself a measure or the map is used again (a narrative). If closeness will be analysed, also record it with an ordered attribute in bins. Unless a position prompt comes first, the layout is automatic.
 - **connect**: create ties of relationshipId. One relationship per prompt; wording about the tie ("Draw a line between any two people who **know each other**"). The map shows only the type being drawn: do not put connect prompts for two relationship types on one map unless the study needs both.
 - **highlight**: tap people to set a yes_no attributeId to yes; wording about a characteristic ("Tap everyone who **gives you advice**").
 

@@ -1114,7 +1114,9 @@ export const compile = (
         break;
       }
       case 'sociogram': {
-        const automaticLayout = !s.prompts.some((p) => p.task === 'position');
+        // A connect or highlight task can only use people already on the map,
+        // so the map is laid out automatically unless it opens by positioning.
+        const automaticLayout = s.prompts[0]?.task !== 'position';
         lastSociogramAuto.set(s.nodeTypeId, automaticLayout);
         const prompts = s.prompts.map((p, i) => {
           const id = `p${i + 1}`;
