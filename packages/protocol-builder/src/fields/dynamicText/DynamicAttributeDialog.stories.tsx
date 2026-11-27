@@ -81,3 +81,20 @@ export const Cancelled: Story = {
     await expect(editor.querySelector('[data-inline-value]')).toBeNull();
   },
 };
+
+/**
+ * Closed with Escape, the keyboard is back in the text at once: keys typed
+ * straight after go into it.
+ */
+export const ClosedThenTyped: Story = {
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const { editor } = await openDialog(canvasElement);
+    // In one call with no pause between keys, so no key waits for a frame.
+    await userEvent.setup({ delay: null }).keyboard('{Escape}Hello');
+    await expect(
+      body.queryByRole('dialog', { name: 'Create a dynamic attribute' }),
+    ).toBeNull();
+    await expect(editor).toHaveTextContent('Hello');
+  },
+};

@@ -191,6 +191,31 @@ export const EgoForm: Story = {
   },
 };
 
+/**
+ * Chooses `attribute` in a new field's attribute list with Enter and types
+ * `text` straight after it, in the same task: before the browser draws
+ * another frame, as a quick typist can. Every key must reach the new field's
+ * question.
+ */
+const chooseThenType = async (
+  picker: HTMLElement,
+  attribute: string,
+  text: string,
+) => {
+  const search = within(picker).getByRole('combobox');
+  await waitFor(() => expect(search).toHaveFocus());
+  await userEvent.keyboard(attribute);
+  await waitFor(() =>
+    expect(
+      picker.ownerDocument.getElementById(
+        search.getAttribute('aria-activedescendant') ?? '',
+      )?.textContent,
+    ).toMatch(new RegExp(`^${attribute}`)),
+  );
+  // No pause between keys, so none of them waits for a frame either.
+  await userEvent.setup({ delay: null }).keyboard(`{Enter}${text}`);
+};
+
 /** The Field button adds a field and lists the attributes beside the button. */
 export const InsertFieldFromToolbar: Story = {
   play: async ({ canvasElement }) => {
@@ -206,20 +231,17 @@ export const InsertFieldFromToolbar: Story = {
       name: 'Attribute of the new field',
     });
     await expect(picker).toHaveAttribute('data-picker-origin', 'toolbar');
-    const name = within(picker)
-      .getAllByRole('option')
-      .find((option) => option.textContent?.startsWith('name'));
-    if (name === undefined) throw new Error('No "name" attribute');
-    await userEvent.click(name);
+    const added = picker.getAttribute('data-field-insert-picker') ?? '';
+    await chooseThenType(picker, 'name', 'What is their name?');
 
     await waitFor(() =>
       expect(body.queryByRole('dialog')).not.toBeInTheDocument(),
     );
-    await expect(
-      editor.querySelectorAll('[data-field-block-view]'),
-    ).toHaveLength(3);
-    await userEvent.keyboard('What is their name?');
-    await expect(editor).toHaveTextContent('What is their name?');
+    const frame = fieldFrame(editor, added);
+    await expect(frame.querySelector('[data-field-label]')).toHaveTextContent(
+      /^What is their name\?$/,
+    );
+    await expect(frame).toHaveTextContent(/name$/);
   },
 };
 
@@ -249,6 +271,35 @@ export const InsertFieldWithKeyboard: Story = {
         editor.querySelector(`[data-field-id="${added}"]`),
       ).not.toBeInTheDocument(),
     );
+  },
+};
+
+/**
+ * Mod-Shift-F, then an attribute chosen in the list beside the new block:
+ * the keys typed next go into the new field's question.
+ */
+export const InsertFieldWithKeyboardThenType: Story = {
+  play: async ({ canvasElement }) => {
+    await awaitPassiveEffects();
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await formEditor(canvasElement);
+    await caretInQuestion(editor, AGE_FIELD);
+
+    await userEvent.keyboard(withMod('{Shift>}f{/Shift}'));
+
+    const picker = await body.findByRole('dialog', {
+      name: 'Attribute of the new field',
+    });
+    await expect(picker).toHaveAttribute('data-picker-origin', 'block');
+    const added = picker.getAttribute('data-field-insert-picker') ?? '';
+    await chooseThenType(picker, 'name', 'What is their name?');
+
+    await waitFor(() =>
+      expect(body.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    await expect(
+      fieldFrame(editor, added).querySelector('[data-field-label]'),
+    ).toHaveTextContent(/^What is their name\?$/);
   },
 };
 

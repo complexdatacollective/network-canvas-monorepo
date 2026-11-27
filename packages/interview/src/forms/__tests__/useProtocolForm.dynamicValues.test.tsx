@@ -484,16 +484,22 @@ describe('useProtocolForm dynamic values on a form whose logic hides a field', (
     dynamicLabel,
     labelNode,
     storedName,
+    showsName,
   }: {
     dynamicLabel?: unknown;
     labelNode?: Parameters<typeof useProtocolForm>[0]['labelNode'];
     /** Edits a stored node with this name, in place of adding one. */
     storedName?: string;
+    /** The logic that shows the name's question, in place of "Aunt". */
+    showsName?: (nameField: string) => string;
   } = {}) {
+    const nameQuestion = fieldBlockMarkdown(NAME_FIELD);
     const form = {
       content: {
         en: [
-          `{${NAMES.kinds}, select, missing {} ${optionCaseKey(AUNT)} {${fieldBlockMarkdown(NAME_FIELD)}} other {}}`,
+          showsName === undefined
+            ? `{${NAMES.kinds}, select, missing {} ${optionCaseKey(AUNT)} {${nameQuestion}} other {}}`
+            : showsName(nameQuestion),
           fieldBlockMarkdown(NOTE_FIELD),
         ].join('\n\n'),
       },
@@ -673,6 +679,20 @@ describe('useProtocolForm dynamic values on a form whose logic hides a field', (
       expect.not.objectContaining({ [NAME]: expect.anything() }),
       expect.objectContaining({ [NAME]: true }),
     );
+  });
+
+  // The node's label is worked out from the form's shown answers, so its
+  // logic cannot read the label first; it reads it as present, as the node
+  // always has one while the form is on screen.
+  it('reads the node’s label as present, so a question shown only while the node has a label keeps its answer', () => {
+    renderHidingForm({
+      showsName: (nameQuestion) =>
+        `{${NAMES.label}, select, missing {} other {${nameQuestion}}}`,
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
+      target: { value: 'Ada' },
+    });
+    expect(question()).toHaveTextContent('How old is AdaAda?');
   });
 
   it('labels a stored node without its stored answer to a question that logic hides', () => {

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -188,6 +189,13 @@ export function AttributeMenu({
   // Read by the list's request to close, which comes in the same event as
   // the request to create, before the state has changed.
   const creatingNow = useRef(false);
+  // The dialog goes here and now, rather than as the event ends: while it is
+  // open the rest of the page is inert, so the text cannot take the keyboard
+  // back until it has gone, and keys typed in between would reach nothing.
+  const closeDialog = () => {
+    creatingNow.current = false;
+    flushSync(() => setCreating(false));
+  };
 
   return (
     <>
@@ -210,14 +218,12 @@ export function AttributeMenu({
       <DynamicAttributeDialog
         open={creating}
         onClose={() => {
-          creatingNow.current = false;
-          setCreating(false);
+          closeDialog();
           state.close();
           commands.focus();
         }}
         onCreate={(id) => {
-          creatingNow.current = false;
-          setCreating(false);
+          closeDialog();
           state.setMenuOpen(false);
           commands.focus();
           commands.insertInlineValue(dynamicAttributeName(id));

@@ -512,3 +512,112 @@ describe('generateNetwork answers several Ego Forms as the interview submits eac
     }
   });
 });
+
+describe('generateNetwork gives a form’s logic what the interview always knows', () => {
+  // While a form is on screen the interview always knows today's date, the
+  // label of the node that the form describes and the labels of the two
+  // nodes that an edge form's edge joins. Logic that shows a field only when
+  // one of them is known always shows it, and its version for when the value
+  // is missing never shows.
+  const whenKnown = (
+    value: Parameters<typeof dynamicValueNameFor>[0],
+    known: ContentNodes,
+    missing: ContentNodes,
+  ): ContentNodes[number] => ({
+    kind: 'logic',
+    logic: {
+      kind: 'answers',
+      value: dynamicValueNameFor(value),
+      missing,
+      versions: [],
+      other: known,
+    },
+  });
+
+  it('reads today’s date as known on an Ego Form', () => {
+    const stage = egoForm(
+      [
+        whenKnown(
+          { kind: 'intrinsic', name: 'now' },
+          [field(AGE)],
+          [field(NEVER_SHOWN)],
+        ),
+      ],
+      [AGE, NEVER_SHOWN],
+    );
+
+    for (const seed of SEEDS) {
+      const attributes = egoAttributesOf(run([stage], seed));
+      expect(attributes[AGE]).toBeTypeOf('number');
+      expect(attributes).not.toHaveProperty(NEVER_SHOWN);
+    }
+  });
+
+  it('reads the label of the person being added as known on a name generator form', () => {
+    const stage = nameGenerator(
+      [
+        field(NAME),
+        whenKnown(
+          { kind: 'label', role: 'node' },
+          [field(CLOSE)],
+          [field(HOW_OFTEN)],
+        ),
+      ],
+      [NAME, CLOSE, HOW_OFTEN],
+    );
+
+    const nodes = SEEDS.flatMap((seed) => run([stage], seed).nodes);
+    expect(nodes.length).toBeGreaterThan(0);
+    for (const node of nodes) {
+      expect(node[entityAttributesProperty][CLOSE]).toBeTypeOf('boolean');
+      expect(node[entityAttributesProperty]).not.toHaveProperty(HOW_OFTEN);
+    }
+  });
+
+  it('reads the label of each person as known on an alter form', () => {
+    const stage = alterForm(
+      en(
+        printContentDocument([
+          whenKnown(
+            { kind: 'label', role: 'node' },
+            [field(CLOSE)],
+            [field(HOW_OFTEN)],
+          ),
+        ]),
+      ),
+      [CLOSE, HOW_OFTEN],
+    );
+
+    const nodes = SEEDS.flatMap(
+      (seed) => run([nameGenerator(), stage], seed).nodes,
+    );
+    expect(nodes.length).toBeGreaterThan(0);
+    for (const node of nodes) {
+      expect(node[entityAttributesProperty][CLOSE]).toBeTypeOf('boolean');
+      expect(node[entityAttributesProperty]).not.toHaveProperty(HOW_OFTEN);
+    }
+  });
+
+  it('reads the labels of the two people an edge joins as known on an alter edge form', () => {
+    const stage = alterEdgeForm(
+      [
+        whenKnown(
+          { kind: 'label', role: 'edgeFrom' },
+          [field(MET_AT_WORK)],
+          [],
+        ),
+        whenKnown({ kind: 'label', role: 'edgeTo' }, [field(WORKPLACE)], []),
+      ],
+      [MET_AT_WORK, WORKPLACE],
+    );
+
+    const edges = SEEDS.flatMap(
+      (seed) => run([nameGenerator(), dyadCensus, stage], seed).edges,
+    );
+    expect(edges.length).toBeGreaterThan(0);
+    for (const edge of edges) {
+      expect(edge[entityAttributesProperty][MET_AT_WORK]).toBeTypeOf('boolean');
+      expect(edge[entityAttributesProperty][WORKPLACE]).toBeTypeOf('string');
+    }
+  });
+});

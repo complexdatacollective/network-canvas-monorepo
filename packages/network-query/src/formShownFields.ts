@@ -69,6 +69,58 @@ export type ShownFormFields = Readonly<{
 
 const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
 
+/**
+ * Stand-ins for the values that the interview always knows while a form is
+ * on screen. Logic reads each of them only as present or missing
+ * (validation gives a label and today's date no answers to choose a version
+ * by, and no number), so any present value reads as the real one would: a
+ * select on a date or a label chooses no case (`dynamicValueCaseOf`), a
+ * number block reads either as no number, and rules never read them.
+ */
+const LABEL_AS_PRESENT = '';
+const DATE_AS_PRESENT = new Date(0);
+
+/**
+ * The roles whose labels the interview always knows on a form whose fields
+ * answer `answers`: the node that the form describes (a node being added
+ * included), or the two nodes that an edge form's edge joins.
+ */
+const LABELLED_ROLES: Readonly<
+  Partial<Record<DynamicValueRole, readonly DynamicValueRole[]>>
+> = {
+  node: ['node'],
+  edge: ['edgeFrom', 'edgeTo'],
+};
+
+/**
+ * `sources` with what the interview always knows while a form whose fields
+ * answer `answers` is on screen, so that every reader of a form's logic (the
+ * interview, synthetic data) shows the same fields: today's date and the
+ * labels of the form's nodes. A value that the caller gives is kept; one it
+ * has not worked out reads as present. The interview works out a node's
+ * label from the form's shown answers, so its logic cannot be given the
+ * label first; synthetic data labels no node.
+ */
+const withWhatAFormAlwaysKnows = (
+  sources: LogicSources,
+  answers: DynamicValueRole,
+): LogicSources => {
+  const labels: Partial<Record<DynamicValueRole, string>> = {
+    ...sources.labels,
+  };
+  for (const role of LABELLED_ROLES[answers] ?? []) {
+    labels[role] ??= LABEL_AS_PRESENT;
+  }
+  return {
+    ...sources,
+    intrinsics: {
+      ...sources.intrinsics,
+      now: sources.intrinsics?.now ?? DATE_AS_PRESENT,
+    },
+    labels,
+  };
+};
+
 /** `attributes` without the values of `variables`, each other key kept as its own. */
 const without = (
   attributes: Readonly<Record<string, unknown>>,
@@ -83,7 +135,8 @@ const without = (
 /**
  * The fields of a form's document that its logic shows, where logic reads
  * `sources`, with the form's answers so far as the attributes of `answers`
- * (the role of the entity that the form describes).
+ * (the role of the entity that the form describes), and what the interview
+ * always knows while a form is on screen (`withWhatAFormAlwaysKnows`).
  *
  * Logic can read the answers on its own form, so hiding one field can hide
  * another that reads it. The participant never sees a hidden field, so an
@@ -102,15 +155,16 @@ export function formShownFields(
   sources: LogicSources,
   answers: DynamicValueRole,
 ): ShownFormFields {
-  const given = sources.attributes[answers] ?? NO_ATTRIBUTES;
+  const known = withWhatAFormAlwaysKnows(sources, answers);
+  const given = known.attributes[answers] ?? NO_ATTRIBUTES;
   const readingWithout = (hidden: ReadonlySet<string>) => {
     const attributes = hidden.size === 0 ? given : without(given, hidden);
     const shown = shownFieldIds(
       document.nodes,
       logicInputsFor(
         {
-          ...sources,
-          attributes: { ...sources.attributes, [answers]: attributes },
+          ...known,
+          attributes: { ...known.attributes, [answers]: attributes },
         },
         document.locale,
       ),

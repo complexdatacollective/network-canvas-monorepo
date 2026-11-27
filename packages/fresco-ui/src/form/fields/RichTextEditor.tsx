@@ -2019,7 +2019,19 @@ export default function RichTextEditorField({
           .run();
       },
       focus: () => {
-        if (target !== null && !target.isDestroyed) target.commands.focus();
+        if (target === null || target.isDestroyed) return;
+        // Here and now, not through the focus command, which waits for the
+        // next frame: a menu or list that has just closed took focus with
+        // it, and keys typed before that frame reached no element at all.
+        target.view.focus();
+        if (target.view.hasFocus()) {
+          target.commands.scrollIntoView();
+          return;
+        }
+        // Behind a modal dialog that is still closing, the page is inert and
+        // the text cannot take focus yet: the focus command tries again on
+        // the next frame.
+        target.commands.focus();
       },
       returnFocus: handCaretBack,
     };

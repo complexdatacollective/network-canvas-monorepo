@@ -39,9 +39,6 @@ import {
 
 const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
 
-/** The label that logic is given for the node a form describes (see below). */
-const LABEL_AS_PRESENT = '';
-
 /**
  * The answers as a node stores them: every value a node attribute can hold.
  * A node type's own label can show or test any of its attributes (a Toggle's
@@ -266,10 +263,9 @@ export function FormDynamicValues({
   // from the answers: the values its text shows, and the node's label.
   //
   // The node's label is worked out from these answers, so logic cannot be
-  // given it first. Logic reads a label only as present or missing
-  // (validation gives a label no answers and no number to choose by, and
-  // rules read attributes), and while the form is on screen its node always
-  // has one, so logic is given the label as present.
+  // given it first: `formShownFields` gives logic the labels of the form's
+  // nodes, and today's date, as present, as it does for every reader of a
+  // form's logic.
   const parentSources = useDynamicValueSources();
   const shown = useMemo(() => {
     if (
@@ -285,26 +281,11 @@ export function FormDynamicValues({
       withDynamicValueEntities(parentSources, {
         attributes: { [role]: liveAttributes },
         ids,
-        labels: {
-          ...(formSubject?.entity === 'node' && { node: LABEL_AS_PRESENT }),
-          ...(fromLabel !== undefined && { edgeFrom: fromLabel }),
-          ...(toLabel !== undefined && { edgeTo: toLabel }),
-        },
         participants,
       }),
       role,
     );
-  }, [
-    document,
-    parentSources,
-    liveAttributes,
-    role,
-    ids,
-    formSubject,
-    fromLabel,
-    toLabel,
-    participants,
-  ]);
+  }, [document, parentSources, liveAttributes, role, ids, participants]);
   const shownAttributes = shown?.attributes ?? liveAttributes;
   // A question that logic hides has no answer, whatever is stored or was
   // typed before it was hidden: the form decides it, as it does an answer.

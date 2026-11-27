@@ -117,6 +117,11 @@ type InterviewOptions = {
   /** The form asks its questions only of the participant (a logic block). */
   onlyOfParticipant?: boolean;
   /**
+   * The form asks its questions only of someone with a label (a logic block
+   * on the node's label), which everyone on the canvas has.
+   */
+  onlyWhileLabelled?: boolean;
+  /**
    * The protocol is also in French, whose form alone asks whether someone
    * smokes; the English form asks the age question only of a smoker (a
    * logic block). The mother's answer, that she smokes, is stored.
@@ -147,6 +152,7 @@ async function interview({
   sisters = false,
   required = false,
   onlyOfParticipant = false,
+  onlyWhileLabelled = false,
   smokingAskedOnlyInFrench = false,
 }: InterviewOptions = {}) {
   const language = locale ?? 'en-US';
@@ -260,6 +266,30 @@ async function interview({
               kind: 'participant',
               participant: readContentDocument(text).nodes,
               otherwise: [],
+            },
+          },
+        ]),
+      ]),
+    );
+  }
+
+  if (onlyWhileLabelled) {
+    const pedigree = payload.protocol.stages[0];
+    if (pedigree?.type !== 'FamilyPedigree' || pedigree.form === undefined) {
+      throw new Error('No person form');
+    }
+    pedigree.form.content = Object.fromEntries(
+      Object.entries(pedigree.form.content).map(([tag, text]) => [
+        tag,
+        printContentDocument([
+          {
+            kind: 'logic',
+            logic: {
+              kind: 'answers',
+              value: dynamicValueNameFor({ kind: 'label', role: 'node' }),
+              missing: [],
+              versions: [],
+              other: readContentDocument(text).nodes,
             },
           },
         ]),
@@ -587,6 +617,25 @@ describe('the node label in a Family Pedigree panel’s questions', () => {
     await waitFor(() => expect(hasMissingDetails('ego')).toBe(true));
     expect(hasMissingDetails('mum')).toBe(false);
     expect(hasMissingDetails('dad')).toBe(false);
+  });
+
+  // Logic reads the label of the person a form describes as present, as the
+  // person form does: everyone on the canvas has a label.
+  it('counts a required question that logic shows only to someone with a label as missing for everyone', async () => {
+    await interview({ required: true, onlyWhileLabelled: true });
+    const hasMissingDetails = (id: string) =>
+      document.querySelector(
+        `[data-person-id="${id}"] [data-missing-details-badge]`,
+      ) !== null;
+
+    await waitFor(() => expect(hasMissingDetails('ego')).toBe(true));
+    expect(hasMissingDetails('mum')).toBe(true);
+    expect(hasMissingDetails('dad')).toBe(true);
+
+    await openPanelOf('mum');
+    expect(
+      within(panel()).getByRole('spinbutton', { name: QUESTION_START }),
+    ).toBeVisible();
   });
 
   // The English form does not ask whether someone smokes, so the stored

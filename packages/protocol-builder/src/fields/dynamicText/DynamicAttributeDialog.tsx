@@ -105,6 +105,10 @@ function OpenDynamicAttributeDialog({
     <Dialog
       open
       closeDialog={onClose}
+      // `onClose` and `onCreate` hand the keyboard back to the text, as the
+      // dialog goes: returned to the button that opened the list instead, it
+      // would take the keys typed next.
+      finalFocus={false}
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
       size="editor"
