@@ -622,16 +622,6 @@ const createPlaceholderLanguage = (lang: string) =>
     },
   });
 
-// The part of ProseMirror's view that hears of the page's selection. It is
-// not in ProseMirror's published types, so it is checked for, not assumed.
-type SelectionListener = Readonly<{ onSelectionChange: () => void }>;
-
-const isSelectionListener = (value: unknown): value is SelectionListener =>
-  typeof value === 'object' &&
-  value !== null &&
-  'onSelectionChange' in value &&
-  typeof value.onSelectionChange === 'function';
-
 /**
  * A key acts on the selection the page shows, even when the page selected
  * the text a moment before the key was pressed.
@@ -642,10 +632,20 @@ const isSelectionListener = (value: unknown): value is SelectionListener =>
  * draws a frame before that task runs, and ProseMirror then applies the key
  * to the selection it had before. A test driver, a screen reader or a script
  * that selects the whole text and presses Delete deleted nothing: the key
- * acted on the caret. Before ProseMirror handles a key, this hands it the
- * selection change that is waiting for it; when the queued event runs, it
- * finds nothing new. Keys of a composition are left alone, as ProseMirror
- * leaves them.
+ * acted on the caret. Before ProseMirror handles a key, this sends the
+ * document a `selectionchange` event of its own, so ProseMirror reads the
+ * page's selection now, by its own rules: it takes the selection only if the
+ * page's selection has changed since ProseMirror last read or set it. When
+ * the browser's queued event runs, ProseMirror finds nothing new. Other
+ * listeners on the page hear the event too; the ones in use here (other
+ * editors and React's `onSelect`) compare the selection with the one they
+ * last saw, so they act only on a real change, and only earlier. Keys of a
+ * composition are left alone, as ProseMirror leaves them.
+ *
+ * ProseMirror offers no public way to read a pending selection change
+ * (`domObserver` is internal), so this uses the event that ProseMirror
+ * already listens for. The story `DeleteStraightAfterSelectingEverything`
+ * fails if ProseMirror stops reading the selection on that event.
  */
 const ReadSelectionBeforeKeys = Extension.create({
   name: 'readSelectionBeforeKeys',
@@ -667,8 +667,9 @@ const ReadSelectionBeforeKeys = Extension.create({
               ) {
                 return false;
               }
-              const listener: unknown = Reflect.get(view, 'domObserver');
-              if (isSelectionListener(listener)) listener.onSelectionChange();
+              view.dom.ownerDocument.dispatchEvent(
+                new Event('selectionchange'),
+              );
               // ProseMirror goes on to handle the key itself.
               return false;
             },
