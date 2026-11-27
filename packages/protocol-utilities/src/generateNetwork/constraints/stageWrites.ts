@@ -9,7 +9,7 @@
 
 import type { Stage } from '@codaco/protocol-validation';
 
-import { getSingleStageNodeType } from '../subject.ts';
+import { getSingleStageNodeType, getStageNodeTypes } from '../subject.ts';
 
 const CROSS_VARIABLE_RULES = [
   'sameAs',
@@ -169,23 +169,47 @@ export function declaresNodeCollection(
   return nodeVariablesWrittenOnCreation(stage, prompt).size > 0;
 }
 
-/** Variables a stage writes onto nodes that existed before it ran. */
-function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
+type ExistingNodeWrite = { type: string; variable: string };
+
+/** The same variables written on every node of the stage's single node type. */
+function writesOnSingleType(
+  stage: Stage,
+  variables: readonly (string | undefined)[],
+): ExistingNodeWrite[] {
+  const type = getSingleStageNodeType(stage);
+  if (type === undefined) return [];
+  return [...setOf(variables)].map((variable) => ({ type, variable }));
+}
+
+/**
+ * Variables a stage writes onto nodes that existed before it ran, each with
+ * the node type it is written on. A Sociogram highlight entry names its own
+ * type, so a stage showing several types writes each variable on one of them.
+ */
+function nodeWritesOnExisting(stage: Stage): ExistingNodeWrite[] {
   switch (stage.type) {
     case 'Sociogram':
-      return setOf(
-        stage.prompts.flatMap((prompt) =>
-          prompt.task === 'highlight'
-            ? prompt.highlight.map((entry) => entry.variable)
-            : [],
-        ),
+      return stage.prompts.flatMap((prompt) =>
+        prompt.task === 'highlight'
+          ? prompt.highlight
+              .filter(
+                ({ type, variable }) => Boolean(type) && Boolean(variable),
+              )
+              .map(({ type, variable }) => ({ type, variable }))
+          : [],
       );
     case 'OrdinalBin':
     case 'CategoricalBin':
     case 'Geospatial':
-      return setOf(stage.prompts.map((prompt) => prompt.variable));
+      return writesOnSingleType(
+        stage,
+        stage.prompts.map((prompt) => prompt.variable),
+      );
     case 'AlterForm':
-      return setOf((stage.form?.fields ?? []).map((field) => field.variable));
+      return writesOnSingleType(
+        stage,
+        (stage.form?.fields ?? []).map((field) => field.variable),
+      );
     case 'AlterEdgeForm':
     case 'Anonymisation':
     case 'DyadCensus':
@@ -202,16 +226,12 @@ function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
     case 'NetworkComposer':
     case 'OneToManyDyadCensus':
     case 'TieStrengthCensus':
-      return new Set();
+      return [];
     default: {
       const unhandled: never = stage;
       throw new Error('Unhandled stage type', { cause: unhandled });
     }
   }
-}
-
-function nodeTypeOf(stage: Stage): string | undefined {
-  return getSingleStageNodeType(stage);
 }
 
 /** Last stage index writing each variable onto existing nodes, per node type. */
@@ -235,16 +255,12 @@ export function lastExistingWriterByType(
     ) {
       continue;
     }
-    const type = nodeTypeOf(stage);
-    if (type === undefined) continue;
-    const written = nodeVariablesWrittenOnExisting(stage);
-    if (written.size === 0) continue;
-
-    const forType = byType.get(type) ?? new Map<string, number>();
-    for (const variable of written) {
+    if (getStageNodeTypes(stage) === undefined) continue;
+    for (const { type, variable } of nodeWritesOnExisting(stage)) {
+      const forType = byType.get(type) ?? new Map<string, number>();
       forType.set(variable, Math.max(forType.get(variable) ?? -1, stageIndex));
+      byType.set(type, forType);
     }
-    byType.set(type, forType);
   }
 
   return byType;

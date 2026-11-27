@@ -6,7 +6,7 @@ import {
 
 import type { GenerationContext, NetworkDraft } from './context.ts';
 import { getStageFilteredNodes } from './filtering.ts';
-import { getSingleStageNodeType } from './subject.ts';
+import { getStageNodeTypes } from './subject.ts';
 
 /** Keep only string entries, dropping the `undefined` a half-built prompt yields. */
 function onlyStrings(values: (string | undefined)[]): string[] {
@@ -74,10 +74,10 @@ export function markStageInProgress(
   const variables = getInProgressClearableVariables(stage, earlierStages);
   if (variables.length === 0) return;
 
-  const nodeType = getSingleStageNodeType(stage);
-  if (nodeType === undefined) return;
-
-  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, nodeType);
+  // A Sociogram can show several node types; its unplaced nodes come from all of them.
+  const subjectNodes = (getStageNodeTypes(stage) ?? []).flatMap((nodeType) =>
+    getStageFilteredNodes(ctx, draft, stage, nodeType),
+  );
   if (subjectNodes.length === 0) return;
 
   const indices = subjectNodes.map((_, idx) => idx);

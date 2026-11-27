@@ -1840,6 +1840,41 @@ describe('generateNetwork layouts', () => {
     }
   });
 
+  it('an in-progress Sociogram showing two node types leaves some nodes unplaced', () => {
+    const stages = [
+      makeNameGeneratorStage(),
+      makeNameGeneratorStage({
+        id: 'stage-ng-2',
+        subject: { entity: 'node', types: ['node-type-2'] },
+        prompts: [{ id: 'prompt-ng-2', text: en('Add places') }],
+      }),
+      {
+        id: 'stage-soc',
+        label: en('Sociogram'),
+        type: 'Sociogram',
+        subject: { entity: 'node', types: ['node-type-1', 'node-type-2'] },
+        layout: 'layout-map',
+        prompts: [
+          { id: 'prompt-soc', task: 'layout', text: en('Place everyone') },
+        ],
+      } as Stage,
+    ];
+
+    const { network } = generateNetwork({
+      codebook: twoTypeCodebook(),
+      stages,
+      seed: 7,
+      inProgressStageIndex: 2,
+    });
+
+    const unplaced = network.nodes.filter(
+      (node) => !('layout-map' in node[entityAttributesProperty]),
+    );
+    expect(unplaced.length).toBe(
+      Math.max(1, Math.floor(network.nodes.length / 2)),
+    );
+  });
+
   it('Composer writes positions on created nodes', () => {
     const composer: Extract<Stage, { type: 'NetworkComposer' }> = {
       id: testId('stage-composer'),
