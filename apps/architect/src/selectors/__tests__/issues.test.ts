@@ -6,6 +6,12 @@ import {
 } from '@codaco/protocol-builder/testing/testId';
 import type { RootState } from '~/ducks/modules/root';
 import { buildMapboxToken } from '~/templates/__tests__/buildMapboxToken';
+import {
+  protocolShowingUnplacedLayout,
+  protocolWithReachableLayouts,
+  SHOWN_ONLY_LAYOUT,
+} from '~/templates/__tests__/layoutReadFixtures';
+import { templateTypeId } from '~/templates/__tests__/templateCodebookIds';
 import { developmentProtocol } from '~/templates/development-protocol';
 import {
   RETIRED_MAPBOX_TOKEN_IDS,
@@ -245,22 +251,44 @@ describe('issues selectors', () => {
   });
 
   describe('getUnreachableLayoutReads()', () => {
-    it('reports a stage that shows a layout no stage places its node types in', () => {
-      const state = buildState({ ...developmentProtocol });
-      const narrative = developmentProtocol.stages.find(
-        (stage) => stage.type === 'Narrative',
-      );
+    const DEV_PERSON = templateTypeId(developmentProtocol, 'node', 'person');
 
-      expect(getUnreachableLayoutReads(state)).toEqual([
-        expect.objectContaining({
-          stageId: narrative?.id,
-          nodeTypes: [expect.any(String)],
-        }),
+    it('reports a stage that shows a layout no stage places its node types in', () => {
+      const {
+        protocol: showing,
+        narrativeId,
+        presetIds,
+      } = protocolShowingUnplacedLayout();
+
+      expect(getUnreachableLayoutReads(buildState({ ...showing }))).toEqual([
+        {
+          stageId: narrativeId,
+          presetId: presetIds[0],
+          layoutId: SHOWN_ONLY_LAYOUT.id,
+          nodeTypes: [DEV_PERSON],
+        },
       ]);
     });
 
-    it('reports nothing for a protocol without layouts', () => {
-      expect(getUnreachableLayoutReads(buildState())).toEqual([]);
+    it('reports nothing when a stage places every type a stage shows', () => {
+      expect(
+        getUnreachableLayoutReads(
+          buildState({ ...protocolWithReachableLayouts() }),
+        ),
+      ).toEqual([]);
+    });
+
+    it('reports the shown layout once no stage places people in it', () => {
+      const unplaced = protocolWithReachableLayouts();
+      for (const stage of unplaced.stages) {
+        if (stage.type === 'Sociogram' || stage.type === 'NetworkComposer') {
+          stage.layout = SHOWN_ONLY_LAYOUT.id;
+        }
+      }
+
+      expect(
+        getUnreachableLayoutReads(buildState({ ...unplaced })),
+      ).not.toEqual([]);
     });
   });
 });

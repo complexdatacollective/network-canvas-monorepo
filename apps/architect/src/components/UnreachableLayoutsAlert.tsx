@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -18,16 +19,42 @@ const messages = defineMessages({
     defaultMessage:
       'These stages show positions from a layout, but no stage places nodes of some of their types in that layout, so those nodes are never shown. Add a Sociogram or a Network Composer that places them in the layout, or choose another layout on the stage.',
     description:
-      'Text of the warning on the timeline of Architect about stages that show positions from a layout in which no stage places some of their nodes. A Sociogram and a Network Composer are stage types in which participants place nodes. A list of the stages follows.',
+      'Text of the warning on the timeline of Architect, read by the researcher, about stages that show positions from a layout in which no stage places some of their nodes. A Sociogram and a Network Composer are stage types in which participants place nodes. A list of the stages follows.',
   },
   entry: {
     id: 'architect.unreachableLayoutsAlert.entry',
     defaultMessage:
       '{stage} shows the layout “{layout}”, in which no stage places {count, plural, one {{nodeTypes} nodes} other {nodes of the types {nodeTypes}}}.',
     description:
-      'One item in the list of the timeline warning in Architect about layouts with no positions for some nodes. stage is the name of the stage; layout is the name of the layout; nodeTypes is the list of node type names, already joined; count is how many node types there are.',
+      'One item in the list of the timeline warning in Architect, read by the researcher, about layouts with no positions for some nodes. stage is the name of the stage; layout is the name of the layout; nodeTypes is the list of node type names, already joined; count is how many node types there are.',
   },
 });
+
+type StageLayoutRead = {
+  stageId: string;
+  layoutId: string;
+  nodeTypes: readonly string[];
+};
+
+/**
+ * One entry per stage and layout: a Narrative reads per preset, and two of
+ * its presets that show one layout say the same thing.
+ */
+const groupByStageAndLayout = (
+  reads: readonly StageLayoutRead[],
+): StageLayoutRead[] => {
+  const grouped = new Map<string, StageLayoutRead>();
+  for (const { stageId, layoutId, nodeTypes } of reads) {
+    const key = `${stageId}:${layoutId}`;
+    const existing = grouped.get(key);
+    grouped.set(key, {
+      stageId,
+      layoutId,
+      nodeTypes: [...new Set([...(existing?.nodeTypes ?? []), ...nodeTypes])],
+    });
+  }
+  return [...grouped.values()];
+};
 
 /**
  * Timeline warning shown when a stage shows positions from a layout in which
@@ -36,7 +63,11 @@ const messages = defineMessages({
  */
 const UnreachableLayoutsAlert = () => {
   const intl = useAppIntl();
-  const reads = useSelector(getUnreachableLayoutReads);
+  const unreachable = useSelector(getUnreachableLayoutReads);
+  const reads = useMemo(
+    () => groupByStageAndLayout(unreachable),
+    [unreachable],
+  );
   const stages = useSelector(getStageList);
   const codebook = useSelector(getCodebook);
 
@@ -57,7 +88,7 @@ const UnreachableLayoutsAlert = () => {
               (type) => codebook?.node?.[type]?.name ?? type,
             );
             return (
-              <li key={`${read.stageId}:${read.presetId ?? ''}`}>
+              <li key={`${read.stageId}:${read.layoutId}`}>
                 {intl.formatMessage(messages.entry, {
                   stage: (
                     <bdi>

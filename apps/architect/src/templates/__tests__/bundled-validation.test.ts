@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type CurrentProtocol,
+  findUnreachableLayoutReads,
   findVariableRoleConflicts,
   validateProtocol,
 } from '@codaco/protocol-validation';
@@ -123,6 +124,45 @@ describe('bundled protocols open without variable role conflicts', () => {
       expect(conflicts).toStrictEqual([]);
     });
   }
+});
+
+// The same first impression, for the timeline warning from
+// `UnreachableLayoutsAlert`: a stage that shows positions from a layout in
+// which no stage places its nodes, so those nodes are never shown there.
+//
+// Three bundled protocols still open with it, each with a Narrative that
+// shows a layout no stage places its people in. Slice 12a of the schema 9
+// plan repairs them; each is listed here by name so that the list shrinks to
+// nothing and no other protocol can join it.
+const KNOWN_UNREACHABLE_LAYOUT_READS: ReadonlySet<string> = new Set([
+  // Its Narrative's second preset shows anotherLayout.
+  'Development Protocol',
+  // Its Narrative's three presets show a layout that no stage places in.
+  'Behavioural Influence Networks',
+  // Its Narrative shows a layout in which no stage places supporters.
+  'Care & Support Networks',
+]);
+
+describe('bundled protocols open without unreachable layout reads', () => {
+  for (const { name, protocol } of bundledProtocols) {
+    const known = KNOWN_UNREACHABLE_LAYOUT_READS.has(name);
+    it(`${name} ${known ? 'still shows' : 'shows no'} layout that no stage places its nodes in`, () => {
+      const reads = findUnreachableLayoutReads(protocol);
+      if (known) {
+        // Fails once the protocol is repaired, so its entry is removed.
+        expect(reads).not.toStrictEqual([]);
+      } else {
+        expect(reads).toStrictEqual([]);
+      }
+    });
+  }
+
+  it('names only bundled protocols in its list of known exceptions', () => {
+    const names = new Set(bundledProtocols.map(({ name }) => name));
+    expect(
+      [...KNOWN_UNREACHABLE_LAYOUT_READS].filter((name) => !names.has(name)),
+    ).toStrictEqual([]);
+  });
 });
 
 describe('bundled template Narrative Pedigree colors', () => {

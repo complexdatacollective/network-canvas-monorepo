@@ -8,7 +8,7 @@ import {
 
 import { getProtocol } from '../protocol';
 
-export type LayoutEntry = {
+type LayoutEntry = {
   id: string;
   name: string;
   /** Stages on which participants or the automatic layout place nodes in it. */
