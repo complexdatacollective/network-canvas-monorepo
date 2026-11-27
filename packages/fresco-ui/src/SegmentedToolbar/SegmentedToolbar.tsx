@@ -12,7 +12,6 @@ import {
   type Transition,
   useDragControls,
   useMotionValue,
-  type Variants,
 } from 'motion/react';
 import * as React from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
@@ -25,6 +24,7 @@ import {
 } from '../DropdownMenu';
 import useTokenRadius from '../hooks/useTokenRadius';
 import { MotionSurface } from '../layout/Surface';
+import { growPresence, springs } from '../motion';
 import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { usePrefersReducedMotion } from '../reducedMotion';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
@@ -370,40 +370,6 @@ function useHorizontalOverflow(
   return { laneRef, frameRef };
 }
 
-const layoutSpring: Transition = {
-  type: 'spring',
-  stiffness: 420,
-  damping: 34,
-  mass: 0.7,
-};
-
-const itemVariants: Variants = {
-  initial: {
-    scale: 0.72,
-    filter: 'blur(3px) opacity(0%)',
-  },
-  animate: {
-    scale: 1,
-    filter: 'blur(0px) opacity(100%)',
-    transition: {
-      type: 'spring',
-      stiffness: 520,
-      damping: 30,
-      mass: 0.6,
-    },
-  },
-  exit: {
-    scale: 0.72,
-    filter: 'blur(3px) opacity(0%)',
-    transition: {
-      type: 'spring',
-      stiffness: 620,
-      damping: 42,
-      mass: 0.5,
-    },
-  },
-};
-
 function motionItemProps(reduceMotion: boolean): MotionProps {
   if (reduceMotion) {
     return {
@@ -415,11 +381,11 @@ function motionItemProps(reduceMotion: boolean): MotionProps {
 
   return {
     layout: 'position',
-    variants: itemVariants,
+    variants: growPresence,
     initial: 'initial',
     animate: 'animate',
     exit: 'exit',
-    transition: { layout: layoutSpring },
+    transition: { layout: springs.snap },
   };
 }
 
@@ -1096,7 +1062,7 @@ export function SegmentedToolbar({
 
   const surfaceTransition: Transition = reduceMotion
     ? { duration: 0 }
-    : { layout: layoutSpring };
+    : { layout: springs.snap };
 
   if (!draggable) {
     return (

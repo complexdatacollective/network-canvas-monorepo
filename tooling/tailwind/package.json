@@ -48,8 +48,7 @@
   "dependencies": {
     "@fontsource-variable/inclusive-sans": "catalog:",
     "@fontsource-variable/nunito": "catalog:",
-    "@fontsource-variable/readex-pro": "catalog:",
-    "motion": "catalog:"
+    "@fontsource-variable/readex-pro": "catalog:"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",

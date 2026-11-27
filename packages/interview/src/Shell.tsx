@@ -378,6 +378,12 @@ function ActiveInterview({
             // targets coherently.
             'shell-type-ramp',
             isHorizontalNav ? 'flex-col' : 'flex-row-reverse',
+            // Between one stage leaving and the next arriving, the bar is
+            // the only item. `justify-end` keeps it at its own edge (the
+            // bottom, or the start of the line) rather than letting it jump
+            // to the other side, where its controls would be measured and
+            // then glide back.
+            'justify-end',
           )}
         />
       }

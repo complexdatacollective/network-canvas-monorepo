@@ -8,6 +8,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
+import { exitTween, springs, stagger } from '@codaco/fresco-ui/motion';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { isCurrentProtocol, type ProtocolWithCounts } from '~/lib/db/types';
 
@@ -98,7 +99,7 @@ const containerVariants = {
   exit: {
     transition: {
       when: 'afterChildren',
-      staggerChildren: 0.05,
+      staggerChildren: stagger.tight,
       staggerDirection: -1,
     },
   },
@@ -109,12 +110,12 @@ const tableVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 240, damping: 28 },
+    transition: springs.settle,
   },
   exit: {
     opacity: 0,
     y: 16,
-    transition: { duration: 0.25 },
+    transition: exitTween,
   },
 } as const;
 
@@ -125,7 +126,7 @@ const bannerVariants = {
     height: 'auto',
     transition: { duration: 0.2 },
   },
-  exit: { opacity: 0, height: 0, transition: { duration: 0.15 } },
+  exit: { opacity: 0, height: 0, transition: exitTween },
 } as const;
 
 export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {

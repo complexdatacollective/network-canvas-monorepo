@@ -29,6 +29,7 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { springs } from '@codaco/fresco-ui/motion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 
 import { useTrack } from '../../analytics/useTrack';
@@ -297,7 +298,7 @@ const EgoFormInner = (props: EgoFormProps) => {
             animate={{
               y: 0,
               opacity: 1,
-              transition: { type: 'spring', stiffness: 200, damping: 15 },
+              transition: springs.bouncy,
             }}
             exit={{ y: '100%', opacity: 0 }}
           >

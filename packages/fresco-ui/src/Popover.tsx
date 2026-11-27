@@ -15,6 +15,7 @@ import {
 } from 'react';
 
 import Surface, { type SurfaceVariants } from './layout/Surface';
+import { springs } from './motion';
 import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
@@ -28,12 +29,12 @@ const popupAnimations = {
     initial: { opacity: 0, scale: 0.96 },
     animate: { opacity: 1, scale: 1 },
     exit: { opacity: 0, scale: 0.96 },
-    transition: { type: 'spring', duration: 0.5 },
+    transition: springs.pop,
   },
   enter: {
     initial: { opacity: 0, scale: 0.96 },
     animate: { opacity: 1, scale: 1 },
-    transition: { type: 'spring', duration: 0.5 },
+    transition: springs.pop,
   },
   none: {},
 } satisfies Record<string, MotionProps>;

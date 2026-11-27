@@ -9,6 +9,7 @@ import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { springs } from '@codaco/fresco-ui/motion';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
@@ -53,7 +54,7 @@ const choiceVariants = {
   animate: {
     opacity: 1,
     translateY: '0%',
-    transition: { delay: 0.15, type: 'spring' as const },
+    transition: { ...springs.pop, delay: 0.15 },
   },
   exit: { opacity: 0, translateY: '120%' },
 };

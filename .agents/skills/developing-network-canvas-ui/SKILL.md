@@ -118,7 +118,7 @@ Arabic is a supported language, so every layout is read in both directions. Writ
 
 ## Interaction and motion
 
-- Animate with `motion/react` and the shared `MotionSpring` presets instead of ad hoc durations and easing.
+- Animate with `motion/react` and the shared presets in `@codaco/fresco-ui/motion` (`springs`, `exitTween`, `stagger`, `reduced()`) instead of ad hoc springs, durations and easing. Do not animate with CSS transitions that use a spring easing.
 - Respect reduced motion. Use `useSafeAnimate` for JavaScript-driven animation and gate optional flourishes with `usePrefersReducedMotion()` from `@codaco/fresco-ui/reducedMotion` (never Motion's `useReducedMotion`, which ignores `AnimationProvider`'s `reducedMotion` setting). The `motion-reduce:` / `motion-safe:` variants follow the same setting.
 - Give drag interactions an approximately 5px threshold, set `touchAction: 'none'` where appropriate, and provide generous hit targets.
 - Base orientation-dependent layout on aspect ratio rather than assuming a square viewport.
@@ -139,5 +139,5 @@ Arabic is a supported language, so every layout is read in both directions. Writ
 ## Quick reference
 
 - **Components:** `packages/fresco-ui/package.json` exports and co-located stories.
-- **Tokens:** `Colors.stories.tsx`, `Elevation.stories.tsx`, `MotionSpring.stories.tsx`, and `tooling/tailwind/fresco/`.
+- **Tokens:** `Colors.stories.tsx`, `Elevation.stories.tsx`, `packages/fresco-ui/src/motion.ts`, and `tooling/tailwind/fresco/`.
 - **Participant copy and accessibility:** `packages/interview/src/interfaces/FinishSession/FinishSession.tsx`, `components/Navigation.tsx`, `components/Prompts/Prompts.tsx`, and `canvas/useCanvasDrag.ts`.

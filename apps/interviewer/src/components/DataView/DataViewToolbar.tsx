@@ -12,6 +12,7 @@ import BooleanFilter from '@codaco/fresco-ui/DataTable/filters/BooleanFilter';
 import DateFilter from '@codaco/fresco-ui/DataTable/filters/DateFilter';
 import { type ComboboxOption } from '@codaco/fresco-ui/form/fields/Combobox/shared';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { exitTween, springs, stagger } from '@codaco/fresco-ui/motion';
 import {
   Popover,
   PopoverContent,
@@ -172,16 +173,16 @@ const toolbarVariants = {
     transition: {
       duration: 0.35,
       when: 'beforeChildren',
-      staggerChildren: 0.06,
+      staggerChildren: stagger.tight,
     },
   },
   exit: {
     opacity: 0,
     y: -8,
     transition: {
-      duration: 0.2,
+      ...exitTween,
       when: 'afterChildren',
-      staggerChildren: 0.04,
+      staggerChildren: stagger.tight,
       staggerDirection: -1,
     },
   },
@@ -193,13 +194,13 @@ const toolbarItemVariants = {
     opacity: 1,
     scale: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 320, damping: 24 },
+    transition: springs.pop,
   },
   exit: {
     opacity: 0,
     scale: 0.92,
     y: -4,
-    transition: { duration: 0.2 },
+    transition: exitTween,
   },
 } as const;
 

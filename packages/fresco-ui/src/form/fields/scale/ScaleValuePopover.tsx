@@ -5,6 +5,7 @@ import { type ReactNode, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { surfaceVariants } from '../../../layout/Surface';
+import { reduced, springs } from '../../../motion';
 import { usePortalContainer } from '../../../PortalContainer';
 import { usePrefersReducedMotion } from '../../../reducedMotion';
 import { cx } from '../../../utils/cva';
@@ -88,11 +89,7 @@ export default function ScaleValuePopover({
                   ? { opacity: 0 }
                   : { opacity: 0, y: 4, scale: 0.92 }
               }
-              transition={
-                reduceMotion
-                  ? { duration: 0 }
-                  : { type: 'spring', duration: 0.25, bounce: 0.3 }
-              }
+              transition={reduced(springs.pop, reduceMotion)}
             >
               <div
                 className={cx(

@@ -254,7 +254,6 @@ const ResizableFlexPanel = forwardRef<HTMLDivElement, ResizableFlexPanelProps>(
           <span
             className={cx(
               'block rounded-full bg-white/30',
-              'spring-[0.5,0.6]',
               'ease-in-out',
               'transition-[background-color,transform] duration-150',
               isHorizontal ? 'h-8 w-1' : 'h-1 w-8',

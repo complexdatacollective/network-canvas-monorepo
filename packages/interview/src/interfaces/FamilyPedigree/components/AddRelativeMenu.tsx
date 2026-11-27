@@ -7,6 +7,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { MotionButton } from '@codaco/fresco-ui/Button';
+import { springs } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -179,9 +180,7 @@ export default function AddRelativeMenu({
                     initial={reduceMotion ? false : { opacity: 0, scale: 0.6 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{
-                      type: 'spring',
-                      stiffness: 500,
-                      damping: 30,
+                      ...springs.pop,
                       delay: reduceMotion ? 0 : index * 0.02,
                     }}
                     className={cx(

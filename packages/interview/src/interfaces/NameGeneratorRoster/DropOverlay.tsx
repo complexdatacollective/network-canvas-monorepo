@@ -4,6 +4,7 @@ import { ArrowDownToLine } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import { type DndStore, useDndStore } from '@codaco/fresco-ui/dnd/dnd';
+import { springs } from '@codaco/fresco-ui/motion';
 import UINode, {
   type NodeColorSequence,
   type NodeShapeProp,
@@ -17,9 +18,7 @@ const variants = {
 const iconVariants = {
   over: {
     scale: [0, 1],
-    transition: {
-      type: 'spring' as const,
-    },
+    transition: springs.bouncy,
   },
   initial: {
     scale: 1,

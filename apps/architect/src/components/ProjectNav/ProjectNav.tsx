@@ -16,6 +16,7 @@ import { Link, useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
+import { springs } from '@codaco/fresco-ui/motion';
 import {
   Tooltip,
   TooltipContent,
@@ -165,7 +166,7 @@ const ProjectNav = () => {
             layoutId="project-nav-active-outline"
             aria-hidden
             className="absolute -inset-x-4 -inset-y-2 rounded-full ring-2 ring-current/30"
-            transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+            transition={springs.snap}
           />
         )}
         <span className="relative inline-flex items-center gap-2">
@@ -209,7 +210,7 @@ const ProjectNav = () => {
             layoutId="project-nav-active-outline"
             aria-hidden
             className="absolute -inset-2.5 rounded-full ring-2 ring-current/30"
-            transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+            transition={springs.snap}
           />
         )}
         <span className="relative inline-flex items-center gap-2">

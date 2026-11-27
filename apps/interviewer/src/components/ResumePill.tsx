@@ -5,6 +5,7 @@ import { useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { exitTween, springs } from '@codaco/fresco-ui/motion';
 import { usePageActive } from '@codaco/fresco-ui/pageActivity';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { updateSettings } from '~/lib/db/api';
@@ -36,8 +37,8 @@ const messages = defineMessages({
 // lets the protocols screen settle first; the 1.4s delay on the width
 // adds a deliberate pause between the two phases.
 //
-// Springs use a damping ratio of ~0.64 — one gentle overshoot, then
-// settles. Lower stiffness keeps the motion soft rather than snappy.
+// Both entrance springs use the shared `pop` preset: one gentle overshoot,
+// then the pill settles.
 //
 // Exit: straight rise out the top. No content-panel exit variant, so
 // the panel stays at its current width and the whole pill leaves intact.
@@ -47,7 +48,7 @@ const pillVariants = {
     y: 0,
     opacity: 1,
     transition: {
-      y: { type: 'spring', stiffness: 200, damping: 18, delay: 0.7 },
+      y: { ...springs.pop, delay: 0.7 },
       opacity: { duration: 0.3, delay: 0.7 },
     },
   },
@@ -55,8 +56,8 @@ const pillVariants = {
     y: '-150%',
     opacity: 0,
     transition: {
-      y: { type: 'spring', stiffness: 380, damping: 30 },
-      opacity: { duration: 0.25 },
+      y: springs.snap,
+      opacity: exitTween,
     },
   },
 } as const;
@@ -65,7 +66,7 @@ const contentPanelVariants = {
   hidden: { width: 0 },
   visible: {
     width: 'auto',
-    transition: { type: 'spring', stiffness: 180, damping: 18, delay: 1.4 },
+    transition: { ...springs.pop, delay: 1.4 },
   },
 } as const;
 

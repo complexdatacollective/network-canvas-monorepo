@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
+import { springs } from '@codaco/fresco-ui/motion';
 import NodeDropAnimation from '@codaco/fresco-ui/NodeDropAnimation';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -200,7 +201,7 @@ export default function NodeDrawer({
         data-zone-id={isExpandedEffective ? dropZoneId : undefined}
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        transition={springs.settle}
         className={cx(
           'tablet-landscape:min-w-sm tablet-landscape:w-fit z-10 mx-auto w-full max-w-2xl drop-shadow-xl',
           floating ? 'absolute inset-x-0 bottom-0' : 'shrink-0',
@@ -263,7 +264,7 @@ export default function NodeDrawer({
                   height: 'auto',
                   opacity: 1,
                   transition: {
-                    height: { type: 'spring', stiffness: 300, damping: 24 },
+                    height: springs.pop,
                     opacity: { duration: 0.15 },
                   },
                 }

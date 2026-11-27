@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 import { Fragment } from 'react';
 
+import { springs } from '@codaco/fresco-ui/motion';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -54,7 +55,7 @@ const Prompt = ({ id, text, backwards = false, small }: PromptProps) => {
       animate="center"
       exit="exit"
       transition={{
-        x: { type: 'spring', stiffness: 600, damping: 35 },
+        x: springs.pop,
         opacity: { duration: 0.2 },
       }}
     >

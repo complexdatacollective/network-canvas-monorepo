@@ -87,7 +87,11 @@ async function openPrompter({
   render(
     <Provider store={store}>
       <InterviewI18nProvider>
-        <PassphrasePrompter orientation="vertical" />
+        <PassphrasePrompter
+          orientation="vertical"
+          entering={false}
+          layoutDependency=""
+        />
       </InterviewI18nProvider>
     </Provider>,
   );

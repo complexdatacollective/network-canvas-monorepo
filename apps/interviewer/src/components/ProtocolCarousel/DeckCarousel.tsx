@@ -21,6 +21,8 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from 'react';
 
+import { exitTween, springs } from '@codaco/fresco-ui/motion';
+
 import {
   DECK_PERSPECTIVE_PX,
   SLOT_TO_CARD_RATIO,
@@ -51,17 +53,11 @@ const OVERSCROLL_RESIST = 0.25;
 // (sample → installing → protocol) swap without any animation.
 const SLIDE_ENTER = { y: -48, opacity: 0, scale: 0.9 };
 const SLIDE_REST = { y: 0, opacity: 1, scale: 1 };
-const SLIDE_ENTER_SPRING = {
-  type: 'spring',
-  stiffness: 140,
-  damping: 12,
-  mass: 1.1,
-} as const;
 const SLIDE_EXIT = {
   y: 0,
   opacity: 0,
   scale: 0,
-  transition: { duration: 0.3, ease: 'easeIn' },
+  transition: exitTween,
 } as const;
 
 /**
@@ -382,7 +378,7 @@ function DeckSlide({
         initial={SLIDE_ENTER}
         animate={SLIDE_REST}
         exit={SLIDE_EXIT}
-        transition={SLIDE_ENTER_SPRING}
+        transition={springs.bouncy}
         className={`relative h-full w-full ${isPresent ? '' : 'pointer-events-none'}`}
       >
         {slide.render(isActive, activate)}

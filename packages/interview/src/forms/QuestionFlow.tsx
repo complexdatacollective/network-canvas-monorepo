@@ -19,6 +19,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { parseObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
+import { springs } from '@codaco/fresco-ui/motion';
 import { prefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 import { messages } from './messages';
@@ -399,7 +400,7 @@ export default function QuestionFlow({
     void animate(
       step,
       { opacity: [0, 1], transform: [slid(from * STEP_SLIDE), slid(0)] },
-      { type: 'spring', stiffness: 400, damping: 36 },
+      springs.snap,
     );
   }, [stepped, step, animate]);
 

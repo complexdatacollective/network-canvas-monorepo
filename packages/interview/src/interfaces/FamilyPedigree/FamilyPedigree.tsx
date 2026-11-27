@@ -24,6 +24,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { springs } from '@codaco/fresco-ui/motion';
 import Node from '@codaco/fresco-ui/Node';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
@@ -3109,14 +3110,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               className="flex max-w-full min-w-0 flex-wrap items-center justify-center gap-3"
               initial={reduceMotion ? false : { y: '150%', opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              // A heavy spring, damped just short of settling straight, so it
-              // lands with a slight rebound; the fade does not bounce.
+              // A heavy spring that lands with a slight rebound; the fade does
+              // not bounce.
               transition={{
                 y: {
-                  type: 'spring',
-                  mass: 1.4,
-                  stiffness: 170,
-                  damping: 20,
+                  ...springs.heavy,
                   delay: TOOLBAR_ENTRANCE_DELAY / 1000,
                 },
                 opacity: {

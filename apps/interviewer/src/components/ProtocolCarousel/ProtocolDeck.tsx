@@ -13,6 +13,7 @@ import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import { exitTween, springs } from '@codaco/fresco-ui/motion';
 import {
   isSchema8Protocol,
   type ProtocolWithCounts,
@@ -120,28 +121,28 @@ type ProtocolDeckProps = {
 };
 
 // Explicit exit transitions so `AnimatePresence mode="wait"` doesn't
-// stall on motion's default unbounded spring before the data view can
-// enter. Enter keeps the default spring for the existing feel.
+// stall on a spring before the data view can enter.
 const sectionVariants = {
   hidden: { opacity: 0, y: '10%' },
   visible: {
     opacity: 1,
     y: 0,
+    transition: springs.settle,
   },
   exit: {
     opacity: 0,
     y: '10%',
-    transition: { duration: 0.3, ease: 'easeIn' },
+    transition: exitTween,
   },
 } as const;
 
 const chevronRowVariants = {
   hidden: { opacity: 0, y: '10%' },
-  visible: { opacity: 1, y: 0 },
+  visible: { opacity: 1, y: 0, transition: springs.settle },
   exit: {
     opacity: 0,
     y: '10%',
-    transition: { duration: 0.2, ease: 'easeIn' },
+    transition: exitTween,
   },
 } as const;
 

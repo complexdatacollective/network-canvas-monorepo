@@ -10,6 +10,7 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
+import { exitTween, stagger } from '@codaco/fresco-ui/motion';
 import UINode from '@codaco/fresco-ui/Node';
 import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import {
@@ -93,11 +94,11 @@ const binsContainerVariants = {
   animate: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.07,
+      staggerChildren: stagger.tight,
       when: 'beforeChildren' as const,
     },
   },
-  exit: { opacity: 0, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: exitTween },
 };
 
 const getCatColor = (index: number) => {

@@ -14,6 +14,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import useTokenRadius from '@codaco/fresco-ui/hooks/useTokenRadius';
+import { exitTween, springs } from '@codaco/fresco-ui/motion';
 import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -75,16 +76,10 @@ type CategoricalBinItemProps = {
   };
 };
 
-const springTransition = {
-  type: 'spring' as const,
-  stiffness: 200,
-  damping: 25,
-};
-
 const binItemVariants = {
   initial: { opacity: 0, scale: 0.4 },
-  animate: { opacity: 1, scale: 1, transition: { type: 'spring' as const } },
-  exit: { opacity: 0, scale: 0.4, transition: { duration: 0.15 } },
+  animate: { opacity: 1, scale: 1, transition: springs.pop },
+  exit: { opacity: 0, scale: 0.4, transition: exitTween },
 };
 
 type CategoricalBinPrompts = Extract<
@@ -328,7 +323,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         className={panelClasses}
         style={{ ...colorStyle, borderRadius: panelRadius }}
         onClick={(e) => e.stopPropagation()}
-        transition={springTransition}
+        transition={springs.settle}
         variants={binItemVariants}
         initial="initial"
         animate="animate"
@@ -418,7 +413,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
             'aria-expanded': false,
             'aria-label': `Category ${spokenLabel}, ${itemCount(nodes.length)}`,
           })}
-      transition={springTransition}
+      transition={springs.settle}
       onLayoutAnimationComplete={() => circleRadius.set('50%')}
       variants={binItemVariants}
     >

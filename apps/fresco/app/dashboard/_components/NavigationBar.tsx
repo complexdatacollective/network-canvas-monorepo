@@ -11,6 +11,7 @@ import { usePathname } from 'next/navigation';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { springs, stagger } from '@codaco/fresco-ui/motion';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -66,9 +67,9 @@ const containerVariants: Variants = {
   visible: {
     y: 0,
     transition: {
-      type: 'spring',
+      ...springs.pop,
       delayChildren: 0.5,
-      staggerChildren: 0.1,
+      staggerChildren: stagger.loose,
     },
   },
 };
@@ -78,9 +79,7 @@ const itemVariants: Variants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      type: 'spring',
-    },
+    transition: springs.pop,
   },
 };
 

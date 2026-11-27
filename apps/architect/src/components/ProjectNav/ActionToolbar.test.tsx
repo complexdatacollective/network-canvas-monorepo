@@ -7,6 +7,7 @@ import {
 import { useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { reduced, springs } from '@codaco/fresco-ui/motion';
 import {
   ToolbarButton,
   ToolbarGroup,
@@ -17,9 +18,16 @@ import { ACTION_TOOLBAR_REACH_VARIABLE } from '~/utils/actionToolbarReach';
 import {
   ActionToolbarProvider,
   toolbarEnterExitMotion,
-  toolbarEnterExitSpring,
   useActionToolbar,
 } from './ActionToolbar';
+
+// The toolbar's transition comes from the shared presets: watch which one it
+// asks for.
+vi.mock('@codaco/fresco-ui/motion', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@codaco/fresco-ui/motion')>();
+  return { ...actual, reduced: vi.fn(actual.reduced) };
+});
 
 const TimelineToolbarController = () => {
   const props = useMemo(
@@ -179,10 +187,7 @@ describe('ActionToolbarProvider', () => {
       y: 'calc(100% + 1.25rem)',
     });
     expect(toolbarEnterExitMotion.visible).toMatchObject({ opacity: 1, y: 0 });
-    expect(toolbarEnterExitSpring).toMatchObject({
-      type: 'spring',
-      damping: 24,
-    });
+    expect(vi.mocked(reduced)).toHaveBeenLastCalledWith(springs.pop, false);
 
     rerender(
       <ActionToolbarProvider>
@@ -207,7 +212,7 @@ describe('ActionToolbarProvider', () => {
       opacity: 0,
       y: 'calc(100% + 1.25rem)',
     });
-    expect(toolbarEnterExitSpring.damping).toBe(24);
+    expect(vi.mocked(reduced)).toHaveBeenLastCalledWith(springs.pop, false);
 
     rerender(<ActionToolbarProvider>{null}</ActionToolbarProvider>);
 

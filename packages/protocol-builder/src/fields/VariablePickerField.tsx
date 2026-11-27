@@ -21,6 +21,7 @@ import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { comboboxTriggerVariants } from '@codaco/fresco-ui/form/fields/Combobox/shared';
 import { getInputState } from '@codaco/fresco-ui/form/utils/getInputState';
 import { useComboboxTriggerEscape } from '@codaco/fresco-ui/hooks/useComboboxTriggerEscape';
+import { springs } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableType } from '@codaco/protocol-validation';
@@ -259,19 +260,6 @@ type FieldNotice =
   | Readonly<{ kind: 'failed' }>;
 
 /**
- * The spring fresco-ui's choice controls select with (`selectionSpring` in
- * `Boolean.tsx` and `RichSelectGroup.tsx`), and their shorter duration for
- * what is being let go of, so a chosen attribute arrives as a chosen radio
- * button or Boolean option does.
- */
-const SELECTION_SPRING = {
-  type: 'spring',
-  duration: 0.3,
-  bounce: 0.15,
-} as const;
-const RELEASE_SPRING = { ...SELECTION_SPRING, duration: 0.15 } as const;
-
-/**
  * How what the trigger shows comes and goes.
  *
  * Only a choice made in this field moves anything: a value already held when
@@ -293,13 +281,15 @@ const SLOT_VARIANTS = {
     opacity: 1,
     scale: 1,
     y: 0,
-    transition: SELECTION_SPRING,
+    // The spring fresco-ui's choice controls select with, so a chosen
+    // attribute arrives as a chosen radio button or Boolean option does.
+    transition: springs.press,
   },
   leaving: ({ shown, reduced }: SlotMotion) => {
     if (!shown) return { opacity: 0, transition: { duration: 0 } };
     return reduced
-      ? { opacity: 0, transition: RELEASE_SPRING }
-      : { opacity: 0, scale: 0.95, y: -6, transition: RELEASE_SPRING };
+      ? { opacity: 0, transition: springs.press }
+      : { opacity: 0, scale: 0.95, y: -6, transition: springs.press };
   },
 };
 

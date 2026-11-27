@@ -1,6 +1,7 @@
 import { motion, type Variants } from 'motion/react';
 import { Children, type ComponentProps } from 'react';
 
+import { springs, stagger } from '@codaco/fresco-ui/motion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 // FancyParagraph animates individual words in a paragraph.
@@ -14,11 +15,8 @@ const FancyParagraph = (props: ComponentProps<typeof Paragraph>) => {
     visible: (custom: number) => ({
       y: 0,
       transition: {
-        type: 'spring',
-        stiffness: 200,
-        damping: 30,
-        mass: 1,
-        delay: 0.1 * custom,
+        ...springs.settle,
+        delay: stagger.loose * custom,
       },
     }),
   };

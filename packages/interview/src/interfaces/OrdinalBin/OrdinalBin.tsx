@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo } from 'react';
 
+import { stagger } from '@codaco/fresco-ui/motion';
 import type { Stage } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
@@ -34,7 +35,7 @@ const binsContainerVariants = {
   animate: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05,
+      staggerChildren: stagger.tight,
       when: 'beforeChildren' as const,
     },
   },

@@ -13,6 +13,7 @@ import {
 } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
+import { springs, stagger } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { declaredTranslationText } from '@codaco/protocol-builder/localization/localizedText';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -95,7 +96,7 @@ const finalMessages = defineMessages({
 // list now (see the render), so it has to work out for itself the step the
 // stagger would have handed it.
 const TIMELINE_ENTRANCE_DELAY = 0.6;
-const TIMELINE_ENTRANCE_STAGGER = 0.08;
+const TIMELINE_ENTRANCE_STAGGER = stagger.tight;
 
 const timelineContainerVariants: Variants = {
   hidden: {},
@@ -112,7 +113,7 @@ const timelineStageVariants: Variants = {
   visible: {
     scale: 1,
     opacity: 1,
-    transition: { type: 'spring' },
+    transition: springs.pop,
   },
 };
 

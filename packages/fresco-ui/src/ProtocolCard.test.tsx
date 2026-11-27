@@ -18,4 +18,21 @@ describe('ProtocolCard', () => {
     expect(card).toContainElement(screen.getByTestId('protocol-background'));
     expect(card).toContainElement(screen.getByText('Protocol preview'));
   });
+
+  it('eases only the shadow, and only while the card is active', () => {
+    const { rerender } = render(
+      <ProtocolCard background={null} data-testid="protocol-card">
+        <span>Protocol preview</span>
+      </ProtocolCard>,
+    );
+    const card = screen.getByTestId('protocol-card');
+    expect(card.style.transition).toBe('');
+
+    rerender(
+      <ProtocolCard background={null} data-testid="protocol-card" isActive>
+        <span>Protocol preview</span>
+      </ProtocolCard>,
+    );
+    expect(card.style.transition).toMatch(/^box-shadow \d+ms linear\(/);
+  });
 });

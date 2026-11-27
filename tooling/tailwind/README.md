@@ -18,7 +18,6 @@ The v4 surface ships a single foundation barrel that bundles every theme and plu
 | `@codaco/tailwind-config/fresco.css`                                 | Foundation barrel — colors, the `@theme` block, foundational utilities, custom plugins, **all theme variants** (default + interview + studio). The fonts are imported separately; see Fonts below. |
 | `@codaco/tailwind-config/fresco/plugins/elevation/elevation`         | Multi-layer realistic shadows (`elevation-low/medium/high`).                                                                                                                                       |
 | `@codaco/tailwind-config/fresco/plugins/inset-surface/inset-surface` | Background-color-adaptive inset (pressed-in) shadows.                                                                                                                                              |
-| `@codaco/tailwind-config/fresco/plugins/motion-spring`               | Spring-based transition utilities (`spring-short/medium/long`) generated via `motion`.                                                                                                             |
 
 ### Consuming from a Tailwind v4 app
 

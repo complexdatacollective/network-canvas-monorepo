@@ -17,6 +17,7 @@ import RichSelectGroupField, {
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { springs } from '@codaco/fresco-ui/motion';
 import type {
   LocalizedString,
   VariableOptions,
@@ -83,7 +84,7 @@ const choiceVariants = {
   animate: {
     opacity: 1,
     translateY: '0%',
-    transition: { delay: 0.25, type: 'spring' as const },
+    transition: { ...springs.pop, delay: 0.25 },
   },
   exit: { opacity: 0, translateY: '120%' },
 };

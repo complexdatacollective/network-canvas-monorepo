@@ -4,6 +4,7 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
 
+import { springs } from '../../motion';
 import { type PresentationalText } from '../../PresentationalText';
 import {
   sliderControlVariants,
@@ -228,11 +229,7 @@ export default function VisualAnalogScaleField(
                   // tab stop. Keep the div out of the tab order.
                   tabIndex={-1}
                   whileTap={{ scale: 1.1 }}
-                  transition={{
-                    type: 'spring',
-                    duration: 0.3,
-                    bounce: 0.4,
-                  }}
+                  transition={springs.press}
                   className={sliderThumbSurfaceVariants({ state: thumbState })}
                 />
               </Slider.Thumb>
