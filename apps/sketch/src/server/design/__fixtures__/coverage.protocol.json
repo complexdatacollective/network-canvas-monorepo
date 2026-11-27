@@ -1299,10 +1299,16 @@
           "highlight": [
             {
               "id": "5554a839-c274-587c-b63a-181cab118803",
-              "variable": "c11ec10f-0d64-5e41-a7c9-6123ee3985e5",
               "label": {
                 "en": "favourite"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "0016ec86-0730-55d8-8bc4-ab12c326ba0a",
+                  "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
+                  "variable": "c11ec10f-0d64-5e41-a7c9-6123ee3985e5"
+                }
+              ]
             }
           ]
         }

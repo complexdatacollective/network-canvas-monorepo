@@ -1467,10 +1467,16 @@
           "highlight": [
             {
               "id": "3eb1ddfa-d738-5965-834b-9ddcab4809c8",
-              "variable": "e7609e1d-4814-5264-805c-969d30ef5a88",
               "label": {
                 "en": "Drinks with participant"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "ba514c36-c083-5230-8f04-41fcedfb84c5",
+                  "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
+                  "variable": "e7609e1d-4814-5264-805c-969d30ef5a88"
+                }
+              ]
             }
           ]
         },

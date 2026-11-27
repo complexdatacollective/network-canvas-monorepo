@@ -1258,8 +1258,14 @@ export const compile = (
                       // the legend names each highlighted attribute
                       highlight: v.highlightAttributeIds.map((h) => ({
                         id: h,
-                        variable: key(scope, h),
                         label: localized(attrIn(scope, h)!.label),
+                        attributes: [
+                          {
+                            id: `${h}-attribute`,
+                            type: nodeKey.get(s.nodeTypeId),
+                            variable: key(scope, h),
+                          },
+                        ],
                       })),
                     }
                   : {}),
