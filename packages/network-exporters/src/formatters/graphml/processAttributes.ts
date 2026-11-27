@@ -1,6 +1,5 @@
 import type { DocumentFragment } from '@xmldom/xmldom';
 
-import type { Codebook } from '@codaco/protocol-validation';
 import {
   type LayoutColumnAxis,
   type NcEgo,
@@ -8,7 +7,11 @@ import {
   variableExportColumnEntries,
 } from '@codaco/shared-consts';
 
-import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
+import type {
+  EdgeWithResequencedID,
+  NodeWithResequencedID,
+  ExportCodebook,
+} from '../../input';
 import type { ExportOptions } from '../../options';
 import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
 import {
@@ -16,6 +19,7 @@ import {
   getOwn,
   isCategoricalOptionSelected,
 } from '../../utils/general';
+import { positionOf } from '../../utils/layouts';
 import {
   createDataElement,
   createDocumentFragment,
@@ -52,7 +56,7 @@ const layoutDatum = (
  */
 function processAttributes(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
-  codebook: Codebook,
+  codebook: ExportCodebook,
   exportOptions: ExportOptions,
   keyIds: GraphMLKeyIds,
 ): DocumentFragment {
@@ -69,6 +73,42 @@ function processAttributes(
   for (const [key, value] of Object.entries(entityAttributes)) {
     const codebookEntry = getOwn(variables, key);
     const encrypted = isEncryptedAttribute(entity, key, codebookEntry);
+
+    const layoutKeys = codebookEntry ? undefined : keyIds.layout.get(key);
+    if (layoutKeys !== undefined) {
+      const columns = variableExportColumnEntries(
+        { name: key, type: 'layout' },
+        {
+          format: 'graphml',
+          useScreenLayoutCoordinates:
+            exportOptions.globalOptions.useScreenLayoutCoordinates,
+        },
+      ).map(({ origin }, index) => {
+        const id = layoutKeys[index];
+        if (id === undefined) {
+          throw new Error(`Missing GraphML key for layout: ${key}`);
+        }
+        return { id, origin };
+      });
+      const position = positionOf(value);
+      for (const { id, origin } of columns) {
+        if (origin.kind !== 'layout') continue;
+        if (encrypted) {
+          // An encrypted position writes the marker for its coordinates only.
+          if (origin.axis === 'x' || origin.axis === 'y') {
+            createDomDataElement(id, 'ENCRYPTED');
+          }
+          continue;
+        }
+        if (position !== undefined) {
+          createDomDataElement(
+            id,
+            layoutDatum(origin.axis, position.x, position.y, exportOptions),
+          );
+        }
+      }
+      continue;
+    }
 
     if (!codebookEntry) {
       const externalKey = keyIds.external.get(key);
@@ -96,38 +136,9 @@ function processAttributes(
     });
 
     if (encrypted) {
-      // An encrypted value is never exported. A layout variable writes the
-      // marker for its coordinates only.
-      for (const { id, origin } of columns) {
-        if (
-          origin.kind !== 'layout' ||
-          origin.axis === 'x' ||
-          origin.axis === 'y'
-        ) {
-          createDomDataElement(id, 'ENCRYPTED');
-        }
-      }
-      continue;
-    }
-
-    if (codebookEntry.type === 'layout') {
-      if (
-        typeof value !== 'object' ||
-        Array.isArray(value) ||
-        !('x' in value) ||
-        !('y' in value) ||
-        typeof value.x !== 'number' ||
-        typeof value.y !== 'number'
-      ) {
-        continue;
-      }
-      for (const { id, origin } of columns) {
-        if (origin.kind === 'layout') {
-          createDomDataElement(
-            id,
-            layoutDatum(origin.axis, value.x, value.y, exportOptions),
-          );
-        }
+      // An encrypted value is never exported.
+      for (const { id } of columns) {
+        createDomDataElement(id, 'ENCRYPTED');
       }
       continue;
     }

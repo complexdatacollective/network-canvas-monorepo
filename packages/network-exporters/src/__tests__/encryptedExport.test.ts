@@ -194,6 +194,7 @@ describe.each([
       hash: 'protocol-1',
       name: 'Secure protocol',
       codebook,
+      layoutNodeTypes: {},
     });
     files = run.files;
     failedExports = run.result.failedExports;
@@ -406,6 +407,7 @@ describe('an export of values whose storage, not the codebook, says they are enc
       hash: 'protocol-1',
       name: 'Secure protocol',
       codebook: recordedCodebook,
+      layoutNodeTypes: {},
     });
     files = run.files;
     failedExports = run.result.failedExports;

@@ -1,17 +1,16 @@
-import type { Codebook } from '@codaco/protocol-validation';
-
 import { adjacencyMatrixBytes } from '../formatters/csv/adjacencyMatrix';
 import { attributeListBytes } from '../formatters/csv/attributeList';
 import { edgeListBytes } from '../formatters/csv/edgeList';
 import { egoListBytes } from '../formatters/csv/egoList';
 import { graphmlBytes } from '../formatters/graphml/graphmlReadable';
+import type { ExportCodebook } from '../input';
 import type { ExportFormat, ExportOptions } from '../options';
 import type { ExportWarning } from '../output';
 import type { ExportFileNetwork } from '../session/exportFile';
 
 type FormatterBytes = (
   network: ExportFileNetwork,
-  codebook: Codebook,
+  codebook: ExportCodebook,
   options: ExportOptions,
   reportWarning: (warning: ExportWarning) => void,
 ) => AsyncIterable<Uint8Array>;

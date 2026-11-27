@@ -1,5 +1,4 @@
-import type { Codebook } from '@codaco/protocol-validation';
-
+import type { ExportCodebook } from '../../input';
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
 import type { ExportFileNetwork } from '../../session/exportFile';
@@ -9,7 +8,7 @@ const encoder = new TextEncoder();
 
 export async function* graphmlBytes(
   network: ExportFileNetwork,
-  codebook: Codebook,
+  codebook: ExportCodebook,
   exportOptions: ExportOptions,
   reportWarning: (warning: ExportWarning) => void,
 ): AsyncIterable<Uint8Array> {

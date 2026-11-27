@@ -1,4 +1,3 @@
-import type { Codebook } from '@codaco/protocol-validation';
 import {
   caseProperty,
   codebookHashProperty,
@@ -18,7 +17,11 @@ import {
   testTypeId,
   testVariableId,
 } from '../../__tests__/testIds';
-import type { FormattedSession, SessionWithResequencedIDs } from '../../input';
+import type {
+  ExportCodebook,
+  FormattedSession,
+  SessionWithResequencedIDs,
+} from '../../input';
 import type { ExportOptions } from '../../options';
 import { insertEgoIntoSessionNetwork } from '../../session/insertEgoIntoSessionNetworks';
 import { resequenceSessionIds } from '../../session/resequenceIds';
@@ -38,7 +41,8 @@ export const exportOptions = (
 /*
  * Record ids are UUIDs; every name is what a researcher might
  * type once names are free: other scripts, spaces, punctuation, quotes and
- * commas (which CSV must quote).
+ * commas (which CSV must quote). The layout's positions are columns of the
+ * person type only, the type a stage sets it for.
  */
 export const namesCodebook = {
   ego: {
@@ -83,10 +87,6 @@ export const namesCodebook = {
         [testVariableId('p-age')]: {
           name: '年齢 (years)',
           type: 'number',
-        },
-        [testVariableId('p-pos')]: {
-          name: 'map position',
-          type: 'layout',
         },
         [testVariableId('p-eyes')]: {
           name: 'Eye colour, "natural"',
@@ -167,7 +167,13 @@ export const namesCodebook = {
       },
     },
   },
-} satisfies Codebook;
+  layouts: {
+    [testVariableId('p-pos')]: { name: 'map position' },
+  },
+  layoutNodeTypes: {
+    [testVariableId('p-pos')]: [testTypeId('person')],
+  },
+} satisfies ExportCodebook;
 
 export const namesSession = (): FormattedSession => ({
   nodes: [

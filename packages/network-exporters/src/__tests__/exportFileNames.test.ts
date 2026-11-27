@@ -114,7 +114,12 @@ const repositories = Layer.mergeAll(
   Layer.succeed(ProtocolRepository, {
     getProtocols: () =>
       Effect.succeed({
-        'protocol-1': { hash: 'protocol-1', name: 'Protocol', codebook },
+        'protocol-1': {
+          hash: 'protocol-1',
+          name: 'Protocol',
+          codebook,
+          layoutNodeTypes: {},
+        },
       }),
   }),
 );

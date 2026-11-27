@@ -1,6 +1,5 @@
 import { XMLSerializer } from '@xmldom/xmldom';
 
-import type { Codebook } from '@codaco/protocol-validation';
 import {
   caseProperty,
   ncTypeProperty,
@@ -8,6 +7,7 @@ import {
   sessionProperty,
 } from '@codaco/shared-consts';
 
+import type { ExportCodebook } from '../../input';
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
 import type { ExportFileNetwork } from '../../session/exportFile';
@@ -30,7 +30,7 @@ type ProtocolTextChange = Pick<
  */
 async function graphMLGenerator(
   network: ExportFileNetwork,
-  codebook: Codebook,
+  codebook: ExportCodebook,
   exportOptions: ExportOptions,
   reportWarning: (warning: ExportWarning) => void,
 ): Promise<string> {

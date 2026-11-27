@@ -108,7 +108,7 @@ describe('an export of sessions that ended in different ways', () => {
     const run = await runRecordedExport(
       options,
       sessions.map(({ id, finishOutcome }) => interview(id, finishOutcome)),
-      { hash: 'protocol-1', name: 'Outcome', codebook },
+      { hash: 'protocol-1', name: 'Outcome', codebook, layoutNodeTypes: {} },
     );
     files = run.files;
     warnings = run.result.warnings;

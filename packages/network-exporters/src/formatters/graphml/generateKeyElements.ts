@@ -11,10 +11,15 @@ import {
   variableExportColumnEntries,
 } from '@codaco/shared-consts';
 
-import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
+import type {
+  EdgeWithResequencedID,
+  NodeWithResequencedID,
+  ExportCodebook,
+} from '../../input';
 import type { ExportOptions } from '../../options';
 import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
 import { getEntityAttributes, getOwn } from '../../utils/general';
+import { layoutsOfNodeType } from '../../utils/layouts';
 import { resolveAttrNames } from './attrNames';
 import { createDocumentFragment, getGraphMLTypeForKey, sha1 } from './helpers';
 import {
@@ -40,6 +45,10 @@ type GraphMLKeyOwner = {
   readonly typeName?: string;
 };
 
+type KeySlot =
+  | { readonly variable: Variable; readonly index: number }
+  | { readonly layoutId: string; readonly index: number };
+
 type GraphMLKey = {
   readonly identity: string;
   /** The id the key would have on its own; see `createKeyIdAllocator`. */
@@ -52,8 +61,11 @@ type GraphMLKey = {
   target: GraphMLKeyTarget;
   readonly builtIn: boolean;
   readonly owners: GraphMLKeyOwner[];
-  /** Where each variable record this key is a column of keeps its key id. */
-  readonly slots: { readonly variable: Variable; readonly index: number }[];
+  /**
+   * Where each variable record, or layout, this key is a column of keeps its
+   * key id.
+   */
+  readonly slots: KeySlot[];
   readonly external?: string;
 };
 
@@ -170,8 +182,6 @@ const getGraphMLTypeForVariable = (
       );
     case 'number':
       return getGraphMLTypeForDeclaredVariable(entities, variableId, 'double');
-    case 'layout':
-      return 'double';
     case 'scalar':
       return 'float';
     case 'text':
@@ -218,7 +228,7 @@ const preferredVariableKeyId = async (
   }
 };
 
-// GraphML declares a layout variable's screen-space keys between X and Y.
+// GraphML declares a layout's screen-space keys between X and Y.
 const LAYOUT_DECLARATION_ORDER = {
   x: 0,
   screenSpaceY: 1,
@@ -239,7 +249,7 @@ const sameOwner = (a: GraphMLKeyOwner, b: GraphMLKeyOwner) =>
   a.entity === b.entity && a.typeId === b.typeId;
 
 export default function getKeyElementGenerator(
-  codebook: Codebook,
+  codebook: ExportCodebook,
   exportOptions: ExportOptions,
 ) {
   return async (
@@ -327,6 +337,50 @@ export default function getKeyElementGenerator(
           );
         }
       }
+
+      if (owner.entity !== 'node' || owner.typeId === undefined) continue;
+      const { typeId } = owner;
+      const rows = entitiesByKind.node.filter((node) => node.type === typeId);
+      for (const [layoutId, layout] of layoutsOfNodeType(
+        codebook,
+        typeId,
+        rows,
+      )) {
+        const type = rows.some((row) =>
+          isEncryptedAttribute(row, layoutId, undefined),
+        )
+          ? 'string'
+          : 'double';
+        const entries = variableExportColumnEntries(
+          { name: layout.name, type: 'layout' },
+          {
+            format: 'graphml',
+            useScreenLayoutCoordinates:
+              exportOptions.globalOptions.useScreenLayoutCoordinates,
+          },
+        ).map(({ column, origin }, index) => ({ column, origin, index }));
+        for (const { column, origin, index } of entries.toSorted(
+          byDeclarationOrder,
+        )) {
+          addKey(
+            {
+              identity: JSON.stringify([
+                'layout',
+                layoutId,
+                JSON.stringify(originIdentity(origin)),
+              ]),
+              preferredId: await preferredVariableKeyId(layoutId, origin),
+              name: column,
+              variable: layout.name,
+              type,
+              target: 'node',
+              builtIn: false,
+            },
+            owner,
+            { layoutId, index },
+          );
+        }
+      }
     }
 
     // Attributes an entity has that its type does not declare: roster
@@ -354,6 +408,14 @@ export default function getKeyElementGenerator(
 
         for (const attribute of Object.keys(getEntityAttributes(entity))) {
           if (getOwn(codebookVariables, attribute)) continue;
+          if (
+            entityKind === 'node' &&
+            typeId !== undefined &&
+            getOwn(codebook.node, typeId) !== undefined &&
+            getOwn(codebook.layouts, attribute) !== undefined
+          ) {
+            continue;
+          }
           const owners = externalOwners.get(attribute);
           if (!owners) {
             externalOwners.set(attribute, [owner]);
@@ -387,6 +449,7 @@ export default function getKeyElementGenerator(
       [...keys.values()].map(({ preferredId }) => preferredId),
     );
     const variableKeyIds = new Map<Variable, string[]>();
+    const layoutKeyIds = new Map<string, string[]>();
     const externalKeyIds = new Map<string, string>();
     const declared: (GraphMLKey & {
       readonly id: string;
@@ -403,10 +466,16 @@ export default function getKeyElementGenerator(
         ...(key.builtIn ? {} : { scopes: key.owners.map(scopeOf) }),
       });
       if (key.external !== undefined) externalKeyIds.set(key.external, id);
-      for (const { variable, index } of key.slots) {
-        const ids = variableKeyIds.get(variable) ?? [];
-        ids[index] = id;
-        variableKeyIds.set(variable, ids);
+      for (const slot of key.slots) {
+        if ('layoutId' in slot) {
+          const ids = layoutKeyIds.get(slot.layoutId) ?? [];
+          ids[slot.index] = id;
+          layoutKeyIds.set(slot.layoutId, ids);
+          continue;
+        }
+        const ids = variableKeyIds.get(slot.variable) ?? [];
+        ids[slot.index] = id;
+        variableKeyIds.set(slot.variable, ids);
       }
     }
 
@@ -448,7 +517,11 @@ export default function getKeyElementGenerator(
 
     return {
       fragment,
-      keyIds: { variable: variableKeyIds, external: externalKeyIds },
+      keyIds: {
+        variable: variableKeyIds,
+        layout: layoutKeyIds,
+        external: externalKeyIds,
+      },
       variableKeyNames: new Map(
         declared.filter((key) => !key.builtIn).map((key) => [key.id, key.name]),
       ),

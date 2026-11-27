@@ -207,6 +207,7 @@ const runExport = (
     hash: 'protocol-1',
     name: `Protocol${control}`,
     codebook,
+    layoutNodeTypes: {},
   });
 
 describe('GraphML files for answers holding characters XML cannot store', () => {

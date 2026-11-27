@@ -1,8 +1,7 @@
 import { Effect } from 'effect';
 
-import type { Codebook } from '@codaco/protocol-validation';
-
 import { ExportGenerationError } from '../errors';
+import type { ExportCodebook } from '../input';
 import type { ExportFormat, ExportOptions } from '../options';
 import type {
   ExportFailure,
@@ -19,7 +18,7 @@ type ExportFileParams = {
   name: string;
   exportFormat: ExportFormat;
   network: ExportFileNetwork;
-  codebook: Codebook;
+  codebook: ExportCodebook;
   exportOptions: ExportOptions;
   sessionId: string;
   /**

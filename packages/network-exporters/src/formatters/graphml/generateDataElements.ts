@@ -1,6 +1,5 @@
 import { DOMImplementation, type DocumentFragment } from '@xmldom/xmldom';
 
-import type { Codebook } from '@codaco/protocol-validation';
 import {
   edgeExportIDProperty,
   edgeSourceProperty,
@@ -15,7 +14,11 @@ import {
   nodeExportIDProperty,
 } from '@codaco/shared-consts';
 
-import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
+import type {
+  EdgeWithResequencedID,
+  NodeWithResequencedID,
+  ExportCodebook,
+} from '../../input';
 import type { ExportOptions } from '../../options';
 import { isEncryptedAttribute } from '../../utils/encryptedAttribute';
 import { getOwn } from '../../utils/general';
@@ -28,7 +31,7 @@ import processAttributes from './processAttributes';
  * Function that returns a function that generates <data> elements for a given entity
  */
 export default function getDataElementGenerator(
-  codebook: Codebook,
+  codebook: ExportCodebook,
   exportOptions: ExportOptions,
   keyIds: GraphMLKeyIds,
 ) {
@@ -66,7 +69,7 @@ export default function getDataElementGenerator(
 
 function generateDataElementsForEntity(
   entity: NodeWithResequencedID | EdgeWithResequencedID | NcEgo,
-  codebook: Codebook,
+  codebook: ExportCodebook,
   exportOptions: ExportOptions,
   keyIds: GraphMLKeyIds,
 ): DocumentFragment {

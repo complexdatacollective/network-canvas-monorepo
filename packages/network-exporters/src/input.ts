@@ -75,7 +75,22 @@ export type ProtocolExportInput = {
   hash: string;
   name: string;
   codebook: Codebook;
+  /**
+   * For each layout of the codebook, the node types a stage sets it for, as
+   * `getNodeTypesWithLayout` gives them. A node type has columns for the
+   * layouts it is listed under, and for any layout a node of it holds a
+   * position in.
+   */
+  layoutNodeTypes: Readonly<Record<string, readonly string[]>>;
 };
+
+/**
+ * The codebook as the formatters read it, with each layout's node types. The
+ * export pipeline always gives them; a formatter called on its own without
+ * them exports the layouts that rows hold positions in.
+ */
+export type ExportCodebook = Codebook &
+  Partial<Pick<ProtocolExportInput, 'layoutNodeTypes'>>;
 
 export type InterviewExportInput = {
   id: string;

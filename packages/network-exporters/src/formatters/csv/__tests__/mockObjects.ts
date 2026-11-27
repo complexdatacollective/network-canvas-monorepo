@@ -21,9 +21,10 @@ import type { ExportOptions } from '../../../options';
 import { insertEgoIntoSessionNetwork } from '../../../session/insertEgoIntoSessionNetworks';
 import { resequenceSessionIds } from '../../../session/resequenceIds';
 
-// The mock uses simplified color values and variable types not present in the
-// strict Codebook schema (e.g. 'layout' type, bare 'color' string), so a cast
-// is required — the same approach used in createGraphML.test.ts.
+// The mock uses simplified color values not present in the strict Codebook
+// schema (a bare 'color' string), so a cast is required — the same approach
+// used in createGraphML.test.ts. Its node type's positions are in the layout
+// `mock-uuid-3`.
 export const mockCodebook = {
   ego: {
     variables: {
@@ -39,7 +40,6 @@ export const mockCodebook = {
       variables: {
         [testVariableId('mock-uuid-1')]: { name: 'firstName', type: 'text' },
         [testVariableId('mock-uuid-2')]: { name: 'age', type: 'number' },
-        [testVariableId('mock-uuid-3')]: { name: 'layout', type: 'layout' },
         [testVariableId('mock-uuid-4')]: {
           name: 'boolWithValues',
           type: 'boolean',
@@ -89,6 +89,7 @@ export const mockCodebook = {
       },
     },
   },
+  layouts: { [testVariableId('mock-uuid-3')]: { name: 'layout' } },
 } as unknown as Codebook;
 
 export const mockExportOptions: ExportOptions = {

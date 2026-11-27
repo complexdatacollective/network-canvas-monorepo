@@ -171,7 +171,7 @@ describe('an export whose columns would share a name', () => {
     const run = await runRecordedExport(
       options,
       [interview('interview-a', 'a'), interview('interview-b', 'b')],
-      { hash: 'protocol-1', name: 'Renames', codebook },
+      { hash: 'protocol-1', name: 'Renames', codebook, layoutNodeTypes: {} },
     );
     files = run.files;
     warnings = run.result.warnings;

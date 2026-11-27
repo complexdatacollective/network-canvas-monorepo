@@ -12,7 +12,7 @@ import {
   testTypeId,
   testVariableId,
 } from '../../../__tests__/testIds';
-import type { FormattedSession } from '../../../input';
+import type { ExportCodebook, FormattedSession } from '../../../input';
 import type { ExportWarning } from '../../../output';
 import {
   exportOptions,
@@ -75,7 +75,7 @@ const sessionWithNode = (
 });
 
 const render = (
-  codebook: Codebook,
+  codebook: ExportCodebook,
   session: FormattedSession,
   useScreenLayoutCoordinates = true,
 ) =>
@@ -324,18 +324,51 @@ describe('GraphML keys for variables whose id is a built-in key id', () => {
   });
 });
 
+describe('GraphML layout keys', () => {
+  it('GraphML declares layout keys for a type that holds a position but has no setting stage', async () => {
+    const layoutId = testVariableId('map');
+    const xml = await render(
+      {
+        ...personCodebook({}),
+        layouts: { [layoutId]: { name: 'map' } },
+        layoutNodeTypes: {},
+      },
+      {
+        ...sessionWithNode({}),
+        nodes: [
+          {
+            [entityPrimaryKeyProperty]: 'node-a',
+            type: testTypeId('person'),
+            [entityAttributesProperty]: { [layoutId]: { x: 0.25, y: 0.75 } },
+          },
+        ],
+      },
+      false,
+    );
+    const keys = keyElements(xml);
+
+    expect(keyById(keys, `${layoutId}_X`).getAttribute('attr.name')).toBe(
+      'map_X',
+    );
+    expect(keyById(keys, `${layoutId}_Y`).getAttribute('for')).toBe('node');
+    expect(new Map(nodeData(xml, 0)).get(`${layoutId}_X`)).toBe('0.25');
+    expect(keys.some((key) => key.getAttribute('attr.name') === layoutId)).toBe(
+      false,
+    );
+  });
+});
+
 describe('GraphML key ids that would be the same', () => {
-  // `pos_X` is a variable id, and also the id the layout variable `pos` would
-  // give its X key. The options 1 and '1' would get the same hashed id.
+  // `pos_X` is a variable id, and also the id the layout `pos` would give its
+  // X key. The options 1 and '1' would get the same hashed id.
   // `nickname` is not declared, and the variable `hashed` has the id it would
   // be given.
   const renderWithHashedId = async (hashed: string) => {
-    const codebook = personCodebook({
+    const variables = personCodebook({
       pos_X: {
         name: 'Position text',
         type: 'text',
       },
-      pos: { name: 'Position', type: 'layout' },
       rating: {
         name: 'Rating',
         type: 'categorical',
@@ -350,6 +383,10 @@ describe('GraphML key ids that would be the same', () => {
       },
       [hashed]: { name: 'Hashed', type: 'text' },
     });
+    const codebook: ExportCodebook = {
+      ...variables,
+      layouts: { pos: { name: 'Position' } },
+    };
     const session: FormattedSession = {
       ...sessionWithNode({}),
       nodes: [
@@ -411,7 +448,7 @@ describe('GraphML key ids that would be the same', () => {
 
 describe('GraphML columns the export renames', () => {
   const renderReporting = async (
-    codebook: Codebook,
+    codebook: ExportCodebook,
     session: FormattedSession,
   ) => {
     const warnings: ExportWarning[] = [];
@@ -442,13 +479,18 @@ describe('GraphML columns the export renames', () => {
 
   it('reports each column numbered to keep it apart from another', async () => {
     const { xml, warnings } = await renderReporting(
-      personCodebook({
-        [testVariableId('v-label')]: { name: 'label', type: 'text' },
-        [testVariableId('v-text')]: { name: 'pos_X', type: 'text' },
-        [testVariableId('v-layout')]: { name: 'pos', type: 'layout' },
-        [testVariableId('v-space')]: { name: 'a b', type: 'text' },
-        [testVariableId('v-valid')]: { name: 'a_b', type: 'text' },
-      }),
+      {
+        ...personCodebook({
+          [testVariableId('v-label')]: { name: 'label', type: 'text' },
+          [testVariableId('v-text')]: { name: 'pos_X', type: 'text' },
+          [testVariableId('v-space')]: { name: 'a b', type: 'text' },
+          [testVariableId('v-valid')]: { name: 'a_b', type: 'text' },
+        }),
+        layouts: { [testVariableId('v-layout')]: { name: 'pos' } },
+        layoutNodeTypes: {
+          [testVariableId('v-layout')]: [testTypeId('person')],
+        },
+      },
       sessionWithNode({ [testVariableId('v-label')]: 'Dee' }),
     );
     const keys = keyElements(xml);
@@ -463,8 +505,8 @@ describe('GraphML columns the export renames', () => {
     ).toBe('pos_X_2');
     expect(warnings).toEqual([
       renamed('Person', 'label', 'label', 'label_2'),
-      renamed('Person', 'pos', 'pos_X', 'pos_X_2'),
       renamed('Person', 'a b', 'a_b', 'a_b_2'),
+      renamed('Person', 'pos', 'pos_X', 'pos_X_2'),
     ]);
   });
 

@@ -1,5 +1,4 @@
-import type { Codebook } from '@codaco/protocol-validation';
-
+import type { ExportCodebook } from '../../input';
 import type { ExportOptions } from '../../options';
 import type { ExportWarning } from '../../output';
 import type { ExportFileNetwork } from '../../session/exportFile';
@@ -7,13 +6,13 @@ import graphMLGenerator from './createGraphML';
 
 class GraphMLFormatter {
   network: ExportFileNetwork;
-  codebook: Codebook;
+  codebook: ExportCodebook;
   exportOptions: ExportOptions;
   reportWarning: (warning: ExportWarning) => void;
 
   constructor(
     network: ExportFileNetwork,
-    codebook: Codebook,
+    codebook: ExportCodebook,
     exportOptions: ExportOptions,
     reportWarning: (warning: ExportWarning) => void,
   ) {

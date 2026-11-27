@@ -38,6 +38,8 @@ type CsvEntityType = Readonly<{
   /** The node or edge type's name. The ego has none. */
   name?: string;
   variables: Readonly<Record<string, Variable>> | undefined;
+  /** The layouts the type is exported with, by id. */
+  layouts?: readonly (readonly [string, { name: string }])[];
   /** Every entity of the type in the file. */
   entities: readonly NcEntity[];
 }>;
@@ -87,6 +89,18 @@ const layoutCell = (
   }
 };
 
+const positionCell = (
+  data: unknown,
+  encrypted: boolean,
+  axis: LayoutColumnAxis,
+  exportOptions: ExportOptions,
+): unknown => {
+  if (encrypted) {
+    return axis === 'x' || axis === 'y' ? 'ENCRYPTED' : undefined;
+  }
+  return layoutCell(data, axis, exportOptions);
+};
+
 // Headers are compared as they are written, so `=a`, written `'=a`, clashes
 // with a variable named `'=a`.
 const headerKey = (column: string) =>
@@ -112,12 +126,7 @@ const variableCell =
           ? 'ENCRYPTED'
           : isCategoricalOptionSelected(data, origin.value);
       case 'layout':
-        if (encrypted) {
-          return origin.axis === 'x' || origin.axis === 'y'
-            ? 'ENCRYPTED'
-            : undefined;
-        }
-        return layoutCell(data, origin.axis, exportOptions);
+        return positionCell(data, encrypted, origin.axis, exportOptions);
       default: {
         const unhandled: never = origin;
         throw new Error('Unhandled export column origin', { cause: unhandled });
@@ -164,10 +173,41 @@ const planCsvColumns = (
     }
   }
 
+  const layoutIds = new Set<string>();
+  for (const [layoutId, layout] of type.layouts ?? []) {
+    layoutIds.add(layoutId);
+    for (const { column, origin } of variableExportColumnEntries(
+      { name: layout.name, type: 'layout' },
+      {
+        format: 'csv',
+        useScreenLayoutCoordinates:
+          exportOptions.globalOptions.useScreenLayoutCoordinates,
+      },
+    )) {
+      if (origin.kind !== 'layout') continue;
+      claims.push({
+        column,
+        owner: layout.name,
+        cell: (row) => {
+          const attributes = getEntityAttributes(row);
+          if (!Object.hasOwn(attributes, layoutId)) return undefined;
+          return positionCell(
+            attributes[layoutId],
+            isEncryptedAttribute(row, layoutId, undefined),
+            origin.axis,
+            exportOptions,
+          );
+        },
+      });
+    }
+  }
+
   const undeclared = new Set<string>();
   for (const row of type.entities) {
     for (const attribute of Object.keys(getEntityAttributes(row))) {
-      if (!getOwn(type.variables, attribute)) undeclared.add(attribute);
+      if (!getOwn(type.variables, attribute) && !layoutIds.has(attribute)) {
+        undeclared.add(attribute);
+      }
     }
   }
   for (const attribute of undeclared) {
@@ -236,7 +276,8 @@ type TypedEntity = NcEntity & Readonly<{ type: string }>;
  * The variable columns of a file of nodes or of edges. Each type's columns are
  * planned on their own, as its own file would have them, and a column of the
  * same name in two types is shared: no row has both. A file with no rows has
- * the columns of every type in the codebook.
+ * the columns of every type in the codebook. A node type's columns include
+ * those of the layouts `layoutsFor` gives it.
  */
 export const planTypedColumns = (
   entity: 'node' | 'edge',
@@ -253,6 +294,10 @@ export const planTypedColumns = (
     | undefined,
   entities: readonly TypedEntity[],
   context: CsvColumnContext,
+  layoutsFor?: (
+    type: string,
+    rows: readonly TypedEntity[],
+  ) => readonly (readonly [string, { name: string }])[],
 ): CsvTypedColumn[] => {
   const entitiesByType = new Map<string, TypedEntity[]>();
   for (const row of entities) {
@@ -280,6 +325,7 @@ export const planTypedColumns = (
       {
         name: definition?.name ?? type,
         variables: definition?.variables,
+        layouts: layoutsFor?.(type, typeEntities),
         entities: typeEntities,
       },
       context,

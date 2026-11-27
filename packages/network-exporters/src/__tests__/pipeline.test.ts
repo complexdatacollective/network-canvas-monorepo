@@ -42,6 +42,7 @@ const protocol = (hash: string): ProtocolExportInput => ({
   hash,
   name: `Protocol ${hash}`,
   codebook: { node: {}, edge: {} },
+  layoutNodeTypes: {},
 });
 
 const recordingOutput = () => {

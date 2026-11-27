@@ -38,9 +38,17 @@ const entityVariables = (entity: ExportColumnEntity) => {
     case 'ego':
       return [namesCodebook.ego.variables];
     case 'node':
-      return Object.values(namesCodebook.node).map(
-        ({ variables }) => variables,
-      );
+      return [
+        ...Object.values(namesCodebook.node).map(({ variables }) => variables),
+        // A layout's columns are node columns, written as a layout variable's
+        // were.
+        Object.fromEntries(
+          Object.entries(namesCodebook.layouts).map(([id, { name }]) => [
+            id,
+            { name, type: 'layout' },
+          ]),
+        ),
+      ];
     case 'edge':
       return Object.values(namesCodebook.edge).map(
         ({ variables }) => variables,

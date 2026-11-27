@@ -33,6 +33,11 @@ export type GraphMLKeyIds = {
    * record in the codebook.
    */
   readonly variable: ReadonlyMap<Variable, readonly string[]>;
+  /**
+   * The key id of each column of a layout, in the order
+   * `variableExportColumnEntries` lists a layout's columns, by layout id.
+   */
+  readonly layout: ReadonlyMap<string, readonly string[]>;
   /** The key id of each attribute the codebook does not declare. */
   readonly external: ReadonlyMap<string, string>;
 };
@@ -42,7 +47,7 @@ export type GraphMLKeyIds = {
  *
  * Every key asks for the id it would have on its own: a built-in key its
  * name, a variable column its record id (with a suffix for each column of a
- * categorical or layout variable), an attribute the codebook does not declare
+ * categorical variable or a layout), an attribute the codebook does not declare
  * the SHA-1 of its name. The first key to ask gets the id. A later one gets
  * that id followed by `_1`, `_2`, ..., or, for an undeclared attribute, the
  * SHA-1 of a salted name; either way an id no key asked for, so a moved key

@@ -6,7 +6,11 @@ import { invariant } from 'es-toolkit';
 import { sessionProperty } from '@codaco/shared-consts';
 
 import type { ExportEvent } from '../events';
-import type { SessionWithResequencedIDs, ProtocolExportInput } from '../input';
+import type {
+  ExportCodebook,
+  SessionWithResequencedIDs,
+  ProtocolExportInput,
+} from '../input';
 import type { ExportFormat, ExportOptions } from '../options';
 import type {
   ExportFailure,
@@ -42,7 +46,7 @@ type ExportItem = {
   name: string;
   exportFormat: ExportFormat;
   network: ReturnType<typeof partitionByType>[number];
-  codebook: ProtocolExportInput['codebook'];
+  codebook: ExportCodebook;
   exportOptions: ExportOptions;
   sessionId: string;
 };
@@ -61,8 +65,12 @@ function buildExportItems(
 
   const pending: (Omit<ExportItem, 'name'> & { prefix: string })[] = [];
   Object.entries(unifiedSessions).forEach(([protocolKey, sessions]) => {
-    const codebook = protocols[protocolKey]?.codebook;
-    invariant(codebook, `No protocol found for key: ${protocolKey}`);
+    const protocol = protocols[protocolKey];
+    invariant(protocol, `No protocol found for key: ${protocolKey}`);
+    const codebook: ExportCodebook = {
+      ...protocol.codebook,
+      layoutNodeTypes: protocol.layoutNodeTypes,
+    };
 
     sessions.forEach((session) => {
       const prefix = getFilePrefix(session);

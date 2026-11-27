@@ -13,7 +13,7 @@ import {
   testTypeId,
   testVariableId,
 } from '../../../__tests__/testIds';
-import type { FormattedSession } from '../../../input';
+import type { ExportCodebook, FormattedSession } from '../../../input';
 import type { ExportWarning } from '../../../output';
 import {
   exportOptions,
@@ -54,7 +54,7 @@ const person = (attributes: NcNode[typeof entityAttributesProperty]) => ({
 
 // Each row as a map from header to cell, and the warnings the file reported.
 const exportAttributeList = (
-  codebook: Codebook,
+  codebook: ExportCodebook,
   session: FormattedSession,
   useScreenLayoutCoordinates = false,
 ) => {
@@ -367,13 +367,15 @@ describe('variable columns with the same name', () => {
 
   it('renames layout columns too, when the screen-space columns are written', () => {
     const { headers, rows, warnings } = exportAttributeList(
-      personCodebook({
-        [testVariableId('text')]: {
-          name: 'pos_screenSpaceX',
-          type: 'text',
-        },
-        [testVariableId('layout')]: { name: 'pos', type: 'layout' },
-      }),
+      {
+        ...personCodebook({
+          [testVariableId('text')]: {
+            name: 'pos_screenSpaceX',
+            type: 'text',
+          },
+        }),
+        layouts: { [testVariableId('layout')]: { name: 'pos' } },
+      },
       withNodes(
         person({
           [testVariableId('text')]: 'note',
@@ -395,6 +397,55 @@ describe('variable columns with the same name', () => {
     expect(warnings).toEqual([
       renamed('pos', 'pos_screenSpaceX', 'pos_screenSpaceX_2'),
     ]);
+  });
+});
+
+describe('layout columns', () => {
+  const layoutId = testVariableId('layout');
+  const placeType = testTypeId('place');
+  const codebook = (
+    layoutNodeTypes: Readonly<Record<string, readonly string[]>>,
+  ): ExportCodebook => ({
+    node: {
+      ...personCodebook({
+        [testVariableId('name')]: { name: 'name', type: 'text' },
+      }).node,
+      [placeType]: {
+        name: 'Place',
+        color: 'node-color-seq-2',
+        shape: { default: 'square' },
+        variables: {},
+      },
+    },
+    layouts: { [layoutId]: { name: 'map' } },
+    layoutNodeTypes,
+  });
+
+  it('adds layout columns for a type that has the layout', () => {
+    const { headers, rows } = exportAttributeList(
+      codebook({ [layoutId]: [testTypeId('person')] }),
+      withNodes(person({ [testVariableId('name')]: 'Dee' })),
+    );
+
+    expect(headers.slice(3)).toEqual(['name', 'map_x', 'map_y']);
+    expect(rows[0]?.get('map_x')).toBe('');
+  });
+
+  it('adds layout columns for a type that holds a position without a setting stage', () => {
+    const { headers, rows, warnings } = exportAttributeList(
+      codebook({}),
+      withNodes({
+        [entityPrimaryKeyProperty]: 'node-place',
+        type: placeType,
+        [entityAttributesProperty]: { [layoutId]: { x: 0.5, y: 0.25 } },
+      }),
+    );
+
+    expect(headers.slice(3)).toEqual(['map_x', 'map_y']);
+    expect(headers).not.toContain(layoutId);
+    expect(rows[0]?.get('map_x')).toBe('0.5');
+    expect(rows[0]?.get('map_y')).toBe('0.25');
+    expect(warnings).toEqual([]);
   });
 });
 
