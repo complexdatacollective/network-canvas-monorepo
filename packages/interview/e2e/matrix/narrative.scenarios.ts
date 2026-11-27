@@ -946,15 +946,11 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
       ],
     });
 
-    // A second, non-subject node type with its OWN layout variable. The
-    // protocol schema forbids sharing a variable id across entity types
-    // (CurrentProtocolSchema: "Variable record key reused across entity
-    // types"), and getNetwork() only emits attributes declared on a node's own
-    // type — so a Place node can never carry the Person layout variable that
-    // the preset renders against.
+    // A second, non-subject node type. A layout belongs to the codebook, not
+    // to a node type, so a Place node can hold a position in the layout the
+    // preset shows: a later Sociogram places Places in it.
     const place = synth.addNodeType({ name: 'Place' });
     const placeName = place.addVariable({ type: 'text', name: 'name' });
-    const placeLayout = synth.addLayout({ name: 'PlaceLayout' });
 
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', types: [person.id] },
@@ -971,13 +967,21 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
       [closeVar.id]: true,
       [community.id]: ['family'],
     });
-    // A different type with its own layout variable set — it is in the network
-    // but does NOT render, because it lacks the preset's (Person) layout
-    // variable. Rendering is gated by the subject's layout variable presence.
+    // A node of another type with a position in the preset's layout: it is
+    // in the network but does NOT render, because only the stage's subject
+    // types are shown.
     synth.addManualNode(stage.id, place.id, 'pl-library', {
       [placeName.id]: 'Library',
-      [placeLayout.id]: { x: 0.6, y: 0.6 },
+      [personLayout.id]: { x: 0.6, y: 0.6 },
     });
+    synth
+      .addStage('Sociogram', {
+        subject: { entity: 'node', types: [place.id] },
+        layout: personLayout.id,
+        label: 'Places map',
+        initialNodes: { count: 0 },
+      })
+      .addPrompt();
     return synth;
   },
   run: async ({ page }) => {
@@ -990,7 +994,7 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
     await expect(page.getByText('Work', { exact: true })).toBeVisible();
 
     // The subject-type Person node renders; the non-subject Place node does
-    // not (it lacks the preset's layout variable).
+    // not, although it has a position in the preset's layout.
     await expect(narrative.getNode('Alice')).toBeVisible();
     await expect(narrative.getNode('Library')).toHaveCount(0);
 
