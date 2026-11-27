@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildAppSuperProperties,
   POSTHOG_API_KEY,
   POSTHOG_APP_PROPS,
   POSTHOG_HOST,
+  sendAnonymousPostHogEvent,
 } from '../posthog.ts';
 
 describe('PostHog project configuration', () => {
@@ -75,5 +76,68 @@ describe('buildAppSuperProperties', () => {
     });
 
     expect(properties.$app_version).toBe(properties.host_version);
+  });
+});
+
+describe('sendAnonymousPostHogEvent', () => {
+  const app = buildAppSuperProperties({
+    appKey: 'interviewer',
+    appName: 'Interviewer',
+    version: '8.0.0',
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('posts an event that names no installation, person or place', async () => {
+    const fetchMock = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(null, { status: 200 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await sendAnonymousPostHogEvent(app)('survey sent', { answer: 'Hello' });
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('https://ph-relay.networkcanvas.com/i/v0/e/');
+    if (typeof init?.body !== 'string') throw new Error('Expected a JSON body');
+    const body: unknown = JSON.parse(init.body);
+    expect(body).toEqual({
+      api_key: POSTHOG_API_KEY,
+      event: 'survey sent',
+      distinct_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      properties: {
+        ...app,
+        $process_person_profile: false,
+        $geoip_disable: true,
+        $ip: '0.0.0.0',
+        answer: 'Hello',
+      },
+    });
+    expect(app).not.toHaveProperty('installation_id');
+  });
+
+  it('rejects when the relay cannot be reached', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(() => Promise.reject(new TypeError('offline'))),
+    );
+
+    await expect(
+      sendAnonymousPostHogEvent(app)('survey sent', {}),
+    ).rejects.toThrow('offline');
+  });
+
+  it('rejects when the relay refuses the event', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(() =>
+        Promise.resolve(new Response(null, { status: 503 })),
+      ),
+    );
+
+    await expect(
+      sendAnonymousPostHogEvent(app)('survey sent', {}),
+    ).rejects.toThrow('503');
   });
 });

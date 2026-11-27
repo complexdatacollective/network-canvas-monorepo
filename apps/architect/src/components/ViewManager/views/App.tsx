@@ -6,6 +6,7 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
+import FloatingFeedback from '~/components/FloatingFeedback';
 import InstallBanner from '~/components/InstallBanner';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
 import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
@@ -227,6 +228,7 @@ const AppContents = () => {
           <Routes />
         </div>
       </div>
+      <FloatingFeedback />
       <JsonPreviewOverlay />
     </>
   );

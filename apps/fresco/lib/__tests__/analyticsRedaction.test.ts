@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isParticipantPath,
   redactParticipantLinks,
+  redactParticipantLinksInText,
   redactProperties,
 } from '../analyticsRedaction';
 
@@ -145,6 +146,25 @@ describe('redactProperties', () => {
     redactProperties(properties);
 
     expect(properties.$pathname).toBe(`/interview/${INTERVIEW_ID}`);
+  });
+});
+
+describe('redactParticipantLinksInText', () => {
+  // Applied to the whole text, the query string rule would drop everything
+  // after the first `?` or `#`, including what the person wrote after a link.
+  it('redacts each participant link and keeps the words around it', () => {
+    expect(
+      redactParticipantLinksInText(
+        `Why? It broke at https://study.example.com/interview/${INTERVIEW_ID}?mode=x#top.\n\nThe important error is a timeout, see /onboard/abc?participantIdentifier=P-17 too.`,
+      ),
+    ).toBe(
+      'Why? It broke at https://study.example.com/interview/[redacted]\n\nThe important error is a timeout, see /onboard/[redacted] too.',
+    );
+  });
+
+  it('leaves text without a participant link as it is', () => {
+    const text = 'Can I export? See https://example.com/docs?page=2#top.';
+    expect(redactParticipantLinksInText(text)).toBe(text);
   });
 });
 

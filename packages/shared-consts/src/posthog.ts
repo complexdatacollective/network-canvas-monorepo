@@ -108,3 +108,38 @@ export function buildAppSuperProperties({
 
   return properties;
 }
+
+/**
+ * Posts one event straight to the capture endpoint, for something a person
+ * chose to send (written feedback) from a product whose analytics are off.
+ * posthog-js is never loaded there, and drops events while opted out. The
+ * event is anonymous: a throwaway id, no person profile, no location derived
+ * from the sender's address, and whatever `app` carries, which callers build
+ * without an installation ID.
+ *
+ * Rejects unless the relay accepts the event, so the caller can keep what the
+ * person wrote and let them try again.
+ */
+export function sendAnonymousPostHogEvent(app: AppSuperProperties) {
+  return async (event: string, properties: Record<string, unknown>) => {
+    const response = await fetch(`${POSTHOG_HOST}/i/v0/e/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: POSTHOG_API_KEY,
+        event,
+        distinct_id: crypto.randomUUID(),
+        properties: {
+          ...app,
+          $process_person_profile: false,
+          $geoip_disable: true,
+          $ip: '0.0.0.0',
+          ...properties,
+        },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`PostHog capture failed with status ${response.status}`);
+    }
+  };
+}

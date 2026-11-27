@@ -94,6 +94,7 @@ it('exposes a keyboard-operated language picker from the home header', async () 
   render(
     <InterviewerI18nProvider>
       <TopActionBarView
+        feedback={{ onSubmit: () => {} }}
         showLock={false}
         onLock={() => {}}
         onOpenSettings={() => {}}

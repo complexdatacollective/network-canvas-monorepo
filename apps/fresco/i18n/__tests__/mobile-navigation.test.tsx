@@ -1,4 +1,5 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
+import { Toast } from '@base-ui/react/toast';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -23,7 +24,11 @@ const view = (locale: string) => (
     locales={frescoLocales}
     messages={frescoCatalogSource.peek(locale)}
   >
-    <MobileNavDrawer />
+    {/* The drawer's Feedback control thanks the person in a toast, so it
+        needs the provider that Fresco renders at its root. */}
+    <Toast.Provider>
+      <MobileNavDrawer />
+    </Toast.Provider>
   </AppI18nProvider>
 );
 
@@ -70,7 +75,9 @@ describe('the side Fresco’s mobile navigation slides in from', () => {
         {/* Nearer the menu than the language's own direction, which it
             stands in for: no language Fresco offers is right-to-left. */}
         <DirectionProvider direction={direction}>
-          <MobileNavDrawer />
+          <Toast.Provider>
+            <MobileNavDrawer />
+          </Toast.Provider>
         </DirectionProvider>
       </AppI18nProvider>,
     );

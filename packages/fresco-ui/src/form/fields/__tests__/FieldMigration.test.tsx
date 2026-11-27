@@ -334,8 +334,8 @@ describe('composite field semantics', () => {
 });
 
 describe('ToggleField styles', () => {
-  it('merges consumer styles with its own thumb alignment', () => {
-    render(
+  it('keeps consumer styles on the switch and still aligns the thumb', () => {
+    const { rerender } = render(
       <ToggleField
         value={false}
         onChange={() => undefined}
@@ -344,9 +344,28 @@ describe('ToggleField styles', () => {
       />,
     );
 
-    expect(screen.getByRole('switch', { name: 'Feature' })).toHaveStyle({
-      opacity: '0.5',
-      justifyContent: 'flex-start',
-    });
+    const toggle = screen.getByRole('switch', { name: 'Feature' });
+    expect(toggle).toHaveStyle({ opacity: '0.5' });
+
+    // The thumb is placed by its parent's `justify-content`, which lives
+    // inside the switch so that a consumer's `style` cannot replace it.
+    const thumbAlignment = () => {
+      const thumb = toggle.querySelector('[data-unchecked], [data-checked]');
+      if (!thumb?.parentElement) throw new Error('The switch has no thumb');
+      return thumb.parentElement;
+    };
+    expect(thumbAlignment()).toHaveStyle({ justifyContent: 'flex-start' });
+
+    rerender(
+      <ToggleField
+        value
+        onChange={() => undefined}
+        aria-label="Feature"
+        style={{ opacity: 0.5 }}
+      />,
+    );
+
+    expect(toggle).toHaveStyle({ opacity: '0.5' });
+    expect(thumbAlignment()).toHaveStyle({ justifyContent: 'flex-end' });
   });
 });

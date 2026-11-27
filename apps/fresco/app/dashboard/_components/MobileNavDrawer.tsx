@@ -15,6 +15,7 @@ import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { logout } from '~/actions/auth';
+import FrescoFeedback from '~/components/FrescoFeedback';
 import SubmitButton from '~/components/SubmitButton';
 import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 
@@ -210,6 +211,22 @@ export function MobileNavDrawer() {
                       className={cx(
                         mobileNavItemClassName,
                         'hover:bg-surface-1-contrast/10 data-popup-open:bg-surface-1-contrast/10 cursor-pointer [&>svg]:size-5',
+                      )}
+                    />
+                  }
+                />
+              </li>
+
+              <li>
+                <FrescoFeedback
+                  renderTrigger={
+                    // Named by the label the dialog puts inside it.
+                    // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+                    <button
+                      type="button"
+                      className={cx(
+                        mobileNavItemClassName,
+                        'hover:bg-surface-1-contrast/10 cursor-pointer [&>svg]:size-5',
                       )}
                     />
                   }
