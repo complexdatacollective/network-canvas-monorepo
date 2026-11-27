@@ -361,7 +361,11 @@ Fields that carry the tag:
 | NetworkComposer | `layout` (stage level, required) | sets               |
 
 Layout usage helpers (`packages/protocol-validation/src/utils/layoutUsage.ts`,
-exported by name):
+exported by name). Each helper is added by the first slice that calls it,
+with its tests and its consumer, so that no export lacks a consumer (knip):
+slice 3a adds `getStageLayoutUses`, `getLayoutUsage`, `getNodeTypesWithLayout`
+and `findRulesNamingLayout`; slice 3b adds `getLayoutsOfNodeType` and
+`findUnreachableLayoutReads`; slice 4 adds `isFirstStageUsingLayout`.
 
 ```ts
 type LayoutAccess = 'sets' | 'reads';
@@ -807,9 +811,11 @@ reading stage can never show positions. Rules about layouts already work from
 
 In scope: Architect codebook "Layouts" section (`apps/architect/src/components/Codebook/Codebook.tsx`, new `components/Codebook/Layouts.tsx`) listing each layout with the stages that set it, the stages that read it and the node types that have it, using `getLayoutUsage`; each node type's entry (`EntityType.tsx`) lists its layouts read-only with links; unused layouts listed with a delete action; a layout that a stage names or that a rule names (`findRulesNamingLayout`, C5) is not deletable, and its entry lists the stages whose rules name it, matching the refusal `deleteLayoutSection` gives from 3a; `getUsageAsStageMeta` handles layout hits and rule uses; printable codebook (`apps/architect/src/lib/ProtocolSummary/components/Codebook.tsx`, `Contents.tsx`); the unreachable-layout advisory as an in-section `<Alert variant="warning">` in the Sociogram layout section and the Narrative preset fields, computed from `protocolContext.orderedStages` with `findUnreachableLayoutReads`, and as a protocol-wide issue in `apps/architect/src/selectors/issues.ts`; Studio `apps/studio/api/src/protocol/diff.ts` and `draft-structure.ts` layout kinds.
 
+Also in scope: add `getLayoutsOfNodeType` (consumed by `EntityType.tsx`) and `findUnreachableLayoutReads` (consumed by the advisory) to `packages/protocol-validation/src/utils/layoutUsage.ts` with the signatures in C5; slice 3a did not add them because nothing consumed them there.
+
 Out of scope: Sociogram task alert (slice 4); the rule editor and `Rule.tsx` (3a).
 
-Tests: Architect `Codebook` tests: `lists each layout with setting stages, reading stages and node types`; `offers delete only for an unused layout`; `does not offer delete for a layout that only a filter rule names`; `a node type entry lists its layouts`. `unreachableLayout.test.tsx`: `warns when a reading stage includes a type no stage sets the layout for`; `does not warn once another stage sets it`. Printable codebook snapshot test updated. Studio `diff.test.ts`: `reports an added layout`.
+Tests: protocol-validation `layout-usage.test.ts`: `getLayoutsOfNodeType lists the layouts a stage sets for the type`; `findUnreachableLayoutReads reports a reading use whose types no stage sets the layout for`. Architect `Codebook` tests: `lists each layout with setting stages, reading stages and node types`; `offers delete only for an unused layout`; `does not offer delete for a layout that only a filter rule names`; `a node type entry lists its layouts`. `unreachableLayout.test.tsx`: `warns when a reading stage includes a type no stage sets the layout for`; `does not warn once another stage sets it`. Printable codebook snapshot test updated. Studio `diff.test.ts`: `reports an added layout`.
 
 Stories: `Layouts.stories.tsx` beside `apps/architect/src/components/Codebook/Variables.stories.tsx`
 (used, unused, named only by a rule, and read-only layouts).
@@ -817,6 +823,7 @@ Stories: `Layouts.stories.tsx` beside `apps/architect/src/components/Codebook/Va
 Skills: `developing-network-canvas-ui`, `verifying-translations`.
 
 Done when:
+`pnpm --filter @codaco/protocol-validation exec vitest run src/utils/__tests__/layout-usage.test.ts`,
 `pnpm --filter @codaco/architect exec vitest run --project=unit src/components/Codebook src/lib/ProtocolSummary src/selectors`,
 `pnpm --filter @codaco/architect exec vitest run --project=unit src/locales`,
 `pnpm --filter @codaco/architect exec vitest run --project=storybook src/components/Codebook`,
@@ -891,7 +898,9 @@ Builder: `SociogramPromptFields.tsx` gains a task selector; per-task fields;
 highlight entry row for the stage type (variable picker with inline boolean
 creation); connect edge type picker; `SociogramPromptsSection` `beforeSave`;
 the first-use alert as an in-section warning in the prompts section when
-`isFirstStageUsingLayout` and the first prompt is not a layout task and
+`isFirstStageUsingLayout` (added to `layoutUsage.ts` in this slice with the
+C5 signature and a `layout-usage.test.ts` case, since slice 3a had no
+consumer for it) and the first prompt is not a layout task and
 automatic layout is off. Architect `ProtocolSummary/components/Stage/Prompt.tsx`
 shows the task.
 
@@ -901,7 +910,7 @@ SyntheticInterview prompt inputs (C14).
 
 Tests:
 
-- protocol-validation: `sociogram-tasks.test.ts`: `rejects a highlight task without entries`; `rejects a connect task without edges.create`; `rejects edges.create on a layout task`; `rejects a highlight entry for a type not on the stage`; `rejects a non-boolean highlight variable`; `rejects allowRepositioning on a Sociogram`. `migration.test.ts`: `maps create to connect, allowHighlighting to highlight and the rest to layout`; `drops a display-only highlight`; `adds no layout task`; `a rule naming a layout variable stays valid when the migrated Sociogram has no layout task`. `layout-usage.test.ts`: `a Sociogram with only connect tasks reads its layout`; `automatic layout makes it set`. `exclusive-variant-containers.test.ts` lists updated.
+- protocol-validation: `sociogram-tasks.test.ts`: `rejects a highlight task without entries`; `rejects a connect task without edges.create`; `rejects edges.create on a layout task`; `rejects a highlight entry for a type not on the stage`; `rejects a non-boolean highlight variable`; `rejects allowRepositioning on a Sociogram`. `migration.test.ts`: `maps create to connect, allowHighlighting to highlight and the rest to layout`; `drops a display-only highlight`; `adds no layout task`; `a rule naming a layout variable stays valid when the migrated Sociogram has no layout task`. `layout-usage.test.ts`: `a Sociogram with only connect tasks reads its layout`; `automatic layout makes it set`; `isFirstStageUsingLayout is false once an earlier stage names the layout`. `exclusive-variant-containers.test.ts` lists updated.
 - interview: `Sociogram.tasks.test.tsx`: `nodes cannot be dragged in a highlight task`; `the canvas refuses a drop in a connect task`; `an unplaced node is disabled in a connect task and enabled in a layout task`; `an unplaced node is disabled in a highlight task`; `a highlight is drawn only during a highlight task`. Narrative units (Canvas props change under it): `repositioning a node on a Narrative writes nothing to the layout`; `free-draw is offered when the stage allows it`. fresco-ui `Node.presentational.test.tsx`: `a disabled custom shape ignores pointer and keyboard activation`.
 - protocol-builder: `sociogramPrompts.test.tsx`: `switching task drops the other task's fields`; `first-use alert appears when the first prompt is not a layout task`; `no first-use alert when automatic layout is on`.
 - Architect: `Prompt` summary test `prints the task and each highlight entry`.
@@ -923,7 +932,7 @@ Other stages meanwhile: Narrative keeps its single-variable highlights,
 adapted to the map prop.
 
 Done when:
-`pnpm --filter @codaco/protocol-validation exec vitest run src/schemas/9 src/utils/__tests__/entity-type-reference-coverage.test.ts src/utils/__tests__/entity-attribute-reference-coverage.test.ts`,
+`pnpm --filter @codaco/protocol-validation exec vitest run src/schemas/9 src/utils/__tests__/entity-type-reference-coverage.test.ts src/utils/__tests__/entity-attribute-reference-coverage.test.ts src/utils/__tests__/layout-usage.test.ts`,
 `pnpm --filter @codaco/interview exec vitest run --project units src/interfaces/Sociogram src/interfaces/Narrative src/canvas src/components e2e/matrix/coverage-manifest.test.ts e2e/matrix/stage-config-schema-support.test.ts`,
 `pnpm --filter @codaco/interview exec vitest run --project storybook src/interfaces/Sociogram src/interfaces/Narrative`,
 `pnpm --filter @codaco/fresco-ui exec vitest run --project unit src/Node.presentational.test.tsx`,
@@ -1382,7 +1391,10 @@ type, quick add, form) for NetworkComposer in place of the root subject,
 `QuickAdd` and `Form`. Walkthrough: `content/NetworkComposer.md` steps for the
 node entries section (fields inside `composer-nodes`), the `composer-node-form`
 steps folded into it, and `scenes/NetworkComposerScenes.tsx` shows entries and
-a directed edge.
+a directed edge. Every rewritten step's `field` names a field the editor
+renders, and the `NetworkComposer:nodeForm.fields` entry (the last one) and
+the `KNOWN_UNMARKED_FIELDS` set itself leave
+`walkthrough/__tests__/walkthroughSections.test.tsx`.
 
 Sketch: `compile.ts` emits Composer `nodes: [{ id, subject, label, quickAdd,
 form }]` and no stage `subject`, `quickAdd` or `nodeForm`; goldens regenerated.

@@ -100,62 +100,6 @@ export const getNodeTypesWithLayout = (
   layoutId: string,
 ): readonly string[] => getLayoutUsage(protocol)[layoutId]?.nodeTypes ?? [];
 
-/** The layouts a stage sets for nodes of `nodeType`. */
-export const getLayoutsOfNodeType = (
-  protocol: LayoutProtocol,
-  nodeType: string,
-): readonly string[] =>
-  Object.entries(getLayoutUsage(protocol)).flatMap(([layoutId, entry]) =>
-    entry.nodeTypes.includes(nodeType) ? [layoutId] : [],
-  );
-
-/**
- * Each stage use that reads a layout for node types no stage sets it for:
- * nodes of those types can never have a position there.
- */
-export const findUnreachableLayoutReads = (
-  protocol: LayoutProtocol,
-): Array<{
-  stageId: string;
-  presetId?: string;
-  layoutId: string;
-  nodeTypes: readonly string[];
-}> => {
-  const usage = getLayoutUsage(protocol);
-  return Object.entries(usage).flatMap(([layoutId, entry]) =>
-    entry.readBy.flatMap((use) => {
-      const nodeTypes = use.nodeTypes.filter(
-        (type) => !entry.nodeTypes.includes(type),
-      );
-      return nodeTypes.length === 0
-        ? []
-        : [
-            {
-              stageId: use.stageId,
-              ...(use.presetId === undefined ? {} : { presetId: use.presetId }),
-              layoutId,
-              nodeTypes,
-            },
-          ];
-    }),
-  );
-};
-
-/** Whether no stage before `stageId` names `layoutId`. */
-export const isFirstStageUsingLayout = (
-  protocol: LayoutProtocol,
-  stageId: string,
-  layoutId: string,
-): boolean => {
-  for (const stage of protocol.stages) {
-    if (stage.id === stageId) return true;
-    if (getStageLayoutUses(stage).some((use) => use.layoutId === layoutId)) {
-      return false;
-    }
-  }
-  return false;
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
