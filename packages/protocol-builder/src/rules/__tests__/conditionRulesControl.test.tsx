@@ -136,10 +136,9 @@ describe('the rules of a logic block', () => {
 });
 
 /**
- * Skip logic and filters read "exists" as "not null", which released
- * protocols depend on, so they keep offering an attribute only its
- * comparisons. A stored presence rule is still shown there, as one that the
- * editor no longer offers (see `RuleEditorDialog.test.tsx`).
+ * Skip logic and filters read "exists" as conditions do: whether the
+ * attribute has been answered, a blank answer being none. So they offer it
+ * on an attribute too.
  */
 describe('the rules of skip logic and filters', () => {
   it.each<RuleSetVariant>([
@@ -147,7 +146,7 @@ describe('the rules of skip logic and filters', () => {
     'filter',
     'interviewNetworkPanel',
     'externalDataPanel',
-  ])('do not ask whether an attribute has an answer: %s', async (variant) => {
+  ])('ask whether an attribute has an answer: %s', async (variant) => {
     render(
       <RuleEditorHost sections={ruleSections()}>
         <RuleEditorDialog
@@ -162,6 +161,8 @@ describe('the rules of skip logic and filters', () => {
     );
 
     expect(await offeredOperators()).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
       'EXACTLY',
       'NOT',
       'CONTAINS',

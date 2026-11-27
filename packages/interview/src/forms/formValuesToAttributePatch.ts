@@ -56,7 +56,11 @@ export function formValuesToAttributePatch(
       continue;
     }
 
-    if (value === undefined) {
+    // A shown question without an answer is saved as no answer: text that
+    // is empty or only spaces, an empty list or NaN is unset, not stored, so
+    // an answer typed and then deleted is not kept as ''. It is the same test
+    // as the required check, and rules read "exists" by it.
+    if (isUnanswered(value)) {
       unset.push(fieldName);
       continue;
     }

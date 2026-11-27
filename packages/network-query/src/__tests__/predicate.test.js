@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { isUnanswered } from '@codaco/shared-consts';
+
 import predicate, { countOperators, operators } from '../predicate';
 
 describe('predicate', () => {
@@ -246,30 +248,46 @@ describe('predicate', () => {
       ).toBe(true);
     });
 
-    it('EXISTS', () => {
-      expect(predicate(operators.EXISTS)({ value: null })).toBe(false);
-      expect(predicate(operators.EXISTS)({ value: 1 })).toBe(true);
+    /**
+     * An attribute exists when it has been answered, by the definition that
+     * a form's required check uses (`isUnanswered` in shared-consts). An
+     * answer typed and then deleted is saved as no answer now, but interviews
+     * saved before stored it as '', and those are read the same way.
+     */
+    describe('EXISTS and NOT_EXISTS: whether the attribute has been answered', () => {
+      const unanswered = [
+        ['null', null],
+        ['undefined', undefined],
+        ['empty text', ''],
+        ['text of only spaces', '   '],
+        ['an empty list', []],
+        ['NaN', Number.NaN],
+      ];
+      const answered = [
+        ['0', 0],
+        ['false', false],
+        ['text', 'x'],
+        ['text with spaces around it', ' x '],
+        ['a list with an item', ['a']],
+        ['true', true],
+      ];
 
-      // Empty array and empty string both count as "exists" — only absence
-      // (null / undefined) is treated as missing. Skip-logic stage navigation
-      // depends on this.
-      expect(predicate(operators.EXISTS)({ value: [] })).toBe(true);
-      expect(predicate(operators.EXISTS)({ value: '' })).toBe(true);
+      it.each(unanswered)('%s is not an answer', (_label, value) => {
+        expect(predicate(operators.EXISTS)({ value })).toBe(false);
+        expect(predicate(operators.NOT_EXISTS)({ value })).toBe(true);
+        expect(isUnanswered(value)).toBe(true);
+      });
 
-      // An absent attribute (undefined — never seeded, e.g. ego variables and
-      // blank external-data cells) must be treated the same as null.
-      expect(predicate(operators.EXISTS)({ value: undefined })).toBe(false);
-      expect(predicate(operators.EXISTS)({})).toBe(false);
-    });
+      it.each(answered)('%s is an answer', (_label, value) => {
+        expect(predicate(operators.EXISTS)({ value })).toBe(true);
+        expect(predicate(operators.NOT_EXISTS)({ value })).toBe(false);
+        expect(isUnanswered(value)).toBe(false);
+      });
 
-    it('NOT_EXISTS', () => {
-      expect(predicate(operators.NOT_EXISTS)({ value: 1 })).toBe(false);
-      expect(predicate(operators.NOT_EXISTS)({ value: null })).toBe(true);
-      expect(predicate(operators.NOT_EXISTS)({ value: [] })).toBe(false);
-
-      // Absent (undefined) is treated the same as null.
-      expect(predicate(operators.NOT_EXISTS)({ value: undefined })).toBe(true);
-      expect(predicate(operators.NOT_EXISTS)({})).toBe(true);
+      it('reads an attribute that was never seeded as unanswered', () => {
+        expect(predicate(operators.EXISTS)({})).toBe(false);
+        expect(predicate(operators.NOT_EXISTS)({})).toBe(true);
+      });
     });
 
     describe('INCLUDES', () => {

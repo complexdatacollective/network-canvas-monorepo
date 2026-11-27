@@ -219,6 +219,32 @@ describe('EgoForm logic', () => {
     expect(egoAttributes()?.[EMPLOYER]).toBe('Acme');
   });
 
+  // An answer typed and then deleted is no answer, as the required check
+  // reads it, so it is saved as none rather than as ''. Rules that ask
+  // whether the attribute exists read it the same way.
+  it('saves an answer that was typed and then deleted as no answer', async () => {
+    const { egoAttributes, moveForward } = renderLogicForm({
+      [STATUS]: ['student'],
+    });
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Employed' }));
+    const field = await waitFor(() => {
+      const found = employer();
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    fireEvent.change(field, { target: { value: 'Acme' } });
+    expect(await screen.findByDisplayValue('Acme')).toBe(field);
+    fireEvent.change(field, { target: { value: '' } });
+    await waitFor(() => expect(field).toHaveValue(''));
+
+    await moveForward();
+
+    await waitFor(() =>
+      expect(egoAttributes()?.[STATUS]).toEqual(['student', 'employed']),
+    );
+    expect(egoAttributes()).not.toHaveProperty(EMPLOYER);
+  });
+
   it('leaves the answer to a question that only the earlier language’s form asks when the participant changes language and moves on', async () => {
     // Mounted in Spanish, whose form asks for a nickname, then shown in
     // English, whose form does not: moving on submits the English form,
@@ -279,10 +305,13 @@ describe('EgoForm logic', () => {
         ).toBeNull(),
       );
       expect(business()).toBeNull();
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Student' }));
 
       submit();
 
-      await waitFor(() => expect(egoAttributes()?.[STATUS]).toEqual([]));
+      await waitFor(() =>
+        expect(egoAttributes()?.[STATUS]).toEqual(['student']),
+      );
       expect(egoAttributes()).not.toHaveProperty(KIND);
       expect(egoAttributes()).not.toHaveProperty(BUSINESS);
     });
@@ -304,7 +333,8 @@ describe('EgoForm logic', () => {
 
       submit();
 
-      await waitFor(() => expect(egoAttributes()?.[STATUS]).toEqual([]));
+      // No option is selected, which is no answer: it is unset.
+      await waitFor(() => expect(egoAttributes()).not.toHaveProperty(STATUS));
       expect(egoAttributes()).not.toHaveProperty(KIND);
       expect(egoAttributes()).not.toHaveProperty(BUSINESS);
     });

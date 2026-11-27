@@ -54,18 +54,3 @@ export const EdgeCountRulesProvider = EdgeCountRulesContext.Provider;
 export function useOffersEdgeCountRules(): boolean {
   return useContext(EdgeCountRulesContext);
 }
-
-const ConditionRulesContext = createContext(false);
-
-/**
- * Marks the rule editors beneath as writing the rules of a condition (a logic
- * block, a dynamic attribute or a dynamic label), whose rules about an
- * attribute may ask whether it has an answer. Skip logic and filters read
- * that question differently, so they do not offer it (see
- * `operatorsForSubject`).
- */
-export const ConditionRulesProvider = ConditionRulesContext.Provider;
-
-export function useWritesConditionRules(): boolean {
-  return useContext(ConditionRulesContext);
-}

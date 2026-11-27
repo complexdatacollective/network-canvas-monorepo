@@ -195,10 +195,9 @@ describe('describeRule', () => {
   });
 
   /**
-   * `EXISTS`/`NOT_EXISTS` against an attribute asks whether it has an answer.
-   * Only a condition's rule editor offers it now, but skip logic and filters
-   * authored elsewhere may hold one, and Architect reads either as "Person
-   * where Age" / "Person without Age". The operator IS
+   * `EXISTS`/`NOT_EXISTS` against an attribute asks whether it has been
+   * answered, in skip logic and filters as in conditions, and Architect reads
+   * either as "Person where Age" / "Person without Age". The operator IS
    * the word that introduces the attribute here, so writing the connector as
    * well and then repeating the operator after the name produced "Person where
    * Age where".

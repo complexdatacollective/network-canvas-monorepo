@@ -29,7 +29,6 @@ import {
   operandDrawsOnOptions,
   operandIsDate,
   operandNumberRange,
-  type OfferedOperatorsOptions,
   operandRequirement,
   operatorLabel,
   operatorsAsOptions,
@@ -426,10 +425,10 @@ export const ruleOperatorSubject = (
  * The operator the rule ALREADY holds is added to the list when the list does
  * not contain it, in the same way `stageDestinationOptions` keeps an
  * unreachable destination and `VariablePickerControl` keeps a deleted
- * attribute. The list is deliberately narrower than the schema — skip logic
- * or a filter may hold an attribute-level `EXISTS` that its editor does not
- * build (only a condition offers one; see `operatorsForSubject`), and a collaborator's retype can leave an operator its new type does
- * not allow — and a native select falls back to its placeholder when the value
+ * attribute. The list is deliberately narrower than the schema — a date
+ * attribute is not offered the relational operators that the schema still
+ * accepts for it, and a collaborator's retype can leave an operator its new
+ * type does not allow — and a native select falls back to its placeholder when the value
  * matches no option. That fallback is display-only: nothing clears the stored
  * operator, so leaving it out showed the researcher an unanswered control over
  * a rule that then saved exactly as it was.
@@ -444,9 +443,8 @@ export const ruleOperatorOptions = (
   subject: RuleOperatorSubject,
   operator?: unknown,
   intl: IntlShape = englishIntl,
-  offered: OfferedOperatorsOptions = {},
 ): RuleOperatorOption[] => {
-  const allowed = operatorsForSubject(subject, offered);
+  const allowed = operatorsForSubject(subject);
   const options = operatorsAsOptions(intl).filter((option) =>
     allowed.has(option.value),
   );

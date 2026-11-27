@@ -842,23 +842,80 @@
       "label": {
         "en": "Family pedigree"
       },
+      "conditions": {
+        "3e106c56-077c-4b71-b9aa-6538077dac36": {
+          "about": "node",
+          "rules": [
+            {
+              "id": "9d56f278-3f6a-42cc-9432-7d4e15ed208c",
+              "type": "node",
+              "options": {
+                "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
+                "operator": "EXACTLY",
+                "value": true
+              }
+            }
+          ]
+        },
+        "7971a450-ef60-4ea7-9ebb-94f0da09534c": {
+          "about": "node",
+          "rules": [
+            {
+              "id": "6cabb471-5a13-4018-9a7c-b31585120182",
+              "type": "node",
+              "options": {
+                "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                "attribute": "d22b2968-c4e6-516f-8b0d-9089e9bd058d",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
       "dynamicAttributes": {
         "bd3907f5-7bb6-5a6f-a18c-de74273db41b": {
-          "logic": "participant",
-          "participant": {
-            "en": "Are you"
-          },
+          "logic": "conditions",
+          "cases": [
+            {
+              "condition": "3e106c56-077c-4b71-b9aa-6538077dac36",
+              "when": "met",
+              "wording": {
+                "en": "Are you"
+              }
+            },
+            {
+              "condition": "7971a450-ef60-4ea7-9ebb-94f0da09534c",
+              "when": "met",
+              "wording": {
+                "en": "Is"
+              }
+            }
+          ],
           "otherwise": {
-            "en": "Is"
+            "en": "Is this person"
           }
         },
         "3800e4e5-30f8-5546-b971-4a0f2bc3b6f6": {
-          "logic": "participant",
-          "participant": {
-            "en": "What year were you"
-          },
+          "logic": "conditions",
+          "cases": [
+            {
+              "condition": "3e106c56-077c-4b71-b9aa-6538077dac36",
+              "when": "met",
+              "wording": {
+                "en": "What year were you"
+              }
+            },
+            {
+              "condition": "7971a450-ef60-4ea7-9ebb-94f0da09534c",
+              "when": "met",
+              "wording": {
+                "en": "What year was"
+              }
+            }
+          ],
           "otherwise": {
-            "en": "What year was"
+            "en": "What year was this person"
           }
         }
       },

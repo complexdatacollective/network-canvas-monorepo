@@ -70,6 +70,55 @@ describe('isStageSkipped', () => {
   });
 });
 
+/**
+ * A rule that the participant's attribute exists asks whether it has been
+ * answered. Interviews saved before a form unset a cleared answer stored the
+ * typed-then-deleted text as '', and that is no answer either.
+ */
+describe('skip logic on whether an attribute has been answered', () => {
+  const egoWith = (
+    attributes: NcNetwork['ego'][typeof entityAttributesProperty],
+  ): NcNetwork => ({
+    ego: {
+      [entityPrimaryKeyProperty]: 'ego',
+      [entityAttributesProperty]: attributes,
+    },
+    nodes: [],
+    edges: [],
+  });
+  const showIfNicknameExists: SkipLogic = {
+    action: 'SHOW',
+    filter: {
+      rules: [
+        {
+          id: createProtocolObjectId(),
+          type: 'ego',
+          options: {
+            attribute: asEntityAttributeReference('nickname'),
+            operator: 'EXISTS',
+          },
+        },
+      ],
+    },
+  };
+
+  it.each([
+    ['a cleared text answer', { nickname: '' }],
+    ['an answer of only spaces', { nickname: '   ' }],
+    ['no answer', {}],
+  ])('skips the stage for %s', (_label, attributes) => {
+    expect(isStageSkipped(showIfNicknameExists, egoWith(attributes))).toBe(
+      true,
+    );
+  });
+
+  it('shows the stage for an answer', () => {
+    expect(
+      isStageSkipped(showIfNicknameExists, egoWith({ nickname: 'Sam' })),
+    ).toBe(false);
+  });
+});
+
 describe('resolveSkipLogicDestinationIndex', () => {
   const stages = [{ id: 'intro' }, { id: 'consent' }, { id: 'debrief' }];
 

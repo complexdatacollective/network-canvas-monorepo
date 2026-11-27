@@ -287,6 +287,42 @@ describe('filter', () => {
   });
 });
 
+/**
+ * A filter rule that an attribute exists keeps the nodes on which it has been
+ * answered. A text answer that was typed and then deleted was stored as '' by
+ * interviews saved before a form unset it, and it is no answer.
+ */
+describe('a filter on whether an attribute has been answered', () => {
+  const nicknames = {
+    nodes: [
+      generateEntity({ name: 'Ann', nickname: 'Annie' }),
+      generateEntity({ name: 'Bea', nickname: '' }),
+      generateEntity({ name: 'Cal', nickname: '  ' }),
+      generateEntity({ name: 'Dee', nickname: null }),
+    ],
+    edges: [],
+  };
+  const names = (operator) =>
+    getFilter({
+      rules: [
+        generateRuleConfig('node', {
+          type: 'person',
+          operator,
+          attribute: 'nickname',
+        }),
+      ],
+      join: 'AND',
+    })(nicknames).nodes.map((node) => node[entityAttributesProperty].name);
+
+  it('keeps only the nodes with an answer', () => {
+    expect(names(operators.EXISTS)).toEqual(['Ann']);
+  });
+
+  it('keeps the nodes without one, including a blank answer', () => {
+    expect(names(operators.NOT_EXISTS)).toEqual(['Bea', 'Cal', 'Dee']);
+  });
+});
+
 describe('Edge cases', () => {
   it('Includes edges between nodes that match separate rules', () => {
     const filterConfig = {

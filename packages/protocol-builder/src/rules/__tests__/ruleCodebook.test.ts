@@ -86,8 +86,10 @@ describe('the rule variable-type catalogue', () => {
     ]);
   });
 
-  it('offers text attributes their four comparisons', () => {
+  it('offers text attributes their four comparisons, and whether it was answered', () => {
     expect(ruleOperatorOptions('text').map(({ value }) => value)).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
       'EXACTLY',
       'NOT',
       'CONTAINS',
@@ -101,6 +103,8 @@ describe('the rule variable-type catalogue', () => {
     expect(
       ruleOperatorOptions('categorical').map(({ value }) => value),
     ).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
       'EXACTLY',
       'NOT',
       'INCLUDES',
@@ -111,6 +115,8 @@ describe('the rule variable-type catalogue', () => {
       'OPTIONS_NOT_EQUALS',
     ]);
     expect(ruleOperatorOptions('ordinal').map(({ value }) => value)).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
       'EXACTLY',
       'NOT',
       'INCLUDES',
@@ -126,12 +132,14 @@ describe('the rule variable-type catalogue', () => {
  * unchanged.
  */
 describe('an operator a stored rule holds that the list leaves out', () => {
-  it('adds a presence operator the schema still accepts, selectable', () => {
-    const options = ruleOperatorOptions('number', 'EXISTS');
+  it('adds an operator the schema still accepts, selectable', () => {
+    // The schema accepts the relational operators for a date attribute, but
+    // the editor has no control for the number that they compare with.
+    const options = ruleOperatorOptions('datetime', 'GREATER_THAN');
 
     expect(options.at(-1)).toEqual({
-      value: 'EXISTS',
-      label: 'exists (no longer offered)',
+      value: 'GREATER_THAN',
+      label: 'is greater than (no longer offered)',
     });
     // The schema accepts it, so the researcher is being shown their own rule
     // rather than sent to fix something that is not wrong.

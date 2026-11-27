@@ -9,15 +9,14 @@ const allShown = (fields: readonly string[]) => ({
 });
 
 describe('formValuesToAttributePatch', () => {
-  it('preserves every defined variable value and unsets unanswered mounted fields', () => {
+  it('saves every answer and unsets every shown field without one', () => {
     const result = formValuesToAttributePatch(
       {
-        text: '',
+        text: 'Sam',
         boolean: false,
         number: 0,
         encrypted: [1, 2, 3],
         categorical: ['one', 2, true],
-        emptyArray: [],
         layout: { x: 0, y: 1 },
         unanswered: undefined,
         unmounted: 'ignored',
@@ -28,7 +27,6 @@ describe('formValuesToAttributePatch', () => {
         'number',
         'encrypted',
         'categorical',
-        'emptyArray',
         'layout',
         'unanswered',
       ]),
@@ -38,15 +36,48 @@ describe('formValuesToAttributePatch', () => {
       success: true,
       patch: {
         set: {
-          text: '',
+          text: 'Sam',
           boolean: false,
           number: 0,
           encrypted: [1, 2, 3],
           categorical: ['one', 2, true],
-          emptyArray: [],
           layout: { x: 0, y: 1 },
         },
         unset: ['unanswered'],
+      },
+    });
+  });
+
+  /**
+   * An answer typed and then deleted is no answer, by the same test as the
+   * required check (`isUnanswered`), so it is unset rather than stored as ''.
+   * Rules read "exists" by the same test.
+   */
+  it('unsets a cleared answer instead of storing it', () => {
+    const result = formValuesToAttributePatch(
+      {
+        cleared: '',
+        spaces: '   ',
+        noOptions: [],
+        partialNumber: Number.NaN,
+        zero: 0,
+        no: false,
+      },
+      allShown([
+        'cleared',
+        'spaces',
+        'noOptions',
+        'partialNumber',
+        'zero',
+        'no',
+      ]),
+    );
+
+    expect(result).toEqual({
+      success: true,
+      patch: {
+        set: { zero: 0, no: false },
+        unset: ['cleared', 'spaces', 'noOptions', 'partialNumber'],
       },
     });
   });
@@ -113,7 +144,7 @@ describe('formValuesToAttributePatch', () => {
 
     expect(result).toEqual({
       success: true,
-      patch: { set: { replaced: 'Alicia', cleared: '' }, unset: ['gone'] },
+      patch: { set: { replaced: 'Alicia' }, unset: ['cleared', 'gone'] },
     });
   });
 

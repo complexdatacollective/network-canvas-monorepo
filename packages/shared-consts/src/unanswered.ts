@@ -10,8 +10,11 @@
  * The one definition of an empty answer. fresco-ui's form validation
  * (`form/validation/utils/isUnanswered` re-exports this function), what logic
  * and dynamic values read as missing (`logicInputsFor` in
- * `@codaco/network-query`), and the answers that synthetic data leaves out all
- * call it.
+ * `@codaco/network-query`), whether an attribute "exists" to a rule (`predicate`
+ * in `@codaco/network-query`, for skip logic, filters and conditions alike),
+ * which answers a form saves (`formValuesToAttributePatch` in
+ * `@codaco/interview` unsets the rest), and the answers that synthetic data
+ * leaves out all call it.
  *
  * In validation, `required` owns emptiness. Every OPTIONAL rule
  * short-circuits on this predicate so an unanswered field collects exactly one

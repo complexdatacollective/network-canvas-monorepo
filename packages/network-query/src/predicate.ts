@@ -1,5 +1,7 @@
 import { isEqual, isNil } from 'es-toolkit';
 
+import { isUnanswered } from '@codaco/shared-consts';
+
 export const operators = {
   EXACTLY: 'EXACTLY',
   INCLUDES: 'INCLUDES',
@@ -188,13 +190,17 @@ const predicate =
         // both are strings or integers
         return value !== variableValue;
       }
+      // An attribute exists when it has been answered, by the definition
+      // that a form's required check uses (`isUnanswered`): no value at all
+      // (null, or undefined for an attribute never seeded, such as an ego
+      // variable or a blank external-data cell), text that is empty or only
+      // spaces, an empty list and NaN are no answer; 0 and false are answers.
+      // Every rule reads it so: skip logic, filters, and the conditions of
+      // logic blocks, dynamic attributes and dynamic labels.
       case operators.EXISTS:
-        // isNil, not isNull: an absent attribute (undefined — ego variables
-        // and blank external-data cells are never seeded) must be treated the
-        // same as a seeded null so absence is consistent across entities.
-        return !isNil(value);
+        return !isUnanswered(value);
       case operators.NOT_EXISTS:
-        return isNil(value);
+        return isUnanswered(value);
       case countOperators.COUNT_ANY:
         // `>` coerces a non-number operand with ToNumber; `Number()` applies the
         // same conversion, so every input keeps its existing result.

@@ -41,6 +41,8 @@ Similar to [skip logic](/en/design-protocols/key-concepts/skip-logic) rules, fil
 
 The operators available for an attribute rule depend on the variable's type. Number variables offer comparisons such as _is greater than_ and _is less than_; text variables can be matched with _is exactly_, _is not_, and — from schema 8 onwards — _contains_ and _does not contain_, which test whether the stored text includes or omits a value. For ordinal and categorical variables, the _includes_ and _excludes_ operators accept **multiple** selected values, so a single rule can match an entity whose variable holds any of several options.
 
+For any attribute, a rule can also use **exists** or **does not exist** to check whether the attribute has been answered. An answer of 0 or "no" counts as an answer. Text that is empty or contains only spaces, and a categorical answer with no options selected, count as not answered. This is the same check that decides whether a required question has been answered.
+
 Unlike skip logic rules (which are aggregated into an overall boolean `true` or `false` value), filter rules are applied to each node and edge in the network, and are not aggregated. Instead, the nodes that remain are those that satisfy the rule constraints.
 
 <TipBox danger>
