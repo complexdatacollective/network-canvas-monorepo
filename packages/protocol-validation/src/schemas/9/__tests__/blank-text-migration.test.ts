@@ -17,8 +17,8 @@ import { migratedStageId } from './migrated-stage-ids.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 /**
- * The migration gives each node type, edge type and variable with a readable
- * key a new random id. The tests here blank the names a test could otherwise
+ * The migration gives each node type, edge type, layout and variable with a
+ * readable key a new random id. The tests here blank the names a test could otherwise
  * find them by, so the migration's renaming is recorded instead: each new id
  * against the key the schema 8 document gave it, which `readablePath` and
  * `withReadableKeys` put back. The fixtures here have no UUID keys, so the
@@ -45,6 +45,7 @@ vi.mock('../migration-codebook-ids.ts', async (importOriginal) => {
     assignCodebookIds: (document: Record<string, unknown>) => {
       actual.renameCodebookIds(document, {
         typeId: recorded(isEntityTypeId, createEntityTypeId),
+        layoutId: recorded(isVariableId, createVariableId),
         variableId: recorded(isVariableId, createVariableId),
       });
     },
@@ -63,6 +64,7 @@ const withReadableKeys = (migrated: unknown): unknown => {
   if (!isRecord(copy)) return copy;
   renameCodebookIds(copy, {
     typeId: (id) => originalKeys.get(id) ?? id,
+    layoutId: (id) => originalKeys.get(id) ?? id,
     variableId: (id) => originalKeys.get(id) ?? id,
   });
   return copy;

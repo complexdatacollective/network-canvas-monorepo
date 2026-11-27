@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
   CodebookNameSchema,
+  type ExportColumnVariable,
   findLayoutExportColumnConflicts,
   normalizeForComparison,
 } from '@codaco/shared-consts';
@@ -147,7 +148,7 @@ export type Codebook = z.infer<typeof CodebookSchema>;
 type CodebookLayoutView = {
   node?: Record<
     string,
-    { name: string; variables?: Record<string, { name: string; type: string }> }
+    { name: string; variables?: Record<string, ExportColumnVariable> }
   >;
   layouts?: Record<string, LayoutDefinition>;
 };

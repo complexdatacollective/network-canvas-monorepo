@@ -471,11 +471,11 @@ export const findExportColumnConflicts = <
  * layout is exported to can meet it. `nodeType` names the type a variable
  * belongs to, and is absent for a layout.
  */
-export type LayoutExportColumnSibling = ExportColumnVariable &
+type LayoutExportColumnSibling = ExportColumnVariable &
   Readonly<{ id: string; nodeType?: string }>;
 
 /** One way the columns of the layout stored under `layoutId` clash. */
-export type LayoutExportColumnConflict = Readonly<{
+type LayoutExportColumnConflict = Readonly<{
   layoutId: string;
   conflict: ExportColumnConflict<LayoutExportColumnSibling>;
 }>;
@@ -493,7 +493,7 @@ const asLayoutSibling = ([id, { name }]: readonly [
  * A layout's positions are written as columns of every node type that has
  * it (`name_x` and `name_y`, the screen-space pair, and GraphML's `name_X`
  * and `name_Y`), so each layout is compared with the variables of every node
- * type. A clash between two layouts is reported once, for the first of them
+ * type. A clash between two layouts is reported once, for the later of them
  * in record order. A layout named like a variable or like another layout is
  * left to the duplicate-name check, as `findExportColumnConflicts` leaves it.
  */
@@ -516,10 +516,7 @@ export const findLayoutExportColumnConflicts = (
     findExportColumnConflicts({
       entity: 'node',
       candidate: asLayoutSibling(entry),
-      siblings: [
-        ...entries.slice(index + 1).map(asLayoutSibling),
-        ...variables,
-      ],
+      siblings: [...entries.slice(0, index).map(asLayoutSibling), ...variables],
     }).map((conflict) => ({ layoutId: entry[0], conflict })),
   );
 };

@@ -619,21 +619,79 @@ describe('findLayoutExportColumnConflicts', () => {
     ]);
   });
 
-  it('reports a clash between two layouts once, for the first', () => {
+  it.each([
+    ['pos_x', 'pos_x', 'x'],
+    ['pos_y', 'pos_y', 'y'],
+    ['pos_X', 'pos_x', 'x'],
+    ['pos_Y', 'pos_y', 'y'],
+    ['pos_screenSpaceX', 'pos_screenSpaceX', 'screenSpaceX'],
+    ['pos_screenSpaceY', 'pos_screenSpaceY', 'screenSpaceY'],
+  ])(
+    'reports a node variable named %s against the layout pos',
+    (variableName, column, axis) => {
+      const found = findLayoutExportColumnConflicts(
+        { layout: { name: 'pos' } },
+        { person: { v: { name: variableName, type: 'text' } } },
+      );
+
+      expect(found).toEqual([
+        {
+          layoutId: 'layout',
+          conflict: expect.objectContaining({
+            kind: 'sibling',
+            column,
+            origin: { kind: 'layout', axis },
+            sibling: expect.objectContaining({ id: 'v', nodeType: 'person' }),
+            formats: ['csv', 'graphml'],
+          }),
+        },
+      ]);
+    },
+  );
+
+  it("reports a layout column that equals a categorical option's column", () => {
+    const found = findLayoutExportColumnConflicts(
+      { layout: { name: 'seat_ing' } },
+      {
+        person: {
+          seat: {
+            name: 'seat',
+            type: 'categorical',
+            options: [{ value: 'ing_x' }],
+          },
+        },
+      },
+    );
+
+    expect(found).toEqual([
+      {
+        layoutId: 'layout',
+        conflict: expect.objectContaining({
+          kind: 'sibling',
+          column: 'seat_ing_x',
+          origin: { kind: 'layout', axis: 'x' },
+          siblingOrigin: { kind: 'option', value: 'ing_x' },
+          formats: ['csv', 'graphml'],
+        }),
+      },
+    ]);
+  });
+
+  it('reports a clash between two layouts once, for the later', () => {
     const found = findLayoutExportColumnConflicts(
       { first: { name: 'a b' }, second: { name: 'a_b' } },
       {},
     );
 
-    expect(found.map(({ layoutId }) => layoutId)).not.toContain('second');
+    expect(found.map(({ layoutId }) => layoutId)).not.toContain('first');
     expect(found).toEqual(
       expect.arrayContaining([
         {
-          layoutId: 'first',
+          layoutId: 'second',
           conflict: expect.objectContaining({
             kind: 'sibling',
-            column: 'a b_X',
-            sibling: { id: 'second', name: 'a_b', type: 'layout' },
+            column: 'a_b_X',
+            sibling: { id: 'first', name: 'a b', type: 'layout' },
             formats: ['graphml'],
           }),
         },

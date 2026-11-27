@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
-import { testTypeId, testVariableId } from '../../../../__tests__/testIds.ts';
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+} from '../../../../__tests__/testIds.ts';
 import { CodebookSchema } from '../codebook.ts';
 
 const PERSON = testTypeId('person');
 const PLACE = testTypeId('place');
+const ADVICE = testTypeId('advice');
 const SOCIOGRAM = testVariableId('sociogram layout');
 const MAP = testVariableId('map layout');
 const AGE = testVariableId('age');
@@ -20,17 +25,43 @@ const nodeType = (
   variables,
 });
 
+type VariablesFixture = Record<
+  string,
+  {
+    name: string;
+    type: string;
+    options?: { id: string; label: { en: string }; value: string }[];
+  }
+>;
+
 const codebookWith = ({
   layouts,
   placeVariables,
+  edgeVariables,
+  egoVariables,
 }: {
   layouts: Record<string, { name: string }>;
-  placeVariables?: Record<string, { name: string; type: string }>;
+  placeVariables?: VariablesFixture;
+  edgeVariables?: VariablesFixture;
+  egoVariables?: VariablesFixture;
 }) => ({
   node: {
     [PERSON]: nodeType('Person', { [AGE]: { name: 'age', type: 'number' } }),
     [PLACE]: nodeType('Place', placeVariables),
   },
+  ...(edgeVariables === undefined
+    ? {}
+    : {
+        edge: {
+          [ADVICE]: {
+            name: 'Advice',
+            color: 'edge-color-seq-1',
+            endpointRules: [{ sourceType: PERSON, targetType: PERSON }],
+            variables: edgeVariables,
+          },
+        },
+      }),
+  ...(egoVariables === undefined ? {} : { ego: { variables: egoVariables } }),
   layouts,
 });
 
@@ -125,21 +156,114 @@ describe('codebook layouts', () => {
     ]);
   });
 
-  it('rejects a layout whose derived column equals another layout’s', () => {
+  it('rejects a layout named like a variable of the second node type', () => {
     expect(
       parseIssues(
         CodebookSchema.safeParse(
           codebookWith({
-            layouts: {
-              [SOCIOGRAM]: { name: 'a b' },
-              [MAP]: { name: 'a_b' },
+            layouts: { [SOCIOGRAM]: { name: 'seats' } },
+            placeVariables: {
+              [testVariableId('seats')]: { name: 'seats', type: 'number' },
             },
           }),
         ),
-      ).map(({ message }) => message),
-    ).toContain(
-      'Layout "a b" would be exported to a column called "a b_X", which the layout "a_b" is also exported to',
+      ),
+    ).toEqual([
+      {
+        path: `layouts.${SOCIOGRAM}.name`,
+        code: 'custom',
+        message:
+          'Layout "seats" has the name of the attribute "seats" of node type "Place"',
+      },
+    ]);
+  });
+
+  it('accepts an edge or ego variable named like a layout or its columns', () => {
+    expect(
+      parseIssues(
+        CodebookSchema.safeParse(
+          codebookWith({
+            layouts: { [SOCIOGRAM]: { name: 'sociogram' } },
+            edgeVariables: {
+              [testVariableId('edge sociogram')]: {
+                name: 'sociogram',
+                type: 'text',
+              },
+              [testVariableId('edge sociogram_x')]: {
+                name: 'sociogram_x',
+                type: 'number',
+              },
+            },
+            egoVariables: {
+              [testVariableId('ego sociogram')]: {
+                name: 'sociogram',
+                type: 'text',
+              },
+              [testVariableId('ego sociogram_x')]: {
+                name: 'sociogram_x',
+                type: 'number',
+              },
+            },
+          }),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it('rejects a layout whose derived column equals a categorical option’s column', () => {
+    expect(
+      parseIssues(
+        CodebookSchema.safeParse(
+          codebookWith({
+            layouts: { [SOCIOGRAM]: { name: 'seat_ing' } },
+            placeVariables: {
+              [testVariableId('seat')]: {
+                name: 'seat',
+                type: 'categorical',
+                options: [
+                  {
+                    id: testId('ing_x'),
+                    label: { en: 'Ing x' },
+                    value: 'ing_x',
+                  },
+                  { id: testId('row'), label: { en: 'Row' }, value: 'row' },
+                ],
+              },
+            },
+          }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: `layouts.${SOCIOGRAM}.name`,
+        code: 'custom',
+        message:
+          'Layout "seat_ing" would be exported to a column called "seat_ing_x", which the attribute "seat" of node type "Place" is also exported to',
+      },
+    ]);
+  });
+
+  it('rejects a layout whose derived column equals another layout’s, on the later layout', () => {
+    const issues = parseIssues(
+      CodebookSchema.safeParse(
+        codebookWith({
+          layouts: {
+            [SOCIOGRAM]: { name: 'a b' },
+            [MAP]: { name: 'a_b' },
+          },
+        }),
+      ),
     );
+
+    expect(issues.map(({ path }) => path)).not.toContain(
+      `layouts.${SOCIOGRAM}.name`,
+    );
+    expect(issues).toContainEqual({
+      path: `layouts.${MAP}.name`,
+      code: 'custom',
+      message:
+        'Layout "a_b" would be exported to a column called "a_b_X", which the layout "a b" is also exported to',
+    });
   });
 
   it('rejects a layout id reused as a variable id', () => {
@@ -156,6 +280,30 @@ describe('codebook layouts', () => {
         path: '',
         code: 'custom',
         message: `Attribute record key "${AGE}" is also the id of a layout`,
+      },
+    ]);
+  });
+
+  it.each([
+    ['an edge', 'edgeVariables'],
+    ['an ego', 'egoVariables'],
+  ] as const)('rejects a layout id reused as %s variable id', (_, entity) => {
+    const shared = testVariableId('shared');
+
+    expect(
+      parseIssues(
+        CodebookSchema.safeParse(
+          codebookWith({
+            layouts: { [shared]: { name: 'sociogram' } },
+            [entity]: { [shared]: { name: 'closeness', type: 'number' } },
+          }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: '',
+        code: 'custom',
+        message: `Attribute record key "${shared}" is also the id of a layout`,
       },
     ]);
   });

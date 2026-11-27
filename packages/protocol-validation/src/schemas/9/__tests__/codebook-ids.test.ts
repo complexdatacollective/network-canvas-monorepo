@@ -737,6 +737,36 @@ describe('renaming codebook ids', () => {
     });
   });
 
+  it('withTestCodebookIds gives a readable layout key the id testVariableId gives it, and one id for a key a variable shares', () => {
+    const protocol = withTestCodebookIds({
+      codebook: {
+        node: { person: { name: 'Person', variables: { age: { name: 'A' } } } },
+        layouts: {
+          sociogram: { name: 'sociogram' },
+          age: { name: 'positions' },
+          [testVariableId('kept')]: { name: 'kept' },
+        },
+      },
+      stages: [],
+    });
+
+    expect(Object.keys(recordAt(protocol, ['codebook', 'layouts']))).toEqual([
+      testVariableId('sociogram'),
+      testVariableId('age'),
+      testVariableId('kept'),
+    ]);
+    expect(
+      Object.keys(
+        recordAt(protocol, [
+          'codebook',
+          'node',
+          testTypeId('person'),
+          'variables',
+        ]),
+      ),
+    ).toEqual([testVariableId('age')]);
+  });
+
   it('assignCodebookIds gives a variable a new id when a layout holds its key', () => {
     const shared = testVariableId('shared');
     const protocol = {
