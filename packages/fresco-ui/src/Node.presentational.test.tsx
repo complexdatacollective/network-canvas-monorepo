@@ -111,7 +111,7 @@ describe('a presentational Node', () => {
 const customShapeSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 4 L95 42 L95 96 L5 96 L5 42 Z" fill="var(--node-color)"/><rect id="label-area" x="16" y="46" width="68" height="40" fill="#ffffff"/></svg>`;
 
 describe('a disabled Node', () => {
-  it('a disabled custom shape ignores pointer and keyboard activation', async () => {
+  it('a disabled custom shape is dimmed and ignores pointer and keyboard activation', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
     render(
@@ -127,6 +127,7 @@ describe('a disabled Node', () => {
     const node = screen.getByRole('button', { name: 'Robin' });
     expect(node.querySelector('svg[data-node-shape-artwork]')).not.toBeNull();
     expect(node).toBeDisabled();
+    expect(node).toHaveClass('saturate-50');
 
     await user.click(node);
     node.focus();

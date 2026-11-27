@@ -1649,6 +1649,7 @@ export const CustomShapeStates: Story = {
         node.querySelector('svg[data-node-shape-artwork]'),
       ).not.toBeNull();
       await expect(node).toBeDisabled();
+      await expect(getComputedStyle(node).filter).toContain('saturate(0.5)');
       await userEvent.click(node, { pointerEventsCheck: 0 });
       node.focus();
       await userEvent.keyboard('{Enter}');

@@ -399,12 +399,13 @@ describe('layout usage', () => {
       expect(
         isFirstStageUsingLayout(withLater, later.id, sociogram.layout),
       ).toBe(false);
-      // A stage that does not name the layout is never the first to use it.
+      // A stage that does not name the layout is never the first to use it,
+      // even when no stage before it names the layout either.
       expect(
         isFirstStageUsingLayout(
           withLater,
           later.id,
-          layoutKeyNamed(protocol, 'composer_map'),
+          layoutKeyNamed(protocol, 'unused'),
         ),
       ).toBe(false);
     });

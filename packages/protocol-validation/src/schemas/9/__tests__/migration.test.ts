@@ -2781,8 +2781,18 @@ describe('Migrating layouts from schema 8 to 9', () => {
           { edges: { create: 'knows', display: ['knows'] } },
           { highlight: { allowHighlighting: true, variable: 'close' } },
           { edges: { display: ['knows'] } },
+          {
+            edges: { create: 'knows' },
+            highlight: { allowHighlighting: false, variable: 'close' },
+          },
         ],
-        { behaviours: { automaticLayout: false, allowRepositioning: true } },
+        {
+          behaviours: {
+            automaticLayout: false,
+            allowRepositioning: true,
+            freeDraw: true,
+          },
+        },
       ),
       9,
     );
@@ -2794,6 +2804,7 @@ describe('Migrating layouts from schema 8 to 9', () => {
       'connect',
       'highlight',
       'layout',
+      'connect',
     ]);
     expect(map?.prompts[1]).toMatchObject({
       edges: { create: 'knows', display: ['knows'] },
@@ -2803,6 +2814,9 @@ describe('Migrating layouts from schema 8 to 9', () => {
       { id: expect.stringMatching(UUID), type: 'person', variable: 'close' },
     ]);
     expect(map?.prompts[3]).toMatchObject({ edges: { display: ['knows'] } });
+    // A display-only highlight on a prompt that creates edges is dropped.
+    expect(map?.prompts[4]).toMatchObject({ edges: { create: 'knows' } });
+    expect(map?.prompts[4]).not.toHaveProperty('highlight');
   });
 
   it('drops a display-only highlight', () => {

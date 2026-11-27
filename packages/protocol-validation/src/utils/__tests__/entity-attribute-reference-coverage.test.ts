@@ -51,6 +51,13 @@ const countTagged = (
 // roster's data source), and the roster's three data-source column fields
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
+// It counts the Sociogram highlight task's per-type entry `variable`
+// (`highlightAttributeSchema`, the boolean a tap writes for that node type).
+// The per-prompt Sociogram highlight it replaced is no longer counted: that
+// was one tag instance, the `variable` of `sociogramHighlightSchema`'s loose
+// input shape (`highlightVariableReference`; the two narrowed union branches
+// behind its transform reused the same instance and were never counted), so
+// the total is unchanged.
 // The Sociogram, Narrative preset and Network Composer layout fields name a
 // layout (`layoutReference`), not an attribute, so they are not counted.
 // The value is verified against the runtime count computed below.

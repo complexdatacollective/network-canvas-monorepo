@@ -848,12 +848,18 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
         Math.abs(after!.x - before!.x) + Math.abs(after!.y - before!.y),
       ).toBeGreaterThan(0.05);
 
-      // In the connect task nobody can be moved: a drag leaves Ash where the
-      // simulation keeps it, nowhere near the drop point.
+      // In the connect task nobody can be moved: a drag leaves Ash exactly
+      // where it was before the drag, the mirror of the layout task above.
       await interview.nextButton.click();
       await expect(
         page.getByText('Link people who know each other.'),
       ).toBeVisible();
+      await stage.sociogram.waitForSimulationSettled();
+      state = await protocol.getNetworkState(interview.interviewId);
+      const beforeConnectDrag = asPoint(
+        nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
+      );
+      expect(beforeConnectDrag).not.toBeNull();
       await dragNodeToCanvasPosition(page, 'Ash', { x: 0.9, y: 0.1 });
       await stage.sociogram.waitForSimulationSettled();
       state = await protocol.getNetworkState(interview.interviewId);
@@ -862,8 +868,9 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
       );
       expect(afterConnect).not.toBeNull();
       expect(
-        Math.abs(afterConnect!.x - 0.9) + Math.abs(afterConnect!.y - 0.1),
-      ).toBeGreaterThan(0.2);
+        Math.abs(afterConnect!.x - beforeConnectDrag!.x) +
+          Math.abs(afterConnect!.y - beforeConnectDrag!.y),
+      ).toBeLessThan(0.001);
     },
   };
 }
