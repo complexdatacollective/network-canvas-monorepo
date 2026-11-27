@@ -1145,9 +1145,11 @@ describe('legacyMarkdownAsStandard', () => {
   // machine does not fail it. Each time is the processor time this thread
   // used, not the time that passed: on a busy machine other processes
   // interrupt a long run far more often than a short one, which made the
-  // linear code take up to 165 times as long by the clock. Each is the
-  // least of five runs, taken in turn with the runs of the other length, and
-  // the limit of 50 is far from both results.
+  // linear code take up to 165 times as long by the clock. Some systems
+  // count processor time in steps of several milliseconds, so each time is
+  // the average over as many migrations as take at least 100 ms. Each is
+  // the least of three such times, taken in turn with those of the other
+  // length, and the limit of 50 is far from both results.
   it.each<[string, (length: number) => string]>([
     ['a run of backslashes', (length) => '\\'.repeat(length)],
     ['a run of backslashes and `<br`', (length) => `${'\\'.repeat(length)}<br`],
@@ -1161,24 +1163,31 @@ describe('legacyMarkdownAsStandard', () => {
       const short = written(2_500);
       const long = written(40_000);
       for (const lines of ['multiple', 'single'] as const) {
+        // The processor time of one migration of `input`, in microseconds.
         const timeOf = (input: string): number => {
           const start = process.threadCpuUsage();
-          legacyMarkdownWritten(input, { lines });
-          const { user, system } = process.threadCpuUsage(start);
-          return user + system;
+          let migrations = 0;
+          let used = 0;
+          do {
+            legacyMarkdownWritten(input, { lines });
+            migrations += 1;
+            const { user, system } = process.threadCpuUsage(start);
+            used = user + system;
+          } while (used < 100_000 && migrations < 10_000);
+          return used / migrations;
         };
         // Warm up, so that no timed run is also the first run of its length.
-        timeOf(short);
-        timeOf(long);
+        legacyMarkdownWritten(short, { lines });
+        legacyMarkdownWritten(long, { lines });
         let shortTime = Number.POSITIVE_INFINITY;
         let longTime = Number.POSITIVE_INFINITY;
-        for (let run = 0; run < 5; run += 1) {
+        for (let run = 0; run < 3; run += 1) {
           shortTime = Math.min(shortTime, timeOf(short));
           longTime = Math.min(longTime, timeOf(long));
         }
         expect(
           longTime / shortTime,
-          `${lines}: ${longTime} µs for the long run, ${shortTime} µs for the short run`,
+          `${lines}: ${longTime} µs for each long migration, ${shortTime} µs for each short one`,
         ).toBeLessThan(50);
       }
     },
