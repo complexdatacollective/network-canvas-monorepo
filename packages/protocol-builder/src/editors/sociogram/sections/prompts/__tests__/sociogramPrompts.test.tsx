@@ -1016,10 +1016,100 @@ describe('a sociogram that shows several node types', () => {
     await saveDialog(harness, within(screen.getByRole('dialog')));
 
     const saved = await harness.submit();
-    expect(promptsOf(saved?.stageDocument ?? {})[0]?.highlight).toEqual([
-      { id: testId('highlight-person'), type: PERSON, variable: HIGHLIGHTED },
-      { id: expect.any(String), type: FAMILY, variable: HAS_CONDITION },
-    ]);
+    // The whole prompt, so an order nobody chose cannot creep in.
+    expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual({
+      ...HIGHLIGHT_PROMPT,
+      highlight: [
+        { id: testId('highlight-person'), type: PERSON, variable: HIGHLIGHTED },
+        { id: expect.any(String), type: FAMILY, variable: HAS_CONDITION },
+      ],
+    });
+  });
+
+  it('saves a highlight prompt with no node type order exactly as it arrived', async () => {
+    const harness = renderStageEditor(severalTypes(HIGHLIGHT_PROMPT));
+
+    await openPrompt(harness);
+    await saveDialog(harness, within(screen.getByRole('dialog')));
+
+    const saved = await harness.submit();
+    const [first] = promptsOf(saved?.stageDocument ?? {});
+    expect(first).toEqual(HIGHLIGHT_PROMPT);
+    expect(first).not.toHaveProperty('nodeTypeOrder');
+  });
+
+  it('lets the researcher stop highlighting one node type', async () => {
+    const harness = renderStageEditor(severalTypes(HIGHLIGHT_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    const family = await promptAttributeField(
+      'Boolean attribute for family member',
+    );
+    await chooseAttributeById(harness.user, family, HAS_CONDITION);
+    await harness.user.click(
+      await prompt.findByRole('button', {
+        name: 'Do not highlight nodes of type family member',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        prompt.queryByRole('button', {
+          name: 'Do not highlight nodes of type family member',
+        }),
+      ).toBeNull(),
+    );
+    await saveDialog(harness, prompt);
+
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual(HIGHLIGHT_PROMPT);
+  });
+
+  it('refuses a highlight pick for a later node type that a form collects', async () => {
+    const harness = renderStageEditor(severalTypes(HIGHLIGHT_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Boolean attribute for family member'),
+      HAS_CONDITION,
+    );
+    collectInAForm(harness, HAS_CONDITION, FAMILY);
+    await within(
+      await promptAttributeField('Boolean attribute for family member'),
+    ).findByText(
+      'The “Alter Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+    const family = await promptAttributeField(
+      'Boolean attribute for family member',
+    );
+    await within(family).findByText(
+      readMessage(validatedElsewhereMessage('hasConditionX')),
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('still saves a later node type pick that the protocol already collects', async () => {
+    const prompt = {
+      ...HIGHLIGHT_PROMPT,
+      highlight: [
+        ...HIGHLIGHT_PROMPT.highlight,
+        {
+          id: testId('highlight-family'),
+          type: FAMILY,
+          variable: HAS_CONDITION,
+        },
+      ],
+    };
+    const harness = renderStageEditor(severalTypes(prompt));
+    collectInAForm(harness, HAS_CONDITION, FAMILY);
+
+    await openPrompt(harness);
+    await saveDialog(harness, within(screen.getByRole('dialog')));
+
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual(prompt);
   });
 
   it('refuses a highlight task that marks no node type', async () => {

@@ -371,7 +371,14 @@ describe('a prompt’s sort rules, read in Spanish', () => {
             text: inProtocolLanguage(
               'Coloca juntas a las personas que se conocen',
             ),
-            sortOrder: [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
+            sortOrder: [
+              {
+                id: 'sociogram-sort-1',
+                type: PERSON,
+                property: ORPHANED_PROPERTY,
+                direction: 'asc',
+              },
+            ],
           },
         ],
       },

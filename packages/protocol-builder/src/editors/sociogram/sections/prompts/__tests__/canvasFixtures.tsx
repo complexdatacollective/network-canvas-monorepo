@@ -101,11 +101,13 @@ export const promptAttributeField = async (
  *
  * Written as a collaborator's edit, which is what it is: the write reaches the
  * protocol without this editor's lock, and the revision travels the channel
- * every other change does.
+ * every other change does. With `nodeType`, the form's stage is moved to that
+ * node type too, so the form collects an attribute of that type.
  */
 export const collectInAForm = (
   harness: StageEditorHarness,
   variableId: string,
+  nodeType?: string,
 ): void => {
   const id = sectionId({
     kind: 'stage',
@@ -121,6 +123,9 @@ export const collectInAForm = (
   const fields: unknown[] = Array.isArray(held) ? held : [];
   const updated: SectionDoc = {
     ...stage,
+    ...(nodeType === undefined
+      ? {}
+      : { subject: { entity: 'node', types: [nodeType] } }),
     form: {
       fields: [
         ...fields,

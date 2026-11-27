@@ -4447,6 +4447,10 @@
     "defaultMessage": "Empty prompt",
     "description": "Stands in for a prompt’s text in the collapsed row of the sociogram prompt list while the researcher has not written any yet."
   },
+  "protocolBuilder.networkCanvas.promptHighlightClearForType": {
+    "defaultMessage": "Do not highlight nodes of type {nodeType}",
+    "description": "Button under one of the attribute pickers in the sociogram prompt dialog, read by the researcher designing a stage that shows several kinds of network member. It empties the picker, so that participants cannot tap nodes of that kind during this prompt. {nodeType} is the name the researcher gave that kind, such as \"Person\" or \"Place\"."
+  },
   "protocolBuilder.networkCanvas.promptHighlightEmpty": {
     "defaultMessage": "This type has no Boolean attributes yet. Create one to record which nodes the participant marks.",
     "description": "Shown under the attribute-marked picker when the node type that this stage is about has no attributes at all in the codebook. \"This type\" is that node type. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it."

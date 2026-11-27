@@ -1,7 +1,9 @@
+import { X } from 'lucide-react';
 import { type ComponentType, useEffect, useMemo, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { Button } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import RichSelectGroupField, {
   type RichSelectOption,
@@ -111,16 +113,6 @@ const asTask = (value: unknown): SociogramTask | undefined =>
     ? value
     : undefined;
 
-/**
- * One task this sociogram sets, and everything the canvas does while it is on
- * screen.
- *
- * A prompt is one of three tasks: the participant places nodes (layout), taps
- * nodes to mark them (highlight), or taps two nodes to connect them (connect).
- * The attributes and edge types the task names are read from the protocol
- * here, so a collaborator's change to the codebook changes what this dialog
- * offers.
- */
 type NodeTypeChoice = Readonly<{ id: string; label: string }>;
 
 type PerTypeProps = Readonly<{
@@ -157,6 +149,7 @@ function HighlightField({ item, index, nodeType, several }: PerTypeProps) {
     onCreated: (variableId) => setRowValue(name, variableId),
   });
   const committed = asText(item[name]);
+  const chosen = asText(useFormValue([name])[name]);
 
   // The interview writes a mark around the codebook's rules as a tap toggles
   // it, so the attribute may not be one a form field collects.
@@ -192,6 +185,25 @@ function HighlightField({ item, index, nodeType, several }: PerTypeProps) {
           : { required: intl.formatMessage(messages.promptHighlightRequired) })}
         {...highlightCreate.createProps}
       />
+      {/*
+        The picker cannot be emptied once an attribute is chosen, and on a
+        stage that shows several types an empty picker is how a type is left
+        out of the task.
+      */}
+      {several && nodeType !== undefined && chosen !== undefined && (
+        <Button
+          type="button"
+          size="sm"
+          variant="text"
+          icon={<X aria-hidden="true" />}
+          className="-mt-4 mb-8"
+          onClick={() => setRowValue(name, undefined)}
+        >
+          {intl.formatMessage(messages.promptHighlightClearForType, {
+            nodeType: nodeType.label,
+          })}
+        </Button>
+      )}
       {highlightCreate.editor}
     </>
   );

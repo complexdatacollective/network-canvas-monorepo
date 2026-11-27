@@ -266,6 +266,12 @@ export const sociogramPromptMessages = defineMessages({
     description:
       'Guidance under each attribute picker in the sociogram prompt dialog, read by the researcher designing a stage that shows several kinds of network member. Nodes of a kind with no attribute chosen cannot be tapped during this prompt.',
   },
+  promptHighlightClearForType: {
+    id: 'protocolBuilder.networkCanvas.promptHighlightClearForType',
+    defaultMessage: 'Do not highlight nodes of type {nodeType}',
+    description:
+      'Button under one of the attribute pickers in the sociogram prompt dialog, read by the researcher designing a stage that shows several kinds of network member. It empties the picker, so that participants cannot tap nodes of that kind during this prompt. {nodeType} is the name the researcher gave that kind, such as "Person" or "Place".',
+  },
   promptHighlightRequiredSeveral: {
     id: 'protocolBuilder.networkCanvas.promptHighlightRequiredSeveral',
     defaultMessage:

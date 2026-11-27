@@ -16,6 +16,10 @@ import { sociogramStageEditor } from './SociogramStageEditor.ts';
 
 const PERSON = fixtureTypeId('node', 'person');
 const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const HAS_CONDITION = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'hasConditionX',
+);
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Sociogram',
@@ -245,6 +249,53 @@ export const SeveralNodeTypes: Story = {
       }),
     ).toBeChecked();
     await expect(dialog.getByText('Order of node types')).toBeVisible();
+
+    // Choosing an attribute for a second type, then emptying it again, leaves
+    // that type out of the task.
+    const familyField = dialog
+      .getByText('Boolean attribute for family member', {
+        selector: 'label[id$="-label"]',
+      })
+      .closest<HTMLElement>('[data-field-name]');
+    const trigger = familyField?.querySelector<HTMLElement>(
+      '[data-field-focus-target]',
+    );
+    if (!trigger) throw new Error('No attribute picker for family member');
+    await userEvent.click(trigger);
+    const option = await waitFor(() => {
+      const row = document.body.querySelector<HTMLElement>(
+        `[data-attribute-picker-popup][data-open] [role="option"][data-attribute-id="${HAS_CONDITION}"]`,
+      );
+      if (row === null) throw new Error('The attribute list is not open');
+      return row;
+    });
+    await userEvent.click(option);
+    const clear = await dialog.findByRole('button', {
+      name: 'Do not highlight nodes of type family member',
+    });
+    await userEvent.click(clear);
+    await waitFor(async () => {
+      await expect(
+        dialog.queryByRole('button', {
+          name: 'Do not highlight nodes of type family member',
+        }),
+      ).toBeNull();
+    });
+
+    await userEvent.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(async () => {
+      await expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
+    const committed = canvas.getByRole('region', {
+      name: 'What the host was asked to commit',
+    });
+    await waitFor(async () => {
+      await expect(committed).toHaveTextContent(
+        testId('several-types-highlight'),
+      );
+    });
+    await expect(committed).not.toHaveTextContent(HAS_CONDITION);
   },
 };
 
