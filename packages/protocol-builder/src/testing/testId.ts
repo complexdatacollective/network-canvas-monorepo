@@ -58,7 +58,7 @@ const giveOptionsIds = (variables: unknown) => {
 /**
  * A protocol fixture written with readable codebook keys, with each node or
  * edge type key that is not a UUID replaced by `testTypeId` of it, each
- * variable key that is not a UUID by `testVariableId` of it, and every
+ * variable or layout key that is not a UUID by `testVariableId` of it, and every
  * reference to them following. A test names an entry as `testVariableId('age')`.
  * Each categorical or ordinal option written without an id is given one
  * (`testOptionId`).
@@ -68,6 +68,7 @@ export const withTestCodebookIds = <T>(protocol: T): T => {
   if (!isRecord(copy)) return copy;
   renameCodebookIds(copy, {
     typeId: (key) => (isEntityTypeId(key) ? key : testTypeId(key)),
+    layoutId: (key) => (isVariableId(key) ? key : testVariableId(key)),
     variableId: (key) => (isVariableId(key) ? key : testVariableId(key)),
   });
   const { codebook } = copy;

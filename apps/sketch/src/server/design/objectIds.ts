@@ -70,13 +70,23 @@ export const sketchTypeId = (key: string) => typeIdIn(`type:${key}`);
 export const sketchVariableId = (key: string) =>
   variableIdIn(`variable:${key}`);
 
+const sketchLayoutId = (key: string) => variableIdIn(`layout:${key}`);
+
 /**
  * A source map path (`codebook.<entity>.<type>` or one that goes on to
- * `.variables.<variable>`) with the ids its keys were given.
+ * `.variables.<variable>`, or `codebook.layouts.<layout>`) with the ids its
+ * keys were given.
  */
 const renamedSourcePath = (path: string): string => {
   const segments = path.split('.');
   if (segments[0] !== 'codebook') return path;
+  if (segments[1] === 'layouts') {
+    return segments
+      .map((segment, index) =>
+        index === 2 ? sketchLayoutId(segment) : segment,
+      )
+      .join('.');
+  }
   const ego = segments[1] === 'ego';
   const variableAt = ego ? 3 : 4;
   return segments
@@ -90,7 +100,7 @@ const renamedSourcePath = (path: string): string => {
 };
 
 /**
- * Gives every node type, edge type and variable of `protocol` a UUID named
+ * Gives every node type, edge type, variable and layout of `protocol` a UUID named
  * by the readable key the compiler gave it, so compiling one design twice
  * gives the same ids, and returns `sourceMap` with its codebook paths
  * renamed to match. The compiler claims every key once across the whole
@@ -102,6 +112,7 @@ export const assignCodebookIds = (
 ): Map<string, string> => {
   renameCodebookIds(protocol, {
     typeId: sketchTypeId,
+    layoutId: sketchLayoutId,
     variableId: sketchVariableId,
   });
   return new Map(

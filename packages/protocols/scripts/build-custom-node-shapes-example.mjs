@@ -275,6 +275,7 @@ async function buildProtocol() {
 const protocol = await buildProtocol();
 renameCodebookIds(protocol, {
   typeId: (key, entity) => typeId(`${entity}/${key}`),
+  layoutId: (key) => variableId(`layout/${key}`),
   variableId: (key, owner) =>
     variableId(`${owner.entity}/${owner.type}/${key}`),
 });
