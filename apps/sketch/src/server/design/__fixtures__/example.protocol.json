@@ -1143,13 +1143,15 @@
           "id": "605ac758-f0a7-587c-917f-2321e18ee287",
           "text": {
             "en": "Place the people you are **closest to** nearest the centre."
-          }
+          },
+          "task": "layout"
         },
         {
           "id": "40244c3a-8f1e-582f-91e9-3e93f802dcc1",
           "text": {
             "en": "Draw a line between any two people who **know each other**."
           },
+          "task": "connect",
           "edges": {
             "create": "1701f5b2-eae8-53df-ad7d-dd9dc66a8ead",
             "display": ["1701f5b2-eae8-53df-ad7d-dd9dc66a8ead"]
@@ -1160,13 +1162,17 @@
           "text": {
             "en": "Tap everyone you **usually drink alcohol with**."
           },
+          "task": "highlight",
           "edges": {
             "display": ["1701f5b2-eae8-53df-ad7d-dd9dc66a8ead"]
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "e7609e1d-4814-5264-805c-969d30ef5a88"
-          }
+          "highlight": [
+            {
+              "id": "7cfe24cf-0c7b-57be-be5f-8d02029c94ae",
+              "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
+              "variable": "e7609e1d-4814-5264-805c-969d30ef5a88"
+            }
+          ]
         }
       ]
     },

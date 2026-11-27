@@ -19,7 +19,7 @@ type Stage = {
   form?: { title?: string };
   prompts?: {
     color?: string;
-    highlight?: { variable: string };
+    highlight?: { variable: string }[];
   }[];
   filter?: { join?: string; rules: { id: string }[] };
 };
@@ -49,7 +49,8 @@ const controls: [string, (p: Protocol) => void][] = [
     'a highlight pointing at an ordinal variable',
     (p) => {
       const prompt = stage(p, (s) => s.type === 'Sociogram').prompts?.[2];
-      if (prompt?.highlight) prompt.highlight.variable = 'person_closeness';
+      const [entry] = prompt?.highlight ?? [];
+      if (entry) entry.variable = 'person_closeness';
     },
   ],
   [

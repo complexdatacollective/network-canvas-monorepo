@@ -1117,9 +1117,11 @@ export const compile = (
         const automaticLayout = !s.prompts.some((p) => p.task === 'position');
         lastSociogramAuto.set(s.nodeTypeId, automaticLayout);
         const prompts = s.prompts.map((p, i) => {
+          const id = `p${i + 1}`;
           const out: Json = {
-            id: `p${i + 1}`,
+            id,
             text: prompt(s.id, i, p.text),
+            task: p.task === 'position' ? 'layout' : p.task,
           };
           if (p.task === 'connect') {
             const ek = relKey.get(p.relationshipId)!;
@@ -1130,10 +1132,13 @@ export const compile = (
           } else if (createdFor(s.nodeTypeId).length)
             out.edges = { display: createdFor(s.nodeTypeId) };
           if (p.task === 'highlight')
-            out.highlight = {
-              allowHighlighting: true,
-              variable: key(scope, p.attributeId),
-            };
+            out.highlight = [
+              {
+                id: `${id}-highlight`,
+                type: nodeKey.get(s.nodeTypeId),
+                variable: key(scope, p.attributeId),
+              },
+            ];
           return out;
         });
         push(

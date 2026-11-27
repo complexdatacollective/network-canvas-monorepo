@@ -397,10 +397,14 @@
           "text": {
             "en": "Mark helpers"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "bd9c31f6-291c-52cb-90c3-76d05a5dc54c"
-          }
+          "task": "highlight",
+          "highlight": [
+            {
+              "id": "932530c5-db92-599d-bdae-206ef7de3535",
+              "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
+              "variable": "bd9c31f6-291c-52cb-90c3-76d05a5dc54c"
+            }
+          ]
         }
       ]
     },

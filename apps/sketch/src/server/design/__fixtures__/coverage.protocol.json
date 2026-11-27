@@ -1252,10 +1252,14 @@
           "text": {
             "en": "Tap your **favourite** places."
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "c11ec10f-0d64-5e41-a7c9-6123ee3985e5"
-          }
+          "task": "highlight",
+          "highlight": [
+            {
+              "id": "b9a18a11-f512-563d-a51f-569b0003df41",
+              "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
+              "variable": "c11ec10f-0d64-5e41-a7c9-6123ee3985e5"
+            }
+          ]
         }
       ]
     },
@@ -1347,6 +1351,7 @@
           "text": {
             "en": "Arrange your classmates."
           },
+          "task": "layout",
           "edges": {
             "display": [
               "0019a3dd-a3f9-5329-8011-285e565a09eb",
