@@ -8,6 +8,7 @@ import {
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectStageUntouched,
+  fieldTabTexts,
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
@@ -107,7 +108,12 @@ describe('the editor for a form about the participant', () => {
 
     harness.receiveCodebookUpdate({ ego: { variables: {} } });
 
-    expect(await form.findByText('Deleted attribute')).toBeInTheDocument();
+    // Shown in the field's tab, with its settings button.
+    await waitFor(async () =>
+      expect(await fieldTabTexts(harness)).toContainEqual(
+        expect.stringContaining('Deleted attribute'),
+      ),
+    );
     // Their deletion is theirs. The field the researcher authored is still on
     // the stage, still pointing where they pointed it: an editor that quietly
     // dropped it would be saving somebody else's edit as this one.

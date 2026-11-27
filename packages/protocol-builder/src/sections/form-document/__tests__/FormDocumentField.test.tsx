@@ -14,9 +14,8 @@ import FormDocumentSection from '../FormDocumentSection.tsx';
 import {
   blockFor,
   editIn,
-  fieldSettings,
   formEditor,
-  selectField,
+  openFieldSettings,
 } from './formDocumentTesting.ts';
 
 const PERSON = fixtureTypeId('node', 'person');
@@ -297,8 +296,11 @@ describe('saving the form', () => {
     };
     const before = componentOf(harness.hostCodebook());
 
-    await selectField(harness, editor, RELATIONSHIP_FIELD);
-    const settings = await fieldSettings();
+    const settings = await openFieldSettings(
+      harness,
+      editor,
+      RELATIONSHIP_FIELD,
+    );
     await harness.user.click(
       settings.getByRole('combobox', { name: 'Input control' }),
     );

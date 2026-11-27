@@ -5,8 +5,9 @@ import { expect, type Locator } from '@playwright/test';
 // The toolbar's "Field" button puts a field in at the caret and opens the
 // attribute picker ("Attribute of the new field") beside it; the new field's
 // question is then typed into the block. Selecting a block (Escape from its
-// text) and pressing Enter opens its settings ("Field settings"): the
-// attribute, its input control, validation and "Delete field".
+// text) shows its tab, with the attribute and a "Field settings" button;
+// pressing Enter on the selected block presses that button, which opens its
+// settings: the attribute, its input control, validation and "Delete field".
 //
 // The helpers take the enclosing section `Locator`
 // (`editor.section('Form')`) and reach page-level popovers through
@@ -205,8 +206,8 @@ const editorSelectionIsIn = (region: Locator): Promise<boolean> =>
 
 /**
  * Opens the settings of the field that asks `question`, the way a keyboard
- * user does: in the question's text, Escape selects the block, and the
- * settings of a selected field open beside it.
+ * user does: in the question's text, Escape selects the block, and Enter on
+ * the selected block presses the settings button in its tab.
  *
  * The editor takes a click's caret into its own selection a moment after
  * the click, and an Escape pressed before then finds the caret where it
@@ -227,23 +228,27 @@ export async function openFieldSettings(
     name: 'Field settings',
     exact: true,
   });
+  // Selecting the block opens nothing: Enter presses its settings button.
+  await expect(
+    block.getByRole('button', { name: 'Field settings' }),
+  ).toBeVisible();
+  await expect(settings).toHaveCount(0);
+  await page.keyboard.press('Enter');
   await expect(settings).toBeVisible();
   return settings;
 }
 
 /**
- * Closes a field's settings, which are open for as long as the field is
- * selected, by moving the selection below the field with the Down arrow key.
- * The settings can cover the text, so the text is focused rather than
- * clicked.
+ * Closes a field's settings with Escape, which gives focus back to the
+ * settings button, and then leaves the field: from the text, the Down arrow
+ * moves the selection below it.
  *
  * The editor moves a selected block's selection by the Down arrow itself,
  * from its own state, so the key works however soon it follows focus. A
  * caret move left to the browser (such as Command-Down) can be undone by the
  * editor as it takes focus. The block below can be another field, which is
- * then selected and whose settings open in the same place, so the key is
- * pressed once for each field that it selects, each time after the field
- * selected before it has been left.
+ * then selected, so the key is pressed once for each field that it selects,
+ * each time after the field selected before it has been left.
  */
 export async function closeFieldSettings(
   section: Locator,
@@ -253,6 +258,9 @@ export async function closeFieldSettings(
   const selected = fieldBlocks(section).and(
     section.page().locator('[data-selected]'),
   );
+  await settings.focus();
+  await section.page().keyboard.press('Escape');
+  await expect(settings).toBeHidden();
   await text.focus();
   await expect(text).toBeFocused();
   const fields = await fieldBlocks(section).count();

@@ -8,9 +8,9 @@ import { sectionId, type SectionRef } from '@codaco/studio-sync/taxonomy';
 import {
   blockFor,
   caretInQuestion,
-  fieldSettings,
   formEditor,
   insertPicker,
+  openFieldSettings,
   selectField,
 } from '../../sections/form-document/__tests__/formDocumentTesting.ts';
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
@@ -58,6 +58,29 @@ export const mountedAs = <T extends StageType>(
  * so a create-mode test asks what the value looks like rather than what it
  * equals — the proposal is deduplicated against the interview it is joining.
  */
+/**
+ * What each field's tab shows, in order: its attribute and settings button.
+ * A tab shows only while its field is selected (or under the pointer), so
+ * each field is selected in turn, the way the keyboard does.
+ */
+export const fieldTabTexts = async (harness: Harness): Promise<string[]> => {
+  const editor = await formEditor();
+  const ids = [...editor.querySelectorAll('[data-field-id]')].flatMap(
+    (block) => block.getAttribute('data-field-id') ?? [],
+  );
+  const texts: string[] = [];
+  for (const fieldId of ids) {
+    await selectField(harness, editor, fieldId);
+    const tab = await waitFor(() => {
+      const found = blockFor(editor, fieldId).querySelector('[data-block-tab]');
+      if (found === null) throw new Error(`Field "${fieldId}" shows no tab.`);
+      return found;
+    });
+    texts.push(tab.textContent ?? '');
+  }
+  return texts;
+};
+
 export const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
 
@@ -308,9 +331,10 @@ export const authorsValuesFromField = async (
 
   // Its settings open the attribute's answers in a dialog of their own,
   // written to the codebook for THIS editor's subject.
-  await selectField(harness, editor, fieldId);
   await harness.user.click(
-    (await fieldSettings()).getByRole('button', { name: 'Edit options' }),
+    (await openFieldSettings(harness, editor, fieldId)).getByRole('button', {
+      name: 'Edit options',
+    }),
   );
   const dialog = await screen.findByRole('dialog', {
     name: 'Options and settings of contact_setting',
@@ -386,9 +410,8 @@ export const authorsDateSettingsFromField = async (
   });
   await harness.user.keyboard('When did you first meet?');
   const [dateId] = await draftedAttribute(harness, subject, 'met_on');
-  await selectField(harness, editor, fieldId);
   await harness.user.click(
-    (await fieldSettings()).getByRole('button', {
+    (await openFieldSettings(harness, editor, fieldId)).getByRole('button', {
       name: 'Edit control settings',
     }),
   );

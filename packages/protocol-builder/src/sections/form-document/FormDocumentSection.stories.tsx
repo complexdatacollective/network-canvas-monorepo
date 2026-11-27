@@ -122,11 +122,24 @@ export const Main: Story = {
     await expect(editor).toHaveTextContent('About this person');
     const frame = fieldFrame(editor, RELATIONSHIP_FIELD);
     await expect(frame).toHaveTextContent('How do you know this person?');
-    await expect(frame).toHaveTextContent('relationship_to_ego');
+    // At rest, a field is drawn as the participant meets it: its attribute
+    // shows only in its tab, while it is selected or the pointer is over it.
+    await expect(frame).not.toHaveTextContent('relationship_to_ego');
     // The control is a picture of what the participant answers with.
     const control = frame.querySelector('[data-field-control]');
     await expect(control).toHaveAttribute('inert');
     await expect(control?.querySelector('input')).not.toBeNull();
+    // Selected, the field's tab shows its attribute and its settings button.
+    await caretInQuestion(editor, RELATIONSHIP_FIELD);
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(frame.querySelector('[data-block-tab]')).toHaveTextContent(
+        'relationship_to_ego',
+      ),
+    );
+    await expect(
+      within(frame).getByRole('button', { name: 'Field settings' }),
+    ).toBeVisible();
   },
 };
 
@@ -241,7 +254,13 @@ export const InsertFieldFromToolbar: Story = {
     await expect(frame.querySelector('[data-field-label]')).toHaveTextContent(
       /^What is their name\?$/,
     );
-    await expect(frame).toHaveTextContent(/name$/);
+    // Selected, the field shows its new attribute in its tab.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(frame.querySelector('[data-block-tab]')).toHaveTextContent(
+        /^name/,
+      ),
+    );
   },
 };
 
@@ -303,8 +322,12 @@ export const InsertFieldWithKeyboardThenType: Story = {
   },
 };
 
-/** A selected field shows its settings beside it. */
-export const SelectFieldOpensSettings: Story = {
+/**
+ * A selected field shows its settings button in its tab, and the settings
+ * open from it (or from Enter on the selected field), not as the field is
+ * selected.
+ */
+export const SettingsFromTheFieldsButton: Story = {
   play: async ({ canvasElement }) => {
     await awaitPassiveEffects();
     const body = within(canvasElement.ownerDocument.body);
@@ -313,14 +336,38 @@ export const SelectFieldOpensSettings: Story = {
 
     await userEvent.keyboard('{Escape}');
 
-    await waitFor(() =>
-      expect(fieldFrame(editor, RELATIONSHIP_FIELD)).toHaveAttribute(
-        'data-selected',
-      ),
+    const frame = fieldFrame(editor, RELATIONSHIP_FIELD);
+    await waitFor(() => expect(frame).toHaveAttribute('data-selected'));
+    const button = await within(frame).findByRole('button', {
+      name: 'Field settings',
+    });
+    await expect(body.queryByRole('dialog', { name: 'Field settings' })).toBe(
+      null,
     );
+
+    await userEvent.click(button);
     const settings = await body.findByRole('dialog', {
       name: 'Field settings',
     });
+    // Attached to the button, on the side of it they say they are on.
+    await waitFor(() => {
+      const at = button.getBoundingClientRect();
+      const shown = settings.getBoundingClientRect();
+      expect(shown.height).toBeGreaterThan(0);
+      const side = settings.getAttribute('data-side');
+      const beside = {
+        bottom: shown.top >= at.bottom,
+        top: shown.bottom <= at.top,
+        right: shown.left >= at.right,
+        left: shown.right <= at.left,
+      };
+      expect(side !== null && side in beside).toBe(true);
+      expect(beside[side as keyof typeof beside]).toBe(true);
+    });
+    // Focus is at the first of them.
+    await waitFor(() =>
+      expect(settings.contains(document.activeElement)).toBe(true),
+    );
     await expect(
       within(settings).getByRole('combobox', { name: 'Input control' }),
     ).toBeInTheDocument();

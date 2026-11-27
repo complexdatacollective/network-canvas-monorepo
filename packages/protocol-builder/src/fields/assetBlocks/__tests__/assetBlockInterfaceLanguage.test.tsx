@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -59,11 +59,21 @@ const viewOf = (
 const viewProps = {
   attributes: assetBlockAttributes({ description: 'A harbour at dawn' }),
   selected: true,
+  hovered: false,
   editable: true,
   active: true,
   update: vi.fn(),
   remove: vi.fn(),
   returnToText: vi.fn(),
+  selectKeepingFocus: vi.fn(),
+};
+
+// Opens a block's settings from their button, whose name is plain English
+// for a screen reader whatever the interface's language.
+const openSettings = () => {
+  act(() => {
+    fireEvent.click(screen.getByRole('button', { name: 'Image settings' }));
+  });
 };
 
 describe('a block in text written in another language', () => {
@@ -90,6 +100,7 @@ describe('a block in text written in another language', () => {
   it('takes its description in the text’s language, in settings standing outside the text', () => {
     const View = viewOf({ kind: 'image', name: 'harbour.png' });
     drawIn('ar', ENGLISH_TEXT, <View {...viewProps} />);
+    openSettings();
 
     const description = screen.getByRole('textbox');
     expect(description).toHaveValue('A harbour at dawn');
@@ -105,6 +116,7 @@ describe('a block in text written in another language', () => {
   it('takes an Arabic description from an English interface', () => {
     const View = viewOf({ kind: 'image', name: 'harbour.png' });
     drawIn('en', ARABIC_TEXT, <View {...viewProps} />);
+    openSettings();
 
     const description = screen.getByRole('textbox');
     expect(description).toHaveAttribute('lang', 'ar');

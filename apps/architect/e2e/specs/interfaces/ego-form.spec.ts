@@ -168,7 +168,8 @@ test('a field on a new attribute with options is selected by a click on its cont
   });
 
   // The control is a picture that takes no click of its own: a click on
-  // it selects the field, and its settings open.
+  // it selects the field, which shows its settings button; the settings
+  // open from that.
   const mood = fieldBlock(form, 'How do you feel?');
   const control = await mood.locator('[data-field-control]').boundingBox();
   if (control === null) throw new Error('The field shows no control.');
@@ -181,6 +182,8 @@ test('a field on a new attribute with options is selected by a click on its cont
     name: 'Field settings',
     exact: true,
   });
+  await expect(settings).toHaveCount(0);
+  await mood.getByRole('button', { name: 'Field settings' }).click();
   await expect(
     settings.getByRole('combobox', { name: 'Input control' }),
   ).toContainText('Checkbox Group');
@@ -260,15 +263,20 @@ test('a field’s settings change its attribute’s control, and delete the fiel
   await expect(architectPage.getByRole('listbox')).toBeHidden();
   await expect(settings).toBeVisible();
   await expect(control).toBeFocused();
-  // A second Escape leaves the settings for the field, which stays selected
-  // with its settings beside it, as a file's block does; Enter goes back in.
+  // A second Escape closes the settings and gives focus back to their
+  // button; the field stays selected, as a file's block does, and Enter on
+  // the button opens them again.
   await architectPage.keyboard.press('Escape');
-  await expect(formContent(form)).toBeFocused();
+  await expect(settings).toBeHidden();
+  await expect(
+    fieldBlock(form, 'Tell us a story.').getByRole('button', {
+      name: 'Field settings',
+    }),
+  ).toBeFocused();
   await expect(fieldBlock(form, 'Tell us a story.')).toHaveAttribute(
     'data-selected',
     /.*/,
   );
-  await expect(settings).toBeVisible();
   await architectPage.keyboard.press('Enter');
   await expect(settings.locator(':focus')).toHaveCount(1);
   await closeFieldSettings(form, settings);

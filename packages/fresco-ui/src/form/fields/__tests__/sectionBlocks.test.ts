@@ -1,8 +1,9 @@
 import { act } from '@testing-library/react';
 import type { Editor } from '@tiptap/core';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { startBlockDrag } from '../richText/blockFrames';
 import {
   branch,
   doc,
@@ -232,5 +233,145 @@ describe('moving a section from the keyboard', () => {
     expect(json(editor)).toEqual(
       doc(paragraph(text('One')), field('f1', 'age', 'How old?')),
     );
+  });
+});
+
+const bulletList = (...items: string[]) => ({
+  type: 'bulletList',
+  content: items.map((item) => ({
+    type: 'listItem',
+    content: [paragraph(text(item))],
+  })),
+});
+
+const caretAt = (editor: Editor, position: number) => {
+  act(() => {
+    editor.view.dispatch(
+      editor.state.tr.setSelection(
+        TextSelection.create(editor.state.doc, position),
+      ),
+    );
+  });
+};
+
+describe('moving any block from the keyboard', () => {
+  it('moves the paragraph the caret is in, keeping the caret in it', async () => {
+    const view = renderSections({
+      value: doc(
+        paragraph(text('One')),
+        paragraph(text('Two')),
+        field('f1', 'age', 'How old?'),
+      ),
+    });
+    const editor = await view.editor();
+    // Two letters into "Two".
+    caretAt(editor, 8);
+
+    down(editor);
+    expect(json(editor)).toEqual(
+      doc(
+        paragraph(text('One')),
+        field('f1', 'age', 'How old?'),
+        paragraph(text('Two')),
+      ),
+    );
+    const { $from } = editor.state.selection;
+    expect($from.parent.textContent).toBe('Two');
+    expect($from.parentOffset).toBe(2);
+  });
+
+  it('moves a whole list as one block, from the caret in any of its items', async () => {
+    const view = renderSections({
+      value: doc(
+        paragraph(text('Intro')),
+        bulletList('Apples', 'Pears'),
+        paragraph(text('After')),
+      ),
+    });
+    const editor = await view.editor();
+    // In "Pears", the list's second item.
+    let pears = 0;
+    editor.state.doc.descendants((node, position) => {
+      if (node.isText && node.text === 'Pears') pears = position;
+    });
+    caretAt(editor, pears + 1);
+
+    up(editor);
+    expect(json(editor)).toEqual(
+      doc(
+        bulletList('Apples', 'Pears'),
+        paragraph(text('Intro')),
+        paragraph(text('After')),
+      ),
+    );
+    // The item did not leave its list.
+    expect(editor.state.selection.$from.parent.textContent).toBe('Pears');
+  });
+
+  it('moves a selected paragraph and keeps it selected', async () => {
+    const view = renderSections({
+      value: doc(paragraph(text('One')), paragraph(text('Two'))),
+    });
+    const editor = await view.editor();
+    act(() => {
+      editor.view.dispatch(
+        editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, 5)),
+      );
+    });
+
+    up(editor);
+    expect(json(editor)).toEqual(
+      doc(paragraph(text('Two')), paragraph(text('One'))),
+    );
+    const { selection } = editor.state;
+    expect(selection).toBeInstanceOf(NodeSelection);
+    expect(selection.from).toBe(0);
+  });
+});
+
+describe('dragging a block by its handle', () => {
+  it('selects the block and carries the whole of it, to be moved where it is dropped', async () => {
+    const view = renderSections({
+      value: doc(
+        paragraph(text('One')),
+        field('f1', 'age', 'How old?'),
+        paragraph(text('Two')),
+      ),
+    });
+    const editor = await view.editor();
+    const data = new Map<string, string>();
+    const dataTransfer = {
+      clearData: () => data.clear(),
+      setData: (type: string, value: string) => data.set(type, value),
+      setDragImage: vi.fn(),
+      effectAllowed: 'none',
+    };
+    const image = document.createElement('div');
+
+    act(() => {
+      startBlockDrag(
+        editor.view,
+        5,
+        { dataTransfer } as unknown as DragEvent,
+        image,
+      );
+    });
+
+    // The field is the selection, and what is dragged.
+    const { selection } = editor.state;
+    expect(selection).toBeInstanceOf(NodeSelection);
+    expect(selection.from).toBe(5);
+    expect(selectedFieldId(editor)).toBe('f1');
+    const dragging = editor.view.dragging;
+    expect(dragging?.move).toBe(true);
+    expect(dragging?.slice.content.childCount).toBe(1);
+    expect(dragging?.slice.content.firstChild?.attrs.fieldId).toBe('f1');
+    // And what another page is given for it: the block, not the text
+    // around it.
+    expect(data.get('text/html')).toContain('data-field-block');
+    expect(data.get('text/plain')).toContain('How old?');
+    expect(data.get('text/plain')).not.toContain('One');
+    expect(dataTransfer.effectAllowed).toBe('copyMove');
+    expect(dataTransfer.setDragImage).toHaveBeenCalledWith(image, 0, 0);
   });
 });

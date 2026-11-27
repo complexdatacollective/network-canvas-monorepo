@@ -13,6 +13,7 @@ import {
   TextSelection,
   type Transaction,
 } from '@tiptap/pm/state';
+import type { EditorView } from '@tiptap/pm/view';
 
 /**
  * The schema group of the blocks that stand as whole sections of a document
@@ -44,6 +45,76 @@ const containerDepth = ($pos: ResolvedPos): number => {
   }
   return 0;
 };
+
+/** Whether the children of `node`, at `depth`, are blocks: the document, or a branch. */
+const isBlockContainer = (node: ProseMirrorNode, depth: number): boolean =>
+  depth === 0 || holdsSections(node.type);
+
+/** A block of the document, and where it is. */
+type FoundBlock = Readonly<{ pos: number; node: ProseMirrorNode }>;
+
+/**
+ * The block the selection is: a block selected whole (a paragraph, a heading,
+ * a whole list, a rule, a field, a logic block, a file), not text in one. A
+ * caret in a paragraph is not a selection of the paragraph.
+ */
+export const selectedBlockOf = (state: EditorState): FoundBlock | null => {
+  const { selection } = state;
+  if (!(selection instanceof NodeSelection)) return null;
+  const { $from } = selection;
+  return isBlockContainer($from.parent, $from.depth)
+    ? { pos: selection.from, node: selection.node }
+    : null;
+};
+
+/**
+ * The block the selection is in: a block selected whole, or the innermost
+ * block that the caret (or the start of a selection of text) is in. In a
+ * list, that is the whole list: its items are not blocks.
+ */
+export const blockAtSelection = (state: EditorState): FoundBlock | null => {
+  const selected = selectedBlockOf(state);
+  if (selected !== null) return selected;
+  const { $from } = state.selection;
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    if (isBlockContainer($from.node(depth - 1), depth - 1)) {
+      return { pos: $from.before(depth), node: $from.node(depth) };
+    }
+  }
+  return null;
+};
+
+/**
+ * The tab of the block at `position` (`BlockTab`), where it has one now: a
+ * block that holds other blocks has none of its own.
+ */
+const tabOf = (view: EditorView, block: FoundBlock): HTMLElement | null => {
+  const first = block.node.firstChild;
+  if (first !== null && !block.node.isTextblock && holdsSections(first.type)) {
+    return null;
+  }
+  const dom = view.nodeDOM(block.pos);
+  if (!(dom instanceof HTMLElement)) return null;
+  const tab = dom.querySelector('[data-block-tab]');
+  return tab instanceof HTMLElement ? tab : null;
+};
+
+/** The first control of a block's tab: what Tab on the selected block moves to. */
+export const tabControlOf = (
+  view: EditorView,
+  block: FoundBlock,
+): HTMLElement | null =>
+  tabOf(view, block)?.querySelector<HTMLElement>('button:not([disabled])') ??
+  null;
+
+/** The button of a block's tab that Enter on the selected block presses. */
+export const tabActionOf = (
+  view: EditorView,
+  block: FoundBlock,
+): HTMLElement | null =>
+  tabOf(view, block)?.querySelector<HTMLElement>(
+    '[data-block-action]:not([disabled])',
+  ) ?? null;
 
 type Placement = Readonly<{ from: number; to: number }>;
 
@@ -132,21 +203,6 @@ export const insertSection = (
   return from;
 };
 
-/** The section the keys act on: a selected one, or the field the caret is in. */
-const sectionAtSelection = (
-  state: EditorState,
-): Readonly<{ position: number; node: ProseMirrorNode }> | null => {
-  const { selection } = state;
-  if (selection instanceof NodeSelection && isSection(selection.node)) {
-    return { position: selection.from, node: selection.node };
-  }
-  const { $from } = selection;
-  if ($from.depth < 2) return null;
-  const around = $from.node($from.depth - 1);
-  if (!isSection(around) || !$from.parent.isTextblock) return null;
-  return { position: $from.before($from.depth - 1), node: around };
-};
-
 /** Whether `node` is a section whose first or last child holds sections. */
 const enterableAt = (
   node: ProseMirrorNode,
@@ -158,8 +214,7 @@ const enterableAt = (
 };
 
 /**
- * Where a section moved one step up or down goes: past the section or block
- * beside it, into the nearest branch of a logic block beside it, or out of
+ * Where a block moved one step up or down goes: past the block beside it, into the nearest branch of a logic block beside it, or out of
  * the branch it is in, into the branch beside that or past the logic block.
  * Null at the very top or bottom of the document.
  */
@@ -200,18 +255,18 @@ const moveTarget = (
 };
 
 /**
- * Moves the selected section (or the field the caret is in) one step up or
+ * Moves the selected block (or the block the caret is in) one step up or
  * down, as one edit, keeping what was selected. Mod-Shift-ArrowUp and
- * Mod-Shift-ArrowDown: the keyboard's way of dragging a block.
+ * Mod-Shift-ArrowDown: the keyboard's way of dragging a block by its handle.
  */
-const moveSection = (
+export const moveBlock = (
   state: EditorState,
   dispatch: ((tr: Transaction) => void) | undefined,
   direction: 'up' | 'down',
 ): boolean => {
-  const found = sectionAtSelection(state);
+  const found = blockAtSelection(state);
   if (found === null) return false;
-  const { position, node } = found;
+  const { pos: position, node } = found;
   const target = moveTarget(state.doc, position, node.nodeSize, direction);
   if (target === null) return false;
   if (dispatch === undefined) return true;
@@ -239,41 +294,80 @@ const moveSection = (
 };
 
 /**
- * What every section shares: the keys that move one, text typed or pasted
- * over a selected one, and a click on a part of one that is not text selecting it
- * whole.
+ * What every block of a document shares where blocks have frames (see
+ * `BlockFrameLayer`):
+ *
+ * - Mod-Shift-ArrowUp and Mod-Shift-ArrowDown move the selected block, or the
+ *   block the caret is in, one step up or down (`moveBlock`).
+ * - Escape in a block's text selects the block (a field's question and hint
+ *   have their own Escape). It is not spent: what the editor stands in may
+ *   act on it too.
+ * - Tab on a selected block moves to the first control of its tab, where it
+ *   has one (`BlockTab`); Enter presses the tab's action, which opens the
+ *   block's settings.
+ * - Text typed or pasted over a selected block goes below it.
+ * - A click on a section's frame, or on what its view draws that is not
+ *   text, selects the whole section.
  */
-export const SectionBlocks = Extension.create({
-  name: 'sectionBlocks',
+export const DocumentBlocks = Extension.create({
+  name: 'documentBlocks',
 
   addKeyboardShortcuts() {
     return {
       'Mod-Shift-ArrowUp': ({ editor }) =>
-        moveSection(editor.state, editor.view.dispatch, 'up'),
+        moveBlock(editor.state, editor.view.dispatch, 'up'),
       'Mod-Shift-ArrowDown': ({ editor }) =>
-        moveSection(editor.state, editor.view.dispatch, 'down'),
+        moveBlock(editor.state, editor.view.dispatch, 'down'),
+      'Tab': ({ editor }) => {
+        const selected = selectedBlockOf(editor.state);
+        if (selected === null) return false;
+        const control = tabControlOf(editor.view, selected);
+        if (control === null) return false;
+        control.focus();
+        return true;
+      },
+      'Enter': ({ editor }) => {
+        const selected = selectedBlockOf(editor.state);
+        if (selected === null || !editor.isEditable) return false;
+        const action = tabActionOf(editor.view, selected);
+        if (action === null) return false;
+        action.click();
+        return true;
+      },
     };
   },
 
   addProseMirrorPlugins() {
     return [
       new Plugin({
-        key: new PluginKey('sectionBlocks'),
+        key: new PluginKey('documentBlocks'),
         props: {
-          // Text typed over a selection replaces it, and a selected section
-          // is a selection: a whole field would go with one key. The words
-          // start a paragraph below it instead.
-          handleTextInput: (view, _from, _to, text) => {
-            const { selection, schema, tr } = view.state;
+          handleKeyDown: (view, event) => {
             if (
-              !(selection instanceof NodeSelection) ||
-              !isSection(selection.node)
+              event.key !== 'Escape' ||
+              view.state.selection instanceof NodeSelection
             ) {
               return false;
             }
+            const block = blockAtSelection(view.state);
+            if (block === null) return false;
+            view.dispatch(
+              view.state.tr.setSelection(
+                NodeSelection.create(view.state.doc, block.pos),
+              ),
+            );
+            // Not spent: a host that undoes its changes on Escape still does.
+            return false;
+          },
+          // Text typed over a selection replaces it, and a selected block
+          // is a selection: a whole field, file or paragraph would go with
+          // one key. The words start a paragraph below it instead.
+          handleTextInput: (view, _from, _to, text) => {
+            const { schema, tr } = view.state;
+            const selected = selectedBlockOf(view.state);
             const paragraph = schema.nodes.paragraph;
-            if (paragraph === undefined) return false;
-            const below = selection.to;
+            if (selected === null || paragraph === undefined) return false;
+            const below = selected.pos + selected.node.nodeSize;
             tr.insert(below, paragraph.create(null, schema.text(text)));
             tr.setSelection(
               TextSelection.create(tr.doc, below + 1 + text.length),
@@ -281,17 +375,13 @@ export const SectionBlocks = Extension.create({
             view.dispatch(tr.scrollIntoView());
             return true;
           },
-          // Pasting over a selected section is the same: what is pasted goes
+          // Pasting over a selected block is the same: what is pasted goes
           // in below it, and the caret goes to its end.
           handlePaste: (view, _event, slice) => {
-            const { selection, tr } = view.state;
-            if (
-              !(selection instanceof NodeSelection) ||
-              !isSection(selection.node)
-            ) {
-              return false;
-            }
-            const below = selection.to;
+            const selected = selectedBlockOf(view.state);
+            if (selected === null) return false;
+            const { tr } = view.state;
+            const below = selected.pos + selected.node.nodeSize;
             tr.replaceRange(below, below, slice);
             let end = below;
             tr.mapping.maps.at(-1)?.forEach((_from, _to, _newFrom, newTo) => {
@@ -308,8 +398,7 @@ export const SectionBlocks = Extension.create({
           },
           // A click on a section's frame, or on what its view draws that is
           // not text (a field's control, a logic block's heading, a branch's
-          // label), selects the whole section, which is what shows its
-          // settings.
+          // label), selects the whole section.
           handleClickOn: (
             view,
             _position,

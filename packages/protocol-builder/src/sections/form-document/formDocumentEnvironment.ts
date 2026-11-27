@@ -46,11 +46,6 @@ export type FieldBlockHandle = Readonly<{
   /** Whether the block's question and hint are both empty. */
   isEmpty: () => boolean;
   element: () => HTMLElement | null;
-  /**
-   * Moves the keyboard to the first control of the field's settings, while
-   * they are open; does nothing otherwise.
-   */
-  focusSettings: () => void;
 }>;
 
 /** Which field's attribute picker is open, and what it stands beside. */

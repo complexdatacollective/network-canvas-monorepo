@@ -18,6 +18,7 @@ import {
   caretInQuestion,
   formEditor,
   insertPicker,
+  selectField,
 } from './formDocumentTesting.ts';
 
 const PERSON = fixtureTypeId('node', 'person');
@@ -168,9 +169,13 @@ describe('the attribute list of a new field', () => {
         ),
     );
     if (added === undefined) throw new Error('No field was added.');
-    expect(within(added as HTMLElement).getByText('age')).toBeInTheDocument();
     // The caret is in the new field's question, where the next words go.
     await harness.user.keyboard('How old are they?');
+    // Selected, the field shows its attribute in its tab.
+    await harness.user.keyboard('{Escape}');
+    expect(
+      await within(added as HTMLElement).findByText('age'),
+    ).toBeInTheDocument();
 
     const saved = await harness.submit();
     const fields = (
@@ -212,8 +217,10 @@ describe('the attribute list of a new field', () => {
     await harness.opened();
     const editor = await formEditor();
 
+    // Selected, the field shows its tab, with the button that chooses one.
+    await selectField(harness, editor, unfinished);
     await harness.user.click(
-      within(blockFor(editor, unfinished)).getByRole('button', {
+      await within(blockFor(editor, unfinished)).findByRole('button', {
         name: 'Choose an attribute',
       }),
     );
@@ -375,7 +382,9 @@ describe('a new attribute that a name and a type finish', () => {
     expect(created).toBeDefined();
     const added = newBlockIn(editor);
     expect(added).not.toHaveAttribute('data-indeterminate');
-    expect(within(added).getByText('nickname')).toBeVisible();
+    // Selected, the field shows its attribute in its tab.
+    await harness.user.keyboard('{Escape}');
+    expect(await within(added).findByText('nickname')).toBeVisible();
   });
 
   it('can be made with the keyboard alone', async () => {
@@ -417,6 +426,10 @@ describe('a new attribute that a name and a type finish', () => {
       harness.editorCodebook().node?.[PERSON]?.variables ?? {},
     ).find(([, variable]) => variable.name === 'nickname');
     expect(created).toBeDefined();
-    expect(within(newBlockIn(editor)).getByText('nickname')).toBeVisible();
+    // Selected, the field shows its attribute in its tab.
+    await harness.user.keyboard('{Escape}');
+    expect(
+      await within(newBlockIn(editor)).findByText('nickname'),
+    ).toBeVisible();
   });
 });

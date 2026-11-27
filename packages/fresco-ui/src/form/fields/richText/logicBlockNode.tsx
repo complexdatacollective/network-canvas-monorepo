@@ -26,12 +26,8 @@ import {
 
 import { cx } from '../../../utils/cva';
 import { FIELD_BLOCK_NODE } from './fieldBlockNode';
+import { PLACEHOLDER_CLASSES } from './placeholderClasses';
 import { insertSection, SECTION_GROUP } from './sectionBlocks';
-import {
-  PLACEHOLDER_CLASSES,
-  SectionDragHandle,
-  sectionFrameVariants,
-} from './sectionFrame';
 
 export const LOGIC_BLOCK_NODE = 'logicBlock';
 export const LOGIC_BRANCH_NODE = 'logicBranch';
@@ -95,7 +91,7 @@ export type RichTextLogicBlockViewProps = Readonly<{
   remove: () => void;
   /** Selects the whole block, with the keyboard in the text. */
   select: () => void;
-  /** The block's frame as drawn, for anchoring a popover to. */
+  /** The block as drawn, for anchoring a popover to. */
   element: () => HTMLElement | null;
   /** Where the document's field blocks are, seen from this block, now. */
   fieldScope: () => RichTextLogicBlockFieldScope;
@@ -334,16 +330,15 @@ function LogicBlockView({
       ref={frame}
       data-logic-block-view=""
       data-selected={selected || undefined}
-      className={sectionFrameVariants({ kind: 'logic', selected })}
+      // A box of its own, with the smaller corners of a boxed block. Its
+      // frame and handle are drawn over the page (see `BlockFrameLayer`).
+      className="border-info/40 relative my-4 rounded-sm border-2 first:mt-0 last:mb-0"
     >
-      <SectionDragHandle editable={editable} />
       {/*
         Clips what the consumer draws (a header's background, say) to the
-        frame's rounded corners, inside its border. The frame itself does not
-        clip, so the handle in the gutter before it is drawn whole; a section
-        in a branch keeps its own handle inside the branch's gutter.
+        block's rounded corners, inside its border.
       */}
-      <div className="overflow-clip rounded-[calc(var(--radius-lg)-2px)]">
+      <div className="overflow-clip rounded-[calc(var(--radius-sm)-2px)]">
         {blocks === null ? (
           content
         ) : (
@@ -420,11 +415,11 @@ function LogicBranchView({ node, editor, getPos }: ReactNodeViewProps) {
         </div>
       )}
       {/*
-        What the branch shows starts 32px in, a gutter for the drag handles of
-        the sections in it (see `SectionDragHandle`). An empty branch holds
-        none, and says so on the line of its label.
+        What the branch shows starts 40px in, a gutter for the drag handles of
+        the blocks in it (see `BlockFrameLayer`). An empty branch holds none,
+        and says so on the line of its label.
       */}
-      <NodeViewContent className={empty ? 'min-w-0 flex-1' : 'ps-4'} />
+      <NodeViewContent className={empty ? 'min-w-0 flex-1' : 'ps-6'} />
     </NodeViewWrapper>
   );
 }
@@ -433,8 +428,9 @@ const EMPTY_BRANCHES = new PluginKey('logicBlockEmptyBranches');
 
 /**
  * Logic blocks and their branches, drawn by the consumer's views
- * (`RichTextLogicBlocks`). A block is moved by its handle or with
- * Mod-Shift-ArrowUp and Mod-Shift-ArrowDown, and copied and pasted whole,
+ * (`RichTextLogicBlocks`). A block is moved by its handle (see
+ * `BlockFrameLayer`) or with Mod-Shift-ArrowUp and Mod-Shift-ArrowDown
+ * (`DocumentBlocks`), and copied and pasted whole,
  * between editors too: its logic travels as data attributes. A branch that
  * shows nothing says so (`emptyBranchText`).
  */
@@ -482,7 +478,8 @@ export const createLogicBlockNodes = (
     content: `${LOGIC_BRANCH_NODE}+`,
     isolating: true,
     selectable: true,
-    draggable: true,
+    // Moved by the handle its frame shows (see `BlockFrameLayer`).
+    draggable: false,
 
     addAttributes() {
       return { meta: metaAttribute };

@@ -1,18 +1,16 @@
-import { Settings2 } from 'lucide-react';
 import {
   type FocusEvent,
   type MouseEvent,
-  type RefObject,
   useEffect,
   useId,
   useMemo,
-  useRef,
+  useState,
 } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { IconButton } from '@codaco/fresco-ui/Button';
 import {
-  firstSettingsControlIn,
+  blockActionProps,
+  BlockTab,
   type RichTextFieldBlockViewProps,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { Skeleton } from '@codaco/fresco-ui/Skeleton';
@@ -99,19 +97,15 @@ function ControlSkeleton() {
  * What both views of a field block share: the field's attribute, the block
  * registered for the attribute picker, and the picker, opened from the block.
  */
-function useFieldBlock(
-  {
-    attributes,
-    editable,
-    empty,
-    update,
-    remove,
-    select,
-    element,
-  }: RichTextFieldBlockViewProps,
-  /** The panel of the field's settings while they are drawn, if it has any. */
-  settingsPanel?: RefObject<HTMLElement | null>,
-) {
+function useFieldBlock({
+  attributes,
+  editable,
+  empty,
+  update,
+  remove,
+  select,
+  element,
+}: RichTextFieldBlockViewProps) {
   const environment = useFormDocumentEnvironment();
   const { fieldId, variable: variableId } = attributes;
   const variable =
@@ -130,12 +124,8 @@ function useFieldBlock(
         select: () => latest().select(),
         isEmpty: () => latest().empty,
         element: () => latest().element(),
-        focusSettings: () => {
-          const panel = settingsPanel?.current ?? null;
-          if (panel !== null) firstSettingsControlIn(panel)?.focus();
-        },
       }),
-    [fieldId, latest, registerBlock, settingsPanel],
+    [fieldId, latest, registerBlock],
   );
 
   const openPicker = () => {
@@ -153,8 +143,9 @@ function useFieldBlock(
 }
 
 /**
- * The attribute's pill in the block's corner, or, for a field that needs an
- * attribute (`needsAttribute`), a button that opens the attribute list.
+ * The attribute's pill in the block's tab, or, for a field that needs an
+ * attribute (`needsAttribute`), a button that opens the attribute list,
+ * which Enter on the selected field presses.
  */
 function FieldPill({
   variable,
@@ -181,6 +172,7 @@ function FieldPill({
         onClick={openPicker}
         className="focusable rounded-full"
         data-choose-attribute=""
+        {...blockActionProps}
       >
         {indeterminate ? (
           <VariablePill
@@ -273,42 +265,44 @@ const isBlockClick = (target: EventTarget): boolean =>
 
 /**
  * A field of a form in a stage editor, drawn as the participant meets it:
- * the question and hint, which the researcher types in place, the
- * attribute's pill in the corner, and the control that the attribute is
- * collected with. The control is a picture: it takes no answer and no focus.
- * Clicking it (or the frame) selects the field, and the field's settings
- * open beside it.
+ * the question and hint, which the researcher types in place, and the
+ * control that the attribute is collected with. The control is a picture: it
+ * takes no answer and no focus. While the pointer is over the field, or the
+ * field is selected, its tab shows the attribute's pill and the settings
+ * button, which the field's settings open from. Clicking the control selects
+ * the field.
  *
- * Indeterminate while it has no attribute: a dashed frame, a skeleton
- * control and a "Choose an attribute" pill that opens the attribute list.
+ * Indeterminate while it has no attribute: a dashed outline, a skeleton
+ * control, and a "Choose an attribute" button in its tab, which opens the
+ * attribute list (as a click on the field does).
  */
 export function StageFieldBlockView(props: RichTextFieldBlockViewProps) {
   const {
     attributes,
     content,
     selected,
+    hovered,
     editable,
     active,
     update,
     remove,
     select,
-    element,
+    selectKeepingFocus,
   } = props;
   const intl = useAppIntl();
   const environment = useFormDocumentEnvironment();
   const stage = useFormStageEnvironment();
   const { fieldId } = attributes;
   const labelId = useId();
-  const settingsPanel = useRef<HTMLElement | null>(null);
-  const { variable, indeterminate, missing, openPicker } = useFieldBlock(
-    props,
-    settingsPanel,
-  );
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { variable, indeterminate, missing, openPicker } = useFieldBlock(props);
 
   // A field without an attribute, or whose attribute the codebook no longer
-  // has, opens the attribute list in place of its settings.
+  // has, has its attribute list in place of its settings.
   const needsAttribute = indeterminate || missing;
-  const showsSettings = selected && editable && active && !needsAttribute;
+  const showsSettings = settingsOpen && editable && !needsAttribute;
+  const showsTab =
+    editable && (hovered || (selected && active) || showsSettings);
 
   // While a problem with the form's fields is shown, the field that has it
   // answers for them (see `FormDocumentStageEnvironment.fieldsIssue`): it
@@ -330,9 +324,8 @@ export function StageFieldBlockView(props: RichTextFieldBlockViewProps) {
   };
 
   // A click anywhere in the block outside its question and hint (the
-  // control, the corner) selects the field, as a click on a file's block
-  // does, and its settings open. A field without an attribute opens its
-  // attribute list instead, as Enter on it does.
+  // control) selects the field, as a click on a file's block does. A field
+  // without an attribute opens its attribute list instead.
   const selectFromClick = (event: MouseEvent<HTMLDivElement>) => {
     if (!editable || !isBlockClick(event.target)) return;
     if (needsAttribute) openPicker();
@@ -359,14 +352,8 @@ export function StageFieldBlockView(props: RichTextFieldBlockViewProps) {
         // oxlint-disable-next-line jsx-a11y/label-has-associated-control
         <label hidden>{issueName}</label>
       )}
-      <div className="flex items-start gap-3">
-        <div id={labelId} className="min-w-0 flex-1">
-          {content}
-        </div>
-        <div
-          contentEditable={false}
-          className="flex shrink-0 items-center gap-2 select-none"
-        >
+      {showsTab && (
+        <BlockTab selected={selected && active}>
           <FieldPill
             variable={variable}
             indeterminate={indeterminate}
@@ -375,37 +362,28 @@ export function StageFieldBlockView(props: RichTextFieldBlockViewProps) {
             editable={editable}
             openPicker={openPicker}
           />
-          {selected && editable && !needsAttribute && (
-            <IconButton
-              size="sm"
-              variant="text"
-              aria-label="Field settings"
-              icon={<Settings2 aria-hidden />}
-              onClick={select}
-              // The pointer's way to the settings; the keyboard's is Enter on
-              // the selected field. Out of the Tab order, so the list of
-              // problems hands focus to the field rather than to this.
-              tabIndex={-1}
+          {!needsAttribute && variable !== undefined && (
+            <FieldSettingsPopover
+              attributes={attributes}
+              variable={variable}
+              update={update}
+              remove={remove}
+              select={select}
+              selectKeepingFocus={selectKeepingFocus}
+              open={showsSettings}
+              onOpenChange={setSettingsOpen}
             />
           )}
-        </div>
+        </BlockTab>
+      )}
+      <div id={labelId} className="min-w-0">
+        {content}
       </div>
       <FieldControlPreview
         attributes={attributes}
         variable={variable}
         labelId={labelId}
       />
-      {showsSettings && variable !== undefined && (
-        <FieldSettingsPopover
-          attributes={attributes}
-          variable={variable}
-          update={update}
-          remove={remove}
-          select={select}
-          element={element}
-          panelRef={settingsPanel}
-        />
-      )}
     </div>
   );
 }
@@ -413,17 +391,19 @@ export function StageFieldBlockView(props: RichTextFieldBlockViewProps) {
 /**
  * A field of a form in the translation table: its question and hint as the
  * participant reads them in this language (they are translated in rows of
- * their own; the block contains no text), the attribute's pill, and the
- * control. A field is moved, put in and taken out here; its attribute and
- * settings are changed in the stage editor. A field that has no attribute
- * yet opens the list of the form's fields.
+ * their own; the block contains no text), and the control. While the pointer
+ * is over it, or it is selected, its tab shows the attribute's pill. A field
+ * is moved, put in and taken out here; its attribute and settings are
+ * changed in the stage editor. A field that has no attribute yet opens the
+ * list of the form's fields.
  */
 export function TranslationFieldBlockView(props: RichTextFieldBlockViewProps) {
-  const { attributes, editable, select } = props;
+  const { attributes, selected, hovered, editable, active, select } = props;
   const environment = useFormDocumentEnvironment();
   const { fieldId } = attributes;
   const labelId = useId();
   const { variable, indeterminate, missing, openPicker } = useFieldBlock(props);
+  const showsTab = editable && (hovered || (selected && active));
 
   const entry = environment.fields.find((field) => field.id === fieldId);
   const selectFromClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -442,17 +422,8 @@ export function TranslationFieldBlockView(props: RichTextFieldBlockViewProps) {
       data-field-block={fieldId}
       onClick={selectFromClick}
     >
-      <div className="flex items-start gap-3">
-        <div id={labelId} className="min-w-0 flex-1">
-          <FieldTextInTable
-            question={entry?.prompt?.[environment.locale]}
-            hint={entry?.hint?.[environment.locale]}
-          />
-        </div>
-        <div
-          contentEditable={false}
-          className="flex shrink-0 items-center gap-2 select-none"
-        >
+      {showsTab && (
+        <BlockTab selected={selected && active}>
           <FieldPill
             variable={variable}
             indeterminate={indeterminate}
@@ -461,7 +432,13 @@ export function TranslationFieldBlockView(props: RichTextFieldBlockViewProps) {
             editable={editable}
             openPicker={openPicker}
           />
-        </div>
+        </BlockTab>
+      )}
+      <div id={labelId} className="min-w-0">
+        <FieldTextInTable
+          question={entry?.prompt?.[environment.locale]}
+          hint={entry?.hint?.[environment.locale]}
+        />
       </div>
       <FieldControlPreview
         attributes={attributes}

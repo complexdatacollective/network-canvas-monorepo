@@ -66,10 +66,6 @@ describe('a field block', () => {
     expect(frame?.querySelector('[data-testid="field-f1"]')).toContainElement(
       label as HTMLElement,
     );
-    expect(frame?.querySelector('[data-drag-handle]')).toHaveAttribute(
-      'aria-hidden',
-      'true',
-    );
   });
 
   it('draws a field with no attribute as indeterminate', async () => {
@@ -277,8 +273,10 @@ describe('a field block', () => {
     // Spent on the field: a dialog around the editor is not told.
     expect(reachedOutside).toBe(false);
 
+    // Enter on a selected field presses its tab's action: its settings.
+    await screen.findByRole('button', { name: 'Field settings' });
     press(editor, 'Enter');
-    expect(view.onActivate).toHaveBeenCalledWith('f1', expect.any(HTMLElement));
+    expect(view.onActivate).toHaveBeenCalledWith('f1');
     // Enter on a selected field changes nothing.
     expect(json(editor)).toEqual(doc(field('f1', 'age', 'How old?')));
   });

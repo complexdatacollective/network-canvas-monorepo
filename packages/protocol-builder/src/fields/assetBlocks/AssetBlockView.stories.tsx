@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { ReactNode } from 'react';
 import {
   expect,
   fireEvent,
@@ -10,7 +9,10 @@ import {
   within,
 } from 'storybook/test';
 
-import { assetBlockFrameVariants } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import {
+  BLOCK_FRAME_OFFSET,
+  BLOCK_FRAME_WIDTH,
+} from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
 import {
   ASSET_BLOCK_ALIGNMENTS,
@@ -25,7 +27,12 @@ import {
 import { PageContentStoryHost } from '../../testing/PageContentStoryHost.tsx';
 import { messages } from './assetBlockMessages.ts';
 import { createAssetBlockView } from './AssetBlockView.tsx';
-import { SETTINGS_MARGIN, SETTINGS_OFFSET } from './settingsPlacement.ts';
+import {
+  KEEP_OUT_CLEARANCE,
+  PLAYER_CONTROLS_HEIGHT,
+  SETTINGS_MARGIN,
+  SETTINGS_OFFSET,
+} from './settingsPlacement.ts';
 
 // What a block's view draws, from stand-ins for where its files come from.
 const View = createAssetBlockView({
@@ -42,11 +49,13 @@ const meta = {
   args: {
     attributes: assetBlockAttributes({ size: 'small' }),
     selected: true,
+    hovered: false,
     editable: true,
     active: true,
     update: fn(),
     remove: fn(),
     returnToText: fn(),
+    selectKeepingFocus: fn(),
   },
 } satisfies Meta<typeof View>;
 
@@ -54,19 +63,44 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * A selected image in a field the researcher is in: its picture, and over the
- * page beside it the settings that change how it shows, each a labelled field.
+ * Presses the settings button in the tab of the block in `scope`, and waits
+ * for the settings it opens, which stand over the page, outside the story's
+ * own element.
+ */
+const openSettings = async (scope: HTMLElement, name: string) => {
+  const button = await within(scope).findByRole('button', { name });
+  await userEvent.click(button);
+  return within(scope.ownerDocument.body).findByRole('dialog', { name });
+};
+
+/**
+ * A selected image in a field the researcher is in: its picture, with the
+ * settings button in its tab, and over the page beside the button the
+ * settings that change how it shows, each a labelled field. They open only
+ * from the button.
  */
 export const SelectedImage: Story = {
   play: async ({ canvasElement, args }) => {
-    // The settings stand over the page, outside the story's own element.
-    const settingsElement = await within(
-      canvasElement.ownerDocument.body,
-    ).findByRole('dialog', { name: 'Image settings' });
+    const body = within(canvasElement.ownerDocument.body);
+    // Selected, the block shows its settings button, and not its settings.
+    await expect(
+      await within(canvasElement).findByRole('button', {
+        name: 'Image settings',
+      }),
+    ).toBeVisible();
+    await expect(body.queryByRole('dialog')).toBeNull();
+
+    const settingsElement = await openSettings(canvasElement, 'Image settings');
     const settings = within(settingsElement);
     // Labelled, with their guidance shown under the label.
     await waitFor(() =>
       expect(settings.getByText('Description')).toBeVisible(),
+    );
+    // Focus is at the first of them.
+    await waitFor(() =>
+      expect(
+        settings.getByRole('textbox', { name: 'Description' }),
+      ).toHaveFocus(),
     );
     await expect(
       settings.getByText(
@@ -96,10 +130,30 @@ export const NotSelected: Story = {
   args: { selected: false },
   play: async ({ canvasElement }) => {
     await expect(
+      within(canvasElement).queryByRole('button', { name: 'Image settings' }),
+    ).toBeNull();
+    await expect(
       within(canvasElement.ownerDocument.body).queryByRole('button', {
         name: 'Delete',
       }),
     ).toBeNull();
+  },
+};
+
+/**
+ * The pointer over a block that is not selected: its tab shows the settings
+ * button, which opens the settings and selects the block.
+ */
+export const Hovered: Story = {
+  args: { selected: false, active: false, hovered: true },
+  play: async ({ canvasElement, args }) => {
+    await expect(
+      within(canvasElement.ownerDocument.body).queryByRole('dialog'),
+    ).toBeNull();
+    await openSettings(canvasElement, 'Image settings');
+    // Selected, with focus left in the settings.
+    await expect(args.selectKeepingFocus).toHaveBeenCalled();
+    await expect(args.returnToText).not.toHaveBeenCalled();
   },
 };
 
@@ -128,57 +182,57 @@ const DrawnView = createAssetBlockView({
 
 /**
  * Where the corner that resizes the picture in `scope` is wanted: on the
- * bottom corner of the outline a selected block is drawn with, on the side
+ * bottom corner of the frame drawn round the selected picture, on the side
  * the picture grows towards, which is the left for a picture held against the
- * right of its box, and the right otherwise. Whatever size the picture is, so
- * that a small picture in a wide box has its corner where the selected box
- * has one. Read from the outline as it is drawn: around the block in the
- * editor, around a stand-in for it in the stories that draw a view alone.
+ * right of its box, and the right otherwise. The frame goes round the picture
+ * as it is drawn, however much narrower than its box it is. Read from the
+ * frame where the editor draws one, and otherwise from where the view says
+ * the frame goes (`data-block-box`): its outer edge `BLOCK_FRAME_OFFSET`
+ * outside that, and its line `BLOCK_FRAME_WIDTH` wide inside the edge.
  */
-const expectCornerOfTheBox = async (scope: Element) => {
+const expectCornerOfTheFrame = async (scope: Element) => {
   const corner = await waitFor(() => {
     const found = scope.querySelector('[data-asset-block-resize]');
     if (found === null) throw new Error('No corner yet');
     return found.getBoundingClientRect();
   });
   const image = scope.querySelector('img');
-  const block = scope.querySelector('[data-asset-block]');
-  if (image === null || block === null) throw new Error('No picture');
-  const style = getComputedStyle(block);
-  await expect(style.outlineStyle).not.toBe('none');
-  // The middle of the line the outline is drawn as.
-  const out =
-    Number.parseFloat(style.outlineOffset) +
-    Number.parseFloat(style.outlineWidth) / 2;
-  const box = block.getBoundingClientRect();
+  const framed = scope.querySelector('[data-block-box]');
+  if (image === null || framed === null) throw new Error('No picture');
+  const box = framed.getBoundingClientRect();
+  // The frame's outer edge.
+  const out = BLOCK_FRAME_OFFSET;
+  const frame = scope.querySelector('[data-block-frame="selected"]');
+  if (frame !== null) {
+    // The frame the editor draws is where the view says it goes, once it has
+    // followed the picture there.
+    await waitFor(() => {
+      const drawn = frame.getBoundingClientRect();
+      const placed = framed.getBoundingClientRect();
+      expect(Math.abs(drawn.left - (placed.left - out))).toBeLessThanOrEqual(1);
+      expect(Math.abs(drawn.right - (placed.right + out))).toBeLessThanOrEqual(
+        1,
+      );
+      expect(
+        Math.abs(drawn.bottom - (placed.bottom + out)),
+      ).toBeLessThanOrEqual(1);
+    });
+  }
+  // The middle of the line the frame is drawn as.
+  const middle = BLOCK_FRAME_OFFSET - BLOCK_FRAME_WIDTH / 2;
   const across =
     Number.parseFloat(getComputedStyle(image).objectPosition) / 100;
-  const x = across === 1 ? box.left - out : box.right + out;
+  const x = across === 1 ? box.left - middle : box.right + middle;
   await expect(
     Math.abs((corner.left + corner.right) / 2 - x),
   ).toBeLessThanOrEqual(1);
   await expect(
-    Math.abs((corner.top + corner.bottom) / 2 - (box.bottom + out)),
+    Math.abs((corner.top + corner.bottom) / 2 - (box.bottom + middle)),
   ).toBeLessThanOrEqual(1);
 };
 
-/**
- * A view drawn alone, in the frame the editor draws around a selected block,
- * so that its corner is measured against the editor's own outline.
- */
-function Outlined({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <div
-      data-asset-block=""
-      className={assetBlockFrameVariants({ selected: true })}
-    >
-      {children}
-    </div>
-  );
-}
-
-const cornerIsAtTheBoxsCorner: Story['play'] = async ({ canvasElement }) => {
-  await expectCornerOfTheBox(canvasElement);
+const cornerIsAtTheFramesCorner: Story['play'] = async ({ canvasElement }) => {
+  await expectCornerOfTheFrame(canvasElement);
 };
 
 // These stories are each about one direction of text, which they set
@@ -188,10 +242,8 @@ const ONE_DIRECTION = ['!mirror'];
 const drawnIn = (direction: 'ltr' | 'rtl'): Story['render'] =>
   function Drawn(args) {
     return (
-      <div dir={direction} className="w-[600px]">
-        <Outlined>
-          <DrawnView {...args} />
-        </Outlined>
+      <div dir={direction} className="w-[600px] pt-12">
+        <DrawnView {...args} />
       </div>
     );
   };
@@ -201,7 +253,7 @@ export const CornerOfAPictureAtTheEnd: Story = {
   args: { attributes: { ...meta.args.attributes, align: 'end' } },
   render: drawnIn('ltr'),
   tags: ONE_DIRECTION,
-  play: cornerIsAtTheBoxsCorner,
+  play: cornerIsAtTheFramesCorner,
 };
 
 /**
@@ -212,7 +264,7 @@ export const CornerOfAPictureInRightToLeftText: Story = {
   args: { attributes: { ...meta.args.attributes, align: 'start' } },
   render: drawnIn('rtl'),
   tags: ONE_DIRECTION,
-  play: cornerIsAtTheBoxsCorner,
+  play: cornerIsAtTheFramesCorner,
 };
 
 /** Right to left, and where a line ends: against the left of its box. */
@@ -220,15 +272,14 @@ export const CornerOfAPictureAtTheEndOfRightToLeftText: Story = {
   args: { attributes: { ...meta.args.attributes, align: 'end' } },
   render: drawnIn('rtl'),
   tags: ONE_DIRECTION,
-  play: cornerIsAtTheBoxsCorner,
+  play: cornerIsAtTheFramesCorner,
 };
 
 const SIZE_CHOICES = [null, ...ASSET_BLOCK_SIZES] as const;
 
 /**
  * A picture at each size and in each place across the page, each selected:
- * its corner is at the corner of its box every time, the box's height being
- * the picture's and its width the page's.
+ * its corner is at the corner of the frame round the picture every time.
  */
 export const CornerAtEverySize: Story = {
   args: { active: false },
@@ -242,12 +293,10 @@ export const CornerAtEverySize: Story = {
               key={`${size}-${align}`}
               data-testid={`${size ?? 'full'}-${align}`}
             >
-              <Outlined>
-                <DrawnView
-                  {...args}
-                  attributes={{ ...args.attributes, size, align }}
-                />
-              </Outlined>
+              <DrawnView
+                {...args}
+                attributes={{ ...args.attributes, size, align }}
+              />
             </div>
           )),
         )}
@@ -257,15 +306,15 @@ export const CornerAtEverySize: Story = {
   play: async ({ canvasElement }) => {
     const blocks = within(canvasElement).getAllByTestId(/-/);
     await expect(blocks).toHaveLength(12);
-    for (const block of blocks) await expectCornerOfTheBox(block);
+    for (const block of blocks) await expectCornerOfTheFrame(block);
   },
 };
 
-/** A small picture in the middle of the page, with its settings beside it. */
+/** A small picture in the middle of the page. */
 export const SmallPicture: Story = {
   render: drawnIn('ltr'),
   tags: ONE_DIRECTION,
-  play: cornerIsAtTheBoxsCorner,
+  play: cornerIsAtTheFramesCorner,
 };
 
 // How much of the page the host in `KeptClearOfTheHostsBars` covers with bars
@@ -287,9 +336,7 @@ export const KeptClearOfTheHostsBars: Story = {
         className="h-[560px] w-[600px] overflow-y-auto [--protocol-builder-covered-bottom:100px] [--protocol-builder-covered-top:120px]"
       >
         <div className="h-[340px]" />
-        <Outlined>
-          <DrawnView {...args} />
-        </Outlined>
+        <DrawnView {...args} />
         <div className="h-[800px]" />
       </div>
     );
@@ -298,10 +345,7 @@ export const KeptClearOfTheHostsBars: Story = {
     const frame = within(canvasElement)
       .getByTestId('frame')
       .getBoundingClientRect();
-    const settings = await within(canvasElement.ownerDocument.body).findByRole(
-      'dialog',
-      { name: 'Image settings' },
-    );
+    const settings = await openSettings(canvasElement, 'Image settings');
     // Clear of each bar by the space the settings keep from it.
     await waitFor(() => {
       const box = settings.getBoundingClientRect();
@@ -316,29 +360,50 @@ export const KeptClearOfTheHostsBars: Story = {
   },
 };
 
+/** How far apart two boxes are: 0 where they touch or overlap. */
+const distanceBetween = (one: DOMRect, other: DOMRect): number =>
+  Math.hypot(
+    Math.max(other.left - one.right, one.left - other.right, 0),
+    Math.max(other.top - one.bottom, one.top - other.bottom, 0),
+  );
+
+type Layout = Readonly<{
+  /** How wide and tall the frame the page scrolls in is. */
+  frame: Readonly<{ wide: number; tall: number }>;
+  /** How far down the frame the picture starts. */
+  above: number;
+  /** How far in from the left of the frame the picture starts. */
+  left: number;
+  /** The picture's size: a square, as tall as the size holds it to. */
+  size: 'medium' | 'large';
+}>;
+
+// How tall each size holds a picture to (`assetBlockMediaVariants`) in a
+// window 900 pixels tall, which is as wide as a square picture.
+const SIZE_PIXELS = { medium: 384, large: 540 } as const;
+
 /**
- * A medium picture high in a frame 560 pixels tall and `wide` wide, its block
- * `blockWide` wide in the middle of it: its settings fit neither under the
- * picture nor over it, and there is more room under it, so they are moved up
- * over it, towards its bottom, where the corner that resizes it is.
+ * A square picture in a frame that its page scrolls in, placed as `layout`
+ * says: where its settings fit beside their button is what the stories that
+ * use it are about. The settings of a picture are 724 pixels wide and about
+ * 360 tall, and stand 10 pixels from their button, which is 40 pixels square,
+ * at the picture's end and over its top. Under or over the button, their end
+ * is at the end of the picture, where their arrow, which points at the
+ * button's middle, keeps them; beside it, their top is 52 pixels above the
+ * picture's.
  */
-const coveredIn = (wide: number, blockWide: number): Story['render'] =>
-  function Covered(args) {
+const placedIn = ({ frame, above, left, size }: Layout): Story['render'] =>
+  function Placed(args) {
     return (
       <div
         data-testid="frame"
         dir="ltr"
-        className="h-[560px] overflow-y-auto"
-        style={{ width: wide }}
+        className="overflow-y-auto"
+        style={{ width: frame.wide, height: frame.tall }}
       >
-        <div className="h-10" />
-        <div className="mx-auto" style={{ width: blockWide }}>
-          <Outlined>
-            <DrawnView
-              {...args}
-              attributes={{ ...args.attributes, size: 'medium' }}
-            />
-          </Outlined>
+        <div style={{ height: above }} />
+        <div style={{ marginLeft: left, width: SIZE_PIXELS[size] }}>
+          <DrawnView {...args} attributes={{ ...args.attributes, size }} />
         </div>
         <div className="h-[800px]" />
       </div>
@@ -346,17 +411,25 @@ const coveredIn = (wide: number, blockWide: number): Story['render'] =>
   };
 
 /**
- * The settings leave the corner uncovered, as far from it as they stand from
- * the picture (`placed` says where), and the corner is what a pointer pressed
- * on its middle takes hold of: dragged up, it makes the picture smaller.
+ * The settings open on `side` of their button, with the whole of them inside
+ * the frame, and leave the corner that resizes the picture uncovered, as far
+ * from it as they stand from the button. The corner is what a pointer
+ * pressed on its middle takes hold of: dragged up, it makes the picture
+ * smaller.
  */
-const cornerStaysInReach =
-  (placed: (settings: DOMRect, corner: DOMRect) => void): Story['play'] =>
+const opensOn =
+  (
+    side: 'bottom' | 'top' | 'right' | 'left',
+    draggedTo: 'small' | 'medium',
+  ): Story['play'] =>
   async ({ canvasElement, args }) => {
-    const settings = await within(canvasElement.ownerDocument.body).findByRole(
-      'dialog',
-      { name: 'Image settings' },
-    );
+    const settings = await openSettings(canvasElement, 'Image settings');
+    const button = within(canvasElement).getByRole('button', {
+      name: 'Image settings',
+    });
+    const frame = within(canvasElement)
+      .getByTestId('frame')
+      .getBoundingClientRect();
     const corner = await waitFor(() => {
       const found = canvasElement.querySelector('[data-asset-block-resize]');
       if (!(found instanceof HTMLElement)) throw new Error('No corner yet');
@@ -365,7 +438,20 @@ const cornerStaysInReach =
     await waitFor(() => {
       const box = settings.getBoundingClientRect();
       expect(box.height).toBeGreaterThan(0);
-      placed(box, corner.getBoundingClientRect());
+      expect(settings).toHaveAttribute('data-side', side);
+      expect(settings).not.toHaveAttribute('data-scrolls');
+      const at = button.getBoundingClientRect();
+      // On that side of the button.
+      if (side === 'bottom') expect(box.top).toBeGreaterThanOrEqual(at.bottom);
+      if (side === 'top') expect(box.bottom).toBeLessThanOrEqual(at.top);
+      if (side === 'right') expect(box.left).toBeGreaterThanOrEqual(at.right);
+      if (side === 'left') expect(box.right).toBeLessThanOrEqual(at.left);
+      // The whole of them, inside the frame.
+      expect(box.top).toBeGreaterThanOrEqual(frame.top - 0.5);
+      expect(box.bottom).toBeLessThanOrEqual(frame.bottom + 0.5);
+      expect(
+        distanceBetween(box, corner.getBoundingClientRect()),
+      ).toBeGreaterThanOrEqual(SETTINGS_OFFSET - 0.5);
     });
     const { left, top, width, height } = corner.getBoundingClientRect();
     const middle = { clientX: left + width / 2, clientY: top + height / 2 };
@@ -395,35 +481,97 @@ const cornerStaysInReach =
     } finally {
       setCapture.mockRestore();
     }
-    await expect(args.update).toHaveBeenCalledWith({ size: 'small' });
+    await expect(args.update).toHaveBeenCalledWith({ size: draggedTo });
   };
 
 /**
- * Where the page has room beside the block, the settings moved over the
- * picture keep to the side of the corner the picture is on.
+ * Below the button of a large picture, the settings stand over the picture
+ * and stop well short of the corner at its bottom.
  */
-export const SettingsBesideTheCorner: Story = {
+export const SettingsBelowTheButton: Story = {
   tags: ONE_DIRECTION,
-  render: coveredIn(960, 700),
-  play: cornerStaysInReach((settings, corner) => {
-    expect(settings.right).toBeLessThanOrEqual(
-      corner.left - SETTINGS_OFFSET + 0.5,
-    );
+  render: placedIn({
+    frame: { wide: 1200, tall: 900 },
+    above: 60,
+    left: 400,
+    size: 'large',
   }),
+  play: opensOn('bottom', 'medium'),
 };
 
 /**
- * Where the page is hardly wider than the block, there is no room beside the
- * corner for them, and the settings moved over the picture stop above it.
+ * Below the button of a medium picture, the settings would come to the
+ * corner at its bottom: there is room for them there, but they open above
+ * the button instead.
  */
-export const SettingsAboveTheCorner: Story = {
+export const SettingsAboveTheButton: Story = {
   tags: ONE_DIRECTION,
-  render: coveredIn(720, 680),
-  play: cornerStaysInReach((settings, corner) => {
-    expect(settings.bottom).toBeLessThanOrEqual(
-      corner.top - SETTINGS_OFFSET + 0.5,
-    );
+  render: placedIn({
+    frame: { wide: 1200, tall: 900 },
+    above: 440,
+    left: 408,
+    size: 'medium',
   }),
+  play: opensOn('top', 'small'),
+};
+
+/**
+ * Where they would come to the corner below the button and do not fit
+ * above it, they open at the end of the line: the right, in text that reads
+ * left to right.
+ */
+export const SettingsAtTheEndOfTheLine: Story = {
+  tags: ONE_DIRECTION,
+  render: placedIn({
+    frame: { wide: 1200, tall: 900 },
+    above: 80,
+    left: 40,
+    size: 'medium',
+  }),
+  play: opensOn('right', 'small'),
+};
+
+/** With no room at the end of the line either, they open at its start. */
+export const SettingsAtTheStartOfTheLine: Story = {
+  tags: ONE_DIRECTION,
+  render: placedIn({
+    frame: { wide: 1200, tall: 900 },
+    above: 80,
+    left: 600,
+    size: 'medium',
+  }),
+  play: opensOn('left', 'small'),
+};
+
+/**
+ * Where they fit on no side of the button, they open below it, stop short of
+ * the corner, and scroll within.
+ */
+export const SettingsScrollWhereNoSideHasRoom: Story = {
+  tags: ONE_DIRECTION,
+  render: placedIn({
+    frame: { wide: 700, tall: 600 },
+    above: 80,
+    left: 158,
+    size: 'medium',
+  }),
+  play: async ({ canvasElement }) => {
+    const settings = await openSettings(canvasElement, 'Image settings');
+    const corner = await waitFor(() => {
+      const found = canvasElement.querySelector('[data-asset-block-resize]');
+      if (!(found instanceof HTMLElement)) throw new Error('No corner yet');
+      return found;
+    });
+    await waitFor(() => {
+      const box = settings.getBoundingClientRect();
+      expect(box.height).toBeGreaterThan(0);
+      expect(settings).toHaveAttribute('data-side', 'bottom');
+      expect(settings).toHaveAttribute('data-scrolls');
+      expect(box.bottom).toBeLessThanOrEqual(
+        corner.getBoundingClientRect().top - KEEP_OUT_CLEARANCE + 0.5,
+      );
+    });
+  },
 };
 
 /** A second picture to choose in place of the first: square, where it is wide. */
@@ -461,9 +609,10 @@ const isDrawn = (media: Element): boolean =>
     : media.getBoundingClientRect().height > 0;
 
 /**
- * Selects the block in the page, and waits for its settings. Clicked once
- * its file is drawn: the preview arrives after the block, and a click where
- * an empty block is lands in the text around it.
+ * Selects the block in the page, opens its settings from the button in its
+ * tab, and waits for them. Clicked once its file is drawn: the preview
+ * arrives after the block, and a click where an empty block is lands in the
+ * text around it.
  */
 const selectBlock = async (canvasElement: HTMLElement, name: string) => {
   const { block, target } = await waitFor(() => {
@@ -485,10 +634,11 @@ const selectBlock = async (canvasElement: HTMLElement, name: string) => {
     coords: { clientX: left + width / 2, clientY: top + height / 2 },
   });
   await waitFor(() => expect(block).toHaveAttribute('data-selected'));
-  const settings = await within(canvasElement.ownerDocument.body).findByRole(
-    'dialog',
-    { name },
-  );
+  // Selecting the block opens nothing.
+  await expect(
+    within(canvasElement.ownerDocument.body).queryByRole('dialog', { name }),
+  ).toBeNull();
+  const settings = await openSettings(block, name);
   return { block, settings: within(settings) };
 };
 
@@ -502,7 +652,8 @@ const WHOLE_EDITOR = ['!mirror'];
 /**
  * A picture's file replaced from its settings: the resource browser opens
  * over them, and once a file is chosen the block draws it, is still
- * selected, and keeps its description, size and place.
+ * selected, and keeps its description, size and place. The settings close
+ * with the view drawn for the first file, and open again from the block.
  */
 export const ReplacingThePicture: Story = {
   tags: WHOLE_EDITOR,
@@ -560,14 +711,16 @@ export const ReplacingThePicture: Story = {
       expect(image?.naturalWidth).toBeGreaterThan(0);
       expect(image?.naturalWidth).toBe(image?.naturalHeight);
     });
-    // Still the selection, with the caret on it, where Enter goes back into
-    // its settings; and those are over the page again.
+    // Still the selection, with the caret on it. The view is made again for
+    // the new file, and its settings with it: Enter on the block opens them.
     await expect(block).toHaveAttribute('data-selected');
     await waitFor(() =>
       expect(
         within(canvasElement).getByRole('textbox', { name: /^Rich Text/ }),
       ).toHaveFocus(),
     );
+    await within(block).findByRole('button', { name: 'Image settings' });
+    await userEvent.keyboard('{Enter}');
     const again = within(
       await body.findByRole('dialog', { name: 'Image settings' }),
     );
@@ -576,8 +729,8 @@ export const ReplacingThePicture: Story = {
         'Square sketch',
       ),
     ).toBeVisible();
-    // Its corner is on the corner of the selected box, small as it is.
-    await expectCornerOfTheBox(canvasElement);
+    // Its corner is on the corner of the frame round it, small as it is.
+    await expectCornerOfTheFrame(canvasElement);
     // Its other settings are kept.
     await expect(
       again.getByRole('textbox', { name: 'Description' }),
@@ -594,12 +747,12 @@ export const ReplacingThePicture: Story = {
 };
 
 /**
- * The settings reached from the keyboard: Enter on the selected block goes
- * to its first setting, Escape goes back to the block, and Enter goes to the
- * first setting again. While focus is outside them, the settings take their
- * controls out of the Tab order, and Enter still reaches them.
+ * The settings reached from the keyboard: Enter on the selected block presses
+ * its settings button, and focus goes to the first setting; Escape closes
+ * them and gives focus back to the button, where Enter opens them again.
+ * Enter on the block changes nothing in the text.
  */
-export const SettingsReachedAgainAfterEscape: Story = {
+export const SettingsFromTheKeyboard: Story = {
   tags: WHOLE_EDITOR,
   render: () => (
     <PageHost
@@ -607,27 +760,58 @@ export const SettingsReachedAgainAfterEscape: Story = {
     />
   ),
   play: async ({ canvasElement }) => {
-    const { settings } = await selectBlock(canvasElement, 'Image settings');
+    const body = within(canvasElement.ownerDocument.body);
+    const block = await waitFor(() => {
+      const found =
+        canvasElement.querySelector<HTMLElement>('[data-asset-block]');
+      const image = found?.querySelector('img');
+      if (found === null || image === null || image === undefined) {
+        throw new Error('No picture yet');
+      }
+      if (!isDrawn(image)) throw new Error('The picture is not drawn yet');
+      return found;
+    });
     const text = within(canvasElement).getByRole('textbox', {
       name: /^Rich Text/,
     });
+    // Selected with a click on the picture, which leaves focus in the text.
+    const image = block.querySelector('img');
+    if (image === null) throw new Error('No picture');
+    const { left, top, width, height } = image.getBoundingClientRect();
+    await userEvent.pointer({
+      keys: '[MouseLeft]',
+      target: image,
+      coords: { clientX: left + width / 2, clientY: top + height / 2 },
+    });
+    await waitFor(() => expect(block).toHaveAttribute('data-selected'));
     await waitFor(() => expect(text).toHaveFocus());
-    // The first setting: the description, at the top of the settings.
+    await expect(body.queryByRole('dialog')).toBeNull();
+
+    await userEvent.keyboard('{Enter}');
+    const settings = within(
+      await body.findByRole('dialog', { name: 'Image settings' }),
+    );
     const first = settings.getByRole('textbox', { name: 'Description' });
-
-    await userEvent.keyboard('{Enter}');
     await waitFor(() => expect(first).toHaveFocus());
 
+    const button = within(block).getByRole('button', {
+      name: 'Image settings',
+    });
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(text).toHaveFocus());
-    await expect(
-      await within(canvasElement.ownerDocument.body).findByRole('dialog', {
-        name: 'Image settings',
-      }),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(body.queryByRole('dialog', { name: 'Image settings' })).toBeNull(),
+    );
+    await waitFor(() => expect(button).toHaveFocus());
 
     await userEvent.keyboard('{Enter}');
-    await waitFor(() => expect(first).toHaveFocus());
+    await waitFor(() =>
+      expect(
+        within(body.getByRole('dialog', { name: 'Image settings' })).getByRole(
+          'textbox',
+          { name: 'Description' },
+        ),
+      ).toHaveFocus(),
+    );
     // Enter went to the settings: the page still has its block, and no new
     // paragraph took its place.
     await expect(canvasElement.querySelector('[data-asset-block]')).not.toBe(
@@ -646,7 +830,28 @@ export const VideoSettings: Story = {
     <PageHost block="![A walkthrough](asset:video-1?size=medium&autoplay=false)" />
   ),
   play: async ({ canvasElement }) => {
-    const { settings } = await selectBlock(canvasElement, 'Video settings');
+    const { block, settings } = await selectBlock(
+      canvasElement,
+      'Video settings',
+    );
+    // The bar of controls along the bottom of the video stays uncovered.
+    const video = block.querySelector('video');
+    if (video === null) throw new Error('No video');
+    const popup = settings
+      .getByRole('textbox', { name: 'Description' })
+      .closest('[role="dialog"]');
+    if (popup === null) throw new Error('No settings');
+    await waitFor(() => {
+      const shown = popup.getBoundingClientRect();
+      const file = video.getBoundingClientRect();
+      expect(shown.height).toBeGreaterThan(0);
+      const covers =
+        shown.top < file.bottom &&
+        shown.bottom > file.bottom - PLAYER_CONTROLS_HEIGHT &&
+        shown.left < file.right &&
+        shown.right > file.left;
+      expect(covers).toBe(false);
+    });
     await expect(
       settings.getByRole('switch', { name: 'Start playing automatically' }),
     ).not.toBeChecked();
@@ -675,10 +880,8 @@ export const InterfaceWordsInTextOfAnotherLanguage: Story = {
   tags: ONE_DIRECTION,
   render: function Drawn(args) {
     return (
-      <div lang="en-US" dir="ltr" className="w-[600px]">
-        <Outlined>
-          <DrawnView {...args} />
-        </Outlined>
+      <div lang="en-US" dir="ltr" className="w-[600px] pt-12">
+        <DrawnView {...args} />
       </div>
     );
   },
@@ -687,10 +890,9 @@ export const InterfaceWordsInTextOfAnotherLanguage: Story = {
       lang: element.closest('[lang]')?.getAttribute('lang'),
       dir: element.closest('[dir]')?.getAttribute('dir'),
     });
-    const settings = await within(canvasElement.ownerDocument.body).findByRole(
-      'dialog',
-      { name: 'Image settings' },
-    );
+    // The settings button is named in plain English for a screen reader,
+    // whatever the interface's language.
+    const settings = await openSettings(canvasElement, 'Image settings');
     const description = within(settings).getByRole('textbox');
     await expect(languageOf(description)).toEqual({
       lang: 'en-US',

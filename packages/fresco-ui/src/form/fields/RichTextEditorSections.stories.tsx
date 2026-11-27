@@ -3,17 +3,22 @@ import type { JSONContent } from '@tiptap/react';
 import {
   Braces,
   Image as ImageIcon,
+  Settings2,
   Split,
   TextCursorInput,
 } from 'lucide-react';
 import { type ComponentProps, useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import { Popover, PopoverContent } from '../../Popover';
+import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import { inlineValuesFor } from '../../testing/inlineValues';
 import { withMod } from '../../testing/modKey';
 import { cx } from '../../utils/cva';
 import RichTextEditorField, {
+  assetBlockFileProps,
+  blockActionProps,
+  blockBoxProps,
+  BlockTab,
   type RichTextAssetBlockViewProps,
   type RichTextFieldBlocks,
   type RichTextFieldBlockViewProps,
@@ -55,23 +60,49 @@ const pillClasses =
   'inline-flex items-center rounded-full border-2 border-current/30 px-3 text-sm leading-6 select-none';
 
 /** A stand-in for Architect's field view: the label and hint, the attribute, the control. */
-function StoryFieldView({ attributes, content }: RichTextFieldBlockViewProps) {
+function StoryFieldView({
+  attributes,
+  content,
+  selected,
+  hovered,
+  active,
+}: RichTextFieldBlockViewProps) {
   const indeterminate = attributes.variable === '';
+  const [open, setOpen] = useState(false);
   return (
     <div
       className="flex flex-col gap-4"
       data-field-required={indeterminate ? undefined : ''}
     >
-      <div className="flex items-start gap-4">
-        <div className="min-w-0 flex-1">{content}</div>
-        <span
-          contentEditable={false}
-          data-testid="field-attribute"
-          className={cx(pillClasses, indeterminate && 'border-dashed italic')}
-        >
-          {indeterminate ? 'Choose an attribute' : attributes.variable}
-        </span>
-      </div>
+      {(hovered || (selected && active) || open) && (
+        <BlockTab selected={selected && active}>
+          <span
+            data-testid="field-attribute"
+            className={cx(pillClasses, indeterminate && 'border-dashed italic')}
+          >
+            {indeterminate ? 'Choose an attribute' : attributes.variable}
+          </span>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger
+              nativeButton
+              render={
+                <button
+                  type="button"
+                  aria-label="Field settings"
+                  className="focusable flex size-7 items-center justify-center rounded-full"
+                >
+                  <Settings2 aria-hidden className="size-4" />
+                </button>
+              }
+              {...blockActionProps}
+            />
+            <PopoverContent align="end" aria-label="Field settings">
+              <button type="button">Delete field</button>
+            </PopoverContent>
+          </Popover>
+        </BlockTab>
+      )}
+      <div className="min-w-0">{content}</div>
       <div
         contentEditable={false}
         aria-hidden
@@ -121,11 +152,32 @@ function StoryBranchLabel({ branch }: RichTextLogicBranchLabelProps) {
   );
 }
 
-function StoryAssetView({ attributes }: RichTextAssetBlockViewProps) {
+function StoryAssetView({
+  attributes,
+  selected,
+  hovered,
+  active,
+}: RichTextAssetBlockViewProps) {
   return (
-    <div className="mx-auto flex h-40 w-96 items-center justify-center rounded-sm bg-current/10">
+    <div
+      className="relative mx-auto flex h-40 w-96 items-center justify-center rounded-sm bg-current/10"
+      {...assetBlockFileProps}
+      {...blockBoxProps(true)}
+    >
       <ImageIcon aria-hidden className="size-10 opacity-50" />
       <span className="sr-only">{attributes.assetId}</span>
+      {(hovered || (selected && active)) && (
+        <BlockTab selected={selected && active}>
+          <button
+            type="button"
+            aria-label="Image settings"
+            className="focusable flex size-7 items-center justify-center rounded-full"
+            {...blockActionProps}
+          >
+            <Settings2 aria-hidden className="size-4" />
+          </button>
+        </BlockTab>
+      )}
     </div>
   );
 }
@@ -321,7 +373,6 @@ const storyFieldBlocks = (
     return `story-field-${createdFields}`;
   },
   onInsert,
-  onActivate: () => undefined,
   labelPlaceholder: 'Type the question',
   hintPlaceholder: 'Add a hint (optional)',
 });
@@ -764,11 +815,67 @@ const sectionIn = (editor: HTMLElement, selector: string): HTMLElement => {
   return found;
 };
 
-/** A section's own drag handle (not that of a section inside it). */
-const handleOf = (section: Element): HTMLElement => {
-  const handle = section.querySelector(':scope > [data-section-drag-handle]');
+/**
+ * Moves the pointer to (`x`, `y`) of the window, as a mouse does, over
+ * whatever is drawn there.
+ */
+const pointTo = (document: Document, x: number, y: number) => {
+  const target = document.elementFromPoint(x, y) ?? document.body;
+  target.dispatchEvent(
+    new PointerEvent('pointermove', {
+      bubbles: true,
+      clientX: x,
+      clientY: y,
+      pointerType: 'mouse',
+    }),
+  );
+};
+
+/**
+ * Moves the pointer over `element`: its middle, or a little in from its top
+ * (where a logic block draws its heading rather than another block).
+ */
+const pointAt = (element: Element, where: 'middle' | 'top' = 'middle') => {
+  const box = element.getBoundingClientRect();
+  pointTo(
+    element.ownerDocument,
+    box.left + box.width / 2,
+    where === 'top' ? box.top + 8 : box.top + box.height / 2,
+  );
+};
+
+/** The editor's drag handle, drawn beside the block under the pointer. */
+const visibleHandle = (editor: Element): HTMLElement => {
+  const handle = editor
+    .closest('[data-block-frames-host]')
+    ?.querySelector('[data-block-handle]');
   if (!(handle instanceof HTMLElement)) throw new Error('No drag handle');
   return handle;
+};
+
+/** The handle of `section`, with the pointer over it (see `pointAt`). */
+const handleOf = async (
+  editor: Element,
+  section: Element,
+  where: 'middle' | 'top' = 'middle',
+): Promise<HTMLElement> => {
+  pointAt(section, where);
+  return waitFor(() => {
+    const handle = visibleHandle(editor);
+    const frame = editor
+      .closest('[data-block-frames-host]')
+      ?.querySelector('[data-block-frame="hovered"]');
+    if (frame === null || frame === undefined) throw new Error('No frame');
+    // The frame is round `section`: 4px or more outside it, on every side.
+    const drawn = frame.getBoundingClientRect();
+    const box = section.getBoundingClientRect();
+    expect(drawn.left).toBeLessThan(box.left);
+    expect(drawn.right).toBeGreaterThan(box.right);
+    expect(drawn.top).toBeLessThan(box.top);
+    expect(drawn.bottom).toBeGreaterThan(box.bottom);
+    expect(drawn.top).toBeGreaterThan(box.top - 13);
+    return handle;
+  });
 };
 
 /**
@@ -798,8 +905,13 @@ const unreachedPointsOf = (element: HTMLElement): string[] => {
  * Drags `section` by its handle, from whatever the pointer reaches at the
  * handle's middle, and drops it at the start of `target`'s text.
  */
-const dragByHandle = (section: Element, target: Element) => {
-  const from = handleOf(section).getBoundingClientRect();
+const dragByHandle = async (
+  editor: Element,
+  section: Element,
+  target: Element,
+  where: 'middle' | 'top' = 'middle',
+) => {
+  const from = (await handleOf(editor, section, where)).getBoundingClientRect();
   const grabbed = section.ownerDocument.elementFromPoint(
     from.left + from.width / 2,
     from.top + from.height / 2,
@@ -865,18 +977,21 @@ export const DragSectionBlock: Story = {
       expect(documentIn(canvasElement).content?.[3]?.attrs?.fieldId).toBe('f2'),
     );
 
-    // Every handle can be reached by the pointer, the whole of it: a field's,
-    // a logic block's, and that of a field inside a logic block's branch.
+    // Every handle can be reached by the pointer, the whole of it: a
+    // paragraph's, a field's, a logic block's, and that of a field inside a
+    // logic block's branch.
+    const para = sectionIn(editor, ':scope > p');
     const field = sectionIn(editor, '[data-field-id="f1"]');
     const block = sectionIn(editor, '[data-logic-block-view]');
     const nested = sectionIn(editor, '[data-field-id="f3"]');
-    for (const [name, section] of [
-      ['field', field],
-      ['logic block', block],
-      ['field in a branch', nested],
+    for (const [name, section, where] of [
+      ['paragraph', para, 'middle'],
+      ['field', field, 'middle'],
+      ['logic block', block, 'top'],
+      ['field in a branch', nested, 'middle'],
     ] as const) {
-      await userEvent.hover(section);
-      await expect(unreachedPointsOf(handleOf(section)), name).toEqual([]);
+      const handle = await handleOf(editor, section, where);
+      await expect(unreachedPointsOf(handle), name).toEqual([]);
     }
 
     // Dragged by its handle from where the pointer reaches it: the logic
@@ -886,7 +1001,7 @@ export const DragSectionBlock: Story = {
       if (found === null) throw new Error('No heading');
       return found;
     };
-    dragByHandle(block, heading());
+    await dragByHandle(editor, block, heading(), 'top');
     await waitFor(() =>
       expect(blockTypes(documentIn(canvasElement))).toEqual([
         'logicBlock',
@@ -897,7 +1012,11 @@ export const DragSectionBlock: Story = {
         'assetBlock',
       ]),
     );
-    dragByHandle(sectionIn(editor, '[data-field-id="f3"]'), heading());
+    await dragByHandle(
+      editor,
+      sectionIn(editor, '[data-field-id="f3"]'),
+      heading(),
+    );
     await waitFor(() => {
       const moved = documentIn(canvasElement);
       expect(blockTypes(moved)).toEqual([
@@ -1031,10 +1150,10 @@ function FieldWithSettingsView(props: RichTextFieldBlockViewProps) {
           anchor={linkButton}
           side="bottom"
           align="start"
-          aria-label="Field settings"
+          aria-label="Stand-in popup"
           className="h-64 w-96"
         >
-          <p>Settings of the selected field</p>
+          <p>A popup of the selected field</p>
         </PopoverContent>
       </Popover>
     </>
@@ -1043,10 +1162,9 @@ function FieldWithSettingsView(props: RichTextFieldBlockViewProps) {
 
 /**
  * The popup opened last is drawn on top, whenever each was mounted. A
- * field's settings stay open while it is selected; the toolbar's link popover,
- * mounted with the editor (before the field's settings) and kept mounted
- * while it is closed, opens after them, and is drawn over them where the two
- * overlap.
+ * stand-in popup here stays open while a field is selected; the toolbar's
+ * link popover, mounted with the editor (before it) and kept mounted while it
+ * is closed, opens after it, and is drawn over it where the two overlap.
  */
 export const LastOpenedPopupOnTop: Story = {
   render: () => (
@@ -1067,7 +1185,7 @@ export const LastOpenedPopupOnTop: Story = {
     caretIn(label, 'end');
     press(editor, 'Escape', 27);
     const settings = await page.findByRole('dialog', {
-      name: 'Field settings',
+      name: 'Stand-in popup',
     });
 
     await userEvent.click(canvas.getByRole('button', { name: 'Add link' }));
@@ -1122,5 +1240,301 @@ export const QuestionsReadInTheirOwnDirection: Story = {
       if (line === null) throw new Error('A line is missing');
       await expect(getComputedStyle(line).unicodeBidi).toBe('plaintext');
     }
+  },
+};
+
+/** Every kind of block: a heading, paragraphs, a list, a rule, a field, a logic block and a file. */
+const everyBlock: JSONContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'heading',
+      attrs: { level: 1 },
+      content: [words('About you')],
+    },
+    paragraph(words('Before the interview, please have these ready:')),
+    {
+      type: 'bulletList',
+      content: [
+        { type: 'listItem', content: [paragraph(words('your address'))] },
+        { type: 'listItem', content: [paragraph(words('your work hours'))] },
+      ],
+    },
+    { type: 'horizontalRule' },
+    fieldBlock('f1', 'first_name', 'What is your first name?', ''),
+    {
+      type: 'logicBlock',
+      attrs: { meta: ifElse().meta },
+      content: [
+        {
+          type: 'logicBranch',
+          attrs: ifElse().branches[0],
+          content: [paragraph(words('Thank you for working with us.'))],
+        },
+        {
+          type: 'logicBranch',
+          attrs: ifElse().branches[1],
+          content: [paragraph()],
+        },
+      ],
+    },
+    {
+      type: 'assetBlock',
+      attrs: {
+        assetId: 'network',
+        description: '',
+        size: null,
+        align: 'center',
+        autoplay: true,
+        loop: true,
+      },
+    },
+    paragraph(words('Thank you.')),
+  ],
+};
+
+/** The frames drawn over an editor: the one for the hovered or the selected block. */
+const frameOf = (editor: Element, which: 'hovered' | 'selected') =>
+  editor
+    .closest('[data-block-frames-host]')
+    ?.querySelector(`[data-block-frame="${which}"]`) ?? null;
+
+/** Where each of the editor's blocks is drawn, for comparing layouts. */
+const blockBoxes = (editor: Element) =>
+  Array.from(editor.children, (child) => {
+    const { top, left, width, height } = child.getBoundingClientRect();
+    return { top, left, width, height };
+  });
+
+/** The blocks of `everyBlock`, as the editor draws them, by name. */
+const blocksOf = (editor: HTMLElement) =>
+  ({
+    heading: sectionIn(editor, ':scope > h1'),
+    paragraph: sectionIn(editor, ':scope > p'),
+    list: sectionIn(editor, ':scope > ul'),
+    rule: sectionIn(editor, ':scope > hr'),
+    field: sectionIn(editor, '[data-field-block-view]'),
+    logic: sectionIn(editor, '[data-logic-block-view]'),
+    file: sectionIn(editor, '[data-block-box]'),
+  }) as const;
+
+/**
+ * At rest, nothing marks the blocks: no frame, no handle, no tab, and a field
+ * shows no attribute. The document is laid out as the participant reads it.
+ */
+export const BlockFramesAtRest: Story = {
+  render: () => <FormEditor initial={everyBlock} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    const host = editor.closest('[data-block-frames-host]');
+    await expect(host).not.toBeNull();
+    await expect(host?.querySelector('[data-block-frame]')).toBeNull();
+    await expect(host?.querySelector('[data-block-handle]')).toBeNull();
+    await expect(host?.querySelector('[data-block-tab]')).toBeNull();
+    await expect(canvas.queryByTestId('field-attribute')).toBeNull();
+    // A field has no border or padding of its own.
+    const field = blocksOf(editor).field;
+    const style = getComputedStyle(field);
+    await expect(style.borderTopWidth).toBe('0px');
+    await expect(style.paddingTop).toBe('0px');
+  },
+};
+
+/**
+ * The pointer over any block draws a frame round it, outside it, and its
+ * handle in the gutter before it, 40px before its start; a field and a file
+ * also show their tab (the field's attribute and settings button). Nothing in
+ * the document moves. The frame stays while the researcher types.
+ */
+export const BlockFramesOnHover: Story = {
+  render: () => <FormEditor initial={everyBlock} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    await editor.ownerDocument.fonts.ready;
+    const atRest = blockBoxes(editor);
+    const blocks = blocksOf(editor);
+    for (const [name, block] of Object.entries(blocks)) {
+      const handle = await handleOf(
+        editor,
+        block,
+        name === 'logic' ? 'top' : 'middle',
+      );
+      const box = block.getBoundingClientRect();
+      const grip = handle.getBoundingClientRect();
+      await expect(Math.round(box.left - grip.left), name).toBe(40);
+      const tab = editor.querySelector('[data-block-tab]');
+      if (name === 'field' || name === 'file') {
+        await expect(tab, `${name} has a tab`).not.toBeNull();
+        // On the frame's top edge, outside the block.
+        await expect(tab?.getBoundingClientRect().bottom).toBeLessThan(
+          box.top + 2,
+        );
+      } else {
+        await expect(tab, `${name} has no tab`).toBeNull();
+      }
+      await expect(blockBoxes(editor), `${name} moved nothing`).toEqual(atRest);
+    }
+    // The field's attribute shows only while the field has its frame.
+    pointAt(blocks.field);
+    await expect(
+      await canvas.findByTestId('field-attribute'),
+    ).toHaveTextContent('first_name');
+    pointAt(blocks.paragraph);
+    await waitFor(() =>
+      expect(canvas.queryByTestId('field-attribute')).toBeNull(),
+    );
+    // Typing in the hovered paragraph keeps its frame, round the longer text.
+    // The caret is put there without a click, which would move the pointer.
+    editor.focus();
+    caretIn(blocks.paragraph, 'end');
+    pointAt(blocks.paragraph);
+    await waitFor(() => expect(frameOf(editor, 'hovered')).not.toBeNull());
+    await userEvent.keyboard(' Bring a pen and some paper with you as well.');
+    await waitFor(() => {
+      const frame = frameOf(editor, 'hovered');
+      expect(frame).not.toBeNull();
+      const drawn = frame?.getBoundingClientRect();
+      const box = blocks.paragraph.getBoundingClientRect();
+      expect(drawn?.height).toBeCloseTo(box.height + 8, 0);
+    });
+  },
+};
+
+/**
+ * Escape in a block's text selects the block, which shows a frame in the
+ * primary colour; it keeps it while another block is under the pointer.
+ * Mod-Shift-ArrowDown and Mod-Shift-ArrowUp move the selected block.
+ */
+export const SelectAndMoveABlock: Story = {
+  render: () => <FormEditor initial={everyBlock} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    const { paragraph: para, heading } = blocksOf(editor);
+    await userEvent.click(para);
+    caretIn(para, 'end');
+    // A caret in a paragraph is not a selection of it.
+    await expect(frameOf(editor, 'selected')).toBeNull();
+    press(editor, 'Escape', 27);
+    await waitFor(() => {
+      const frame = frameOf(editor, 'selected');
+      expect(frame).not.toBeNull();
+      const drawn = frame?.getBoundingClientRect();
+      const box = para.getBoundingClientRect();
+      expect(drawn?.top).toBeCloseTo(box.top - 4, 0);
+      expect(drawn?.left).toBeCloseTo(box.left - 4, 0);
+    });
+    pointAt(heading);
+    await waitFor(() => expect(frameOf(editor, 'hovered')).not.toBeNull());
+    await expect(frameOf(editor, 'selected')).not.toBeNull();
+
+    await userEvent.keyboard(withMod('{Shift>}{ArrowDown}{/Shift}'));
+    await waitFor(() =>
+      expect(blockTypes(documentIn(canvasElement))).toEqual([
+        'heading',
+        'bulletList',
+        'paragraph',
+        'horizontalRule',
+        'fieldBlock',
+        'logicBlock',
+        'assetBlock',
+        'paragraph',
+      ]),
+    );
+    await userEvent.keyboard(withMod('{Shift>}{ArrowUp}{/Shift}'));
+    await waitFor(() =>
+      expect(blockTypes(documentIn(canvasElement)).slice(0, 3)).toEqual([
+        'heading',
+        'paragraph',
+        'bulletList',
+      ]),
+    );
+  },
+};
+
+/**
+ * A block's settings open only from the settings button in its tab: a click
+ * on the block selects it and opens nothing. From the keyboard, Escape in the
+ * field's question selects the field, Tab moves to its settings button,
+ * Enter opens the settings, and Escape closes them, back on the button.
+ * Enter on the selected block opens them too.
+ */
+export const SettingsFromTheButton: Story = {
+  render: () => <FormEditor initial={everyBlock} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    const label = editor.querySelector(
+      '[data-field-id="f1"] [data-field-label]',
+    );
+    if (label === null) throw new Error('No label');
+    await userEvent.click(label);
+    caretIn(label, 'end');
+    press(editor, 'Escape', 27);
+    await waitFor(() => expect(frameOf(editor, 'selected')).not.toBeNull());
+    await expect(
+      page.queryByRole('dialog', { name: 'Field settings' }),
+    ).toBeNull();
+
+    // Tab: to the settings button, which has the shared focus ring.
+    await userEvent.keyboard('{Tab}');
+    const button = await canvas.findByRole('button', {
+      name: 'Field settings',
+    });
+    await waitFor(() => expect(button).toHaveFocus());
+    await expect(
+      page.queryByRole('dialog', { name: 'Field settings' }),
+    ).toBeNull();
+    await userEvent.keyboard('{Enter}');
+    const settings = await page.findByRole('dialog', {
+      name: 'Field settings',
+    });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(settings).not.toBeInTheDocument());
+    await waitFor(() => expect(button).toHaveFocus());
+
+    // Enter on the selected block presses the button.
+    await userEvent.click(label);
+    caretIn(label, 'end');
+    press(editor, 'Escape', 27);
+    await waitFor(() => expect(frameOf(editor, 'selected')).not.toBeNull());
+    await canvas.findByRole('button', { name: 'Field settings' });
+    press(editor, 'Enter', 13);
+    await page.findByRole('dialog', { name: 'Field settings' });
+  },
+};
+
+/**
+ * In right-to-left text the handle stands at the start of the line, on the
+ * right, and the tab at its end, on the left.
+ */
+export const BlockFramesRightToLeft: Story = {
+  render: () => (
+    <FormEditor
+      dir="rtl"
+      initial={{
+        type: 'doc',
+        content: [
+          paragraph(words('مرحبا بكم في هذه المقابلة.')),
+          fieldBlock('f1', 'first_name', 'ما اسمك؟', 'اسمك الأول فقط.'),
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    const field = sectionIn(editor, '[data-field-block-view]');
+    const handle = await handleOf(editor, field);
+    const box = field.getBoundingClientRect();
+    const grip = handle.getBoundingClientRect();
+    await expect(Math.round(grip.right - box.right)).toBe(40);
+    const tab = editor.querySelector('[data-block-tab]');
+    if (tab === null) throw new Error('No tab');
+    const drawn = tab.getBoundingClientRect();
+    await expect(drawn.left - box.left).toBeLessThan(box.width / 2);
   },
 };

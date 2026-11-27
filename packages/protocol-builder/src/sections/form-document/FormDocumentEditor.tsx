@@ -318,8 +318,6 @@ export function FormDocumentEditor({
   const fieldInsertTool = (insert: RichTextInsertState) => (
     <FieldToolbarButton insert={insert} onInsert={insertField} />
   );
-  const fieldOf = (fieldId: string) =>
-    latestFields().find((entry) => entry.id === fieldId);
 
   const fieldBlocks: RichTextFieldBlocks =
     stage === undefined
@@ -330,12 +328,6 @@ export function FormDocumentEditor({
           text: 'none',
           createId: createProtocolObjectId,
           onInsert,
-          onActivate: (fieldId, element) => {
-            const field = fieldOf(fieldId);
-            if (field === undefined || field.variable === '') {
-              setPicker({ fieldId, anchor: element, origin: 'block' });
-            }
-          },
           labelPlaceholder: '',
           hintPlaceholder: '',
         }
@@ -353,28 +345,6 @@ export function FormDocumentEditor({
           },
           createId: createProtocolObjectId,
           onInsert,
-          onActivate: (fieldId, element) => {
-            const field = fieldOf(fieldId);
-            if (field === undefined || field.variable === '') {
-              setPicker({ fieldId, anchor: element, origin: 'block' });
-              return;
-            }
-            // A field whose attribute is no longer in the codebook is
-            // repaired by choosing another.
-            if (variables[field.variable] === undefined) {
-              setPicker({
-                fieldId,
-                anchor: element,
-                origin: 'block',
-                repair: true,
-              });
-              return;
-            }
-            // Enter on a selected field moves into its settings, as Enter on
-            // a selected file's block moves into that block's settings;
-            // Escape there comes back to the field.
-            blocks.current.get(fieldId)?.focusSettings();
-          },
           labelPlaceholder: intl.formatMessage(messages.questionPlaceholder),
           hintPlaceholder: intl.formatMessage(messages.hintPlaceholder),
         };

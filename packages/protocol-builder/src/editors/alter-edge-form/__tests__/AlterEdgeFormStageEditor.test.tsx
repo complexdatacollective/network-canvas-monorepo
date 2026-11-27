@@ -11,6 +11,7 @@ import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
 import {
   expectStageUntouched,
+  fieldTabTexts,
   knowsDefinition,
   mountedAs,
   authorsDateSettingsFromField,
@@ -111,9 +112,10 @@ describe('the editor for a form about each relationship', () => {
 
   it('follows an attribute deleted elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
-    expect(
-      await (await formEditor()).findByText('edgeNotes'),
-    ).toBeInTheDocument();
+    await formEditor();
+    expect(await fieldTabTexts(harness)).toContainEqual(
+      expect.stringContaining('edgeNotes'),
+    );
 
     harness.receiveCodebookUpdate({
       edge: {
@@ -143,9 +145,12 @@ describe('the editor for a form about each relationship', () => {
       },
     });
 
-    expect(
-      await (await formEditor()).findByText('Deleted attribute'),
-    ).toBeInTheDocument();
+    // Shown in the field's tab, with its settings button.
+    await waitFor(async () =>
+      expect(await fieldTabTexts(harness)).toContainEqual(
+        expect.stringContaining('Deleted attribute'),
+      ),
+    );
     // Their deletion is theirs. The field the researcher authored is still on
     // the stage, still pointing where they pointed it: an editor that quietly
     // dropped it would be saving somebody else's edit as this one.

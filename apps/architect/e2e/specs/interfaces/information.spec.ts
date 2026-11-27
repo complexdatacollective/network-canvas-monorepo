@@ -89,13 +89,12 @@ test('places an image in the text from the toolbar, with its settings', async ({
     .click();
   await expect(resourceBrowser).toBeHidden();
 
-  // The image just placed is selected, which shows its settings beside it. An
-  // image has a size and a description, and no playback. With no description
-  // yet, it is named for its file.
+  // The image just placed is selected; its settings open from the button in
+  // its tab. An image has a size and a description, and no playback. With
+  // no description yet, it is named for its file.
   const blocks = new AssetBlocks(architectPage);
   await expect(blocks.image('photo.svg')).toBeVisible();
-  const settings = blocks.settings();
-  await expect(settings).toBeVisible();
+  const settings = await blocks.openSettings(blocks.block('photo.svg'));
   await settings.getByLabel('Description', { exact: true }).fill('A photo');
   await settings
     .getByRole('group', { name: 'Display size' })
@@ -127,12 +126,9 @@ test('deletes a placed image from the text, keeping its file among the resources
   );
   const blocks = new AssetBlocks(architectPage);
 
-  // Clicking a block selects it and shows its settings.
-  await blocks.image('A photo').click();
-  await blocks
-    .settings()
-    .getByRole('button', { name: 'Delete', exact: true })
-    .click();
+  // Clicking a block selects it; its settings open from its tab.
+  const settings = await blocks.openSettings(blocks.block('A photo'));
+  await settings.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(blocks.image('A photo')).toHaveCount(0);
 
   await new StageEditor(architectPage).save();
@@ -188,26 +184,31 @@ test('shows an image’s settings only while it is selected and the researcher i
   await expect(pageEditor).toBeEditable();
   await expect(settings).toBeHidden();
 
-  // Selecting the image shows them, and leaves the keyboard in the text.
+  // Selecting the image shows its settings button, not its settings, and
+  // leaves the keyboard in the text.
+  const button = blocks.settingsButton(blocks.block('A photo'));
   await blocks.image('A photo').click();
-  await expect(settings).toBeVisible();
+  await expect(button).toBeVisible();
+  await expect(settings).toBeHidden();
   await expect(pageEditor).toBeFocused();
 
-  // Enter goes into them; Escape comes back to the image, still selected.
+  // Enter presses the button: the settings open, at their first control.
+  // Escape closes them, and gives focus back to the button; the image is
+  // still selected, and Enter on the button opens them again.
   await architectPage.keyboard.press('Enter');
   await expect(description).toBeFocused();
   await architectPage.keyboard.press('Escape');
-  await expect(pageEditor).toBeFocused();
-  await expect(settings).toBeVisible();
-
-  // The caret going into the text takes them away.
-  await pageEditor.locator('p', { hasText: 'Bye.' }).click();
   await expect(settings).toBeHidden();
+  await expect(button).toBeFocused();
+  await expect(blocks.block('A photo')).toHaveAttribute(
+    'data-selected',
+    'true',
+  );
+  await architectPage.keyboard.press('Enter');
+  await expect(description).toBeFocused();
 
-  // And so does leaving the field with the image still selected.
-  await blocks.image('A photo').click();
-  await expect(settings).toBeVisible();
-  await architectPage.getByRole('textbox', { name: 'Stage name' }).focus();
+  // A press in the text closes them.
+  await pageEditor.locator('p', { hasText: 'Bye.' }).click();
   await expect(settings).toBeHidden();
 });
 
@@ -225,9 +226,7 @@ test('resizes an image by dragging its corner, a size at a time', async ({
   );
   const blocks = new AssetBlocks(architectPage);
   const image = blocks.image('A photo');
-  await image.click();
-  const settings = blocks.settings();
-  await expect(settings).toBeVisible();
+  const settings = await blocks.openSettings(blocks.block('A photo'));
 
   // The whole picture in view, so the pointer stays on the page as it goes.
   await image.evaluate((element) =>
@@ -269,13 +268,14 @@ test('resizes an image by dragging its corner, a size at a time', async ({
   );
 });
 
-// The corner is drawn on the outline of the selected block, at the bottom, on
-// the side its picture grows towards: away from the side it is held against.
+// The corner is drawn on the frame round the selected picture, at the bottom,
+// on the side the picture grows towards: away from the side it is held
+// against.
 for (const [align, corner] of [
   ['start', 'right'],
   ['end', 'left'],
 ] as const) {
-  test(`puts the resize corner on the bottom ${corner} of the outline of an image aligned to the ${align}`, async ({
+  test(`puts the resize corner on the bottom ${corner} of the frame of an image aligned to the ${align}`, async ({
     architectPage,
     openInformationPage,
   }) => {
@@ -288,34 +288,33 @@ for (const [align, corner] of [
     );
     const blocks = new AssetBlocks(architectPage);
     await blocks.image('A photo').click();
-    await expect(blocks.settings()).toBeVisible();
     const block = blocks.block('A photo');
     await expect(block).toHaveAttribute('data-selected', 'true');
+    // Selecting the block opens nothing.
+    await expect(blocks.settings()).toHaveCount(0);
 
     const handle = await blocks.resizeCorner().boundingBox();
     if (handle === null) throw new Error('The corner is not drawn');
-    const outline = await block.evaluate((element) => {
+    const frame = await blocks.selectedFrame().evaluate((element) => {
       const box = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
-      // The outline's line runs half its width out from where it is offset.
-      const out =
-        Number.parseFloat(style.outlineOffset) +
-        Number.parseFloat(style.outlineWidth) / 2;
+      // The middle of the frame's line, inside its outer edge.
+      const inset =
+        Number.parseFloat(getComputedStyle(element).borderTopWidth) / 2;
       return {
-        width: Number.parseFloat(style.outlineWidth),
-        left: box.left - out,
-        right: box.right + out,
-        bottom: box.bottom + out,
+        width: Number.parseFloat(getComputedStyle(element).borderTopWidth),
+        left: box.left + inset,
+        right: box.right - inset,
+        bottom: box.bottom - inset,
       };
     });
-    // An outline is drawn, or there is no line for the corner to sit on.
-    expect(outline.width).toBeGreaterThan(0);
+    // A frame is drawn, or there is no line for the corner to sit on.
+    expect(frame.width).toBeGreaterThan(0);
     const middle = {
       x: handle.x + handle.width / 2,
       y: handle.y + handle.height / 2,
     };
-    expect(Math.abs(middle.y - outline.bottom)).toBeLessThanOrEqual(2);
-    expect(Math.abs(middle.x - outline[corner])).toBeLessThanOrEqual(2);
+    expect(Math.abs(middle.y - frame.bottom)).toBeLessThanOrEqual(2);
+    expect(Math.abs(middle.x - frame[corner])).toBeLessThanOrEqual(2);
   });
 }
 
@@ -331,8 +330,7 @@ test('replaces the file of a placed image, keeping its settings', async ({
     DRAWN_FILES,
   );
   const blocks = new AssetBlocks(architectPage);
-  await blocks.image('A photo').click();
-  const settings = blocks.settings();
+  const settings = await blocks.openSettings(blocks.block('A photo'));
 
   // The file the block shows, with the way to choose another.
   const file = settings.getByRole('group', { name: 'Image', exact: true });
@@ -363,10 +361,18 @@ test('replaces the file of a placed image, keeping its settings', async ({
     .getByRole('button', { name: 'garden.svg', exact: true })
     .click();
   await expect(resourceBrowser).toBeHidden();
+  // The block is drawn again for the other file, still selected, with the
+  // keyboard in the text: Enter opens its settings again.
+  await expect(blocks.block('A photo')).toHaveAttribute(
+    'data-selected',
+    'true',
+  );
+  await expect(new StageEditor(architectPage).richText()).toBeFocused();
+  await architectPage.keyboard.press('Enter');
   await expect(settings).toBeVisible();
 
-  // The block, still selected, now shows the other file, under the same
-  // description, size and alignment.
+  // The block now shows the other file, under the same description, size and
+  // alignment.
   await expect(file.getByText('garden.svg', { exact: true })).toBeVisible();
   await expect(settings.getByLabel('Description', { exact: true })).toHaveValue(
     'A photo',
@@ -419,16 +425,11 @@ test('marks a block that a selection of the text runs across, and outlines one s
   await pageEditor.locator('p', { hasText: 'Bye.' }).click();
   await expect(block).not.toHaveAttribute('data-in-selected-text');
 
-  // The block clicked is selected by itself: outlined, and not marked.
+  // The block clicked is selected by itself: framed, and not marked.
   await blocks.image('A photo').click();
   await expect(block).toHaveAttribute('data-selected', 'true');
   await expect(block).not.toHaveAttribute('data-in-selected-text');
-  expect(
-    await block.evaluate(
-      (element) => Number.parseFloat(getComputedStyle(element).outlineWidth),
-      undefined,
-    ),
-  ).toBeGreaterThan(0);
+  await expect(blocks.selectedFrame()).toBeVisible();
 });
 
 test('reaches and uses Delete in a video’s settings in a short window', async ({
@@ -448,9 +449,7 @@ test('reaches and uses Delete in a video’s settings in a short window', async 
   const blocks = new AssetBlocks(architectPage);
   const block = blocks.blocks();
   await expect(block).toHaveCount(1);
-  await block.click();
-  const settings = blocks.settings('Video');
-  await expect(settings).toBeVisible();
+  const settings = await blocks.openSettings(block, 'Video');
 
   // The settings stay in the window, below the bar at its top (and below the
   // banner a browser tab shows over it), and scroll within themselves to what
@@ -503,26 +502,26 @@ test('reaches and uses Delete in a video’s settings in a short window', async 
 
 // The bar at the top of the window and the action toolbar at its bottom stand
 // over the page, and each publishes how far into the page it reaches
-// (`--architect-nav-bar-reach`, `--architect-action-toolbar-reach`). A large
-// image's settings do not fit beside it, so they are held against one bar or
-// the other, and keep 8px clear of it. Where the image is decides which: held
-// below the top bar when the image is lower down, above the toolbar when it
-// is at the top.
+// (`--architect-nav-bar-reach`, `--architect-action-toolbar-reach`). In a
+// short window, an image's settings fit on no side of their button, so they
+// are cut short and scrolled within, on the side of the button with more
+// room, and keep 8px clear of the bar on that side: below the top bar when
+// the image is low in the window, above the toolbar when it is high.
 for (const [width, height, cases] of [
   [
-    1440,
-    1000,
+    1280,
+    560,
     [
-      ['top bar', 300],
-      ['action toolbar', 0],
+      ['top bar', 560 - 140],
+      ['action toolbar', 205],
     ],
   ],
   [
-    1280,
-    720,
+    1440,
+    640,
     [
-      ['top bar', 200],
-      ['action toolbar', 0],
+      ['top bar', 640 - 140],
+      ['action toolbar', 205],
     ],
   ],
 ] as const) {
@@ -543,9 +542,7 @@ for (const [width, height, cases] of [
         DRAWN_FILES,
       );
       const blocks = new AssetBlocks(architectPage);
-      await blocks.image('A photo').click();
-      const settings = blocks.settings();
-      await expect(settings).toBeVisible();
+      const settings = await blocks.openSettings(blocks.block('A photo'));
       await placeBlockAt(blocks.block('A photo'), top);
 
       // What each bar publishes is how far it really reaches into the page:
@@ -584,6 +581,12 @@ for (const [width, height, cases] of [
       expect(bars.publishedTopBarReach).toBeCloseTo(bars.topBarReach, 0);
       expect(bars.publishedToolbarReach).toBeCloseTo(bars.toolbarReach, 0);
 
+      // Cut short and scrolled within, on the side with more room.
+      await expect(settings).toHaveAttribute('data-scrolls', 'true');
+      await expect(settings).toHaveAttribute(
+        'data-side',
+        bar === 'top bar' ? 'top' : 'bottom',
+      );
       // Clear of both, and held 8px (to the pixel) from the one it is against.
       await expect
         .poll(async () => {
@@ -633,9 +636,7 @@ for (const [where, top] of [
       DRAWN_FILES,
     );
     const blocks = new AssetBlocks(architectPage);
-    await blocks.image('A photo').click();
-    const settings = blocks.settings();
-    await expect(settings).toBeVisible();
+    const settings = await blocks.openSettings(blocks.block('A photo'));
     await placeBlockAt(blocks.block('A photo'), top);
 
     // Seen whole where they are, without scrolling the page or the settings.

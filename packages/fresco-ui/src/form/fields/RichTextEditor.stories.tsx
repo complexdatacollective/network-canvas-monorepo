@@ -14,12 +14,11 @@ import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
 import {
-  ASSET_BLOCK_OUTLINE_OFFSET,
-  ASSET_BLOCK_OUTLINE_WIDTH,
   assetBlockControlsProps,
   type RichTextAssetBlockViewProps,
   type RichTextAssetBlocks,
 } from './richText/assetBlockNode';
+import { BLOCK_FRAME_OFFSET, BLOCK_FRAME_WIDTH } from './richText/blockFrames';
 import type {
   RichTextInsertState,
   RichTextInsertTools,
@@ -1536,8 +1535,8 @@ function PageContentField({
 /**
  * A field whose text can hold files as blocks among its paragraphs. The
  * consumer chooses a file (`pick`) and draws a block (`View`); the toolbar
- * offers one button for each kind of file. A block is one whole thing: arrow
- * to it, press Enter to reach its controls, Escape to come back out.
+ * offers one button for each kind of file. A block is one whole thing,
+ * selected with a frame drawn round it (see `BlockFrameLayer`).
  */
 export const WithAssetBlocks: Story = {
   render: (args) => (
@@ -1564,14 +1563,27 @@ export const WithAssetBlocks: Story = {
     await expect(summary).toHaveTextContent(
       'image-1, size full, aligned center',
     );
-    // The block just placed is selected, and outlined as its consumer is told
-    // it is: a consumer places things on that outline by these numbers.
+    // The block just placed is selected, and framed as its consumer is told
+    // it is: a consumer places things on that frame by these numbers.
     const block = summary.closest('[data-asset-block]');
     if (block === null) throw new Error('No block around the view');
     await waitFor(() => expect(block).toHaveAttribute('data-selected'));
-    const outline = getComputedStyle(block);
-    await expect(outline.outlineWidth).toBe(`${ASSET_BLOCK_OUTLINE_WIDTH}px`);
-    await expect(outline.outlineOffset).toBe(`${ASSET_BLOCK_OUTLINE_OFFSET}px`);
+    const frame = await waitFor(() => {
+      const found = editor
+        .closest('[data-block-frames-host]')
+        ?.querySelector('[data-block-frame="selected"]');
+      if (!(found instanceof HTMLElement)) throw new Error('No frame');
+      return found;
+    });
+    await expect(getComputedStyle(frame).borderTopWidth).toBe(
+      `${BLOCK_FRAME_WIDTH}px`,
+    );
+    const box = block.getBoundingClientRect();
+    const drawn = frame.getBoundingClientRect();
+    await expect(box.left - drawn.left).toBeCloseTo(BLOCK_FRAME_OFFSET, 0);
+    await expect(box.top - drawn.top).toBeCloseTo(BLOCK_FRAME_OFFSET, 0);
+    await expect(drawn.right - box.right).toBeCloseTo(BLOCK_FRAME_OFFSET, 0);
+    await expect(drawn.bottom - box.bottom).toBeCloseTo(BLOCK_FRAME_OFFSET, 0);
   },
 };
 
@@ -1697,7 +1709,7 @@ export const InterfaceWordsInTextOfAnotherLanguage: Story = {
 /**
  * Text selected across a block: the block is covered in the colour of the
  * selected text around it, as it is copied, cut or typed over with it. A
- * block selected by itself is outlined instead (`WithAssetBlocks`).
+ * block selected by itself is framed instead (`WithAssetBlocks`).
  */
 export const SelectionAcrossAnAssetBlock: Story = {
   render: (args) => (
@@ -1735,7 +1747,7 @@ export const SelectionAcrossAnAssetBlock: Story = {
     // text, and is covered as the text is.
     await userEvent.keyboard(withMod('a'));
     await waitFor(() => expect(block).toHaveAttribute('data-in-selected-text'));
-    // Part of the selection, not the selection itself: no outline.
+    // Part of the selection, not the selection itself: no frame.
     await expect(block).not.toHaveAttribute('data-selected');
     await expect(getComputedStyle(block, '::after').content).not.toBe('none');
 

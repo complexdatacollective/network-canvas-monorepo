@@ -3,8 +3,8 @@ import { type RefObject, useRef, useState } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { assetBlockMediaVariants } from '@codaco/fresco-ui/assetBlockLayout';
 import {
-  ASSET_BLOCK_OUTLINE_OFFSET,
-  ASSET_BLOCK_OUTLINE_WIDTH,
+  BLOCK_FRAME_OFFSET,
+  BLOCK_FRAME_WIDTH,
   assetBlockControlsProps,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { useInterfaceLanguage } from '@codaco/fresco-ui/interfaceLanguage';
@@ -71,10 +71,11 @@ export const heightDraggedTo = (
 const CORNER_SIZE = 24;
 
 // Where the corner's middle goes, out from the box: on the middle of the line
-// the editor outlines a selected block with, less half the corner.
+// of the frame the editor draws round a selected block (whose outer edge is
+// `BLOCK_FRAME_OFFSET` out), less half the corner.
 const CORNER_OFFSET = -(
-  ASSET_BLOCK_OUTLINE_OFFSET +
-  ASSET_BLOCK_OUTLINE_WIDTH / 2 +
+  BLOCK_FRAME_OFFSET -
+  BLOCK_FRAME_WIDTH / 2 +
   CORNER_SIZE / 2
 );
 

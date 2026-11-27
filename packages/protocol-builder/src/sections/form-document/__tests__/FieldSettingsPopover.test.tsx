@@ -20,7 +20,9 @@ import {
   caretInQuestion,
   fieldSettings,
   formEditor,
+  openFieldSettings,
   selectField,
+  settingsButtonOf,
 } from './formDocumentTesting.ts';
 
 const PERSON = fixtureTypeId('node', 'person');
@@ -89,8 +91,7 @@ describe('the languages named in a field’s settings', () => {
     });
     await harness.opened();
     const editor = await formEditor();
-    await selectField(harness, editor, AGE_FIELD);
-    return fieldSettings();
+    return openFieldSettings(harness, editor, AGE_FIELD);
   };
 
   // Spanish has no document of its own, so its participants are shown the
@@ -114,13 +115,21 @@ describe('the languages named in a field’s settings', () => {
 });
 
 describe('the settings of a field', () => {
-  it('open beside a selected field, not while its question is being typed', async () => {
+  it('open only from their button, not as the field is selected or its question typed', async () => {
     const { harness, editor } = await openForm();
 
     await caretInQuestion(harness, editor, AGE_FIELD, 3);
     expect(screen.queryByRole('dialog', { name: 'Field settings' })).toBeNull();
 
     await harness.user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(blockFor(editor, AGE_FIELD)).toHaveAttribute('data-selected'),
+    );
+    const button = await settingsButtonOf(editor, AGE_FIELD);
+    // Selected, the field shows its settings button, and not its settings.
+    expect(screen.queryByRole('dialog', { name: 'Field settings' })).toBeNull();
+
+    await harness.user.click(button);
     const settings = await fieldSettings();
     expect(settings.getAllByText('age').length).toBeGreaterThan(0);
     expect(
@@ -128,7 +137,7 @@ describe('the settings of a field', () => {
     ).toHaveTextContent('Number');
   });
 
-  it('open when the field’s control is clicked', async () => {
+  it('select the field as its control is clicked, and open nothing', async () => {
     const { harness, editor } = await openForm();
     const control = blockFor(editor, AGE_FIELD).querySelector<HTMLElement>(
       '[data-field-control]',
@@ -140,39 +149,46 @@ describe('the settings of a field', () => {
     await waitFor(() =>
       expect(blockFor(editor, AGE_FIELD)).toHaveAttribute('data-selected'),
     );
-    const settings = await fieldSettings();
-    expect(
-      settings.getByRole('combobox', { name: 'Input control' }),
-    ).toHaveTextContent('Number');
+    await settingsButtonOf(editor, AGE_FIELD);
+    expect(screen.queryByRole('dialog', { name: 'Field settings' })).toBeNull();
   });
 
-  it('are entered with Enter on the field, and left with Escape', async () => {
+  it('open with Enter on the field, and close with Escape, giving focus back to their button', async () => {
     const { harness, editor } = await openForm();
     await selectField(harness, editor, AGE_FIELD);
+    const button = await settingsButtonOf(editor, AGE_FIELD);
     const settings = () =>
       screen.getByRole('dialog', { name: 'Field settings' });
     const focusInSettings = () =>
       expect(settings().contains(document.activeElement)).toBe(true);
-    await screen.findByRole('dialog', { name: 'Field settings' });
     expect(editor).toHaveFocus();
 
     await harness.user.keyboard('{Enter}');
     await waitFor(focusInSettings);
 
-    // Escape takes the keyboard back to the field, which stays selected.
+    // Escape closes them, and focus goes back to the settings button; the
+    // field stays selected.
     await harness.user.keyboard('{Escape}');
-    await waitFor(() => expect(editor).toHaveFocus());
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Field settings' }),
+      ).toBeNull(),
+    );
+    await waitFor(() => expect(button).toHaveFocus());
     expect(blockFor(editor, AGE_FIELD)).toHaveAttribute('data-selected');
 
-    // And Enter goes back in.
+    // And Enter on the button opens them again.
     await harness.user.keyboard('{Enter}');
     await waitFor(focusInSettings);
   });
 
   it('write the input control to the attribute when the stage is saved', async () => {
     const { harness, editor } = await openForm();
-    await selectField(harness, editor, RELATIONSHIP_FIELD);
-    const settings = await fieldSettings();
+    const settings = await openFieldSettings(
+      harness,
+      editor,
+      RELATIONSHIP_FIELD,
+    );
 
     await harness.user.click(
       settings.getByRole('combobox', { name: 'Input control' }),
@@ -189,8 +205,7 @@ describe('the settings of a field', () => {
 
   it('show validation hints on the field when the toggle is on', async () => {
     const { harness, editor } = await openForm();
-    await selectField(harness, editor, AGE_FIELD);
-    const settings = await fieldSettings();
+    const settings = await openFieldSettings(harness, editor, AGE_FIELD);
 
     await harness.user.click(
       settings.getByRole('switch', { name: 'Show validation hints' }),
@@ -208,8 +223,7 @@ describe('the settings of a field', () => {
 
   it('delete the field from the form and from the fields it saves', async () => {
     const { harness, editor } = await openForm();
-    await selectField(harness, editor, AGE_FIELD);
-    const settings = await fieldSettings();
+    const settings = await openFieldSettings(harness, editor, AGE_FIELD);
 
     await harness.user.click(
       settings.getByRole('button', { name: 'Delete field' }),
@@ -230,8 +244,7 @@ describe('the settings of a field', () => {
       { entity: 'node', typeName: 'person' },
       'name',
     );
-    await selectField(harness, editor, AGE_FIELD);
-    await fieldSettings();
+    await openFieldSettings(harness, editor, AGE_FIELD);
 
     await chooseAttributeById(
       harness.user,
@@ -256,8 +269,7 @@ describe('the settings of a field', () => {
 describe('the keyboard in the settings of a field', () => {
   it('goes back to the field with Tab after Delete field', async () => {
     const { harness, editor } = await openForm();
-    await selectField(harness, editor, AGE_FIELD);
-    const settings = await fieldSettings();
+    const settings = await openFieldSettings(harness, editor, AGE_FIELD);
     const remove = settings.getByRole('button', { name: 'Delete field' });
     act(() => remove.focus());
 
@@ -314,8 +326,7 @@ describe('the settings of a field whose attribute has no options', () => {
   it('name the settings of its control, not its options', async () => {
     const { harness, editor } = await openWith();
 
-    await selectField(harness, editor, FLAGGED_FIELD);
-    const settings = await fieldSettings();
+    const settings = await openFieldSettings(harness, editor, FLAGGED_FIELD);
     expect(
       settings.getByRole('heading', { name: 'Control settings' }),
     ).toBeInTheDocument();
@@ -324,8 +335,7 @@ describe('the settings of a field whose attribute has no options', () => {
       settings.getByRole('button', { name: 'Edit control settings' }),
     ).toBeInTheDocument();
 
-    await selectField(harness, editor, CONTACT_FIELD);
-    const options = await fieldSettings();
+    const options = await openFieldSettings(harness, editor, CONTACT_FIELD);
     expect(
       options.getByRole('heading', { name: 'Options' }),
     ).toBeInTheDocument();

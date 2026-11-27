@@ -98,6 +98,28 @@ export const selectField = async (
 export const fieldSettings = async () =>
   within(await screen.findByRole('dialog', { name: 'Field settings' }));
 
+/** The settings button in the tab of the field `fieldId`, once it shows. */
+export const settingsButtonOf = (editor: HTMLElement, fieldId: string) =>
+  within(blockFor(editor, fieldId)).findByRole('button', {
+    name: 'Field settings',
+  });
+
+/**
+ * Opens a field's settings the way the keyboard does: Escape from its
+ * question selects the field, and Enter on it presses the settings button in
+ * its tab. Selecting a field opens nothing on its own.
+ */
+export const openFieldSettings = async (
+  harness: Harness,
+  editor: HTMLElement,
+  fieldId: string,
+) => {
+  await selectField(harness, editor, fieldId);
+  await settingsButtonOf(editor, fieldId);
+  await harness.user.keyboard('{Enter}');
+  return fieldSettings();
+};
+
 /** The attribute list of a new field. */
 export const insertPicker = () =>
   screen.findByRole('dialog', { name: 'Attribute of the new field' });

@@ -39,12 +39,42 @@ export class AssetBlocks {
   }
 
   /**
-   * What changes how a selected block shows. It stands over the page beside
-   * the block, and is there only while the block is selected and the
-   * researcher is in the field. Named for the kind of file the block shows.
+   * What changes how a block shows. It opens only from the settings button
+   * in the block's tab (or Enter on the selected block, which presses it),
+   * and stands over the page beside that button. Named for the kind of file
+   * the block shows.
    */
   settings(kind: 'Image' | 'Video' | 'Audio' = 'Image'): Locator {
     return this.page.getByRole('dialog', { name: `${kind} settings` });
+  }
+
+  /**
+   * The settings button in the tab of `block`, which the tab shows while the
+   * block is selected or the pointer is over it.
+   */
+  settingsButton(
+    block: Locator,
+    kind: 'Image' | 'Video' | 'Audio' = 'Image',
+  ): Locator {
+    return block.getByRole('button', { name: `${kind} settings` });
+  }
+
+  /**
+   * Selects `block` with a click on its file, opens its settings from the
+   * button in its tab, and answers with them.
+   */
+  async openSettings(
+    block: Locator,
+    kind: 'Image' | 'Video' | 'Audio' = 'Image',
+  ): Promise<Locator> {
+    await block.click();
+    await expect(block).toHaveAttribute('data-selected', 'true');
+    // Selecting the block opens nothing.
+    await expect(this.settings(kind)).toHaveCount(0);
+    await this.settingsButton(block, kind).click();
+    const settings = this.settings(kind);
+    await expect(settings).toBeVisible();
+    return settings;
   }
 
   /** The settings of whichever block is selected, of any kind. */
@@ -52,7 +82,17 @@ export class AssetBlocks {
     return this.page.getByRole('dialog', { name: /settings$/ });
   }
 
-  /** The corner of the selected block's outline that resizes it. */
+  /**
+   * The frame the editor draws round the selected block, over the text: the
+   * same element whichever block is selected.
+   */
+  selectedFrame(): Locator {
+    return this.editor
+      .locator('xpath=ancestor-or-self::*[@data-block-frames-host][1]')
+      .locator('[data-block-frame="selected"]');
+  }
+
+  /** The corner of the selected block's frame that resizes it. */
   resizeCorner(): Locator {
     return this.page.locator('[data-asset-block-resize]');
   }

@@ -18,9 +18,9 @@ import {
   caretInQuestion,
   chooseIn,
   editIn,
-  fieldSettings,
   formEditor,
   newFieldPicker,
+  openFieldSettings,
   selectField,
 } from './formDocumentTesting.ts';
 
@@ -113,8 +113,7 @@ describe('a field that leaves the form and comes back', () => {
     const { harness, editor } = await openForm();
 
     pause();
-    await selectField(harness, editor, AGE_FIELD);
-    const settings = await fieldSettings();
+    const settings = await openFieldSettings(harness, editor, AGE_FIELD);
     await harness.user.click(
       settings.getByRole('button', { name: 'Delete field' }),
     );
@@ -213,9 +212,11 @@ describe('a field that leaves the form and comes back', () => {
   it('is left out of the saved form once no language shows it, with its translations', async () => {
     const { harness, editor } = await openForm();
 
-    await selectField(harness, editor, AGE_FIELD);
     await harness.user.click(
-      (await fieldSettings()).getByRole('button', { name: 'Delete field' }),
+      (await openFieldSettings(harness, editor, AGE_FIELD)).getByRole(
+        'button',
+        { name: 'Delete field' },
+      ),
     );
     await waitFor(() =>
       expect(editor.querySelector(`[data-field-id="${AGE_FIELD}"]`)).toBeNull(),
@@ -465,8 +466,10 @@ describe('a field whose attribute was deleted from the codebook', () => {
       ],
     });
 
+    // Selected, the field shows its tab, with what its attribute was.
+    await selectField(harness, editor, MISSING_FIELD);
     await harness.user.click(
-      within(blockFor(editor, MISSING_FIELD)).getByRole('button', {
+      await within(blockFor(editor, MISSING_FIELD)).findByRole('button', {
         name: /Deleted attribute/,
       }),
     );

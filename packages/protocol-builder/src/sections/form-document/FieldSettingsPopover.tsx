@@ -1,13 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import {
-  type ReactNode,
-  type RefObject,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, type RefObject, useMemo, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
@@ -15,10 +7,6 @@ import { Button } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import { surfaceSpacingVariants } from '@codaco/fresco-ui/layout/Surface';
-import { Popover, PopoverContent } from '@codaco/fresco-ui/Popover';
-import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import { cx } from '@codaco/fresco-ui/utils/cva';
 import { formFieldPlacement, type Variable } from '@codaco/protocol-validation';
 
 import CodebookVariableValidationSection from '../../codebook/validation/CodebookVariableValidationSection.tsx';
@@ -27,13 +15,7 @@ import {
   buildVariableUsageIndex,
   variableRoleKey,
 } from '../../codebook/variableRoles.ts';
-import {
-  COVERED_PROBE_STYLE,
-  scrollerOf,
-  SETTINGS_COLLISIONS,
-  SETTINGS_OFFSET,
-  useSettingsPlacement,
-} from '../../fields/assetBlocks/settingsPlacement.ts';
+import { BlockSettingsPopover } from '../../fields/BlockSettingsPopover.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import {
   VariablePill,
@@ -70,10 +52,14 @@ type FieldSettingsPopoverProps = Readonly<{
     >,
   ) => void;
   remove: () => void;
+  /** Selects the field, with the keyboard in the text. */
   select: () => void;
-  element: () => HTMLElement | null;
+  /** Selects the field and leaves focus where it is, as the settings open. */
+  selectKeepingFocus: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   /** Given the panel of the settings while they are drawn, for the block. */
-  panelRef: RefObject<HTMLElement | null>;
+  panelRef?: RefObject<HTMLElement | null>;
 }>;
 
 /** The names of the other stages that collect or read `variableId`. */
@@ -99,13 +85,13 @@ function useOtherStagesUsing(variableId: string): readonly string[] {
 }
 
 /**
- * The settings of a field, beside its block while the block is selected:
- * the attribute that it collects, the attribute's input control, options,
- * control settings and validation, whether the field shows its validation
- * hints, and Delete field. The control, options, settings and validation are
+ * The settings button of a field (in its block's tab) and the field's
+ * settings, attached to the button: the attribute that it collects, the
+ * attribute's input control, options, control settings and validation,
+ * whether the field shows its validation hints, and Delete field. The control, options, settings and validation are
  * the attribute's, so a change here applies wherever the attribute is
  * collected; the note at the end says so, and names the other stages that use
- * it. Placed as an asset block's settings are (`AssetBlockView`).
+ * it. Placed as an asset block's settings are (`BlockSettingsPopover`).
  */
 export function FieldSettingsPopover({
   attributes,
@@ -113,7 +99,9 @@ export function FieldSettingsPopover({
   update,
   remove,
   select,
-  element,
+  selectKeepingFocus,
+  open,
+  onOpenChange,
   panelRef,
 }: FieldSettingsPopoverProps) {
   const intl = useAppIntl();
@@ -121,29 +109,9 @@ export function FieldSettingsPopover({
   const stage = useFormStageEnvironment();
   const { name: languageName } = useLanguageNaming();
   const { fieldId, variable: variableId, showValidationHints } = attributes;
-  const nameId = useId();
   const [controlRefusal, setControlRefusal] = useState<string | undefined>();
   const [optionsOpen, setOptionsOpen] = useState(false);
   const otherStages = useOtherStagesUsing(variableId);
-
-  // What the block's frame is, for anchoring, and what the page scrolls in.
-  const anchorRef = useRef<HTMLElement | null>(null);
-  const [scroller, setScroller] = useState<Element | undefined>(undefined);
-  useLayoutEffect(() => {
-    anchorRef.current = element();
-    if (anchorRef.current !== null) {
-      setScroller(scrollerOf(anchorRef.current));
-    }
-  }, [element]);
-  const [panel, setPanel] = useState<HTMLElement | null>(null);
-  const coveredRef = useRef<HTMLSpanElement>(null);
-  const placement = useSettingsPlacement(
-    !optionsOpen,
-    anchorRef,
-    panel,
-    scroller,
-    coveredRef,
-  );
 
   const roleMap = useMemo(
     () => roleMapFor(stage.protocolContext, stage.rules.answeredFor),
@@ -247,205 +215,161 @@ export function FieldSettingsPopover({
 
   return (
     <>
-      <span
-        ref={coveredRef}
-        aria-hidden
-        className="invisible absolute size-0"
-        style={COVERED_PROBE_STYLE}
-      />
-      <Popover
-        open
-        onOpenChange={(open, event) => {
-          // Open for as long as the field is selected, which is not this
-          // popover's to end. Escape takes the keyboard back to the block.
-          if (!open && event.reason === 'escape-key') select();
-        }}
+      <BlockSettingsPopover
+        name="Field settings"
+        open={open}
+        onOpenChange={onOpenChange}
+        select={selectKeepingFocus}
+        hidden={optionsOpen}
+        {...(panelRef !== undefined && { panelRef })}
+        popupProps={{ 'data-field-settings': fieldId }}
       >
-        <PopoverContent
-          anchor={anchorRef}
-          side={placement.side}
-          sideOffset={SETTINGS_OFFSET}
-          collisionAvoidance={
-            placement.overlaps
-              ? SETTINGS_COLLISIONS.over
-              : SETTINGS_COLLISIONS.beside
-          }
-          collisionPadding={placement.clearance}
-          collisionBoundary={scroller}
-          aria-labelledby={nameId}
-          initialFocus={false}
-          finalFocus={false}
-          spacing="none"
-          className={cx(
-            'max-h-(--available-height) flex-col',
-            optionsOpen ? 'hidden' : 'flex',
-          )}
-          showArrow={!placement.overlaps}
-          data-field-settings={fieldId}
-        >
-          <span id={nameId} className="sr-only" lang="en">
-            {'Field settings'}
-          </span>
-          <ScrollArea
-            ref={(drawn: HTMLElement | null) => {
-              setPanel(drawn);
-              panelRef.current = drawn;
-            }}
-            className="min-h-0"
-            tabIndex={-1}
-            viewportClassName={cx(
-              surfaceSpacingVariants({ spacing: 'sm' }),
-              'scroll-py-6',
-            )}
-          >
-            <div className="flex w-[36rem] max-w-full flex-col gap-4">
-              <div>
-                <UnconnectedField
-                  name={`${fieldId}-attribute`}
-                  component={VariablePickerField}
-                  label={intl.formatMessage(messages.attributeLabel)}
-                  hint={intl.formatMessage(messages.attributeHint)}
-                  options={attributeGroup.options}
-                  unavailableDisplay="inPlace"
-                  value={variableId}
-                  onChange={(next) => {
-                    if (typeof next !== 'string' || next === variableId) {
-                      return;
-                    }
-                    // The form's field for that attribute in another
-                    // language is this field from now on.
-                    const existing = fieldCollecting(environment.fields, next);
-                    update(
-                      existing === undefined || existing.id === fieldId
-                        ? { variable: next }
-                        : { variable: next, fieldId: existing.id },
+        <div className="flex w-[36rem] max-w-full flex-col gap-4">
+          <div>
+            <UnconnectedField
+              name={`${fieldId}-attribute`}
+              component={VariablePickerField}
+              label={intl.formatMessage(messages.attributeLabel)}
+              hint={intl.formatMessage(messages.attributeHint)}
+              options={attributeGroup.options}
+              unavailableDisplay="inPlace"
+              value={variableId}
+              onChange={(next) => {
+                if (typeof next !== 'string' || next === variableId) {
+                  return;
+                }
+                // The form's field for that attribute in another
+                // language is this field from now on.
+                const existing = fieldCollecting(environment.fields, next);
+                update(
+                  existing === undefined || existing.id === fieldId
+                    ? { variable: next }
+                    : { variable: next, fieldId: existing.id },
+                );
+              }}
+            />
+          </div>
+          {component === undefined ? (
+            <p className="text-destructive text-sm">
+              {intl.formatMessage(messages.noInputControl)}
+            </p>
+          ) : (
+            <div>
+              <UnconnectedField
+                name={`${fieldId}-control`}
+                component={SelectField}
+                label={intl.formatMessage(messages.inputControlLabel)}
+                hint={intl.formatMessage(messages.inputControlHint)}
+                options={controls}
+                value={component}
+                {...(controlRefusal === undefined
+                  ? {}
+                  : { errors: [controlRefusal], showErrors: true })}
+                onChange={(next) => {
+                  if (typeof next !== 'string' || next === component) {
+                    return;
+                  }
+                  setControlRefusal(undefined);
+                  void (async () => {
+                    const outcome = await stage.writes.setControl(
+                      variableId,
+                      next,
                     );
-                  }}
-                />
-              </div>
-              {component === undefined ? (
-                <p className="text-destructive text-sm">
-                  {intl.formatMessage(messages.noInputControl)}
-                </p>
-              ) : (
+                    if (outcome.status === 'refused') {
+                      setControlRefusal(outcome.message);
+                    }
+                  })();
+                }}
+              />
+            </div>
+          )}
+          {(isOptionType(variable.type) ||
+            variable.type === 'boolean' ||
+            hasSettings) && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <UnconnectedField
-                    name={`${fieldId}-control`}
-                    component={SelectField}
-                    label={intl.formatMessage(messages.inputControlLabel)}
-                    hint={intl.formatMessage(messages.inputControlHint)}
-                    options={controls}
-                    value={component}
-                    {...(controlRefusal === undefined
-                      ? {}
-                      : { errors: [controlRefusal], showErrors: true })}
-                    onChange={(next) => {
-                      if (typeof next !== 'string' || next === component) {
-                        return;
-                      }
-                      setControlRefusal(undefined);
-                      void (async () => {
-                        const outcome = await stage.writes.setControl(
-                          variableId,
-                          next,
-                        );
-                        if (outcome.status === 'refused') {
-                          setControlRefusal(outcome.message);
-                        }
-                      })();
-                    }}
-                  />
-                </div>
-              )}
-              {(isOptionType(variable.type) ||
-                variable.type === 'boolean' ||
-                hasSettings) && (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-heading text-base font-bold">
-                        {intl.formatMessage(
-                          hasOptions
-                            ? messages.optionsLabel
-                            : messages.controlSettingsLabel,
-                        )}
-                      </h3>
-                      {optionLabels.length > 0 && (
-                        <p className="text-sm text-current/70">
-                          {intl.formatMessage(messages.optionsHint)}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="text"
-                      icon={<Pencil aria-hidden />}
-                      onClick={() => setOptionsOpen(true)}
-                    >
-                      {intl.formatMessage(
-                        hasOptions
-                          ? messages.editOptions
-                          : messages.editControlSettings,
-                      )}
-                    </Button>
-                  </div>
+                  <h3 className="font-heading text-base font-bold">
+                    {intl.formatMessage(
+                      hasOptions
+                        ? messages.optionsLabel
+                        : messages.controlSettingsLabel,
+                    )}
+                  </h3>
                   {optionLabels.length > 0 && (
-                    <ul className="flex flex-wrap gap-2">
-                      {optionLabels.map((label, index) => (
-                        <li
-                          // Labels can repeat while they are being written.
-                          // oxlint-disable-next-line react/no-array-index-key
-                          key={`${index}:${label}`}
-                          className="bg-surface-1 rounded-full px-3 py-1 text-sm"
-                        >
-                          {label}
-                        </li>
-                      ))}
-                    </ul>
+                    <p className="text-sm text-current/70">
+                      {intl.formatMessage(messages.optionsHint)}
+                    </p>
                   )}
                 </div>
-              )}
-              <CodebookVariableValidationSection
-                subject={stage.subject}
-                variableId={variableId}
-              />
-              <div>
-                <UnconnectedField
-                  name={`${fieldId}-validation-hints`}
-                  component={ToggleField}
-                  label={intl.formatMessage(messages.validationHintsLabel)}
-                  hint={intl.formatMessage(messages.validationHintsHint)}
-                  value={showValidationHints}
-                  onChange={(next) =>
-                    update({ showValidationHints: next === true })
-                  }
-                />
-              </div>
-              <Alert variant="info">
-                <AlertDescription>{note}</AlertDescription>
-              </Alert>
-              <div className="flex justify-end">
                 <Button
-                  type="button"
                   size="sm"
-                  color="destructive"
-                  icon={<Trash2 aria-hidden />}
-                  onClick={remove}
-                  // The last of the settings: Tab goes back to the field, as
-                  // Escape does, rather than on to the page behind them.
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Tab' || event.shiftKey) return;
-                    event.preventDefault();
-                    select();
-                  }}
+                  variant="text"
+                  icon={<Pencil aria-hidden />}
+                  onClick={() => setOptionsOpen(true)}
                 >
-                  {intl.formatMessage(messages.deleteField)}
+                  {intl.formatMessage(
+                    hasOptions
+                      ? messages.editOptions
+                      : messages.editControlSettings,
+                  )}
                 </Button>
               </div>
+              {optionLabels.length > 0 && (
+                <ul className="flex flex-wrap gap-2">
+                  {optionLabels.map((label, index) => (
+                    <li
+                      // Labels can repeat while they are being written.
+                      // oxlint-disable-next-line react/no-array-index-key
+                      key={`${index}:${label}`}
+                      className="bg-surface-1 rounded-full px-3 py-1 text-sm"
+                    >
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          </ScrollArea>
-        </PopoverContent>
-      </Popover>
+          )}
+          <CodebookVariableValidationSection
+            subject={stage.subject}
+            variableId={variableId}
+          />
+          <div>
+            <UnconnectedField
+              name={`${fieldId}-validation-hints`}
+              component={ToggleField}
+              label={intl.formatMessage(messages.validationHintsLabel)}
+              hint={intl.formatMessage(messages.validationHintsHint)}
+              value={showValidationHints}
+              onChange={(next) =>
+                update({ showValidationHints: next === true })
+              }
+            />
+          </div>
+          <Alert variant="info">
+            <AlertDescription>{note}</AlertDescription>
+          </Alert>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              color="destructive"
+              icon={<Trash2 aria-hidden />}
+              onClick={remove}
+              // The last of the settings: Tab goes back to the field rather
+              // than on to the page behind them.
+              onKeyDown={(event) => {
+                if (event.key !== 'Tab' || event.shiftKey) return;
+                event.preventDefault();
+                select();
+              }}
+            >
+              {intl.formatMessage(messages.deleteField)}
+            </Button>
+          </div>
+        </div>
+      </BlockSettingsPopover>
       {optionsOpen && component !== undefined && (
         <FieldOptionsDialog
           variableId={variableId}

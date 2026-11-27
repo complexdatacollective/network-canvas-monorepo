@@ -37,14 +37,11 @@ import {
 
 import { headingVariants } from '../../../typography/Heading';
 import { cx } from '../../../utils/cva';
+import { useBlockHovered } from './blockFrames';
 import { INLINE_VALUE_NODE } from './inlineValueNode';
 import { oneLineContentOf } from './oneLine';
+import { PLACEHOLDER_CLASSES } from './placeholderClasses';
 import { insertSection, SECTION_GROUP } from './sectionBlocks';
-import {
-  PLACEHOLDER_CLASSES,
-  SectionDragHandle,
-  sectionFrameVariants,
-} from './sectionFrame';
 
 export const FIELD_BLOCK_NODE = 'fieldBlock';
 export const FIELD_LABEL_NODE = 'fieldLabel';
@@ -96,6 +93,12 @@ export type RichTextFieldBlockViewProps = Readonly<{
   content: ReactNode;
   /** The block is the selection: clicked, or reached with Escape or the arrow keys. */
   selected: boolean;
+  /**
+   * The pointer is over the block. While it is, or while the block is
+   * selected and focus is in the field (`active`), the view shows the
+   * block's tab (`BlockTab`): its attribute and its settings button.
+   */
+  hovered: boolean;
   /** The field can be changed; a read-only or disabled one cannot. */
   editable: boolean;
   /** Focus is in the field's editor, or in something it shows over the page. */
@@ -108,6 +111,12 @@ export type RichTextFieldBlockViewProps = Readonly<{
   remove: () => void;
   /** Selects the whole block, with the keyboard in the text. */
   select: () => void;
+  /**
+   * Selects the whole block and leaves focus where it is: for a control of
+   * the block's own that opens over the page, such as its settings, which
+   * take focus themselves.
+   */
+  selectKeepingFocus: () => void;
   /** The block's frame as drawn, for anchoring a popover to. */
   element: () => HTMLElement | null;
 }>;
@@ -134,8 +143,6 @@ export type RichTextFieldBlocks = Readonly<{
    * so the consumer can open its attribute picker on the block.
    */
   onInsert: (event: RichTextFieldBlockInsertEvent) => void;
-  /** Enter on a selected block: for opening its settings. */
-  onActivate: (fieldId: string, element: HTMLElement) => void;
   /**
    * Whether each block contains the field's label and hint as text typed in
    * the block (the default), or no text (see `RichTextFieldBlockText`). With
@@ -214,7 +221,9 @@ function FieldBlockView({
 }: ReactNodeViewProps) {
   const { blocks, editable, active } = useContext(FieldBlocksContext);
   const frame = useRef<HTMLElement>(null);
+  const hovered = useBlockHovered(editor, getPos);
   const attributes = fieldBlockAttributesOf(node.attrs);
+  const indeterminate = attributes.variable === '';
   // A block with no text is a leaf: it has no label or hint to be empty.
   const empty =
     node.isLeaf ||
@@ -228,14 +237,9 @@ function FieldBlockView({
       data-field-block-view=""
       data-field-id={attributes.fieldId}
       data-selected={selected || undefined}
-      data-indeterminate={attributes.variable === '' || undefined}
-      className={sectionFrameVariants({
-        kind: 'field',
-        selected,
-        indeterminate: attributes.variable === '',
-      })}
+      data-indeterminate={indeterminate || undefined}
+      className={FIELD_BLOCK_CLASSES}
     >
-      <SectionDragHandle editable={editable} />
       {blocks === null ? (
         content
       ) : (
@@ -243,6 +247,7 @@ function FieldBlockView({
           attributes={attributes}
           content={content}
           selected={selected}
+          hovered={hovered}
           editable={editable}
           active={active}
           empty={empty}
@@ -259,12 +264,24 @@ function FieldBlockView({
             if (position === undefined) return;
             editor.chain().focus().setNodeSelection(position).run();
           }}
+          selectKeepingFocus={() => {
+            const position = getPos();
+            if (position === undefined) return;
+            editor.commands.setNodeSelection(position);
+          }}
           element={() => frame.current}
         />
       )}
     </NodeViewWrapper>
   );
 }
+
+// A field has no border or padding of its own: it is drawn as the interview
+// draws it, and only its frame marks it out (see `BlockFrameLayer`). One
+// whose attribute is not chosen yet has a dashed outline where its frame
+// would be, which takes no room.
+const FIELD_BLOCK_CLASSES =
+  'relative my-6 rounded-sm outline-offset-4 first:mt-0 last:mb-0 data-indeterminate:outline-2 data-indeterminate:outline-current/30 data-indeterminate:outline-dashed';
 
 // The label looks as the interview's field label does, the hint as its hint.
 // An empty one shows its placeholder (`data-placeholder`, set below).
@@ -423,12 +440,6 @@ const fieldTextAt = (
   return null;
 };
 
-const selectedFieldBlock = (state: EditorState): NodeSelection | null =>
-  state.selection instanceof NodeSelection &&
-  state.selection.node.type.name === FIELD_BLOCK_NODE
-    ? state.selection
-    : null;
-
 /** Selects the field block the caret is in. */
 const selectEnclosingBlock = (editor: Editor): boolean => {
   const found = fieldTextAt(editor.state);
@@ -454,9 +465,10 @@ const selectEnclosingBlock = (editor: Editor): boolean => {
  *   can be selected as a whole, so no key empties one at a stroke.
  *   Backspace in an empty label of a field with an empty hint selects the
  *   field, and a second Backspace removes it.
- * - Escape in the label or hint selects the field; Enter on a selected field
- *   activates it (its consumer opens its settings). Enter on a value selected
- *   in the label or hint is the value's own (see `createInlineValueNode`).
+ * - Escape in the label or hint selects the field. Enter on a selected field
+ *   presses its tab's action (see `DocumentBlocks`): its settings, or its
+ *   attribute list. Enter on a value selected in the label or hint is the
+ *   value's own (see `createInlineValueNode`).
  * - Mod-Shift-F puts in a new field at the caret.
  *
  * Text pasted into a label or hint arrives as one line.
@@ -529,7 +541,8 @@ export const createFieldBlockNodes = (
       ? { content: `${FIELD_LABEL_NODE} ${FIELD_HINT_NODE}`, isolating: true }
       : { atom: true }),
     selectable: true,
-    draggable: true,
+    // Moved by the handle its frame shows (see `BlockFrameLayer`).
+    draggable: false,
     // Its keys come before the editor's own Enter, Backspace and Delete.
     priority: 1000,
 
@@ -577,18 +590,9 @@ export const createFieldBlockNodes = (
     addKeyboardShortcuts() {
       return {
         'Enter': ({ editor }) => {
-          const selected = selectedFieldBlock(editor.state);
-          if (selected !== null) {
-            const blocks = source.current();
-            const element = editor.view.nodeDOM(selected.from);
-            if (blocks === undefined || !(element instanceof HTMLElement)) {
-              return false;
-            }
-            const { fieldId } = fieldBlockAttributesOf(selected.node.attrs);
-            blocks.onActivate(fieldId, element);
-            return true;
-          }
-          // A value selected in the label or hint: its own Enter opens it.
+          // A selected field: Enter presses its tab's action (see
+          // `DocumentBlocks`). A value selected in the label or hint: its own
+          // Enter opens it.
           if (editor.state.selection instanceof NodeSelection) return false;
           const found = fieldTextAt(editor.state);
           if (found === null) return false;

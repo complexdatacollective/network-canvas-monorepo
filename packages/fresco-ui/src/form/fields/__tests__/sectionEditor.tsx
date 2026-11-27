@@ -1,11 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Editor, type TiptapEditorHTMLElement } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/react';
-import { type ComponentProps, createRef } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  createRef,
+  useContext,
+} from 'react';
 import { vi } from 'vitest';
 
 import { inlineValuesFor } from '../../../testing/inlineValues';
 import type { RichTextAssetBlockViewProps } from '../richText/assetBlockNode';
+import { blockActionProps, BlockTab } from '../richText/blockFrames';
 import type {
   RichTextFieldBlocks,
   RichTextFieldBlockViewProps,
@@ -75,18 +81,33 @@ export const value = (id: string): JSONContent => ({
   attrs: { id },
 });
 
+/** What a field's settings button opens, told which field. */
+const OpenSettings = createContext<(fieldId: string) => void>(() => undefined);
+
 function FieldView({
   attributes,
   content,
   selected,
   empty,
 }: RichTextFieldBlockViewProps) {
+  const openSettings = useContext(OpenSettings);
   return (
     <div
       data-testid={`field-${attributes.fieldId}`}
       data-view-selected={String(selected)}
       data-view-empty={String(empty)}
     >
+      {selected && (
+        <BlockTab selected>
+          <button
+            type="button"
+            {...blockActionProps}
+            onClick={() => openSettings(attributes.fieldId)}
+          >
+            Field settings
+          </button>
+        </BlockTab>
+      )}
       {content}
       <div data-testid="control">Answer here</div>
     </div>
@@ -146,7 +167,9 @@ export const renderSections = ({
 } = {}) => {
   const onChange = vi.fn<(value: JSONContent | undefined) => void>();
   const onInsert = vi.fn<RichTextFieldBlocks['onInsert']>();
-  const onActivate = vi.fn<RichTextFieldBlocks['onActivate']>();
+  // Told when a field's settings button is pressed, as Enter on a selected
+  // field presses it.
+  const onActivate = vi.fn<(fieldId: string) => void>();
   let created = 0;
   let insert: RichTextInsertState | undefined;
   const commandsRef = createRef<RichTextCommands>();
@@ -160,7 +183,6 @@ export const renderSections = ({
             return `new-${created}`;
           },
           onInsert,
-          onActivate,
           labelPlaceholder: 'Type the question',
           hintPlaceholder: 'Add a hint (optional)',
           ...fieldBlocksProp,
@@ -175,29 +197,31 @@ export const renderSections = ({
           ...logicBlocksProp,
         };
   const element = (changed: Partial<FieldProps> = {}) => (
-    <RichTextEditorField
-      id="content"
-      name="content"
-      aria-label="Content"
-      changeMode="input"
-      emojiMenu={false}
-      value={doc(paragraph(text('Hello')))}
-      onChange={onChange}
-      inlineValues={inlineValuesFor({ name: 'Name', age: 'Age' })}
-      fieldBlocks={fieldBlocks}
-      logicBlocks={logicBlocks}
-      assetBlocks={{ View: AssetView }}
-      insertTools={{
-        label: 'Insert',
-        render: (given) => {
-          insert = given;
-          return null;
-        },
-      }}
-      commandsRef={commandsRef}
-      {...props}
-      {...changed}
-    />
+    <OpenSettings value={onActivate}>
+      <RichTextEditorField
+        id="content"
+        name="content"
+        aria-label="Content"
+        changeMode="input"
+        emojiMenu={false}
+        value={doc(paragraph(text('Hello')))}
+        onChange={onChange}
+        inlineValues={inlineValuesFor({ name: 'Name', age: 'Age' })}
+        fieldBlocks={fieldBlocks}
+        logicBlocks={logicBlocks}
+        assetBlocks={{ View: AssetView }}
+        insertTools={{
+          label: 'Insert',
+          render: (given) => {
+            insert = given;
+            return null;
+          },
+        }}
+        commandsRef={commandsRef}
+        {...props}
+        {...changed}
+      />
+    </OpenSettings>
   );
   const { rerender } = render(element());
   const textbox = () => screen.findByRole('textbox', { name: 'Content' });

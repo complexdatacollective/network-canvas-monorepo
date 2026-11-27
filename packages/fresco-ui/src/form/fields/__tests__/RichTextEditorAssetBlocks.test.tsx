@@ -6,10 +6,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { assetBlockAttributes } from '../../../testing/assetBlock';
 import { withMod } from '../../../testing/modKey';
 import {
-  assetBlockControlsAt,
   assetBlockControlsProps,
+  firstSettingsControlIn,
   type RichTextAssetBlockViewProps,
 } from '../richText/assetBlockNode';
+import { blockActionProps, BlockTab } from '../richText/blockFrames';
 import { block, doc, paragraph, renderField } from './richTextEditorField';
 
 const attributesShown = (): Record<string, unknown> =>
@@ -441,18 +442,36 @@ describe('where focus is', () => {
   });
 });
 
-/** A view whose controls are not in the block but over the page. */
+/**
+ * A view whose settings are not in the block but over the page, opened from
+ * the settings button in its tab.
+ */
 function ViewWithControlsElsewhere({
   selected,
   active,
   returnToText,
 }: RichTextAssetBlockViewProps) {
+  const [open, setOpen] = useState(false);
   return (
-    <div data-testid="view" {...assetBlockControlsAt('controls-of-a1')}>
-      {selected &&
-        active &&
+    <div data-testid="view">
+      {selected && active && (
+        <BlockTab selected>
+          <button
+            type="button"
+            {...blockActionProps}
+            onClick={() => setOpen(true)}
+          >
+            Image settings
+          </button>
+        </BlockTab>
+      )}
+      {open &&
         createPortal(
-          <div id="controls-of-a1">
+          <div
+            ref={(drawn) => {
+              if (drawn !== null) firstSettingsControlIn(drawn)?.focus();
+            }}
+          >
             <span tabIndex={-1}>Not a control</span>
             <input aria-label="Description" />
             <button type="button" onClick={returnToText}>
@@ -478,11 +497,13 @@ describe('controls a view draws over the page', () => {
     await waitFor(() => {
       expect(editor).toHaveFocus();
     });
-    await screen.findByRole('textbox', { name: 'Description' });
+    await screen.findByRole('button', { name: 'Image settings' });
+    // Opened only from their button, never by selecting the block.
+    expect(screen.queryByRole('textbox', { name: 'Description' })).toBeNull();
     return { field, editor };
   };
 
-  it('are reached with Enter on the selected block, at the first of them', async () => {
+  it('open with Enter on the selected block, which presses the settings button', async () => {
     const { field } = await openOnBlock();
 
     await field.user.keyboard('{Enter}');

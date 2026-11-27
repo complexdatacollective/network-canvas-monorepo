@@ -87,6 +87,11 @@ import {
   type RichTextAssetBlockViewProps,
 } from './richText/assetBlockNode';
 import {
+  BlockFrameLayer,
+  BlockFramesContext,
+  createBlockFrameStore,
+} from './richText/blockFrames';
+import {
   EditorToolbar,
   ToolbarButton,
   toolbarButtonStyles,
@@ -142,9 +147,9 @@ import {
   oneLineDocumentOf,
 } from './richText/oneLine';
 import {
+  DocumentBlocks,
   insertSection,
   SECTION_GROUP,
-  SectionBlocks,
 } from './richText/sectionBlocks';
 import { type HeadingLevel, TextStyleMenu } from './richText/TextStyleMenu';
 import {
@@ -269,13 +274,17 @@ export type {
   RichTextAssetBlockViewProps,
 };
 export {
-  ASSET_BLOCK_OUTLINE_OFFSET,
-  ASSET_BLOCK_OUTLINE_WIDTH,
-  assetBlockControlsAt,
   assetBlockControlsProps,
-  assetBlockFrameVariants,
+  assetBlockFileProps,
   firstSettingsControlIn,
 } from './richText/assetBlockNode';
+export {
+  BLOCK_FRAME_OFFSET,
+  BLOCK_FRAME_WIDTH,
+  blockActionProps,
+  blockBoxProps,
+  BlockTab,
+} from './richText/blockFrames';
 
 // The toolbar's buttons for putting in a file, one for each kind of file.
 const ASSET_BLOCK_BUTTONS = [
@@ -800,8 +809,14 @@ function createCustomExtensions({
     ReadSelectionBeforeKeys,
   ];
 
+  // Blocks have frames and handles (see `BlockFrameLayer`) in a document
+  // that holds sections or files: the text of a form or a page.
+  if (holdsSections || (assetBlocks && !singleLine)) {
+    extensions.push(DocumentBlocks);
+  }
+
   if (holdsSections) {
-    extensions.push(SectionDocument, SectionBlocks);
+    extensions.push(SectionDocument);
     if (fieldBlocks !== undefined) {
       extensions.push(
         ...createFieldBlockNodes(fieldBlocks, {
@@ -979,14 +994,14 @@ const editorContentVariants = cva({
       ),
       false: cx(multilineContentVariants(), '[&>.tiptap]:min-h-[120px]'),
     },
-    // Text that can hold sections (fields, logic blocks) leaves a gutter at
-    // its start for their drag handles (see `SectionDragHandle`).
-    sections: {
+    // Text whose blocks have frames leaves a gutter at its start for their
+    // drag handles (see `BlockFrameLayer`).
+    blockFrames: {
       true: 'ps-13',
       false: '',
     },
   },
-  defaultVariants: { sections: false },
+  defaultVariants: { blockFrames: false },
 });
 
 type ToolbarOptions = {
@@ -1374,6 +1389,12 @@ export default function RichTextEditorField({
   // Part of the schema, so changing it makes the editor again.
   const fieldBlockText = fieldBlocksProp?.text ?? 'editable';
   const offersLogicBlocks = logicBlocksProp !== undefined && !singleLine;
+  // Blocks have frames, a handle and (for those with settings) a tab in a
+  // document that holds sections or files (see `BlockFrameLayer`).
+  const showsBlockFrames =
+    offersFieldBlocks || offersLogicBlocks || holdsAssetBlocks;
+  // What the pointer is over, read by the frames and by the blocks' views.
+  const [blockFrames] = useState(createBlockFrameStore);
   // What a field or logic block's view is told of the field around it.
   const fieldBlocksField = useMemo(
     () => ({
@@ -2601,8 +2622,10 @@ export default function RichTextEditorField({
     <div
       className={editorContainerVariants({
         state: inputState,
-        className,
+        // The frames are placed over the editor, from its corner.
+        className: cx(showsBlockFrames && 'relative', className),
       })}
+      data-block-frames-host={showsBlockFrames || undefined}
       onFocus={(event) => {
         activeOnFocus();
         setIsFocused(true);
@@ -2627,20 +2650,31 @@ export default function RichTextEditorField({
       }}
     >
       <NestedEditingContext.Provider value={nestedEditing}>
-        <AssetBlockFieldContext.Provider value={assetBlockField}>
-          <FieldBlocksContext.Provider value={fieldBlocksField}>
-            <LogicBlocksContext.Provider value={logicBlocksField}>
-              <EditorContent
-                editor={editor}
-                className={editorContentVariants({
-                  singleLine,
-                  sections: offersFieldBlocks || offersLogicBlocks,
-                })}
-              />
-            </LogicBlocksContext.Provider>
-          </FieldBlocksContext.Provider>
-        </AssetBlockFieldContext.Provider>
+        <BlockFramesContext.Provider
+          value={showsBlockFrames ? blockFrames : null}
+        >
+          <AssetBlockFieldContext.Provider value={assetBlockField}>
+            <FieldBlocksContext.Provider value={fieldBlocksField}>
+              <LogicBlocksContext.Provider value={logicBlocksField}>
+                <EditorContent
+                  editor={editor}
+                  className={editorContentVariants({
+                    singleLine,
+                    blockFrames: showsBlockFrames,
+                  })}
+                />
+              </LogicBlocksContext.Provider>
+            </FieldBlocksContext.Provider>
+          </AssetBlockFieldContext.Provider>
+        </BlockFramesContext.Provider>
       </NestedEditingContext.Provider>
+      {showsBlockFrames && editor !== null && !isDisabled && (
+        <BlockFrameLayer
+          editor={editor}
+          store={blockFrames}
+          active={isActive}
+        />
+      )}
       {triggered !== null && (
         // Where the trigger was typed, for the insert tools to open beside.
         <span

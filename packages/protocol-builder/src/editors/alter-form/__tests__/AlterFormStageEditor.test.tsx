@@ -12,6 +12,7 @@ import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
 import {
   expectStageUntouched,
+  fieldTabTexts,
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
@@ -147,9 +148,10 @@ describe('the editor for a form about each person', () => {
    */
   it('follows an attribute renamed elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
-    expect(
-      await (await formEditor()).findByText('relationship_to_ego'),
-    ).toBeInTheDocument();
+    await formEditor();
+    expect(await fieldTabTexts(harness)).toContainEqual(
+      expect.stringContaining('relationship_to_ego'),
+    );
 
     harness.receiveCodebookUpdate({
       node: {
@@ -168,9 +170,12 @@ describe('the editor for a form about each person', () => {
       },
     });
 
-    expect(
-      await (await formEditor()).findByText('how_they_know_each_other'),
-    ).toBeInTheDocument();
+    // Shown in the field's tab, with its settings button.
+    await waitFor(async () =>
+      expect(await fieldTabTexts(harness)).toContainEqual(
+        expect.stringContaining('how_they_know_each_other'),
+      ),
+    );
     // Their rename is theirs. The stage still holds the field the researcher
     // authored, pointing at the attribute it always did — so a save carries
     // their change nowhere.
