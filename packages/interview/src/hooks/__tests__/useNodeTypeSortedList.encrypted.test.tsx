@@ -55,8 +55,8 @@ const variablesOf: Record<string, Record<string, Variable>> = {
     [SIZE]: { name: 'size', type: 'number', component: 'Number' },
   },
 };
-const textOf = { [PERSON]: NAME, [PLACE]: TITLE };
-const numberOf = { [PERSON]: AGE, [PLACE]: SIZE };
+const textOf = (type: string) => (type === PLACE ? TITLE : NAME);
+const numberOf = (type: string) => (type === PLACE ? SIZE : AGE);
 
 const createTypedStore = (nodes: NcNode[], protocolLocale = 'en') =>
   createStore(
@@ -114,7 +114,7 @@ async function encrypted(
   const { key } = await encryptionFor('pw');
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
-      { [textOf[type]]: text },
+      { [textOf(type)]: text },
       variablesOf[type] ?? {},
       key,
       id,
@@ -165,14 +165,15 @@ const named = async () => [
 function numberedAgainstStoredText(nodes: NcNode[]) {
   const numbers = new Map<string, number>();
   const byNumber: string[] = [];
-  for (const type of [PLACE, PERSON] as const) {
+  for (const type of [PLACE, PERSON]) {
     const group = nodes.filter((node) => node.type === type);
     const stored = ids(
-      createSorter<NcNode>(
-        [{ property: textOf[type], direction: 'asc' }].map(
-          processProtocolSortRule(variablesOf[type] ?? {}),
-        ),
-      )(group),
+      createSorter<NcNode>([
+        processProtocolSortRule(variablesOf[type] ?? {})({
+          property: textOf(type),
+          direction: 'asc',
+        }),
+      ])(group),
     );
     stored.forEach((id, index) => numbers.set(id, stored.length - index));
     byNumber.push(...stored.toReversed());
@@ -182,8 +183,7 @@ function numberedAgainstStoredText(nodes: NcNode[]) {
       ...node,
       [entityAttributesProperty]: {
         ...node[entityAttributesProperty],
-        [numberOf[node.type === PLACE ? PLACE : PERSON]]:
-          numbers.get(node[entityPrimaryKeyProperty]) ?? 0,
+        [numberOf(node.type)]: numbers.get(node[entityPrimaryKeyProperty]) ?? 0,
       },
     })),
     byNumber,
