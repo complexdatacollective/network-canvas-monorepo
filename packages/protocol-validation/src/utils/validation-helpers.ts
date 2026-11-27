@@ -159,7 +159,7 @@ export const filterRuleEntityExists = (
     return codebook.ego !== undefined;
   }
 
-  return Boolean(codebook[rule.type]?.[rule.options.type || '']);
+  return Object.hasOwn(codebook[rule.type] ?? {}, rule.options.type ?? '');
 };
 
 /**
@@ -172,17 +172,24 @@ export const filterRuleAttributeExists = (
   if (!('attribute' in rule.options) || !rule.options.attribute) return true; // No attribute to check
 
   if (rule.type === 'ego') {
-    return Boolean(codebook.ego?.variables?.[rule.options.attribute]);
+    return Object.hasOwn(codebook.ego?.variables ?? {}, rule.options.attribute);
   }
 
   // A node rule may name a layout, which a node of any type can hold a
   // position in.
-  if (rule.type === 'node' && codebook.layouts?.[rule.options.attribute]) {
+  if (
+    rule.type === 'node' &&
+    Object.hasOwn(codebook.layouts ?? {}, rule.options.attribute)
+  ) {
     return true;
   }
 
-  const entity = codebook[rule.type]?.[rule.options.type || ''];
-  return Boolean(entity?.variables?.[rule.options.attribute]);
+  const entityTypes = codebook[rule.type] ?? {};
+  const typeId = rule.options.type ?? '';
+  const entity = Object.hasOwn(entityTypes, typeId)
+    ? entityTypes[typeId]
+    : undefined;
+  return Object.hasOwn(entity?.variables ?? {}, rule.options.attribute);
 };
 
 /**

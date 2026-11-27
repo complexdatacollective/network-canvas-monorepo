@@ -168,7 +168,7 @@ const validateFilterRules = (
       rule.type === 'node' &&
       'attribute' in rule.options &&
       rule.options.attribute !== undefined &&
-      codebook.layouts?.[rule.options.attribute] !== undefined;
+      Object.hasOwn(codebook.layouts ?? {}, rule.options.attribute);
     if (layoutAttribute) {
       const operators: readonly string[] = LAYOUT_RULE_OPERATORS;
       if (!operators.includes(rule.options.operator)) {
@@ -796,7 +796,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
 
   // A stage setting naming a layout names one of the codebook's layouts.
   for (const { path, layoutId } of collectLayoutReferences(protocol)) {
-    if (protocol.codebook.layouts?.[layoutId] !== undefined) continue;
+    if (Object.hasOwn(protocol.codebook.layouts ?? {}, layoutId)) continue;
     ctx.addIssue({
       code: 'custom' as const,
       message: `Layout "${layoutId}" is not defined in the codebook`,

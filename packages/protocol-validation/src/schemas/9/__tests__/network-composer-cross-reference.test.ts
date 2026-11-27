@@ -86,6 +86,24 @@ describe('NetworkComposer cross-reference validation', () => {
     ]);
   });
 
+  it('rejects a layout named after a member every object inherits', () => {
+    for (const layout of ['toString', 'constructor', '__proto__']) {
+      const result = ProtocolSchemaV9.safeParse(
+        withFinishStage(composerProtocol({ ...baseStage, layout })),
+      );
+      expect({ layout, issues: parseIssues(result) }).toEqual({
+        layout,
+        issues: [
+          {
+            path: 'stages.0.layout',
+            code: 'custom',
+            message: `Layout "${layout}" is not defined in the codebook`,
+          },
+        ],
+      });
+    }
+  });
+
   // Positions are stored on each node under the layout's id, so a node
   // variable cannot stand in for a layout.
   it('rejects a layout naming a node variable', () => {

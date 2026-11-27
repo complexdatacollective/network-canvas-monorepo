@@ -8,6 +8,7 @@ import { ProtocolSchemaV9 } from '../../schema.ts';
 import {
   filterRuleSchema,
   FilterSchema,
+  LAYOUT_RULE_OPERATORS,
   type FilterOperator,
 } from '../filter.ts';
 
@@ -172,7 +173,10 @@ describe('how the rules in a filter combine', () => {
 describe('a node rule naming a layout', () => {
   // The base protocol's Sociogram places people in `layoutPosition`; the rule
   // asks it of the stage's skip logic.
-  const withLayoutRule = (options: Record<string, unknown>) => {
+  const withLayoutRule = (
+    options: Record<string, unknown>,
+    ruleType: 'node' | 'ego' | 'edge' = 'node',
+  ) => {
     const protocol = createBaseProtocol();
     return withFinishStage({
       ...protocol,
@@ -186,7 +190,7 @@ describe('a node rule naming a layout', () => {
                   rules: [
                     {
                       id: testId('layout-rule'),
-                      type: 'node',
+                      type: ruleType,
                       options: { attribute: 'layoutPosition', ...options },
                     },
                   ],
@@ -203,16 +207,73 @@ describe('a node rule naming a layout', () => {
   const optionsPath = `stages.${sociogramIndex}.skipLogic.filter.rules.0.options`;
 
   it('accepts a node rule naming a layout on any node type', () => {
+    const operands: Record<string, Record<string, unknown>> = {
+      EXISTS: {},
+      NOT_EXISTS: {},
+      EXACTLY: { value: 1 },
+      NOT: { value: 1 },
+    };
+    expect(Object.keys(operands)).toEqual([...LAYOUT_RULE_OPERATORS]);
     for (const type of ['person', 'colleague']) {
-      for (const operator of ['EXISTS', 'NOT_EXISTS']) {
+      for (const [operator, operand] of Object.entries(operands)) {
         expect({
           type,
           operator,
           issues: parseIssues(
-            ProtocolSchemaV9.safeParse(withLayoutRule({ type, operator })),
+            ProtocolSchemaV9.safeParse(
+              withLayoutRule({ type, operator, ...operand }),
+            ),
           ),
         }).toEqual({ type, operator, issues: [] });
       }
+    }
+  });
+
+  // Ego and edges hold no position, so only a node rule may name a layout.
+  it('rejects an ego rule and an edge rule naming a layout', () => {
+    for (const rule of [
+      { type: 'ego' as const, options: { operator: 'EXISTS' } },
+      {
+        type: 'edge' as const,
+        options: { type: 'knows', operator: 'EXISTS' },
+      },
+    ]) {
+      const protocol = withLayoutRule(rule.options, rule.type);
+      expect({
+        type: rule.type,
+        issues: parseIssues(ProtocolSchemaV9.safeParse(protocol)),
+      }).toEqual({
+        type: rule.type,
+        issues: [
+          {
+            path: `${optionsPath}.attribute`,
+            code: 'custom',
+            message: '"layoutPosition" is not a valid attribute ID',
+          },
+        ],
+      });
+    }
+  });
+
+  it('rejects a node rule whose attribute is a member every object inherits', () => {
+    for (const attribute of ['constructor', 'toString', '__proto__']) {
+      expect({
+        attribute,
+        issues: parseIssues(
+          ProtocolSchemaV9.safeParse(
+            withLayoutRule({ type: 'person', attribute, operator: 'EXISTS' }),
+          ),
+        ),
+      }).toEqual({
+        attribute,
+        issues: [
+          {
+            path: `${optionsPath}.attribute`,
+            code: 'custom',
+            message: `"${attribute}" is not a valid attribute ID`,
+          },
+        ],
+      });
     }
   });
 
