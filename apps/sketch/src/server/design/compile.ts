@@ -445,14 +445,25 @@ export const compile = (
       sourceMap.set(`codebook.node.${tk}`, `nodeTypes "${n.id}"`);
     });
     codebook.node = nodes;
-    // One layout per placed node type. Layout names are unique across the
-    // codebook, and the node type key is already unique and slugged.
+    // One layout per placed node type. A layout's name, and the _x and _y
+    // columns its positions export to, must clash with no node attribute.
+    const takenNames = new Set<string>();
+    for (const t of Object.values(nodes))
+      if (isObject(t) && isObject(t.variables))
+        for (const v of Object.values(t.variables))
+          if (isObject(v) && typeof v.name === 'string')
+            takenNames.add(v.name.toLowerCase());
+    const clashes = (nm: string) =>
+      [nm, `${nm}_x`, `${nm}_y`].some((c) => takenNames.has(c));
     const layouts: Json = {};
     for (const n of d.nodeTypes) {
       if (!needsLayout.has(n.id)) continue;
       const lk = `layout_${nodeKey.get(n.id)!}`;
+      let nm = lk;
+      for (let m = 2; clashes(nm); m++) nm = `${lk}_${m}`;
+      takenNames.add(nm);
       layoutKey.set(n.id, lk);
-      layouts[lk] = { name: lk };
+      layouts[lk] = { name: nm };
       sourceMap.set(`codebook.layouts.${lk}`, `nodeTypes "${n.id}"`);
     }
     if (Object.keys(layouts).length) codebook.layouts = layouts;

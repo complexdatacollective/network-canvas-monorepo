@@ -1289,6 +1289,30 @@ describe('instrument attributes', () => {
     });
   });
 
+  it('names the layout so it clashes with no attribute of the node type', async () => {
+    const r = await build(
+      composerDesign({
+        nodeTypes: [
+          person([
+            A('role', 'text', 'What is their role?'),
+            A('circles', 'multi_choice', '', { options: ['Work', 'Family'] }),
+            A('layout_person', 'text', 'Where do they live?'),
+          ]),
+        ],
+      }),
+    );
+    expect(
+      r.validation.success,
+      JSON.stringify(r.validation.error?.issues),
+    ).toBe(true);
+    expect(stageById(r.stages, 'canvas').layout).toBe(
+      sketchLayoutId('layout_person'),
+    );
+    expect(r.protocol.codebook.layouts).toEqual({
+      [sketchLayoutId('layout_person')]: { name: 'layout_person_2' },
+    });
+  });
+
   it.each([
     ['self_administered', true],
     ['face_to_face', false],
