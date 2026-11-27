@@ -49,6 +49,10 @@ const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
 const SPARE_TYPE = testTypeId('spare');
 const SPARE = sectionId({ kind: 'codebookNode', typeId: SPARE_TYPE });
 const EGO = sectionId({ kind: 'codebookEgo' });
+const SEATING = sectionId({
+  kind: 'codebookLayout',
+  layoutId: testVariableId('seating layout'),
+});
 
 const ADA: HostPrincipal = {
   sessionId: 'session-1',
@@ -126,6 +130,16 @@ function hostWithSpareType(): InMemoryHost {
   });
 }
 
+function hostWithLayout(): InMemoryHost {
+  return createInMemoryHost({
+    sections: {
+      ...sectionsFromProtocol(FIXTURE),
+      [SEATING]: { name: 'seating' },
+    },
+    principal: ADA,
+  });
+}
+
 async function stagePortrait(host: InMemoryHost): Promise<string> {
   const staged = await host.adapter.rpcCall('ResourcesStage', {
     protocolId: host.protocolId,
@@ -159,6 +173,16 @@ const CALLS: readonly Call[] = [
       host.adapter.rpcCall('AcquireLock', {
         protocolId: host.protocolId,
         sectionId: INFORMATION,
+      }),
+  },
+  {
+    procedure: 'Delete',
+    name: 'deleting a layout',
+    host: hostWithLayout,
+    run: (host) =>
+      host.adapter.rpcCall('Delete', {
+        protocolId: host.protocolId,
+        sectionId: SEATING,
       }),
   },
   {
