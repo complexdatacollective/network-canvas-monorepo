@@ -366,6 +366,7 @@ export default function EncryptedAttributesSection() {
         subject,
         authoritativeDocument: authoritative,
         variableId,
+        layouts: protocolContext.codebook.layouts,
         // Switching encryption off REMOVES the property rather than storing
         // `false`: absence is how the protocol schema spells "not
         // encrypted", and a stored `false` would go on saying something
@@ -415,6 +416,7 @@ export default function EncryptedAttributesSection() {
             subject,
             authoritativeDocument: document,
             variableId,
+            layouts: protocolContext.codebook.layouts,
             draft: {},
             replaceProperties: ['encrypted'],
           }),

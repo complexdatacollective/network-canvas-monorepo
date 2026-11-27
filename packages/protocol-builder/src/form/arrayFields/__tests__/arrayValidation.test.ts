@@ -171,6 +171,7 @@ describe('optionsValidationFor', () => {
       name: 'foo',
       type: 'categorical',
       siblings: [{ name: 'foo_bar', type: 'text' }],
+      layouts: [],
     });
     await expect(
       arrayIssue(withSibling.custom, [

@@ -11,7 +11,10 @@ import {
   normalizeForComparison,
 } from '@codaco/shared-consts';
 
-import { exportColumnRefusals } from '../../fields/variableNameRules.ts';
+import {
+  exportColumnRefusals,
+  type ScopedLayout,
+} from '../../fields/variableNameRules.ts';
 import { type ProtocolLocalization } from '../../localization/localizedText.ts';
 import { isOptionLabelEmpty } from './optionCompleteness.ts';
 
@@ -142,6 +145,8 @@ export type OptionExportColumns = Readonly<{
   name: string;
   type: string;
   siblings: readonly ExportColumnVariable[];
+  /** The codebook's layouts, which count only for a node attribute. */
+  layouts: readonly ScopedLayout[];
 }>;
 
 /**
@@ -170,6 +175,7 @@ export const optionExportColumnIssue = (
       options: [{ value: optionValue }],
     },
     siblings: columns.siblings,
+    layouts: columns.layouts,
   }).find(({ origin }) => origin.kind === 'option')?.message;
 };
 

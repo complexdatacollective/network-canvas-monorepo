@@ -229,6 +229,7 @@ export function useSubjectVariableScope(
         : variableNameScope(
             subject.entity,
             variablesForSubject(protocolContext, subject),
+            protocolContext.codebook.layouts,
           ),
     [protocolContext, subject],
   );

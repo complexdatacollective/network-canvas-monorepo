@@ -106,6 +106,12 @@ const messages = defineMessages({
     description:
       'Refusal shown when a researcher names an attribute (a codebook variable) something another attribute of the same entity is already called. name is what they typed.',
   },
+  variableNameTakenByLayout: {
+    id: 'protocolBuilder.codebookEditing.variableNameTakenByLayout',
+    defaultMessage: 'The codebook already has a layout called "{name}"',
+    description:
+      'Refusal shown when a researcher names a node attribute (a codebook variable) what a layout in the codebook is already called. A layout is a named set of positions that a researcher places nodes in on a canvas. name is what they typed.',
+  },
   missingVariable: {
     id: 'protocolBuilder.codebookEditing.missingVariable',
     defaultMessage: 'Attribute record id "{variableId}" does not exist',
@@ -175,11 +181,19 @@ class DuplicateVariableIdError extends Error {
 
 /**
  * A researcher reaches this by typing a name another attribute of the same
- * entity already has, so it is encoded and decoded where the editor shows it.
+ * entity already has, or, for a node attribute, a name a layout has, so it is
+ * encoded and decoded where the editor shows it.
  */
 export class DuplicateVariableNameError extends Error {
-  constructor(name: string) {
-    super(createMessageError(messages.duplicateVariableName, { name }));
+  constructor(name: string, takenBy: 'attribute' | 'layout' = 'attribute') {
+    super(
+      createMessageError(
+        takenBy === 'layout'
+          ? messages.variableNameTakenByLayout
+          : messages.duplicateVariableName,
+        { name },
+      ),
+    );
   }
 }
 
@@ -212,6 +226,11 @@ type VariableEditInput = Readonly<{
   subject: CodebookSubject;
   authoritativeDocument: SectionDoc;
   variableId: string;
+  /**
+   * The codebook's layouts. A node attribute may not have a layout's name or
+   * export to one of a layout's position columns.
+   */
+  layouts: CodebookLayouts | undefined;
   /**
    * The protocol's languages, so option labels are compared as the interview
    * shows them, falling back where one is untranslated. Without them, labels
@@ -577,12 +596,29 @@ export function documentWithEntityProperties(
   return next;
 }
 
+type CodebookLayouts = Readonly<Record<string, Readonly<{ name: string }>>>;
+
+/** The layouts a subject's attributes are judged beside: a node type's only. */
+const layoutsFor = (
+  subject: CodebookSubject,
+  layouts: CodebookLayouts | undefined,
+): readonly Readonly<{ name: string }>[] =>
+  subject.entity === 'node' ? Object.values(layouts ?? {}) : [];
+
 const assertVariableNameAvailable = (
+  input: VariableEditInput,
   variables: Readonly<Record<string, unknown>>,
   variable: Variable,
   excludedVariableId?: string,
 ): void => {
   const normalizedName = normalizeForComparison(variable.name);
+  if (
+    layoutsFor(input.subject, input.layouts).some(
+      ({ name }) => normalizeForComparison(name) === normalizedName,
+    )
+  ) {
+    throw new DuplicateVariableNameError(variable.name, 'layout');
+  }
   for (const [variableId, candidate] of Object.entries(variables)) {
     if (
       variableId !== excludedVariableId &&
@@ -634,14 +670,15 @@ const exportColumnVariableOf = (
 };
 
 const exportColumnRefusalsFor = (
-  subject: CodebookSubject,
+  input: VariableEditInput,
   variables: Readonly<Record<string, unknown>>,
   candidate: ExportColumnVariable,
   excludedVariableId?: string,
 ) =>
   exportColumnRefusals({
-    entity: subject.entity,
+    entity: input.subject.entity,
     candidate,
+    layouts: layoutsFor(input.subject, input.layouts),
     siblings: Object.entries(variables).flatMap(([variableId, held]) => {
       const sibling = exportColumnVariableOf(held);
       return variableId === excludedVariableId || sibling === undefined
@@ -653,8 +690,9 @@ const exportColumnRefusalsFor = (
 /**
  * Refuses a write that would make the export put two things in one column: an
  * attribute named like a column a categorical attribute's option, a layout
- * attribute's position or the export itself already writes, or an option or
- * layout position that would land on another attribute's column. Judged on the
+ * attribute's position, a codebook layout's position or the export itself
+ * already writes, or an option or layout position that would land on another
+ * attribute's column. Judged on the
  * attribute as it will be stored, beside the others of the same type, so a
  * rename, a new option and a change of type are all asked the same question.
  *
@@ -664,7 +702,7 @@ const exportColumnRefusalsFor = (
  * thing they are asked to fix.
  */
 const assertNoExportColumnConflict = (
-  subject: CodebookSubject,
+  input: VariableEditInput,
   variables: Readonly<Record<string, unknown>>,
   variable: Variable,
   excludedVariableId?: string,
@@ -676,15 +714,12 @@ const assertNoExportColumnConflict = (
   const alreadyThere = new Set(
     held === undefined
       ? []
-      : exportColumnRefusalsFor(
-          subject,
-          variables,
-          held,
-          excludedVariableId,
-        ).map(({ message }) => message),
+      : exportColumnRefusalsFor(input, variables, held, excludedVariableId).map(
+          ({ message }) => message,
+        ),
   );
   const introduced = exportColumnRefusalsFor(
-    subject,
+    input,
     variables,
     variable,
     excludedVariableId,
@@ -706,6 +741,7 @@ const variableIdExists = (
   for (const definition of Object.values(context.codebook.edge ?? {})) {
     if (Object.hasOwn(definition.variables ?? {}, variableId)) return true;
   }
+  if (Object.hasOwn(context.codebook.layouts ?? {}, variableId)) return true;
   return Object.hasOwn(context.codebook.ego?.variables ?? {}, variableId);
 };
 
@@ -732,8 +768,8 @@ export function documentWithCreatedVariable(
     throw new DuplicateVariableIdError(input.variableId);
   }
   const variable = validateVariableDraft(input.draft, input.localization);
-  assertVariableNameAvailable(variables, variable);
-  assertNoExportColumnConflict(input.subject, variables, variable);
+  assertVariableNameAvailable(input, variables, variable);
+  assertNoExportColumnConflict(input, variables, variable);
   defineOwn(variables, input.variableId, cloneValue(variable));
   return entityDocumentWithVariables(input, variables);
 }
@@ -791,13 +827,8 @@ export function documentWithRebasedVariable(
         ),
     input.localization,
   );
-  assertVariableNameAvailable(variables, variable, input.variableId);
-  assertNoExportColumnConflict(
-    input.subject,
-    variables,
-    variable,
-    input.variableId,
-  );
+  assertVariableNameAvailable(input, variables, variable, input.variableId);
+  assertNoExportColumnConflict(input, variables, variable, input.variableId);
   defineOwn(variables, input.variableId, cloneValue(variable));
   return entityDocumentWithVariables(input, variables);
 }
@@ -851,13 +882,8 @@ export function documentWithUpdatedVariable(
     defineOwn(nextVariable, key, cloneValue(value));
   }
   const variable = validateVariableDraft(nextVariable, input.localization);
-  assertVariableNameAvailable(variables, variable, input.variableId);
-  assertNoExportColumnConflict(
-    input.subject,
-    variables,
-    variable,
-    input.variableId,
-  );
+  assertVariableNameAvailable(input, variables, variable, input.variableId);
+  assertNoExportColumnConflict(input, variables, variable, input.variableId);
   defineOwn(variables, input.variableId, cloneValue(variable));
   return entityDocumentWithVariables(input, variables);
 }

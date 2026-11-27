@@ -276,6 +276,7 @@ export function useCreateVariableEditor({
           authoritativeDocument: authoritative,
           variableId,
           submittedDocument: document,
+          layouts: protocolContext.codebook.layouts,
         }),
       );
 

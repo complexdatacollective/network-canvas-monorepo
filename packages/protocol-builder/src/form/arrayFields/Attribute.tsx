@@ -388,8 +388,13 @@ export default function Attribute({
   // this type holds, not just the ones a row may bind: the codebook refuses a
   // duplicate whatever kind of answer the attribute wearing it records.
   const nameScope = useMemo(
-    () => variableNameScope(subject.entity, allVariables),
-    [allVariables, subject.entity],
+    () =>
+      variableNameScope(
+        subject.entity,
+        allVariables,
+        protocolContext.codebook.layouts,
+      ),
+    [allVariables, protocolContext.codebook.layouts, subject.entity],
   );
 
   const crossClassValidate = useCallback(

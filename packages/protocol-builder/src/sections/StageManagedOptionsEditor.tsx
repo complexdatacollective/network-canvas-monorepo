@@ -93,6 +93,7 @@ export default function StageManagedOptionsEditor({
         authoritativeDocument,
         variableId,
         submittedDocument: submitted,
+        layouts: protocolContext.codebook.layouts,
         ...(ownedProperties === undefined ? {} : { ownedProperties }),
       }),
     );

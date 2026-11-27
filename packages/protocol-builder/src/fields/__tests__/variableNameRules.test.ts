@@ -19,7 +19,8 @@ import {
 const scopeOf = (
   variables: readonly ScopedVariable[],
   entity: VariableNameScope['entity'] = 'node',
-): VariableNameScope => ({ entity, variables });
+  layouts: VariableNameScope['layouts'] = [],
+): VariableNameScope => ({ entity, variables, layouts });
 
 const SCOPE = scopeOf([
   { id: 'v-age', name: 'age', type: 'number' },
@@ -197,16 +198,21 @@ const CLOSE = testId('option/closeness/1');
 describe('the attributes of one type as the rule reads them', () => {
   it('carries each attribute with its record id and the parts its columns depend on', () => {
     expect(
-      variableNameScope('edge', {
-        'v-a': {
-          name: 'closeness',
-          type: 'ordinal',
-          options: [{ id: CLOSE, label: { en: 'Close' }, value: 1 }],
+      variableNameScope(
+        'edge',
+        {
+          'v-a': {
+            name: 'closeness',
+            type: 'ordinal',
+            options: [{ id: CLOSE, label: { en: 'Close' }, value: 1 }],
+          },
+          'v-b': { name: 'note', type: 'text' },
         },
-        'v-b': { name: 'note', type: 'text' },
-      }),
+        { 'l-seating': { name: 'seating' } },
+      ),
     ).toEqual({
       entity: 'edge',
+      layouts: [],
       variables: [
         {
           id: 'v-a',
@@ -217,6 +223,71 @@ describe('the attributes of one type as the rule reads them', () => {
         { id: 'v-b', name: 'note', type: 'text' },
       ],
     });
+  });
+
+  it('carries the codebook layouts for a node type', () => {
+    expect(
+      variableNameScope('node', {}, { 'l-seating': { name: 'seating' } }),
+    ).toEqual({
+      entity: 'node',
+      variables: [],
+      layouts: [{ name: 'seating' }],
+    });
+  });
+});
+
+describe('the rule for a node attribute name beside the codebook layouts', () => {
+  const scope = scopeOf(
+    [{ id: 'v-age', name: 'age', type: 'number' }],
+    'node',
+    [{ name: 'seating' }],
+  );
+
+  it('refuses a node variable named like a layout', () => {
+    expect(variableNameRefusal('Seating', { intl, scope })).toBe(
+      'the codebook already has a layout called that',
+    );
+    // A layout gives no edge or ego attribute a column, nor takes its name.
+    expect(
+      variableNameRefusal('seating', {
+        intl,
+        scope: variableNameScope(
+          'edge',
+          {},
+          { 'l-seating': { name: 'seating' } },
+        ),
+      }),
+    ).toBe(undefined);
+  });
+
+  it('refuses a node variable whose export column equals a layout\u2019s', () => {
+    expect(variableNameRefusal('seating_x', { intl, scope })).toBe(
+      'The export already has a column called “seating_x” for the positions in the layout “seating”. Choose a different name.',
+    );
+    expect(variableNameRefusal('seating x', { intl, scope })).toBe(
+      'In the export, the name “seating x” and the position column “seating_X” of the layout “seating” would become the same column, “seating_x”. Choose a different name.',
+    );
+    expect(variableNameRefusal('seating_z', { intl, scope })).toBe(undefined);
+  });
+
+  it('refuses an option whose column equals a layout\u2019s, for a node attribute only', () => {
+    const optionOf = (entity: 'node' | 'edge', layout: string) =>
+      exportColumnRefusals({
+        entity,
+        candidate: {
+          name: 'seat',
+          type: 'categorical',
+          options: [{ value: 'ing_x' }],
+        },
+        siblings: [],
+        layouts: [{ name: layout }],
+      }).map(({ message }) => readMessage(message));
+
+    expect(optionOf('node', 'seat_ing')).toEqual([
+      'Option “ing_x” of “seat” would be exported to a column called “seat_ing_x”, but the export already has a column called “seat_ing_x” for the positions in the layout “seat_ing”. Change the option value or the attribute name.',
+    ]);
+    expect(optionOf('node', 'seating')).toEqual([]);
+    expect(optionOf('edge', 'seat_ing')).toEqual([]);
   });
 });
 
@@ -236,7 +307,7 @@ describe('the export columns an attribute would write', () => {
     siblings: Parameters<typeof exportColumnRefusals>[0]['siblings'],
     entity: 'ego' | 'node' | 'edge' = 'node',
   ) =>
-    exportColumnRefusals({ entity, candidate, siblings }).map(
+    exportColumnRefusals({ entity, candidate, siblings, layouts: [] }).map(
       ({ origin, message }) => ({
         origin: origin.kind,
         text: readMessage(message),

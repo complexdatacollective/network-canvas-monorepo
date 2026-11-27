@@ -85,6 +85,7 @@ const SCOPE: VariableNameScope = {
     // A layout attribute exports `home_x` and `home_y`, and is not offered.
     { id: 'v-home', name: 'home', type: 'layout' },
   ],
+  layouts: [],
 };
 
 const POPUP = '[data-attribute-picker-popup][data-open]';

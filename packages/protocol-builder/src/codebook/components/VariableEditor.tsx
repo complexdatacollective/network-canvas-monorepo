@@ -762,6 +762,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               authoritativeDocument,
               variableId,
               protocolContext: props.protocolContext,
+              layouts: props.protocolContext.codebook.layouts,
               draft: submittedDraft,
               localization,
             })
@@ -769,6 +770,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               subject,
               authoritativeDocument,
               variableId,
+              // An update has no protocol context to read the layouts from.
+              // The host's rebased write, which has one, refuses a name or
+              // column a layout already takes.
+              layouts: undefined,
               draft: submittedDraft,
               replaceProperties,
               localization,

@@ -90,6 +90,7 @@ function CreateVariableDialog({
             authoritativeDocument,
             variableId,
             submittedDocument: submitted,
+            layouts: protocolContext.codebook.layouts,
           }),
         )
       }

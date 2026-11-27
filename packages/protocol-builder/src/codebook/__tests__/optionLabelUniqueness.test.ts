@@ -67,6 +67,7 @@ const refusal = (options: readonly unknown[]): string | undefined => {
       subject: SUBJECT,
       authoritativeDocument: personDocument(SOUND),
       variableId: CLOSENESS,
+      layouts: undefined,
       draft: { options: withIds(options) },
       replaceProperties: ['options'],
     });

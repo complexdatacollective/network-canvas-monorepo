@@ -89,6 +89,7 @@ function Harness({
         name: option.label,
         type: option.type ?? 'text',
       })),
+      layouts: [],
     }),
     [options],
   );

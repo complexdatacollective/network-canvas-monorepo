@@ -165,6 +165,7 @@ describe('optionExportColumnIssue', () => {
       { name: 'foo_bar', type: 'text' },
       { name: 'pos', type: 'layout' },
     ],
+    layouts: [],
   } as const;
 
   it('says nothing where the attribute is not known', () => {
@@ -186,6 +187,20 @@ describe('optionExportColumnIssue', () => {
     expect(optionExportColumnIssue('baz', columns)).toBeUndefined();
     expect(optionExportColumnIssue('', columns)).toBeUndefined();
     expect(optionExportColumnIssue(1, columns)).toBeUndefined();
+  });
+
+  it('names the codebook layout whose position column the value would be written to', () => {
+    expect(
+      issue(
+        optionExportColumnIssue('ing_x', {
+          ...columns,
+          name: 'seat',
+          layouts: [{ name: 'seat_ing' }],
+        }),
+      ),
+    ).toBe(
+      'Option “ing_x” of “seat” would be exported to a column called “seat_ing_x”, but the export already has a column called “seat_ing_x” for the positions in the layout “seat_ing”. Change the option value or the attribute name.',
+    );
   });
 
   it('refuses a number that spells a taken column', () => {

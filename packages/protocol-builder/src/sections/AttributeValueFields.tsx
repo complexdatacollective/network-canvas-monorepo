@@ -217,15 +217,20 @@ export default function AttributeValueFields({
   // left out of its own siblings: its columns are what is being changed.
   const exportColumns = useMemo((): OptionExportColumns | undefined => {
     if (subject === undefined) return undefined;
-    const { entity, variables: held } = variableNameScope(
+    const {
+      entity,
+      variables: held,
+      layouts,
+    } = variableNameScope(
       subject.entity,
       variables,
+      protocolContext.codebook.layouts,
     );
     if (invented !== undefined) {
       const name = normalizeCodebookName(inventedName ?? '');
       return name === ''
         ? undefined
-        : { entity, name, type: invented, siblings: held };
+        : { entity, name, type: invented, siblings: held, layouts };
     }
     return picked === undefined
       ? undefined
@@ -234,8 +239,17 @@ export default function AttributeValueFields({
           name: picked.name,
           type: picked.type,
           siblings: held.filter(({ id }) => id !== variableId),
+          layouts,
         };
-  }, [invented, inventedName, picked, subject, variableId, variables]);
+  }, [
+    invented,
+    inventedName,
+    picked,
+    protocolContext.codebook.layouts,
+    subject,
+    variableId,
+    variables,
+  ]);
   const localization = useProtocolLocalization();
   const optionsRules = useMemo(
     () => optionsValidationFor(exportColumns, localization),

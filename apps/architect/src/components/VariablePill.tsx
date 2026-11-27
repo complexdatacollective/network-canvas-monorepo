@@ -33,6 +33,7 @@ import {
   getVariablesForSubject,
   makeGetVariableWithEntity,
 } from '~/selectors/codebook';
+import { getCodebook } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 const messages = defineMessages({
   editAttributeName: {
@@ -596,9 +597,12 @@ const ConnectedVariablePillComponent = ({
   // The rule protocol-builder's attribute editors ask of a name — taken,
   // unstorable, or clashing with an export column — so a rename here and one
   // in a stage editor are refused for the same reasons in the same words.
+  const layouts = useAppSelector(
+    (state: RootState) => getCodebook(state)?.layouts,
+  );
   const nameScope = useMemo(
-    () => variableNameScope(entity ?? 'node', existingVariables ?? {}),
-    [entity, existingVariables],
+    () => variableNameScope(entity ?? 'node', existingVariables ?? {}, layouts),
+    [entity, existingVariables, layouts],
   );
 
   if (!type) {

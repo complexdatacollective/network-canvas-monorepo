@@ -13,6 +13,7 @@ import {
 } from '../../testing/testId.ts';
 import {
   type CodebookSubject,
+  DuplicateVariableIdError,
   DuplicateVariableNameError,
   documentForNewEntity,
   documentWithCreatedVariable,
@@ -103,6 +104,7 @@ const create = (
     authoritativeDocument,
     variableId: testVariableId('new-variable'),
     protocolContext: EMPTY_CONTEXT,
+    layouts: undefined,
     draft,
   });
 
@@ -116,6 +118,7 @@ const update = (
     subject: NODE,
     authoritativeDocument,
     variableId: testVariableId(variableLabel),
+    layouts: undefined,
     draft,
     ...(replaceProperties === undefined ? {} : { replaceProperties }),
   });
@@ -446,6 +449,90 @@ describe('changing an attribute that is already in the codebook', () => {
   });
 });
 
+describe('beside the codebook layouts', () => {
+  const LAYOUTS = { [testVariableId('seating layout')]: { name: 'seating' } };
+
+  const createBeside = (
+    draft: Record<string, unknown>,
+    subject: CodebookSubject = NODE,
+  ) =>
+    documentWithCreatedVariable({
+      subject,
+      authoritativeDocument:
+        subject.entity === 'node'
+          ? sectionOf({})
+          : subject.entity === 'edge'
+            ? { name: 'Knows', color: 'edge-color-seq-1', variables: {} }
+            : { variables: {} },
+      variableId: testVariableId('new-variable'),
+      protocolContext: { ...EMPTY_CONTEXT, codebook: { layouts: LAYOUTS } },
+      layouts: LAYOUTS,
+      draft,
+    });
+
+  const nameRefusalOf = (write: () => unknown) => {
+    try {
+      write();
+    } catch (error: unknown) {
+      if (error instanceof DuplicateVariableNameError) {
+        return readMessage(error.message);
+      }
+      throw error;
+    }
+    return undefined;
+  };
+
+  it('refuses a node attribute named like a layout', () => {
+    expect(nameRefusalOf(() => createBeside(text(' Seating ')))).toBe(
+      'The codebook already has a layout called "Seating"',
+    );
+  });
+
+  it('refuses a node attribute exported to a column of a layout', () => {
+    expect(conflictOf(() => createBeside(text('seating_X')))).toEqual({
+      path: ['name'],
+      text: expect.stringContaining('“seating”'),
+    });
+  });
+
+  it('refuses a rename onto a layout, and leaves an unrelated change alone', () => {
+    const section = sectionOf({ age: text('age') });
+    const rename = (name: string) =>
+      documentWithUpdatedVariable({
+        subject: NODE,
+        authoritativeDocument: section,
+        variableId: testVariableId('age'),
+        layouts: LAYOUTS,
+        draft: { name },
+      });
+    expect(() => rename('seating')).toThrow(DuplicateVariableNameError);
+    expect(() => rename('years')).not.toThrow();
+  });
+
+  it('refuses an attribute under the id of a layout', () => {
+    expect(() =>
+      documentWithCreatedVariable({
+        subject: NODE,
+        authoritativeDocument: sectionOf({}),
+        variableId: testVariableId('seating layout'),
+        protocolContext: { ...EMPTY_CONTEXT, codebook: { layouts: LAYOUTS } },
+        layouts: LAYOUTS,
+        draft: text('age'),
+      }),
+    ).toThrow(DuplicateVariableIdError);
+  });
+
+  it('lets an attribute of an edge or of the participant take a layout’s name', () => {
+    expect(() => createBeside(text('seating'), EGO)).not.toThrow();
+    expect(() =>
+      createBeside(text('seating_x'), {
+        entity: 'edge',
+        type: testTypeId('knows'),
+      }),
+    ).not.toThrow();
+  });
+});
+
 describe('saving a nested editor’s finished document', () => {
   it('refuses a clash a collaborator’s attribute introduced while the editor was open', () => {
     // The editor's copy was built before `foo_bar` existed in the codebook.
@@ -459,6 +546,7 @@ describe('saving a nested editor’s finished document', () => {
             foo: categorical('foo', ['bar', 'qux']),
           }),
           variableId: testVariableId('foo'),
+          layouts: undefined,
         }),
       )?.path,
     ).toEqual(['options']);

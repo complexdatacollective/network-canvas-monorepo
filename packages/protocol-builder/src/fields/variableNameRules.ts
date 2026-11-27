@@ -23,6 +23,12 @@ const messages = defineMessages({
     description:
       'Reason given on the switched-off create row of the attribute list, on the line under “An attribute cannot be named “age””. Written as a clause rather than a sentence.',
   },
+  nameTakenByLayout: {
+    id: 'protocolBuilder.variablePicker.nameTakenByLayout',
+    defaultMessage: 'the codebook already has a layout called that',
+    description:
+      'Reason given on the switched-off create row of the attribute list, on the line under “An attribute cannot be named “positions””, when a layout in the codebook already has the name typed. A layout is a named set of positions that a researcher places nodes in on a canvas. Written as a clause rather than a sentence.',
+  },
   nameInvalid: {
     id: 'protocolBuilder.variablePicker.nameInvalid',
     defaultMessage:
@@ -136,6 +142,65 @@ const siblingLayoutMessages = defineMessages({
 });
 
 /*
+ * For a column that a layout in the codebook already writes. A layout is a
+ * named set of positions that a researcher places nodes in on a canvas, and
+ * the export writes each node's position in it to columns named after it,
+ * such as “seating_x”. Keyed by what produces the column being saved.
+ */
+const codebookLayoutMessages = defineMessages({
+  name: {
+    id: 'protocolBuilder.exportColumn.codebookLayoutWithName',
+    defaultMessage:
+      'The export already has a column called “{siblingColumn}” for the positions in the layout “{siblingName}”. Choose a different name.',
+    description:
+      'Refusal shown when the name typed for a node attribute is the name of one of the position columns a layout is exported to, such as “seating_x” for the layout “seating”. A layout is a named set of positions that a researcher places nodes in on a canvas. siblingColumn is that column; siblingName is the layout. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated.',
+  },
+  option: {
+    id: 'protocolBuilder.exportColumn.codebookLayoutWithOption',
+    defaultMessage:
+      'Option “{value}” of “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for the positions in the layout “{siblingName}”. Change the option value or the attribute name.',
+    description:
+      'Refusal shown when an option of a categorical node attribute would be exported to the same column as one of the position columns of a layout. A layout is a named set of positions that a researcher places nodes in on a canvas. name and value are the attribute and the option being saved; column is where it would be written; siblingName is the layout; siblingColumn is its position column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated.',
+  },
+  layout: {
+    id: 'protocolBuilder.exportColumn.codebookLayoutWithLayout',
+    defaultMessage:
+      'A layout attribute named “{name}” would be exported to a column called “{column}”, but the export already has a column called “{siblingColumn}” for the positions in the layout “{siblingName}”. Choose a different name.',
+    description:
+      'Refusal shown when a layout attribute, which is exported as several position columns named after it, would write one of them to the same column as a position column of a layout in the codebook. A layout is a named set of positions that a researcher places nodes in on a canvas. name is the layout attribute; column is its position column; siblingName is the layout; siblingColumn is its position column. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated.',
+  },
+});
+
+/*
+ * For a column that is different text from a column a layout in the codebook
+ * writes, but that the export writes the same way. Keyed by what produces the
+ * column being saved.
+ */
+const writtenCodebookLayoutMessages = defineMessages({
+  name: {
+    id: 'protocolBuilder.exportColumn.writtenCodebookLayoutName',
+    defaultMessage:
+      'In the export, the name “{column}” and the position column “{siblingColumn}” of the layout “{siblingName}” would become the same column, “{writtenColumn}”. Choose a different name.',
+    description:
+      'Refusal shown when the name typed for a node attribute differs from a position column of a layout, but the export would write both as the same column name. A layout is a named set of positions that a researcher places nodes in on a canvas. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. column is the name typed; siblingColumn is the position column; siblingName is the layout; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated.',
+  },
+  option: {
+    id: 'protocolBuilder.exportColumn.writtenCodebookLayoutOption',
+    defaultMessage:
+      'In the export, the column “{column}” for option “{value}” of “{name}” and the position column “{siblingColumn}” of the layout “{siblingName}” would become the same column, “{writtenColumn}”. Change the option value or the attribute name.',
+    description:
+      'Refusal shown when an option of a categorical node attribute would be exported to a column that differs from a position column of a layout, but the export would write both as the same column name. A layout is a named set of positions that a researcher places nodes in on a canvas. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. name is the categorical attribute; value is the option; column is where it would be written; siblingName is the layout; siblingColumn is its position column; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names, values and columns are the researcher’s own text and are not translated.',
+  },
+  layout: {
+    id: 'protocolBuilder.exportColumn.writtenCodebookLayoutLayout',
+    defaultMessage:
+      'In the export, the position column “{column}” of the layout attribute “{name}” and the position column “{siblingColumn}” of the layout “{siblingName}” would become the same column, “{writtenColumn}”. Choose a different name.',
+    description:
+      'Refusal shown when a layout attribute, which is exported as several position columns named after it, would write one of them to a column that differs from a position column of a layout in the codebook, but the export would write both as the same column name. A layout is a named set of positions that a researcher places nodes in on a canvas. The export changes some characters in a column name: GraphML files replace spaces and most punctuation with “_”, and CSV files put an apostrophe before a name that starts with =, +, - or @. name is the layout attribute; column is its position column; siblingName is the layout; siblingColumn is its position column; writtenColumn is the column name both would be written as. The export is the file a researcher analyses after the interviews and a column is one field in it. Names and columns are the researcher’s own text and are not translated.',
+  },
+});
+
+/*
  * For two columns that are different text but that the export writes the same
  * way, such as GraphML's `close friend` and `close_friend`. Keyed by what
  * produces the column being saved; the column it meets is named as it is, so
@@ -184,14 +249,20 @@ const siblingMessages = {
 /** One attribute of a type, as far as the columns it exports depend on it. */
 export type ScopedVariable = ExportColumnVariable & Readonly<{ id: string }>;
 
+/** A layout in the codebook, as far as a node attribute's name depends on it. */
+export type ScopedLayout = Readonly<{ name: string }>;
+
 /**
  * What a name is judged against: the attributes of one node type, one edge type
  * or the participant themselves, and which of those it is. Each carries its
  * record id so the attribute being renamed can be left out of its own way.
+ * For a node type, also the codebook's layouts, whose names and position
+ * columns a node attribute may not share.
  */
 export type VariableNameScope = Readonly<{
   entity: ExportColumnEntity;
   variables: readonly ScopedVariable[];
+  layouts: readonly ScopedLayout[];
 }>;
 
 /** One clash of export columns, in the words the codebook refuses it with. */
@@ -232,13 +303,21 @@ const refusalValues = (
         }),
 });
 
-const refusalMessage = (conflict: ExportColumnConflict): MessageDescriptor => {
+const refusalMessage = (
+  conflict: ExportColumnConflict,
+  layouts: ReadonlySet<ExportColumnVariable>,
+): MessageDescriptor => {
   switch (conflict.kind) {
     case 'reserved':
       return reservedMessages[conflict.origin.kind];
     case 'own':
       return writtenMessages[conflict.origin.kind];
     case 'sibling':
+      if (layouts.has(conflict.sibling)) {
+        return conflict.writtenColumn === undefined
+          ? codebookLayoutMessages[conflict.origin.kind]
+          : writtenCodebookLayoutMessages[conflict.origin.kind];
+      }
       return conflict.writtenColumn === undefined
         ? siblingMessages[conflict.origin.kind][conflict.siblingOrigin.kind]
         : writtenMessages[conflict.origin.kind];
@@ -262,38 +341,56 @@ const refusalMessage = (conflict: ExportColumnConflict): MessageDescriptor => {
  * write, which has the last word.
  *
  * `siblings` are the other attributes of the same type, and never the
- * candidate itself.
+ * candidate itself. `layouts` are the codebook's layouts, which export
+ * position columns beside every node type's attributes and so count only for
+ * a node attribute.
  */
 export const exportColumnRefusals = ({
   entity,
   candidate,
   siblings,
+  layouts,
 }: Readonly<{
   entity: ExportColumnEntity;
   candidate: ExportColumnVariable;
   siblings: readonly ExportColumnVariable[];
-}>): readonly ExportColumnRefusal[] =>
-  findExportColumnConflicts({ entity, candidate, siblings }).map(
-    (conflict) => ({
-      origin: conflict.origin,
-      message: createMessageError(
-        refusalMessage(conflict),
-        refusalValues(candidate.name, conflict),
-      ),
-    }),
-  );
+  layouts: readonly ScopedLayout[];
+}>): readonly ExportColumnRefusal[] => {
+  const layoutSiblings: ExportColumnVariable[] =
+    entity === 'node'
+      ? layouts.map(({ name }) => ({ name, type: 'layout' }))
+      : [];
+  const layoutSet: ReadonlySet<ExportColumnVariable> = new Set(layoutSiblings);
+  return findExportColumnConflicts({
+    entity,
+    candidate,
+    siblings: [...siblings, ...layoutSiblings],
+  }).map((conflict) => ({
+    origin: conflict.origin,
+    message: createMessageError(
+      refusalMessage(conflict, layoutSet),
+      refusalValues(candidate.name, conflict),
+    ),
+  }));
+};
 
 /**
  * The attributes of one type, as far as export columns are concerned.
  *
- * Built from the codebook's own record, so the only thing a caller decides is
- * which type it is asking about.
+ * Built from the codebook's own records, so the only thing a caller decides is
+ * which type it is asking about. `layouts` is the codebook's record of them,
+ * which counts only for a node type.
  */
 export const variableNameScope = (
   entity: ExportColumnEntity,
   variables: Readonly<Record<string, Variable>>,
+  layouts: Readonly<Record<string, ScopedLayout>> | undefined,
 ): VariableNameScope => ({
   entity,
+  layouts:
+    entity === 'node'
+      ? Object.values(layouts ?? {}).map(({ name }) => ({ name }))
+      : [],
   variables: Object.entries(variables).map(([id, variable]) => ({
     id,
     name: variable.name,
@@ -320,6 +417,9 @@ export const variableNameScope = (
  * decomposed `café` is the precomposed one. A raw comparison would offer a name
  * the codebook holds and then answer with a duplicate-name refusal about a name
  * the researcher believed was free.
+ *
+ * A node attribute is refused a name that a layout in the codebook has, and
+ * any name that would put one of its columns on a layout's position column.
  *
  * A name is also refused when it would make the export write two things to one
  * column. A categorical or layout attribute takes every one of its columns from
@@ -354,6 +454,13 @@ export const variableNameRefusal = (
   if (others.some((held) => normalizeForComparison(held.name) === comparable)) {
     return intl.formatMessage(messages.nameTaken);
   }
+  if (
+    scope?.layouts.some(
+      (layout) => normalizeForComparison(layout.name) === comparable,
+    )
+  ) {
+    return intl.formatMessage(messages.nameTakenByLayout);
+  }
   if (!CodebookNameSchema.safeParse(name).success) {
     return intl.formatMessage(messages.nameInvalid);
   }
@@ -363,6 +470,7 @@ export const variableNameRefusal = (
     entity: scope.entity,
     candidate: renamed === undefined ? { name, type } : { ...renamed, name },
     siblings: others,
+    layouts: scope.layouts,
   });
   return refusal === undefined
     ? undefined

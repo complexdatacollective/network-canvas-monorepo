@@ -11,6 +11,7 @@ import Section from '@codaco/fresco-ui/Section';
 
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
+  type ProtocolBuilderProtocolContext,
   variablesForSubject,
   type CodebookSubject,
 } from '../../protocol-context.ts';
@@ -113,6 +114,7 @@ export default function CodebookVariableValidationSection({
       subject={subject}
       variableId={variableId}
       variables={variables}
+      layouts={protocolContext.codebook.layouts}
       title={intl.formatMessage(validationSectionMessages.sectionTitle)}
       description={intl.formatMessage(
         description ?? validationSectionMessages.sectionDescription,
@@ -153,6 +155,7 @@ function VariableValidationSection({
   subject,
   variableId,
   variables,
+  layouts,
   title,
   description,
   disabled,
@@ -162,6 +165,7 @@ function VariableValidationSection({
   subject: CodebookSubject;
   variableId: string;
   variables: Readonly<Record<string, unknown>>;
+  layouts: ProtocolBuilderProtocolContext['codebook']['layouts'];
   title: string;
   description: string;
   disabled: boolean;
@@ -267,6 +271,7 @@ function VariableValidationSection({
         subject,
         authoritativeDocument: document,
         variableId,
+        layouts,
         // An empty map REMOVES the key rather than storing `{}`: absence is
         // how the protocol schema spells "no rules", and a stored empty
         // object would go on saying something about an attribute nothing

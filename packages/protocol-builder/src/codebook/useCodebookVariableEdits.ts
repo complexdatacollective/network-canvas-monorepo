@@ -381,6 +381,7 @@ export function useCreateCodebookVariable(
             variableId,
             protocolContext,
             draft,
+            layouts: protocolContext.codebook.layouts,
           });
         } catch (error: unknown) {
           refusal = refusalMessage(
@@ -501,6 +502,7 @@ export function useSetVariableComponent(
             subject,
             authoritativeDocument,
             variableId,
+            layouts: protocolContext.codebook.layouts,
             draft: {
               component,
               ...(parametersReplaced && parameters !== undefined
@@ -643,6 +645,7 @@ export function useSetVariableOptions(): SetVariableOptions {
             subject,
             authoritativeDocument,
             variableId,
+            layouts: protocolContext.codebook.layouts,
             draft: { options },
             localization,
             // Replaced rather than merged: a value the researcher removed is
