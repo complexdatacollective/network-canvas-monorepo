@@ -340,7 +340,6 @@ const aboutYou: JSONContent = {
         assetId: 'network',
         description: '',
         size: null,
-        align: 'center',
         autoplay: true,
         loop: true,
       },
@@ -1055,6 +1054,141 @@ export const DragSectionBlock: Story = {
   },
 };
 
+/** The box that a logic block's branch is written in. */
+const branchBoxOf = (branch: Element): HTMLElement => {
+  const box = branch.querySelector('[data-logic-branch-content]');
+  if (!(box instanceof HTMLElement)) throw new Error('No branch box');
+  return box;
+};
+
+/** Sends a mouse event at the middle of the left part of `element`. */
+const mouseAt = (
+  type: 'mousedown' | 'mouseup',
+  element: Element,
+  inset = 20,
+) => {
+  const box = element.getBoundingClientRect();
+  element.dispatchEvent(
+    new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX: box.left + inset,
+      clientY: box.top + box.height / 2,
+      button: 0,
+      buttons: type === 'mousedown' ? 1 : 0,
+      view: window,
+    }),
+  );
+};
+
+/** Presses and lets go at the middle of the left part of `element`. */
+const clickAt = (element: Element, inset = 20) => {
+  mouseAt('mousedown', element, inset);
+  mouseAt('mouseup', element, inset);
+};
+
+/**
+ * Each branch of a logic block is written in a box of its own under its
+ * label, as wide as the block, with a thin border. The box is not a block:
+ * the blocks in it have handles, but the pointer over a branch that shows
+ * nothing shows only the logic block's handle, and its empty line has none.
+ * While the logic block is selected, a press in a branch's text puts the
+ * caret there, so that the browser cannot pick the logic block up from
+ * inside one of its branches.
+ */
+export const LogicBranchesAreNotBlocks: Story = {
+  // Not centred: the editor stays where it is as the selection changes.
+  parameters: { layout: 'padded' },
+  render: () => <FormEditor initial={aboutYou} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Form' });
+    await editor.ownerDocument.fonts.ready;
+    const block = sectionIn(editor, '[data-logic-block-view]');
+    const branches = Array.from(
+      block.querySelectorAll('[data-logic-branch-view]'),
+    );
+    await expect(branches).toHaveLength(2);
+    const [written, empty] = branches;
+    if (written === undefined || empty === undefined) {
+      throw new Error('No branches');
+    }
+
+    // Boxes as wide as the block, inside its 2px border and 16px padding,
+    // each under its label.
+    const blockBox = block.getBoundingClientRect();
+    for (const branch of branches) {
+      const box = branchBoxOf(branch);
+      const style = getComputedStyle(box);
+      await expect(style.borderTopStyle).toBe('solid');
+      await expect(style.borderTopWidth).toBe('1px');
+      const drawn = box.getBoundingClientRect();
+      await expect(Math.round(drawn.left - blockBox.left)).toBe(18);
+      await expect(Math.round(blockBox.right - drawn.right)).toBe(18);
+      const label = branch.querySelector(':scope > [contenteditable="false"]');
+      await expect(label?.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        drawn.top,
+      );
+    }
+
+    // A block in a branch has its handle, in the box's gutter.
+    const nested = sectionIn(editor, '[data-field-id="f3"]');
+    const nestedGrip = (await handleOf(editor, nested)).getBoundingClientRect();
+    await expect(nestedGrip.left).toBeGreaterThan(
+      branchBoxOf(written).getBoundingClientRect().left,
+    );
+
+    // Over the branch that shows nothing: the logic block's own handle,
+    // beside the block's top, and none for the branch.
+    pointAt(branchBoxOf(empty));
+    await waitFor(() => {
+      const grip = visibleHandle(editor).getBoundingClientRect();
+      expect(Math.round(blockBox.left - grip.left)).toBe(40);
+      expect(Math.round(grip.top)).toBe(Math.round(blockBox.top));
+    });
+
+    // Its empty line, selected, has no handle either.
+    const host = editor.closest('[data-block-frames-host]');
+    if (host === null) throw new Error('No frames host');
+    const line = branchBoxOf(empty).querySelector('p');
+    if (line === null) throw new Error('No empty line');
+    host.dispatchEvent(new PointerEvent('pointerleave'));
+    await userEvent.click(line);
+    caretIn(line, 'start');
+    press(editor, 'Escape', 27);
+    await waitFor(() => expect(line).toHaveClass('ProseMirror-selectednode'));
+    await waitFor(() =>
+      expect(host.querySelector('[data-block-handle]')).toBeNull(),
+    );
+
+    // The logic block, selected by a click on its heading. Found afresh
+    // each time: the editor can draw it again as the selection changes.
+    const logicBlock = () => sectionIn(editor, '[data-logic-block-view]');
+    const selectTheLogicBlock = async () => {
+      const heading = logicBlock().querySelector('[contenteditable="false"]');
+      if (heading === null) throw new Error('No heading');
+      clickAt(heading);
+      await waitFor(() =>
+        expect(logicBlock()).toHaveAttribute('data-selected'),
+      );
+    };
+    await selectTheLogicBlock();
+
+    // A press in a branch's text puts the caret there. ProseMirror makes
+    // what a press would drag draggable; nothing is.
+    const title = logicBlock().querySelector('h2');
+    if (title === null) throw new Error('No title');
+    mouseAt('mousedown', title);
+    await expect(title.draggable).toBe(false);
+    await waitFor(() =>
+      expect(logicBlock(), 'pressed in the text').not.toHaveAttribute(
+        'data-selected',
+      ),
+    );
+    mouseAt('mouseup', title);
+  },
+};
+
 /** One editor whose language can be switched, each language its own document. */
 function LanguageSwitchingEditor() {
   const [language, setLanguage] = useState<'English' | 'Spanish'>('English');
@@ -1306,7 +1440,6 @@ const everyBlock: JSONContent = {
         assetId: 'network',
         description: '',
         size: null,
-        align: 'center',
         autoplay: true,
         loop: true,
       },

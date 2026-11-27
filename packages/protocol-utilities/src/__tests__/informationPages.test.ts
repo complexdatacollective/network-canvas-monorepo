@@ -48,7 +48,7 @@ const stageInput = (page: InformationPageFixture) => {
     const sized = typeof size === 'string' ? SIZES[size] : undefined;
     return {
       assetId,
-      ...(audio ? { align: 'start', loop: false } : sized && { size: sized }),
+      ...(audio ? { loop: false } : sized && { size: sized }),
       ...(isTextInput(description) && { description }),
     };
   });

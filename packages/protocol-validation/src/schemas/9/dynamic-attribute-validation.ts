@@ -1,6 +1,7 @@
 import { isRecord, valueAtPath } from '@codaco/shared-consts';
 
 import { localesShowingDynamicAttribute } from '../../localization/dynamicAttributeLocales.ts';
+import { dynamicValueNamesIn } from '../../localization/dynamicValueMessages.ts';
 import { getLocaleMetadata } from '../../localization/localeMetadata.ts';
 import type { Logic } from '../../localization/logic.ts';
 import { resolveLocalizedString } from '../../localization/resolveLocalizedString.ts';
@@ -9,6 +10,7 @@ import { textOwnersOf } from '../../utils/textOwners.ts';
 import { isOwnTextOf, textPlaceOf } from '../../utils/textPlace.ts';
 import {
   DynamicAttributeSchema,
+  dynamicAttributesShownBy,
   type DynamicAttributeVersion,
   dynamicAttributeVersions,
   logicOfDynamicAttribute,
@@ -191,6 +193,49 @@ const valueProblems = (
   return problems;
 };
 
+const SHOWS_ITSELF =
+  'A dynamic attribute cannot show itself. Remove it from the wording of its own version.';
+const SHOWS_ITSELF_THROUGH =
+  'This wording shows a dynamic attribute whose wording shows this dynamic attribute. A dynamic attribute cannot show itself, either directly or through another dynamic attribute.';
+
+/**
+ * The versions of the dynamic attribute `id` whose wording shows it again,
+ * in each language: itself, or a dynamic attribute of its owner whose
+ * wording shows it, directly or through others (`dynamicAttributesShownBy`).
+ * Such wording could never finish being shown.
+ */
+const showsItselfProblems = (
+  id: string,
+  versions: readonly DynamicAttributeVersion[],
+  definitions: Readonly<Record<string, unknown>>,
+  path: Path,
+): DynamicAttributeProblem[] =>
+  versions.flatMap((version) =>
+    Object.entries(version.wording).flatMap(
+      ([locale, message]): DynamicAttributeProblem[] => {
+        const shown = dynamicValueNamesIn(message).flatMap((name) => {
+          const parsed = parseDynamicValueName(name);
+          return parsed?.kind === 'dynamicAttribute' ? [parsed.id] : [];
+        });
+        const shownProblem = shown.includes(id)
+          ? SHOWS_ITSELF
+          : shown.some((other) =>
+                dynamicAttributesShownBy(other, definitions).has(id),
+              )
+            ? SHOWS_ITSELF_THROUGH
+            : undefined;
+        return shownProblem === undefined
+          ? []
+          : [
+              {
+                path: [...path, ...version.path, locale],
+                message: shownProblem,
+              },
+            ];
+      },
+    ),
+  );
+
 /**
  * Every problem with the dynamic attributes of the protocol's stages and node
  * type labels:
@@ -199,6 +244,8 @@ const valueProblems = (
  * - an `answers` dynamic attribute reads a categorical, ordinal or Boolean
  *   attribute, and each of its answers is one of the attribute's, once;
  * - a `number` dynamic attribute reads a number or scalar attribute;
+ * - no version's wording shows the dynamic attribute itself, directly or
+ *   through the wording of other dynamic attributes;
  * - in each language in which a text of its owner shows it
  *   (`localesShowingDynamicAttribute`), each version has wording, or wording
  *   in the language that language falls back to (`resolveLocalizedString`).
@@ -225,7 +272,7 @@ export const findDynamicAttributeProblems = (
   const placed = hits.map((hit) => ({ ...hit, place: textPlaceOf(hit.path) }));
   for (const owner of ownersOf(protocol)) {
     const ownTexts = placed.filter((hit) => isOwnTextOf(hit.place, owner.path));
-    const names = ownTextNames(ownTexts, owner.path);
+    const names = ownTextNames(ownTexts, owner.path, owner.dynamicAttributes);
     for (const [id, raw] of Object.entries(owner.dynamicAttributes)) {
       const path = [...owner.path, 'dynamicAttributes', id];
       // A dynamic attribute that the schema refuses is reported by the schema.
@@ -257,6 +304,9 @@ export const findDynamicAttributeProblems = (
       if (logic.kind === 'answers' || logic.kind === 'number') {
         problems.push(...valueProblems(logic, versions, owner.context, path));
       }
+      problems.push(
+        ...showsItselfProblems(id, versions, owner.dynamicAttributes, path),
+      );
 
       if (localization === undefined) continue;
       const shownIn = localesShowingDynamicAttribute(
@@ -264,6 +314,7 @@ export const findDynamicAttributeProblems = (
         ownTexts,
         protocol,
         localization,
+        owner.dynamicAttributes,
       );
       for (const version of versions) {
         const { wording } = version;

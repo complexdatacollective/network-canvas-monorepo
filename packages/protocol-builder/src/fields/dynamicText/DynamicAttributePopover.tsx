@@ -138,6 +138,7 @@ export function DynamicAttributePopover({
               </AlertDescription>
             </Alert>
             <DynamicAttributeControls
+              id={id}
               name={`dynamic-attribute-${id}`}
               compact
               draft={draft}

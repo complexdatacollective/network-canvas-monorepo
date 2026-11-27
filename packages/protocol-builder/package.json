@@ -35,6 +35,7 @@
     "./fields/dynamicText/DynamicMessageEditor": "./src/fields/dynamicText/DynamicMessageEditor.tsx",
     "./fields/dynamicText/DynamicMessageSummary": "./src/fields/dynamicText/DynamicMessageSummary.tsx",
     "./fields/dynamicText/messageSite": "./src/fields/dynamicText/messageSite.ts",
+    "./fields/dynamicText/NumberWordingEditor": "./src/fields/dynamicText/NumberWordingEditor.tsx",
     "./fields/LocalizedMessageField": "./src/fields/LocalizedMessageField.tsx",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
     "./fields/StageNameField": "./src/fields/StageNameField.tsx",

@@ -732,6 +732,92 @@ describe('mapInterviewForViewer', () => {
     });
   });
 
+  it('keeps the ego values that the wording of a dynamic attribute shows, through the dynamic attributes it shows in turn', () => {
+    const CHILDREN = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c61';
+    const NAME = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c62';
+    const CITY = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c63';
+    const UNREAD = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c64';
+    const KIDS = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c71';
+    const NAMED = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c72';
+    const egoName = (variableId: string) =>
+      `{${dynamicValueNameFor({ kind: 'attribute', role: 'ego', variableId })}}`;
+    const shows = (id: string) =>
+      `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id })}}`;
+    const finished = makeFinishedSource();
+    const source: Source = {
+      ...finished,
+      protocol: {
+        ...finished.protocol,
+        stages: [
+          {
+            id: FINISH_STAGE_ID,
+            type: 'FinishSession',
+            mode: 'confirmation',
+            label: { en: 'Finish' },
+            content: { en: '# Thank you' },
+            finishedContent: {
+              en: `Thanks for telling us about ${shows(KIDS)}.`,
+            },
+            finishLabel: { en: 'Finish' },
+            finishConfirmation: { en: 'Finish this interview?' },
+            finishFailed: { en: 'The interview could not be finished.' },
+            outcome: 'completed',
+            dynamicAttributes: {
+              [KIDS]: {
+                logic: 'number',
+                value: dynamicValueNameFor({
+                  kind: 'attribute',
+                  role: 'ego',
+                  variableId: CHILDREN,
+                }),
+                missing: { en: `the children of ${shows(NAMED)}` },
+                wording: {
+                  en: `{count, plural, one {# child of ${egoName(NAME)}} other {# children}}`,
+                },
+              },
+              // Shows the first again: wording that never finishes still
+              // ends the walk.
+              [NAMED]: {
+                logic: 'number',
+                value: dynamicValueNameFor({
+                  kind: 'attribute',
+                  role: 'ego',
+                  variableId: CHILDREN,
+                }),
+                missing: { en: `**${egoName(CITY)}** ${shows(KIDS)}` },
+                wording: { en: '{count, plural, other {#}}' },
+              },
+            },
+          },
+        ],
+      },
+      network: {
+        nodes: [],
+        edges: [],
+        ego: {
+          _uid: 'ego-1',
+          attributes: {
+            [CHILDREN]: 1,
+            [NAME]: 'NAME_ANSWER',
+            [CITY]: 'CITY_ANSWER',
+            [UNREAD]: 'UNREAD_ANSWER',
+          },
+        },
+      },
+    };
+
+    const result = viewReady(source, {
+      researcher: false,
+      freezeCompletedInterviews: true,
+    });
+
+    expect(result.payload.session.network.ego.attributes).toStrictEqual({
+      [CHILDREN]: 1,
+      [NAME]: 'NAME_ANSWER',
+      [CITY]: 'CITY_ANSWER',
+    });
+  });
+
   // The completed state's network is empty, so its logic can only be judged
   // as the participant saw it while every condition of a finished screen
   // reads the participant's attributes alone, which are kept above. A rule

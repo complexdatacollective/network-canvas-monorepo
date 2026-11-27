@@ -84,6 +84,7 @@ function RuleListItem({
   onDelete,
   onMove,
   editTriggerRef,
+  deleteTriggerRef,
   disabled,
   readOnly,
 }: ArrayFieldItemProps<RuleDraft>) {
@@ -204,6 +205,9 @@ function RuleListItem({
               onClick={onEdit}
             />
             <IconButton
+              // Found by the list as this row is deleted, so that focus goes
+              // to the Delete button of the rule that takes its place.
+              ref={deleteTriggerRef}
               icon={<Trash2 />}
               aria-labelledby={`${deleteActionId} ${textId}`}
               color="destructive"

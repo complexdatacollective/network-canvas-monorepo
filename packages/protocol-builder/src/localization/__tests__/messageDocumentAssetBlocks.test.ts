@@ -56,7 +56,7 @@ describe('a message holding asset blocks', () => {
     const message = [
       '# Hello {name}',
       '',
-      '![A map](asset:a1?size=large&align=end&loop=false)',
+      '![A map](asset:a1?size=large&loop=false)',
       '',
       'Meet {name} here.',
       '',

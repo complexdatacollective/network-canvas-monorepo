@@ -17,13 +17,12 @@ import { useInterfaceLanguage } from '@codaco/fresco-ui/interfaceLanguage';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { BlockSettingsPopover, directionAt } from '../BlockSettingsPopover.tsx';
-import { messages, type SizeChoice } from './assetBlockMessages.ts';
+import { messages, SIZE_LABELS } from './assetBlockMessages.ts';
 import {
   AssetBlockSettings,
   type AssetBlockFileField,
 } from './AssetBlockSettings.tsx';
 import { hasRatio, useDrawnFile } from './drawnFile.ts';
-import { ResizeCorner } from './ResizeCorner.tsx';
 import { type Box, PLAYER_CONTROLS_HEIGHT } from './settingsPlacement.ts';
 
 /** A file a block names, as the page it is edited on knows it. */
@@ -66,9 +65,11 @@ const SETTINGS_NAMES = {
  * participant will meet it, at the size and place it is given. While the
  * pointer is over the block, or the block is selected, its tab shows the
  * settings button, and the settings (`AssetBlockSettings`) open from it,
- * attached to it, never covering a player's controls or the corner that
- * resizes a picture. While the block is selected, that corner can be dragged
- * from one size to the next (`ResizeCorner`). A press on the file selects the
+ * attached to it, never covering a player's controls or the handle that
+ * resizes a picture. While the block is selected, the editor's resize handle
+ * (`resizeHandle`) sits on the bottom corner of a picture, and while it is
+ * dragged the picture follows the pointer, with the size it would take named
+ * beside the handle. A press on the file selects the
  * block, and a player's controls work whether or not it is selected. A block
  * naming a file the protocol no longer holds, or one a page cannot show, says
  * so, since that is what the researcher needs to put right.
@@ -88,6 +89,8 @@ export const createAssetBlockView = ({
     editable,
     active,
     update,
+    resizeHandle,
+    resizing,
     remove,
     returnToText,
     selectKeepingFocus,
@@ -110,8 +113,6 @@ export const createAssetBlockView = ({
     // What the block says in the interface's own words, inside text in the
     // language being written.
     const interfaceLanguage = useInterfaceLanguage();
-    // The size the corner is being dragged to, while it is being dragged.
-    const [dragged, setDragged] = useState<SizeChoice | undefined>(undefined);
     // Whether the settings are open: only from their button.
     const [open, setOpen] = useState(false);
     // Whether the file field's resource browser is open. The settings stand
@@ -127,13 +128,6 @@ export const createAssetBlockView = ({
       setWasSelected(selected);
       if (!selected && !browsing) setOpen(false);
     }
-    const size =
-      dragged === undefined
-        ? attributes.size
-        : dragged === 'full'
-          ? null
-          : dragged;
-    const working = selected && editable;
     const settingsOpen = open && editable;
     // The tab (and its settings button) shows while the pointer is over the
     // block, while it is selected and being worked on, and while its
@@ -148,14 +142,14 @@ export const createAssetBlockView = ({
         setLanguage(languageAt(boxRef.current));
       }
     }, [settingsOpen]);
-    // The corner that resizes the picture, which the settings leave uncovered.
-    const cornerRef = useRef<HTMLDivElement>(null);
-    // What the settings never cover: the resizing corner, and a player's
+    // What the settings never cover: the resize handle, and a player's
     // controls (the bar along the bottom of a video; all of an audio
     // player).
     const keepOut = (): Box[] => {
       const parts: Box[] = [];
-      const corner = cornerRef.current?.getBoundingClientRect();
+      const corner = boxRef.current
+        ?.querySelector('[data-asset-block-resize]')
+        ?.getBoundingClientRect();
       if (corner !== undefined) parts.push(corner);
       const file = (fileRef.current ?? boxRef.current)?.getBoundingClientRect();
       if (file !== undefined && asset?.kind === 'audio') parts.push(file);
@@ -180,7 +174,7 @@ export const createAssetBlockView = ({
           onOpenChange={setOpen}
           select={selectKeepingFocus}
           keepOut={keepOut}
-          hidden={browsing || dragged !== undefined}
+          hidden={browsing || resizing !== undefined}
         >
           <AssetBlockSettings
             asset={asset}
@@ -205,8 +199,7 @@ export const createAssetBlockView = ({
         ref={boxRef}
         className={cx(
           'relative',
-          asset?.kind === 'audio' &&
-            assetBlockAudioRowVariants({ align: attributes.align }),
+          asset?.kind === 'audio' && assetBlockAudioRowVariants(),
         )}
         {...assetBlockFileProps}
         // Until the file is drawn, its frame goes round the whole block.
@@ -228,14 +221,15 @@ export const createAssetBlockView = ({
             className={
               asset.kind === 'audio'
                 ? ''
-                : cx(
-                    // The smaller corners of a boxed block.
-                    'w-full rounded-sm object-contain',
-                    assetBlockMediaVariants({
-                      size: size ?? undefined,
-                      align: attributes.align,
-                    }),
-                  )
+                : // Drawn as the interview draws it, with the smaller
+                  // corners of a boxed block. While the handle is dragged,
+                  // it is held to the height it is dragged to.
+                  assetBlockMediaVariants({
+                    ...(resizing === undefined
+                      ? { size: attributes.size ?? undefined }
+                      : { dragged: true }),
+                    className: 'rounded-sm',
+                  })
             }
           />
         )}
@@ -256,20 +250,15 @@ export const createAssetBlockView = ({
             {...blockBoxProps(boxed)}
           >
             {tab}
-            {/* On the corner of the frame drawn round the file. */}
-            {working && hasRatio(drawn) && (
-              <ResizeCorner
-                boxRef={boxRef}
-                cornerRef={cornerRef}
-                drawn={drawn}
-                size={size ?? 'full'}
-                onDrag={setDragged}
-                onDrop={(dropped) => {
-                  setDragged(undefined);
-                  const next = dropped === 'full' ? null : dropped;
-                  if (next !== attributes.size) update({ size: next });
-                }}
-              />
+            {/* On the corner of the frame drawn round a picture. */}
+            {boxed && hasRatio(drawn) && resizeHandle}
+            {resizing !== undefined && (
+              <span
+                {...interfaceLanguage}
+                className="bg-primary text-primary-contrast elevation-low absolute end-3 bottom-3 rounded-sm px-2 py-0.5 text-xs font-bold whitespace-nowrap"
+              >
+                {intl.formatMessage(SIZE_LABELS[resizing.size ?? 'full'])}
+              </span>
             )}
           </div>
         )}

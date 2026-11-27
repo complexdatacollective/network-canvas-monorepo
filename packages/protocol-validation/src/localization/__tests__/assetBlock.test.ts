@@ -25,8 +25,6 @@ describe('assetBlockUrl', () => {
     ['size', { assetId: 'a', size: 'small' }, 'asset:a?size=small'],
     ['size', { assetId: 'a', size: 'medium' }, 'asset:a?size=medium'],
     ['size', { assetId: 'a', size: 'large' }, 'asset:a?size=large'],
-    ['align start', { assetId: 'a', align: 'start' }, 'asset:a?align=start'],
-    ['align end', { assetId: 'a', align: 'end' }, 'asset:a?align=end'],
     ['autoplay', { assetId: 'a', autoplay: false }, 'asset:a?autoplay=false'],
     ['loop', { assetId: 'a', loop: false }, 'asset:a?loop=false'],
   ] as const)('writes %s and reads it back', (_name, block, url) => {
@@ -35,12 +33,11 @@ describe('assetBlockUrl', () => {
   });
 
   it('writes every setting in one order whatever order the block holds them', () => {
-    const url = 'asset:a?size=large&align=end&autoplay=false&loop=false';
+    const url = 'asset:a?size=large&autoplay=false&loop=false';
     expect(
       assetBlockUrl({
         loop: false,
         autoplay: false,
-        align: 'end',
         size: 'large',
         assetId: 'a',
       }),
@@ -49,7 +46,6 @@ describe('assetBlockUrl', () => {
       assetBlockUrl({
         assetId: 'a',
         size: 'large',
-        align: 'end',
         autoplay: false,
         loop: false,
       }),
@@ -60,7 +56,6 @@ describe('assetBlockUrl', () => {
     expect(
       assetBlockUrl({
         assetId: 'a',
-        align: ASSET_BLOCK_DEFAULTS.align,
         autoplay: ASSET_BLOCK_DEFAULTS.autoplay,
         loop: ASSET_BLOCK_DEFAULTS.loop,
       }),
@@ -70,9 +65,10 @@ describe('assetBlockUrl', () => {
 
 describe('readAssetBlockUrl', () => {
   it('normalises settings written as defaults away', () => {
-    expect(
-      readAssetBlockUrl('asset:a?align=center&autoplay=true&loop=true'),
-    ).toEqual({ block: { assetId: 'a' }, problems: [] });
+    expect(readAssetBlockUrl('asset:a?autoplay=true&loop=true')).toEqual({
+      block: { assetId: 'a' },
+      problems: [],
+    });
   });
 
   it('reads the scheme without regard to case', () => {
@@ -101,6 +97,18 @@ describe('readAssetBlockUrl', () => {
     ]);
   });
 
+  // A block is always centred, so an address that places it says something
+  // no block can.
+  it.each(['align=end', 'align=start', 'align=center'])(
+    'reports %s as a setting no block has',
+    (setting) => {
+      expect(readAssetBlockUrl(`asset:a?${setting}&size=small`)).toEqual({
+        block: { assetId: 'a', size: 'small' },
+        problems: [{ kind: 'unknownSetting', setting: 'align' }],
+      });
+    },
+  );
+
   it('reports a setting it does not know, and keeps the rest', () => {
     expect(readAssetBlockUrl('asset:a?colour=red&size=small')).toEqual({
       block: { assetId: 'a', size: 'small' },
@@ -111,7 +119,6 @@ describe('readAssetBlockUrl', () => {
   it.each([
     ['size', 'huge'],
     ['size', 'LARGE'],
-    ['align', 'left'],
     ['autoplay', 'yes'],
     ['loop', '1'],
   ])('reports %s=%s as a value the setting cannot take', (setting, value) => {

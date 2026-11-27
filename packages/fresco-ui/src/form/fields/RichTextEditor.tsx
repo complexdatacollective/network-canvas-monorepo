@@ -278,6 +278,7 @@ export type {
 export {
   assetBlockControlsProps,
   assetBlockFileProps,
+  AssetBlockResizeHandle,
   firstSettingsControlIn,
 } from './richText/assetBlockNode';
 export {
@@ -402,7 +403,11 @@ type ExtensionOptions = {
   enableLinks: boolean;
   enableThematicBreak: boolean;
   singleLine: boolean;
-  placeholder?: string;
+  /**
+   * The placeholder of `editor`, read each time it is drawn, so that new
+   * words for it need no new editor. Absent when the field has none.
+   */
+  placeholder?: (editor: Editor) => string;
   /** Where the field's inline values come from, when it holds any. */
   inlineValues?: InlineValuesSource;
   /** Where the field's form fields come from, when it holds any. */
@@ -604,6 +609,18 @@ const createEmojiSuggestions = (hooks: EmojiSuggestionHooks) =>
     },
   });
 
+/**
+ * The placeholder that `editor`'s field gives it now (`data-placeholder`
+ * among its attributes), which the editor's options take on as the field
+ * draws again, or nothing.
+ */
+const placeholderOf = (editor: Editor): string => {
+  const { attributes } = editor.options.editorProps;
+  const text =
+    typeof attributes === 'object' ? attributes['data-placeholder'] : undefined;
+  return text ?? '';
+};
+
 // Factory function to create custom extensions with typography classes
 const PLACEHOLDER_LANGUAGE = new PluginKey('placeholderLanguage');
 
@@ -616,10 +633,14 @@ const PLACEHOLDER_LANGUAGE = new PluginKey('placeholderLanguage');
  * typed is in the region's. Its direction is its own (`unicode-bidi:
  * plaintext` on the placeholder), so the caret stays where the text starts.
  */
-const createPlaceholderLanguage = (lang: string) =>
+const createPlaceholderLanguage = (
+  lang: string,
+  placeholder: (editor: Editor) => string,
+) =>
   Extension.create({
     name: 'placeholderLanguage',
     addProseMirrorPlugins() {
+      const { editor } = this;
       return [
         new Plugin({
           key: PLACEHOLDER_LANGUAGE,
@@ -630,7 +651,8 @@ const createPlaceholderLanguage = (lang: string) =>
                 doc.childCount !== 1 ||
                 only === null ||
                 only.type.name !== 'paragraph' ||
-                only.content.size !== 0
+                only.content.size !== 0 ||
+                placeholder(editor) === ''
               ) {
                 return DecorationSet.empty;
               }
@@ -906,13 +928,13 @@ function createCustomExtensions({
     extensions.push(CustomOrderedList);
   }
 
-  if (placeholder) {
+  if (placeholder !== undefined) {
     extensions.push(
       Placeholder.configure({
-        placeholder,
+        placeholder: ({ editor }) => placeholder(editor),
         showOnlyWhenEditable: !placeholderWhenReadOnly,
       }),
-      createPlaceholderLanguage(interfaceLang),
+      createPlaceholderLanguage(interfaceLang, placeholder),
     );
   }
 
@@ -1087,6 +1109,12 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
     'toolbarOptions'?: ToolbarOptions;
     'changeMode'?: ChangeMode;
     'autoFocus'?: boolean;
+    /**
+     * Shown while the field is empty. Changing it redraws it in the same
+     * editor; giving or taking away a placeholder builds a new one, so a
+     * field whose placeholder comes and goes while it is written passes an
+     * empty string, which shows nothing, while it has none.
+     */
     'placeholder'?: string;
     /**
      * Holds the value to one line: the document is a single paragraph, Enter
@@ -1565,6 +1593,11 @@ export default function RichTextEditorField({
   const enclosingHeadingLevel = useEnclosingHeadingLevel();
   const enclosingHeadingDepth =
     enclosingHeadingLevel === null ? 0 : Number(enclosingHeadingLevel.slice(1));
+  // New words for the placeholder are drawn by the editor there is, which is
+  // rebuilt only when the field gains or loses a placeholder: rebuilding it
+  // as the researcher types (a version that says it shows nothing until a
+  // word is written in it) took the caret out of the text after one letter.
+  const hasPlaceholder = placeholder !== undefined;
   const editorExtensions = useMemo(
     () =>
       createCustomExtensions({
@@ -1577,7 +1610,7 @@ export default function RichTextEditorField({
         enableLinks: options.links,
         enableThematicBreak: options.thematicBreak,
         singleLine,
-        placeholder,
+        placeholder: hasPlaceholder ? placeholderOf : undefined,
         inlineValues: offersInlineValues ? sources.inlineValues : undefined,
         fieldBlocks: offersFieldBlocks ? sources.fieldBlocks : undefined,
         fieldBlockText,
@@ -1606,7 +1639,7 @@ export default function RichTextEditorField({
       options.links,
       options.thematicBreak,
       singleLine,
-      placeholder,
+      hasPlaceholder,
       versions,
       triggerCharacter,
       onTrigger,
@@ -1638,7 +1671,7 @@ export default function RichTextEditorField({
             enableLinks: options.links,
             enableThematicBreak: false,
             singleLine: true,
-            placeholder: emptyVersionText,
+            placeholder: () => emptyVersionText,
             placeholderWhenReadOnly: true,
             inlineValues: offersInlineValues ? sources.inlineValues : undefined,
             interfaceLang: intl.locale,

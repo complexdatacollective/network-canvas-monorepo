@@ -1083,10 +1083,18 @@ describe('dynamic values in stage text', () => {
     // variant, so a site the complete protocol happens not to fill (a hint,
     // a scale's labels) is inventoried too.
     const allSites = schemaDynamicValueSites();
-    // The one site outside stages is a node type's own label, which shows
-    // values about the node it is on (`findNodeLabelProblems`).
+    // The sites outside stages are a node type's own label, which shows
+    // values about the node it is on, and the wording of its dynamic
+    // attributes (`findNodeLabelProblems`).
     const sites = allSites.filter((site) => site.startsWith('stages '));
     expect(allSites.filter((site) => !site.startsWith('stages '))).toEqual([
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.answers.#.wording dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.cases.#.wording dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.missing dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.other dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.otherwise dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.participant dynamicAttribute',
+      'codebook.node.*.dynamicLabel.dynamicAttributes.*.wording dynamicAttribute',
       'codebook.node.*.dynamicLabel.text nodeLabel',
     ]);
     const inventory = sites.map((site) => site.slice('stages '.length));

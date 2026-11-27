@@ -63,6 +63,8 @@ const viewProps = {
   editable: true,
   active: true,
   update: vi.fn(),
+  resizeHandle: null,
+  resizing: undefined,
   remove: vi.fn(),
   returnToText: vi.fn(),
   selectKeepingFocus: vi.fn(),

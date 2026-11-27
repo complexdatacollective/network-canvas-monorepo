@@ -138,15 +138,13 @@ export const FILE_LABELS = {
   video: messages.videoFileLabel,
 } as const;
 
-/** A size a picture can be drawn at: one of a block's, or its own. */
-export type SizeChoice = AssetBlockSize | 'full';
-
+/** The name of each size a picture can be drawn at: a block's, or its own. */
 export const SIZE_LABELS = {
   full: messages.sizeFull,
   small: messages.sizeSmall,
   medium: messages.sizeMedium,
   large: messages.sizeLarge,
-} as const;
+} as const satisfies Record<AssetBlockSize | 'full', unknown>;
 
 /** The button that deletes a block, named for the kind of file it shows. */
 export const REMOVE_LABELS = {

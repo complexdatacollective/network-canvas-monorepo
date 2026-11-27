@@ -1,7 +1,14 @@
 import { z } from 'zod';
 
-import { findContentDocumentTextProblem } from '../../localization/contentDocumentProblems.ts';
+import {
+  CONTENT_DOCUMENT_PROBLEMS,
+  findContentDocumentTextProblem,
+} from '../../localization/contentDocumentProblems.ts';
 import { findDynamicMessageSyntaxProblem } from '../../localization/dynamicValueMessages.ts';
+import {
+  findDeclaredArgumentProblem,
+  type MessageArguments,
+} from '../../localization/messageArguments.ts';
 import { ConditionsSchema } from './conditions.ts';
 import { DynamicAttributesSchema } from './dynamic-attributes.ts';
 import {
@@ -103,7 +110,21 @@ type LabelHit = Readonly<{
   path: Path;
   value: Readonly<Record<string, string>>;
   dynamicValues?: string;
+  /** What the text may use besides values (see `localizedString`). */
+  arguments?: MessageArguments;
 }>;
+
+/**
+ * Whether `hit` is text of the label at `base`: its own text, or the wording
+ * of a version of one of its dynamic attributes.
+ */
+const isLabelText = (hit: LabelHit, base: Path): boolean => {
+  if (!base.every((step, index) => hit.path[index] === step)) return false;
+  const [key] = hit.path.slice(base.length);
+  return hit.dynamicValues === 'nodeLabel'
+    ? hit.path.length === base.length + 1 && key === 'text'
+    : hit.dynamicValues === 'dynamicAttribute' && key === 'dynamicAttributes';
+};
 
 /**
  * Every problem with the values node types' labels show, as
@@ -135,22 +156,22 @@ export const findNodeLabelProblems = (
       dynamicAttributes: label.dynamicAttributes,
     });
     for (const hit of hits) {
-      if (
-        hit.dynamicValues !== 'nodeLabel' ||
-        hit.path.length !== base.length + 1 ||
-        !base.every((step, index) => hit.path[index] === step) ||
-        hit.path[base.length] !== 'text'
-      ) {
-        continue;
-      }
+      if (!isLabelText(hit, base)) continue;
+      const wording = hit.dynamicValues === 'dynamicAttribute';
       for (const [locale, message] of Object.entries(hit.value)) {
         // The field's own check reports what needs no codebook.
         if (
           findDynamicMessageSyntaxProblem(message) !== undefined ||
-          findContentDocumentTextProblem(message, {
-            format: 'plain',
-            lines: 'single',
-          }) !== undefined
+          (hit.arguments === undefined
+            ? findContentDocumentTextProblem(message, {
+                format: 'plain',
+                lines: 'single',
+              })
+            : findDeclaredArgumentProblem(
+                message,
+                hit.arguments,
+                CONTENT_DOCUMENT_PROBLEMS.inlineChoice,
+              )) !== undefined
         ) {
           continue;
         }
@@ -158,7 +179,8 @@ export const findNodeLabelProblems = (
           message,
           context,
           locale,
-          'This label',
+          wording ? 'This wording' : 'This label',
+          hit.arguments,
         );
         if (problem !== undefined) {
           problems.push({ path: [...hit.path, locale], message: problem });

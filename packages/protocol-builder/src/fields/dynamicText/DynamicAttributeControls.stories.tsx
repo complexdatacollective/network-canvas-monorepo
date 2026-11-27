@@ -59,8 +59,11 @@ export const AVersionForEachCase: Story = {
     const otherwise = dialog.getByRole('textbox', { name: 'Otherwise' });
 
     // A version left empty shows nothing, so it is not a problem.
-    await expect(met).toHaveAttribute('placeholder', 'Shows nothing');
-    await expect(otherwise).toHaveAttribute('placeholder', 'Shows nothing');
+    await expect(met).toHaveAttribute('aria-placeholder', 'Shows nothing');
+    await expect(otherwise).toHaveAttribute(
+      'aria-placeholder',
+      'Shows nothing',
+    );
     await userEvent.click(
       dialog.getByRole('button', { name: 'Create dynamic attribute' }),
     );
@@ -69,8 +72,8 @@ export const AVersionForEachCase: Story = {
     ).toBeVisible();
     await userEvent.type(met, 'welcome back');
     await userEvent.type(otherwise, 'welcome');
-    await expect(met).toHaveValue('welcome back');
-    await expect(otherwise).toHaveValue('welcome');
+    await expect(met).toHaveTextContent('welcome back');
+    await expect(otherwise).toHaveTextContent('welcome');
   },
 };
 

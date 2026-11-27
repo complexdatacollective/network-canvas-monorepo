@@ -40,7 +40,7 @@ const PAGE = [
   '',
   'Thank you for taking part.',
   '',
-  '![The harbour](asset:map-1?size=medium&align=end)',
+  '![The harbour](asset:map-1?size=medium&loop=false)',
   '',
   'Please read on.',
 ].join('\n');
@@ -146,7 +146,7 @@ describe('the editor for a page of content', () => {
       name: 'The harbour',
     });
     // The settings in the text are what the picture is drawn with.
-    expect(picture).toHaveClass('max-h-96', 'object-right');
+    expect(picture).toHaveClass('max-h-96', 'object-contain');
     expect([...editor.children].map((child) => child.tagName)).toEqual([
       'H1',
       'P',

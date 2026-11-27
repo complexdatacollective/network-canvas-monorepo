@@ -6,10 +6,9 @@ import {
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
+  dynamicAttributeValueNames,
   dynamicValueNamesIn,
   getLocaleMetadata,
-  logicOfDynamicAttribute,
-  logicValueNames,
   parseDynamicValueName,
 } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
@@ -106,7 +105,7 @@ export function mapInterviewForViewer(
  * ended on shows in its text, or chooses what it shows by, and no others:
  * each value the text shows, each that its logic blocks read (directly, or
  * through the rules of a condition), and each that a dynamic attribute it
- * shows reads. The completed state shows that text whenever the interview is
+ * shows reads, by its logic or in the wording of its versions. The completed state shows that text whenever the interview is
  * opened, and without them a value the participant read when they finished
  * would read as missing, and a logic block would show another version. These
  * are answers the protocol chose to use on that screen; every other answer
@@ -164,9 +163,9 @@ function finishTextEgoAttributes(
         parsed?.kind === 'dynamicAttribute' &&
         Object.hasOwn(dynamicAttributes, parsed.id)
       ) {
-        const definition = dynamicAttributes[parsed.id];
-        if (definition === undefined) continue;
-        names.push(...logicValueNames(logicOfDynamicAttribute(definition)));
+        // What its logic reads, and what the wording of its versions shows,
+        // other dynamic attributes included, which are read in turn.
+        names.push(...dynamicAttributeValueNames(dynamicAttributes[parsed.id]));
       }
     }
   }

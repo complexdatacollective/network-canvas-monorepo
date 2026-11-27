@@ -69,12 +69,12 @@ export const EditingTheWording: Story = {
     const { popover } = await openFromThePill(canvasElement);
     const met = popover
       .getAllByRole('textbox')
-      .find((box) => (box as HTMLInputElement).value === GREETING_WHEN_MET);
+      .find((box) => box.textContent === GREETING_WHEN_MET);
     await expect(met).toBeDefined();
     const otherwise = popover.getByRole('textbox', { name: 'Otherwise' });
     await userEvent.clear(otherwise);
     await userEvent.type(otherwise, 'hello');
-    await expect(otherwise).toHaveValue('hello');
+    await expect(otherwise).toHaveTextContent('hello');
   },
 };
 

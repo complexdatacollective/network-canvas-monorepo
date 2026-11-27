@@ -3187,18 +3187,6 @@
     "defaultMessage": "Started by the participant, then repeats",
     "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: the participant starts it, and it then starts again each time it ends."
   },
-  "architect.protocolSummary.stage.pageContent.position": {
-    "defaultMessage": "Position",
-    "description": "Label in the printable protocol summary, in the details of an image, audio recording or video placed in the text of an Information stage. Beside it is where the file sits across the page: at the side a line of text starts, in the middle, or at the side a line ends."
-  },
-  "architect.protocolSummary.stage.pageContent.positionEnd": {
-    "defaultMessage": "Where a line of text ends",
-    "description": "Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text ends (the right in English, the left in Arabic)."
-  },
-  "architect.protocolSummary.stage.pageContent.positionStart": {
-    "defaultMessage": "Where a line of text starts",
-    "description": "Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text starts (the left in English, the right in Arabic)."
-  },
   "architect.protocolSummary.stage.pageContent.sizeLarge": {
     "defaultMessage": "Large",
     "description": "Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage."

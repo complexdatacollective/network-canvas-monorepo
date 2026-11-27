@@ -869,7 +869,7 @@ describe('a node type’s Dynamic label', () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     renderWithCodebook(
-      labelWithClosenessAttribute({ en: 'you {sic}' }),
+      labelWithClosenessAttribute({ en: 'you {sic, select, a {b} other {c}}' }),
       onSubmit,
     );
 
@@ -880,7 +880,7 @@ describe('a node type’s Dynamic label', () => {
 
     expect(
       await screen.findByText(
-        /^Dynamic attribute “Close \/ you \{sic\}”, version “Otherwise”: This wording cannot contain placeholders/,
+        /^Dynamic attribute “Close.*”, version “Otherwise”: This wording chooses between versions inside a sentence/,
       ),
     ).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();

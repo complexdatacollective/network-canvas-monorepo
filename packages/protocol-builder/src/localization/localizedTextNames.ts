@@ -317,6 +317,11 @@ const dynamicAttributeName: Label = (context) => {
     asDynamicAttribute(valueAt(context.place, context.at)),
     context.localization,
     context.locale,
+    {
+      intl: context.intl,
+      codebook: context.codebook,
+      dynamicAttributes: valueAt(context.place, context.at.slice(0, -1)),
+    },
   );
   return name === ''
     ? context.intl.formatMessage(dynamicAttributeNameMessages.dynamicAttribute)

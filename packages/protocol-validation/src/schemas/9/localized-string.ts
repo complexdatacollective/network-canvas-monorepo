@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { holdsLineBreak } from '@codaco/shared-consts';
 
 import { isBlankMessage } from '../../localization/blankText.ts';
-import { findContentDocumentTextProblem } from '../../localization/contentDocumentProblems.ts';
+import {
+  CONTENT_DOCUMENT_PROBLEMS,
+  findContentDocumentTextProblem,
+} from '../../localization/contentDocumentProblems.ts';
 import {
   findDynamicMessageSyntaxProblem,
   findFormattedMessageProblem,
@@ -15,6 +18,7 @@ import {
   type LocaleTag,
 } from '../../localization/localeTag.ts';
 import {
+  findDeclaredArgumentProblem,
   findMessageArgumentProblem,
   findMissingPlacement,
   type MessageArguments,
@@ -286,6 +290,7 @@ export const localizedString = (
   {
     mayBeEmpty = false,
     dynamicValues,
+    arguments: declaration,
   }: {
     /**
      * Allow a string with no translation at all. Only for text something
@@ -306,9 +311,25 @@ export const localizedString = (
      * stage and the codebook by the protocol (`findDynamicValueProblems`).
      */
     dynamicValues?: DynamicValueSite;
+    /**
+     * Arguments that text showing dynamic values may use besides them, each
+     * as its kind says (see `MessageArguments`): the number that a dynamic
+     * attribute's number wording is worded for. Only for one line of text
+     * that shows dynamic values; any other choice between versions in it is
+     * still refused.
+     */
+    arguments?: MessageArguments;
   } = {},
-) =>
-  localizedTranslations(content, lines, (message) =>
+) => {
+  if (
+    declaration !== undefined &&
+    (dynamicValues === undefined || lines !== 'single')
+  ) {
+    throw new Error(
+      'Only one line of text that shows dynamic values can declare arguments.',
+    );
+  }
+  return localizedTranslations(content, lines, (message) =>
     dynamicValues === undefined
       ? (findMessageSyntaxProblem(message) ??
         findContentDocumentTextProblem(message, { format, lines, fieldBlocks }))
@@ -316,15 +337,22 @@ export const localizedString = (
         (format === 'markdown'
           ? findFormattedMessageProblem(message)
           : undefined) ??
-        findContentDocumentTextProblem(message, {
-          format,
-          lines,
-          fieldBlocks,
-        })),
+        (declaration === undefined
+          ? findContentDocumentTextProblem(message, {
+              format,
+              lines,
+              fieldBlocks,
+            })
+          : findDeclaredArgumentProblem(
+              message,
+              declaration,
+              CONTENT_DOCUMENT_PROBLEMS.inlineChoice,
+            ))),
   ).meta({
     [LOCALIZED_STRING]: {
       format,
       lines,
+      ...(declaration === undefined ? {} : { arguments: declaration }),
       ...(blocksAllowed({ format, lines }, assetBlocks)
         ? { assetBlocks: true }
         : {}),
@@ -335,6 +363,7 @@ export const localizedString = (
       ...(mayBeEmpty ? { mayBeEmpty: true } : {}),
     },
   });
+};
 
 const describeMissingPlacement = (
   { argument, when }: MissingPlacement,
@@ -416,7 +445,8 @@ const isLocalizedStringDescriptor = (
     value.dynamicValues === 'stageText' ||
     value.dynamicValues === 'prompt' ||
     value.dynamicValues === 'formField' ||
-    value.dynamicValues === 'nodeLabel') &&
+    value.dynamicValues === 'nodeLabel' ||
+    value.dynamicValues === 'dynamicAttribute') &&
   (!('mayBeEmpty' in value) || value.mayBeEmpty === true) &&
   (!('assetBlocks' in value) || value.assetBlocks === true) &&
   (!('fieldBlocks' in value) || value.fieldBlocks === true);

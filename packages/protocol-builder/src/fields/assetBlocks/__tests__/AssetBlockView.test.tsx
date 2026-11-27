@@ -124,6 +124,8 @@ const setup = ({
     editable: true,
     active: true,
     update,
+    resizeHandle: null,
+    resizing: undefined,
     remove,
     returnToText,
     selectKeepingFocus,

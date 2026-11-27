@@ -15,7 +15,6 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   type AssetBlock,
-  type AssetBlockAlignment,
   assetBlockFile,
   assetBlockSettings,
   type AssetBlockSize,
@@ -104,7 +103,6 @@ function VideoPlayer({
   source,
   isE2E,
   size,
-  align,
   autoplay,
   loop,
 }: {
@@ -120,7 +118,6 @@ function VideoPlayer({
   source: string | undefined;
   isE2E: boolean;
   size: AssetBlockSize | undefined;
-  align: AssetBlockAlignment;
   autoplay: boolean;
   loop: boolean;
 }) {
@@ -160,8 +157,7 @@ function VideoPlayer({
         playsInline
         preload={isE2E ? 'none' : 'auto'}
         className={cx(
-          'w-full object-contain',
-          assetBlockMediaVariants({ size, align }),
+          assetBlockMediaVariants({ size }),
           isE2E && getE2EVideoBoxClass(size),
           (state === 'loading' && !isE2E) || state === 'error'
             ? 'invisible h-0'
@@ -237,7 +233,7 @@ function AssetBlockView({ block }: { block: AssetBlock }) {
     file === undefined ? undefined : block.assetId,
   );
   const description = descriptionOf(block.description);
-  const { size, align, autoplay, loop } = assetBlockSettings(block);
+  const { size, autoplay, loop } = assetBlockSettings(block);
 
   if (file === undefined) {
     return (
@@ -278,10 +274,7 @@ function AssetBlockView({ block }: { block: AssetBlock }) {
         <img
           src={url}
           alt={description ?? ''}
-          className={cx(
-            'size-full object-contain',
-            assetBlockMediaVariants({ size, align }),
-          )}
+          className={assetBlockMediaVariants({ size })}
         />
       </Block>
     );
@@ -289,7 +282,7 @@ function AssetBlockView({ block }: { block: AssetBlock }) {
 
   if (file.kind === 'audio') {
     return (
-      <Block className={assetBlockAudioRowVariants({ align })}>
+      <Block className={assetBlockAudioRowVariants()}>
         {/* oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol assets carry no caption file (the asset schema has no field for one), so there is no track to point at. */}
         <audio
           controls
@@ -316,7 +309,6 @@ function AssetBlockView({ block }: { block: AssetBlock }) {
         source={source}
         isE2E={isE2E}
         size={size}
-        align={align}
         autoplay={autoplay}
         loop={loop}
       />

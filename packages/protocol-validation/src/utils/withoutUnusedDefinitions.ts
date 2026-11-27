@@ -150,7 +150,7 @@ const withoutUnusedDynamicAttributes = <T extends Owner>(owner: T): T => {
   if (!isRecord(dynamicAttributes)) return owner;
   const hits = hitsOf(owner);
   if (hits === undefined) return owner;
-  const names = ownTextNames(hits, []);
+  const names = ownTextNames(hits, [], dynamicAttributes);
   const kept = Object.entries(dynamicAttributes).filter(([id]) =>
     names.has(dynamicValueNameFor({ kind: 'dynamicAttribute', id })),
   );

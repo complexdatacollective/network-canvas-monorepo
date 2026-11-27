@@ -189,9 +189,15 @@ function SelectField(props: SelectProps) {
                     'aria-describedby': `${descriptionId}-${index}`,
                   })}
                 >
-                  <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <Select.ItemText
-                      className="wrap-break-word whitespace-normal"
+                      className={cx(
+                        'wrap-break-word whitespace-normal',
+                        // A label with a description under it is the
+                        // option's heading.
+                        option.description !== undefined &&
+                          'font-heading font-bold',
+                      )}
                       {...presentationalTextProps(option.label)}
                     >
                       {presentationalTextValue(option.label)}

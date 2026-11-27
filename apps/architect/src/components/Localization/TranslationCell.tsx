@@ -26,12 +26,16 @@ import {
   createAssetBlockImages,
 } from '@codaco/protocol-builder/fields/assetBlocks/assetBlockImages';
 import { createAssetBlockView } from '@codaco/protocol-builder/fields/assetBlocks/AssetBlockView';
-import { DynamicMessageEditor } from '@codaco/protocol-builder/fields/dynamicText/DynamicMessageEditor';
+import {
+  DynamicMessageEditor,
+  WORDING_EDITORS,
+} from '@codaco/protocol-builder/fields/dynamicText/DynamicMessageEditor';
 import {
   type BlockMarkdown,
   DynamicMessageSummary,
 } from '@codaco/protocol-builder/fields/dynamicText/DynamicMessageSummary';
 import type { DynamicMessageSite } from '@codaco/protocol-builder/fields/dynamicText/messageSite';
+import { NumberWordingEditor } from '@codaco/protocol-builder/fields/dynamicText/NumberWordingEditor';
 import {
   LocalizedMessageVersions,
   LocalizedMessageVersionsSummary,
@@ -306,6 +310,8 @@ type FallbackProps = {
     site: DynamicMessageSite;
     singleLine: boolean;
     fieldSummary?: (fieldId: string) => ReactNode;
+    /** Set for a dynamic attribute's number wording (see `DynamicMessageSummary`). */
+    numberWording?: Readonly<{ counted?: string | undefined }>;
   }>;
 };
 
@@ -369,6 +375,7 @@ const Fallback = ({
                 assetBlocks ? CELL_ASSET_BLOCK_MARKDOWN : CELL_BLOCK_MARKDOWN
               }
               fieldSummary={dynamic.fieldSummary}
+              numberWording={dynamic.numberWording}
             />
           </LineInParagraph>
         ) : messageArguments !== undefined ? (
@@ -668,12 +675,16 @@ const useEditedCell = ({
   };
 
   // Caught before the editor sees them, and only from its text: the toolbar
-  // and the link form keep their own keys.
+  // and the link form keep their own keys, and so does a text in a popup
+  // that the editor opened, such as a version of a dynamic attribute, whose
+  // keys reach the cell through React although the popup is elsewhere on
+  // the page.
   const onKeyDownCapture = (event: KeyboardEvent<HTMLTableCellElement>) => {
     const editable = event.target;
     if (
       !(editable instanceof HTMLElement) ||
-      !editable.matches(EDITABLE_SELECTOR)
+      !editable.matches(EDITABLE_SELECTOR) ||
+      cellRef.current?.contains(editable) !== true
     ) {
       return;
     }
@@ -992,10 +1003,6 @@ const MessageCell = ({
           ariaInvalid={invalid}
           autoFocus
           className={CELL_EDITOR_CLASSES}
-          // A version of a dynamic attribute shows no value, and the only
-          // one that is a message is a number's wording: it opens with a
-          // version for each plural form of the language.
-          numberWording={row.place.kind === 'dynamicAttributeWording'}
         />
       )}
     />
@@ -1045,7 +1052,10 @@ const useDynamicSite = (
     // A node type's own label sits in the codebook, and shows what is known
     // of the node it is on rather than what a stage shows.
     const labelledNodeType =
-      site === 'nodeLabel' && root === 'codebook' && stablePath[1] === 'node'
+      // The wording of the label's dynamic attributes is shown in the label.
+      (site === 'nodeLabel' || site === 'dynamicAttribute') &&
+      root === 'codebook' &&
+      stablePath[1] === 'node'
         ? stablePath[2]
         : undefined;
     if (typeof labelledNodeType === 'string') {
@@ -1253,9 +1263,33 @@ const FormContentCell = ({
 };
 
 /**
+ * The value name of the attribute that the dynamic attribute whose wording
+ * `place` is counts, when it is number wording (see `TranslationRow`'s
+ * `arguments`), or undefined when it counts none yet.
+ */
+const countedBy = (
+  row: TranslationRow,
+  site: DynamicMessageSite,
+): Readonly<{ counted?: string | undefined }> | undefined => {
+  if (row.arguments === undefined) return undefined;
+  const { place } = row;
+  if (place.kind !== 'dynamicAttributeWording') return {};
+  const definition: unknown = site.dynamicAttributes?.values[place.id];
+  return {
+    counted:
+      isRecord(definition) && typeof definition.value === 'string'
+        ? definition.value
+        : undefined,
+  };
+};
+
+/**
  * Text that can show values the interview fills in: shown with its values
  * as pills until the cell has focus, then edited in the cell with the stage
- * editor's own editor, offering the values text there can show.
+ * editor's own editor, offering the values text there can show. The wording
+ * of a dynamic attribute's version is edited as the dynamic attribute's own
+ * editor edits it: its menu does not offer the dynamic attribute itself, and
+ * number wording has a version for each plural form of the language.
  */
 const DynamicCell = ({
   dynamicValues,
@@ -1267,6 +1301,9 @@ const DynamicCell = ({
   // As the text's field declares it (see `RichTextCell`).
   const { markdown, singleLine, assetBlocks } = textFieldPropsFor(row);
   const value = rowValueWithCell(row, locale, draft.text);
+  const ownDynamicAttribute =
+    row.place.kind === 'dynamicAttributeWording' ? row.place.id : undefined;
+  const numberWording = countedBy(row, site);
   return (
     <EditedCellFrame
       {...props}
@@ -1279,7 +1316,7 @@ const DynamicCell = ({
         assetBlocks,
         locale,
         localization,
-        dynamic: { site, singleLine },
+        dynamic: { site, singleLine, numberWording },
       }}
       summaryClassName={markdown ? CELL_TEXT_CLASSES : PLAIN_TEXT_CLASSES}
       summary={
@@ -1293,29 +1330,51 @@ const DynamicCell = ({
             blockMarkdown={
               assetBlocks ? CELL_ASSET_BLOCK_MARKDOWN : CELL_BLOCK_MARKDOWN
             }
+            numberWording={numberWording}
           />
         </LineInParagraph>
       }
-      renderEditor={({ id, describedBy, invalid }) => (
-        <DynamicMessageEditor
-          id={id}
-          name={id}
-          ariaLabelledBy={labelledBy}
-          ariaDescribedBy={describedBy}
-          ariaInvalid={invalid}
-          autoFocus
-          readOnly={false}
-          markdown={markdown}
-          singleLine={singleLine}
-          assetBlocks={assetBlocks ? CELL_ASSET_BLOCKS : undefined}
-          message={draft.text}
-          onMessageChange={(next) => draft.change(next ?? '')}
-          locale={locale}
-          site={site}
-          showsProblems={false}
-          className={CELL_EDITOR_CLASSES}
-        />
-      )}
+      renderEditor={({ id, describedBy, invalid }) =>
+        numberWording !== undefined ? (
+          <NumberWordingEditor
+            id={id}
+            name={id}
+            ariaLabelledBy={labelledBy}
+            ariaDescribedBy={describedBy}
+            ariaInvalid={invalid}
+            autoFocus
+            readOnly={false}
+            message={draft.text}
+            onMessageChange={(next) => draft.change(next)}
+            locale={locale}
+            site={site}
+            ownDynamicAttribute={ownDynamicAttribute}
+            counted={numberWording.counted}
+            editors={WORDING_EDITORS}
+            className={CELL_EDITOR_CLASSES}
+          />
+        ) : (
+          <DynamicMessageEditor
+            id={id}
+            name={id}
+            ariaLabelledBy={labelledBy}
+            ariaDescribedBy={describedBy}
+            ariaInvalid={invalid}
+            autoFocus
+            readOnly={false}
+            markdown={markdown}
+            singleLine={singleLine}
+            assetBlocks={assetBlocks ? CELL_ASSET_BLOCKS : undefined}
+            message={draft.text}
+            onMessageChange={(next) => draft.change(next ?? '')}
+            locale={locale}
+            site={site}
+            ownDynamicAttribute={ownDynamicAttribute}
+            showsProblems={false}
+            className={CELL_EDITOR_CLASSES}
+          />
+        )
+      }
     />
   );
 };

@@ -68,7 +68,7 @@ Each of these objects has an "id": a stage, a prompt, a panel, a form field, a f
 
 Every stage: { "id", "type", "label": { "en": "…" }, "skipLogic"?, "interviewScript"? (plain text for the interviewer, never shown to the participant) }. Stages about people carry "subject": { "entity": "node", "type": <nodeTypeId> }; an AlterEdgeForm carries "subject": { "entity": "edge", "type": <edgeTypeId> }. A stage marked filter? below accepts "filter": Filter.
 
-- Information: "content": {…}, the whole page as one markdown text. A heading that opens it ("# Welcome") is the page's heading. An image, audio recording or video is a markdown image in a paragraph of its own whose address names an asset by id: ![description](asset:<assetId>?size=small|medium|large&align=start|end&autoplay=false&loop=false), every setting optional. Keep each one exactly as written when you rewrite the text around it.
+- Information: "content": {…}, the whole page as one markdown text. A heading that opens it ("# Welcome") is the page's heading. An image, audio recording or video is a markdown image in a paragraph of its own whose address names an asset by id: ![description](asset:<assetId>?size=small|medium|large&autoplay=false&loop=false), every setting optional. Keep each one exactly as written when you rewrite the text around it.
 - EgoForm: "form": Form. Fields use ego variables. Its content usually opens with a heading and text that introduce the questions.
 - AlterForm (filter?): "form": Form: one form per person shown. Fields use the subject node type's variables.
 - AlterEdgeForm (filter?): "form": Form: one form per tie of the subject edge type. Fields use that edge type's variables.

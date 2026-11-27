@@ -236,7 +236,7 @@ describe('stage text that chooses its wording by a condition', () => {
     format: contentFormatFor('en'),
     resolveLabel: (label) => label.en ?? '',
     booleanWords: { yes: 'Yes', no: 'No' },
-    wordingOf: (choice) => choice.content.en ?? '',
+    versionOf: (wording) => ({ message: wording.en ?? '', locale: 'en' }),
   };
   const read = (message: string, extra: Partial<DynamicValueSources>) =>
     resolveDynamicText(

@@ -46,7 +46,7 @@ describe('files shown as blocks in an Information page', () => {
   it('accepts blocks naming an image, a video and an audio recording', () => {
     expect(
       issuesWith({
-        en: '# T\n\n![](asset:img)\n\n![](asset:clip?size=large)\n\n![](asset:tune?align=start&loop=false)',
+        en: '# T\n\n![](asset:img)\n\n![](asset:clip?size=large)\n\n![](asset:tune?loop=false)',
       }).issues,
     ).toEqual([]);
   });
@@ -115,20 +115,28 @@ describe('files shown as blocks in an Information page', () => {
     ]);
   });
 
-  it('reports a setting no block has, and the file is still checked', () => {
-    const { index, issues } = issuesWith({ en: '![](asset:img?zoom=2)' });
-    expect(issues).toEqual([
-      {
-        path: ['stages', index, 'content', 'en'],
-        message:
-          'A file in this document has a setting "zoom", which is not one a file can have.',
-      },
-    ]);
-  });
+  // A block is always centred: markdown has no way to place an image, so
+  // `align` is a setting no block has.
+  it.each([
+    ['zoom', '2'],
+    ['align', 'end'],
+  ])(
+    'reports a setting no block has (%s), and the file is still checked',
+    (setting, value) => {
+      const { index, issues } = issuesWith({
+        en: `![](asset:img?${setting}=${value})`,
+      });
+      expect(issues).toEqual([
+        {
+          path: ['stages', index, 'content', 'en'],
+          message: `A file in this document has a setting "${setting}", which is not one a file can have.`,
+        },
+      ]);
+    },
+  );
 
   it.each([
     ['size', 'huge'],
-    ['align', 'left'],
     ['autoplay', 'yes'],
     ['loop', 'no'],
   ])('reports %s=%s as a value the setting cannot be', (setting, value) => {

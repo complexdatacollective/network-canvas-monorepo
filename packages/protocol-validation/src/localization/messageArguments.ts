@@ -154,11 +154,31 @@ const describeAllowed = (declaration: MessageArguments): string => {
     : `This wording can only use ${names.map((name) => `"${name}"`).join(', ')}.`;
 };
 
+/**
+ * How a message may use names that its setting does not declare: never
+ * (`undefined`, wording Network Canvas supplies), or, in text that shows
+ * dynamic values, as values that another check judges, with `inlineChoice`
+ * as the refusal of a choice between versions by one.
+ */
+type OtherNames = Readonly<{ inlineChoice: string }> | undefined;
+
 const findElementsProblem = (
   elements: readonly MessageFormatElement[],
   declaration: MessageArguments,
+  others?: OtherNames,
 ): string | undefined => {
   for (const element of elements) {
+    if (
+      others !== undefined &&
+      'value' in element &&
+      (element.type === TYPE.argument ||
+        element.type === TYPE.select ||
+        element.type === TYPE.plural) &&
+      !Object.hasOwn(declaration, element.value)
+    ) {
+      if (element.type === TYPE.argument) continue;
+      return others.inlineChoice;
+    }
     switch (element.type) {
       case TYPE.literal:
       case TYPE.pound:
@@ -187,7 +207,11 @@ const findElementsProblem = (
           if (isBlankElements(option.value)) {
             return `The "${key}" version of this wording is blank.`;
           }
-          const problem = findElementsProblem(option.value, declaration);
+          const problem = findElementsProblem(
+            option.value,
+            declaration,
+            others,
+          );
           if (problem !== undefined) return problem;
         }
         break;
@@ -209,7 +233,11 @@ const findElementsProblem = (
           if (!empty && isBlankElements(option.value)) {
             return `The "${key}" version of this wording is blank.`;
           }
-          const problem = findElementsProblem(option.value, declaration);
+          const problem = findElementsProblem(
+            option.value,
+            declaration,
+            others,
+          );
           if (problem !== undefined) return problem;
         }
         break;
@@ -240,6 +268,24 @@ export const findMessageArgumentProblem = (
   const elements = parseMessage(message);
   if (typeof elements === 'string') return elements;
   return findElementsProblem(elements, declaration);
+};
+
+/**
+ * `findMessageArgumentProblem` for text that shows dynamic values as well as
+ * the arguments its setting declares (the number of a dynamic attribute's
+ * number wording): each declared argument is used as its kind says, any
+ * other name may be shown as a value, which the site's own check judges, and
+ * a choice between versions by any other name is refused with
+ * `inlineChoice`, the refusal of a choice inside one line.
+ */
+export const findDeclaredArgumentProblem = (
+  message: string,
+  declaration: MessageArguments,
+  inlineChoice: string,
+): string | undefined => {
+  const elements = parseMessage(message);
+  if (typeof elements === 'string') return elements;
+  return findElementsProblem(elements, declaration, { inlineChoice });
 };
 
 /** One piece of a variant: text, or where an argument's value goes. */

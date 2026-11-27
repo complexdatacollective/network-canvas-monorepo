@@ -53,11 +53,11 @@ const openSettings = async (canvasElement: HTMLElement) => {
  * The settings show the block's logic and the rules of its “If”. They open
  * from the settings button in the block's header as every block's settings
  * open from its button: attached to it, on one side of it, with the button
- * drawn as pressed while they are open.
+ * drawn as pressed while they are open. Opening them selects the block.
  */
 export const ItsLogicAndRules: Story = {
   play: async ({ canvasElement }) => {
-    const { settings } = await openSettings(canvasElement);
+    const { editor, settings } = await openSettings(canvasElement);
     const button = within(canvasElement).getByRole('button', {
       name: 'Logic block settings',
     });
@@ -82,6 +82,17 @@ export const ItsLogicAndRules: Story = {
     await expect(
       settings.getByRole('button', { name: 'Delete logic block' }),
     ).toBeVisible();
+    // Opening them selected the block, as every block's settings do, and
+    // left focus in them, which stay open.
+    await waitFor(() =>
+      expect(editor.querySelector('[data-logic-block-view]')).toHaveAttribute(
+        'data-selected',
+      ),
+    );
+    await expect(popup).toContainElement(
+      canvasElement.ownerDocument.activeElement as HTMLElement | null,
+    );
+    await expect(popup).toBeVisible();
   },
 };
 
@@ -206,10 +217,8 @@ export const ProblemsOnceTheRulesAreChanged: Story = {
     await expect(await settings.findByText(noRules)).toBeVisible();
     // Only the “If”, whose rules were changed.
     await expect(settings.getAllByText(noRules)).toHaveLength(1);
-    // The question has gone, and the settings can be used again. The rule
-    // that had focus has gone too, so the researcher carries on from the
-    // first rule's button (Base UI takes the settings' controls out of the
-    // tab order while focus is outside them).
+    // The question has gone, and focus is back in the settings: on the
+    // button that adds a rule to the “If”, which has no rules left.
     await waitFor(() =>
       expect(
         within(canvasElement.ownerDocument.body).queryByRole('dialog', {
@@ -217,9 +226,9 @@ export const ProblemsOnceTheRulesAreChanged: Story = {
         }),
       ).toBeNull(),
     );
-    await userEvent.click(
-      settings.getAllByRole('button', { name: 'Add new rule' })[0] ??
-        settings.getByRole('button', { name: 'Add else if' }),
+    const [addToIf] = settings.getAllByRole('button', { name: 'Add new rule' });
+    await waitFor(() =>
+      expect(canvasElement.ownerDocument.activeElement).toBe(addToIf),
     );
   },
 };

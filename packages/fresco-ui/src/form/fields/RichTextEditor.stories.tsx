@@ -1489,8 +1489,7 @@ function StoryAssetBlockView({
   return (
     <div className="bg-surface-1 rounded-sm border p-3">
       <p data-testid="asset-block-summary">
-        {attributes.assetId}, size {attributes.size ?? 'full'}, aligned{' '}
-        {attributes.align}
+        {attributes.assetId}, size {attributes.size ?? 'full'}
       </p>
       {selected && editable && (
         <div {...assetBlockControlsProps} className="mt-2 flex gap-2">
@@ -1560,9 +1559,7 @@ export const WithAssetBlocks: Story = {
     await userEvent.click(editor);
     await userEvent.click(canvas.getByRole('button', { name: 'Insert image' }));
     const summary = await canvas.findByTestId('asset-block-summary');
-    await expect(summary).toHaveTextContent(
-      'image-1, size full, aligned center',
-    );
+    await expect(summary).toHaveTextContent('image-1, size full');
     // The block just placed is selected, and framed as its consumer is told
     // it is: a consumer places things on that frame by these numbers.
     const block = summary.closest('[data-asset-block]');

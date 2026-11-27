@@ -204,10 +204,10 @@ const itemFile = (
       ...(kind !== 'audio' &&
         typeof size === 'string' &&
         SIZES[size] !== undefined && { size: SIZES[size] }),
-      // Audio played once where video repeated, and its player sat where a
-      // line of text starts where images were centred; a block repeats and
-      // is centred unless it says otherwise.
-      ...(kind === 'audio' && { align: 'start', loop: false }),
+      // Audio played once where video repeated; a block repeats unless it
+      // says otherwise. Its player sat where a line of text starts, and is
+      // now centred, as every block is.
+      ...(kind === 'audio' && { loop: false }),
     },
     description,
   };

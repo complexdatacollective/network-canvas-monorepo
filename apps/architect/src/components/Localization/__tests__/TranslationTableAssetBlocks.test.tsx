@@ -14,7 +14,7 @@ import { getProtocol } from '~/selectors/protocol';
 
 import { renderTranslationTable } from './renderTranslationTable';
 
-const BLOCK = '![A map of the area](asset:map?size=medium&align=end)';
+const BLOCK = '![A map of the area](asset:map?size=medium&loop=false)';
 const ENGLISH = `# Welcome\n\n${BLOCK}\n\nSome text`;
 const FRENCH = `# Bienvenue\n\n${BLOCK}`;
 

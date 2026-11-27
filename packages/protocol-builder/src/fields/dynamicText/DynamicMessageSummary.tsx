@@ -18,6 +18,7 @@ import {
   type MessageSwitch,
   messageStructure,
   readContentDocument,
+  NUMBER_WORDING_COUNT,
 } from '@codaco/protocol-validation';
 import { isRecord } from '@codaco/shared-consts';
 
@@ -36,11 +37,12 @@ import {
   metaOfLogic,
 } from '../../localization/messageDocument.ts';
 import { useEditingLanguage } from '../../localization/ProtocolLocalization.tsx';
+import { useMessageArgumentLabels } from '../messageArgumentLabels.ts';
 import { VariablePill, type VariablePillProps } from '../VariablePill.tsx';
 import { logicOptionLabel } from './logicOptions.ts';
 import type { DynamicMessageSite } from './messageSite.ts';
 import { namingFor } from './valueNaming.ts';
-import { logicVersionLabel } from './versionLabels.ts';
+import { logicVersionLabel, numberSwitchLabels } from './versionLabels.ts';
 
 /** The first of the private-use characters that hold a value's place. */
 const VALUE_MARK = 0xf0000;
@@ -291,6 +293,7 @@ export function DynamicMessageSummary({
   site,
   blockMarkdown,
   fieldSummary,
+  numberWording,
 }: Readonly<{
   message: string;
   /** Whether the words are markdown, drawn here with their formatting. */
@@ -309,11 +312,18 @@ export function DynamicMessageSummary({
   >;
   /** How a field of a form is drawn, for the text of a form. */
   fieldSummary?: (fieldId: string) => ReactNode;
+  /**
+   * For the number wording of a dynamic attribute: the value name of the
+   * attribute that it counts, which names the number. Its versions are then
+   * written out, each labelled with the numbers it is for.
+   */
+  numberWording?: Readonly<{ counted?: string | undefined }>;
 }>) {
   const intl = useAppIntl();
   const { localization } = useEditingLanguage();
   const labelLanguage = useInterfaceLanguage();
   const appDirection = useAppDirection();
+  const argumentLabels = useMessageArgumentLabels();
   const { context } = site;
   const conditionValues = site.conditions?.values ?? {};
   const labelText = (label: unknown): string =>
@@ -330,7 +340,22 @@ export function DynamicMessageSummary({
       resolveStoredTranslation(wording, localization, locale),
     interfaceLanguage: { lang: intl.locale, dir: appDirection },
   });
-  const valuePill = (argument: string) => naming.pillFor(argument);
+  const countPill = (): VariablePillProps =>
+    numberWording?.counted === undefined
+      ? {
+          name:
+            argumentLabels.placeholderLabels[NUMBER_WORDING_COUNT] ??
+            NUMBER_WORDING_COUNT,
+          kind: 'placeholder',
+          ...labelLanguage,
+        }
+      : naming.pillFor(numberWording.counted);
+  // In number wording, the number is named for the attribute it counts.
+  const valuePill = (argument: string) =>
+    numberWording !== undefined && argument === NUMBER_WORDING_COUNT
+      ? countPill()
+      : naming.pillFor(argument);
+  const numbers = numberSwitchLabels(intl, locale);
 
   const lines = (nodes: readonly MessageNode[]) => (
     <MessageNodesSummary
@@ -339,6 +364,10 @@ export function DynamicMessageSummary({
       multiline={multiline}
       {...(blockMarkdown !== undefined && { blockMarkdown })}
       valuePill={valuePill}
+      {...(numberWording !== undefined && {
+        versionLabel: (_: MessageSwitch, key: string) =>
+          numbers.versionLabel(key),
+      })}
     />
   );
 

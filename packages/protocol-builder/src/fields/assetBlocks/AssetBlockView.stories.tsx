@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { type ComponentProps, useState } from 'react';
 import {
   expect,
   fireEvent,
@@ -9,15 +10,15 @@ import {
   within,
 } from 'storybook/test';
 
+import { assetBlockMediaVariants } from '@codaco/fresco-ui/assetBlockLayout';
 import {
+  AssetBlockResizeHandle,
   BLOCK_FRAME_OFFSET,
   BLOCK_FRAME_WIDTH,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
-import {
-  ASSET_BLOCK_ALIGNMENTS,
-  ASSET_BLOCK_SIZES,
-} from '@codaco/shared-consts';
+import { withMod } from '@codaco/fresco-ui/testing/modKey';
+import { ASSET_BLOCK_SIZES, type AssetBlockSize } from '@codaco/shared-consts';
 
 import {
   IMAGE_RESOURCE,
@@ -53,6 +54,8 @@ const meta = {
     editable: true,
     active: true,
     update: fn(),
+    resizeHandle: null,
+    resizing: undefined,
     remove: fn(),
     returnToText: fn(),
     selectKeepingFocus: fn(),
@@ -183,10 +186,68 @@ const DrawnView = createAssetBlockView({
 });
 
 /**
- * Where the corner that resizes the picture in `scope` is wanted: on the
- * bottom corner of the frame drawn round the selected picture, on the side
- * the picture grows towards, which is the left for a picture held against the
- * right of its box, and the right otherwise. The frame goes round the picture
+ * A picture drawn as its block's node view draws it in an editor: inside an
+ * element marked as the block, and, while it is selected and can be changed,
+ * with the editor's resize handle, which says what a drag would do and hands
+ * the size it is let go at to `update`.
+ */
+function DrawnBlock(args: ComponentProps<typeof DrawnView>) {
+  const [resizing, setResizing] = useState<
+    Readonly<{ size: AssetBlockSize | null }> | undefined
+  >(undefined);
+  const resizable = args.selected && args.editable;
+  return (
+    <div data-asset-block="" className="relative">
+      <DrawnView
+        {...args}
+        resizing={resizable ? resizing : undefined}
+        resizeHandle={
+          resizable ? (
+            <AssetBlockResizeHandle
+              size={args.attributes.size}
+              onPreview={setResizing}
+              onResize={(size) => args.update({ size })}
+              onLeave={args.returnToText}
+            />
+          ) : null
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * Drags the resize handle by `by` from its middle and lets it go, with
+ * pointer events. The browser gives pointer capture only to a real pointer,
+ * so capturing it is stood in for while it is dragged.
+ */
+const dragHandle = async (
+  handle: HTMLElement,
+  by: Readonly<{ x: number; y: number }>,
+  { release = true }: Readonly<{ release?: boolean }> = {},
+) => {
+  const { left, top, width, height } = handle.getBoundingClientRect();
+  const middle = { clientX: left + width / 2, clientY: top + height / 2 };
+  const to = { clientX: middle.clientX + by.x, clientY: middle.clientY + by.y };
+  const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
+  const setCapture = spyOn(
+    window.HTMLElement.prototype,
+    'setPointerCapture',
+  ).mockImplementation(() => {});
+  try {
+    await fireEvent.pointerDown(handle, { ...pointer, buttons: 1, ...middle });
+    await fireEvent.pointerMove(handle, { ...pointer, buttons: 1, ...to });
+    if (release) await fireEvent.pointerUp(handle, { ...pointer, ...to });
+  } finally {
+    setCapture.mockRestore();
+  }
+};
+
+/**
+ * Where the handle that resizes the picture in `scope` is wanted: on the
+ * bottom corner of the frame drawn round the selected picture, at the end of
+ * the line (the right in text that reads left to right, the left in text
+ * that reads right to left). The frame goes round the picture
  * as it is drawn, however much narrower than its box it is. Read from the
  * frame where the editor draws one, and otherwise from where the view says
  * the frame goes (`data-block-box`): its outer edge `BLOCK_FRAME_OFFSET`
@@ -222,9 +283,10 @@ const expectCornerOfTheFrame = async (scope: Element) => {
   }
   // The middle of the line the frame is drawn as.
   const middle = BLOCK_FRAME_OFFSET - BLOCK_FRAME_WIDTH / 2;
-  const across =
-    Number.parseFloat(getComputedStyle(image).objectPosition) / 100;
-  const x = across === 1 ? box.left - middle : box.right + middle;
+  const x =
+    getComputedStyle(framed).direction === 'rtl'
+      ? box.left - middle
+      : box.right + middle;
   await expect(
     Math.abs((corner.left + corner.right) / 2 - x),
   ).toBeLessThanOrEqual(1);
@@ -245,33 +307,16 @@ const drawnIn = (direction: 'ltr' | 'rtl'): Story['render'] =>
   function Drawn(args) {
     return (
       <div dir={direction} className="w-[600px] pt-12">
-        <DrawnView {...args} />
+        <DrawnBlock {...args} />
       </div>
     );
   };
 
-/** Text that reads left to right, its picture where a line ends. */
-export const CornerOfAPictureAtTheEnd: Story = {
-  args: { attributes: { ...meta.args.attributes, align: 'end' } },
-  render: drawnIn('ltr'),
-  tags: ONE_DIRECTION,
-  play: cornerIsAtTheFramesCorner,
-};
-
 /**
- * Text that reads right to left, its picture where a line starts: against the
- * right of its box, as above, though the page runs the other way.
+ * Text that reads right to left: the picture is centred, and the handle is
+ * on its bottom left corner, where the lines end.
  */
 export const CornerOfAPictureInRightToLeftText: Story = {
-  args: { attributes: { ...meta.args.attributes, align: 'start' } },
-  render: drawnIn('rtl'),
-  tags: ONE_DIRECTION,
-  play: cornerIsAtTheFramesCorner,
-};
-
-/** Right to left, and where a line ends: against the left of its box. */
-export const CornerOfAPictureAtTheEndOfRightToLeftText: Story = {
-  args: { attributes: { ...meta.args.attributes, align: 'end' } },
   render: drawnIn('rtl'),
   tags: ONE_DIRECTION,
   play: cornerIsAtTheFramesCorner,
@@ -280,8 +325,8 @@ export const CornerOfAPictureAtTheEndOfRightToLeftText: Story = {
 const SIZE_CHOICES = [null, ...ASSET_BLOCK_SIZES] as const;
 
 /**
- * A picture at each size and in each place across the page, each selected:
- * its corner is at the corner of the frame round the picture every time.
+ * A picture at each size, each selected: its handle is at the corner of the
+ * frame round the picture every time.
  */
 export const CornerAtEverySize: Story = {
   args: { active: false },
@@ -289,25 +334,17 @@ export const CornerAtEverySize: Story = {
   render: function EverySize(args) {
     return (
       <div dir="ltr" className="flex w-[600px] flex-col gap-10">
-        {SIZE_CHOICES.flatMap((size) =>
-          ASSET_BLOCK_ALIGNMENTS.map((align) => (
-            <div
-              key={`${size}-${align}`}
-              data-testid={`${size ?? 'full'}-${align}`}
-            >
-              <DrawnView
-                {...args}
-                attributes={{ ...args.attributes, size, align }}
-              />
-            </div>
-          )),
-        )}
+        {SIZE_CHOICES.map((size) => (
+          <div key={size ?? 'full'} data-testid={`block-${size ?? 'full'}`}>
+            <DrawnBlock {...args} attributes={{ ...args.attributes, size }} />
+          </div>
+        ))}
       </div>
     );
   },
   play: async ({ canvasElement }) => {
-    const blocks = within(canvasElement).getAllByTestId(/-/);
-    await expect(blocks).toHaveLength(12);
+    const blocks = within(canvasElement).getAllByTestId(/^block-/);
+    await expect(blocks).toHaveLength(4);
     for (const block of blocks) await expectCornerOfTheFrame(block);
   },
 };
@@ -338,7 +375,7 @@ export const KeptClearOfTheHostsBars: Story = {
         className="h-[560px] w-[600px] overflow-y-auto [--protocol-builder-covered-bottom:100px] [--protocol-builder-covered-top:120px]"
       >
         <div className="h-[340px]" />
-        <DrawnView {...args} />
+        <DrawnBlock {...args} />
         <div className="h-[800px]" />
       </div>
     );
@@ -405,7 +442,7 @@ const placedIn = ({ frame, above, left, size }: Layout): Story['render'] =>
       >
         <div style={{ height: above }} />
         <div style={{ marginLeft: left, width: SIZE_PIXELS[size] }}>
-          <DrawnView {...args} attributes={{ ...args.attributes, size }} />
+          <DrawnBlock {...args} attributes={{ ...args.attributes, size }} />
         </div>
         <div className="h-[800px]" />
       </div>
@@ -464,25 +501,7 @@ const opensOn =
     );
     await expect(pressed).toBe(corner);
 
-    // The browser gives pointer capture only to a real pointer (see the
-    // resize corner's own stories).
-    const setCapture = spyOn(
-      window.HTMLElement.prototype,
-      'setPointerCapture',
-    ).mockImplementation(() => {});
-    try {
-      const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
-      const to = { ...middle, clientY: middle.clientY - 220 };
-      await fireEvent.pointerDown(pressed ?? corner, {
-        ...pointer,
-        buttons: 1,
-        ...middle,
-      });
-      await fireEvent.pointerMove(corner, { ...pointer, buttons: 1, ...to });
-      await fireEvent.pointerUp(corner, { ...pointer, ...to });
-    } finally {
-      setCapture.mockRestore();
-    }
+    await dragHandle(corner, { x: 0, y: -220 });
     await expect(args.update).toHaveBeenCalledWith({ size: draggedTo });
   };
 
@@ -584,7 +603,7 @@ const SQUARE_RESOURCE: StoryResource = Object.freeze({
   source: 'square.svg',
   contentType: 'image/svg+xml',
   bytes:
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#6ecae8"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="#6ecae8"/></svg>',
 });
 
 /**
@@ -658,7 +677,7 @@ export const ReplacingThePicture: Story = {
   tags: WHOLE_EDITOR,
   render: () => (
     <PageHost
-      block={`![The neighbourhood](asset:${IMAGE_RESOURCE.id}?size=small&align=end)`}
+      block={`![The neighbourhood](asset:${IMAGE_RESOURCE.id}?size=small)`}
     />
   ),
   play: async ({ canvasElement }) => {
@@ -737,13 +756,12 @@ export const ReplacingThePicture: Story = {
     await expect(
       again.getByRole('textbox', { name: 'Description' }),
     ).toHaveValue('The neighbourhood');
-    // So are its size, which holds the new picture to the same height, and
-    // its place, against the end of the line.
+    // So is its size, which holds the new picture to the same height, in
+    // the middle of the line.
     const picture = block.querySelector('img');
     if (picture === null) throw new Error('No picture');
     await expect(picture.getBoundingClientRect().height).toBeCloseTo(heldTo, 0);
-    // Drawn against the right of its box, which is the end of a line here.
-    await expect(getComputedStyle(picture).objectPosition).toMatch(/^100% /);
+    await expect(getComputedStyle(picture).objectPosition).toBe('50% 50%');
     // And nothing else was chosen as the browser closed.
     await waitFor(() =>
       expect(
@@ -888,7 +906,7 @@ export const InterfaceWordsInTextOfAnotherLanguage: Story = {
   render: function Drawn(args) {
     return (
       <div lang="en-US" dir="ltr" className="w-[600px] pt-12">
-        <DrawnView {...args} />
+        <DrawnBlock {...args} />
       </div>
     );
   },
@@ -915,7 +933,8 @@ export const InterfaceWordsInTextOfAnotherLanguage: Story = {
       if (!(found instanceof HTMLElement)) throw new Error('No corner yet');
       return found;
     });
-    await userEvent.pointer({ keys: '[MouseLeft>]', target: corner });
+    // While it is dragged, the size it would take is named by the handle.
+    await dragHandle(corner, { x: 0, y: -20 }, { release: false });
     const sizeName = await waitFor(() => {
       const found = corner.nextElementSibling;
       if (found === null) throw new Error('No size named yet');
@@ -923,6 +942,143 @@ export const InterfaceWordsInTextOfAnotherLanguage: Story = {
     });
     await expect(languageOf(sizeName)).toEqual({ lang: 'ar', dir: 'rtl' });
     await expect(getComputedStyle(sizeName).fontFamily).toMatch(/Readex Pro/);
-    await userEvent.pointer({ keys: '[/MouseLeft]', target: corner });
+    corner.dispatchEvent(
+      new PointerEvent('lostpointercapture', { pointerId: 1, bubbles: true }),
+    );
+  },
+};
+
+/**
+ * How wide a square picture is drawn at `size` in `block`, as the interview
+ * draws it: an image given the classes that the interview gives it
+ * (`assetBlockMediaVariants`), in a line as wide as the block's.
+ */
+const widthInTheInterview = async (
+  block: HTMLElement,
+  size: AssetBlockSize | null,
+): Promise<number> => {
+  const line = document.createElement('div');
+  line.style.width = `${block.getBoundingClientRect().width}px`;
+  const image = document.createElement('img');
+  image.src = `data:image/svg+xml,${encodeURIComponent(SQUARE_RESOURCE.bytes ?? '')}`;
+  image.className = assetBlockMediaVariants({ size: size ?? undefined });
+  line.append(image);
+  document.body.append(line);
+  try {
+    await waitFor(() => expect(isDrawn(image)).toBe(true));
+    const { width, height } = image.getBoundingClientRect();
+    // A square drawn whole inside the image's box.
+    return Math.min(width, height);
+  } finally {
+    line.remove();
+  }
+};
+
+/** How wide the picture in `block` is drawn, by the frame drawn round it. */
+const drawnWidth = (block: HTMLElement): number => {
+  const box = block.querySelector('[data-block-box]');
+  if (box === null) throw new Error('No picture drawn');
+  return box.getBoundingClientRect().width;
+};
+
+const sizeOf = (image: Element): AssetBlockSize | null =>
+  ASSET_BLOCK_SIZES.find((size) =>
+    image.classList.contains(
+      { small: 'max-h-48', medium: 'max-h-96', large: 'max-h-[60vh]' }[size],
+    ),
+  ) ?? null;
+
+/**
+ * A picture resized with its handle, in the editor. While the handle is
+ * dragged the picture grows and shrinks with the pointer and the size it
+ * would take is named; let go, it takes the nearest size, drawn as wide as
+ * the interview draws that size, and one undo takes it back. From the
+ * keyboard, Tab reaches the handle after the settings button, and the arrow
+ * keys move it a size at a time.
+ */
+export const ResizedByDragging: Story = {
+  tags: WHOLE_EDITOR,
+  render: () => (
+    <PageHost block={`![A square](asset:${SQUARE_RESOURCE.id}?size=large)`} />
+  ),
+  play: async ({ canvasElement }) => {
+    const block = await waitFor(() => {
+      const found =
+        canvasElement.querySelector<HTMLElement>('[data-asset-block]');
+      const image = found?.querySelector('img');
+      if (found === null || image === null || image === undefined) {
+        throw new Error('No picture yet');
+      }
+      if (!isDrawn(image)) throw new Error('The picture is not drawn yet');
+      return found;
+    });
+    const image = block.querySelector('img');
+    if (image === null) throw new Error('No picture');
+    await userEvent.click(image);
+    await waitFor(() => expect(block).toHaveAttribute('data-selected'));
+    const handle = await within(block).findByRole('slider', {
+      name: 'Display size',
+    });
+    await expect(handle).toHaveAttribute('aria-valuetext', 'Large');
+    await waitFor(async () =>
+      expect(
+        Math.abs(
+          drawnWidth(block) - (await widthInTheInterview(block, 'large')),
+        ),
+      ).toBeLessThanOrEqual(1),
+    );
+    const large = drawnWidth(block);
+
+    // Dragged up a little: the picture follows the pointer, a square 60
+    // pixels shorter and narrower, between the sizes.
+    await dragHandle(handle, { x: 0, y: -60 }, { release: false });
+    await waitFor(() =>
+      expect(Math.abs(drawnWidth(block) - (large - 60))).toBeLessThanOrEqual(1),
+    );
+    const named = handle.nextElementSibling;
+    await expect(named?.textContent).toMatch(/^(Small|Medium|Large)$/);
+    handle.dispatchEvent(
+      new PointerEvent('lostpointercapture', { pointerId: 1, bubbles: true }),
+    );
+    // Let go of without a release, nothing changes.
+    await waitFor(() => expect(drawnWidth(block)).toBeCloseTo(large, 0));
+    await expect(sizeOf(image)).toBe('large');
+
+    // Dragged to the width that the interview draws Small at, and let go.
+    const small = await widthInTheInterview(block, 'small');
+    await dragHandle(handle, { x: 0, y: -(large - small) });
+    await waitFor(() => expect(sizeOf(image)).toBe('small'));
+    await expect(handle).toHaveAttribute('aria-valuetext', 'Small');
+    await expect(handle.nextElementSibling).toBeNull();
+    await waitFor(() =>
+      expect(Math.abs(drawnWidth(block) - small)).toBeLessThanOrEqual(1),
+    );
+
+    // One undo, in the text, takes it back.
+    const text = within(canvasElement).getByRole('textbox', {
+      name: /^Rich Text/,
+    });
+    await expect(text).toHaveFocus();
+    await userEvent.keyboard(withMod('z'));
+    await waitFor(() => expect(sizeOf(image)).toBe('large'));
+
+    // From the keyboard: Tab reaches the settings button, then the handle.
+    await userEvent.tab();
+    await expect(
+      within(block).getByRole('button', { name: 'Image settings' }),
+    ).toHaveFocus();
+    await userEvent.tab();
+    await expect(handle).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(sizeOf(image)).toBe('medium'));
+    await expect(handle).toHaveAttribute('aria-valuetext', 'Medium');
+    await expect(handle).toHaveFocus();
+    await waitFor(async () =>
+      expect(
+        Math.abs(
+          drawnWidth(block) - (await widthInTheInterview(block, 'medium')),
+        ),
+      ).toBeLessThanOrEqual(1),
+    );
   },
 };

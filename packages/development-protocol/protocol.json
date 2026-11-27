@@ -1616,8 +1616,8 @@
       },
       "type": "Information",
       "content": {
-        "en": "# Title for the screen\n\n![](asset:click_the_thing?align=start&loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)",
-        "es": "# Título de la pantalla\n\n![](asset:click_the_thing?align=start&loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)"
+        "en": "# Title for the screen\n\n![](asset:click_the_thing?loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)",
+        "es": "# Título de la pantalla\n\n![](asset:click_the_thing?loop=false)\n\n![](asset:rubberduck?size=small)\n\n![](asset:rubberduck?size=medium)"
       }
     },
     {

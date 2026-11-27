@@ -1,4 +1,5 @@
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import {
   type Codebook,
   type DynamicAttribute,
@@ -62,14 +63,39 @@ export const dynamicAttributeWordingsName = (
   dynamicAttribute: DynamicAttribute | undefined,
   localization: ProtocolLocalization | undefined,
   locale: LocaleTag | undefined,
-): string =>
-  dynamicAttribute === undefined
-    ? ''
-    : dynamicAttributePillName(
-        dynamicAttributeWordings(dynamicAttribute, (wording) =>
-          resolveStoredTranslation(wording, localization, locale),
-        ),
-      );
+  values?: Readonly<{
+    intl: IntlShape;
+    codebook: Codebook;
+    /** The dynamic attributes of its owner, which its wording may show. */
+    dynamicAttributes: unknown;
+  }>,
+): string => {
+  if (dynamicAttribute === undefined) return '';
+  const wordingOf = (wording: unknown) =>
+    resolveStoredTranslation(wording, localization, locale);
+  // Each value that its wording shows, by its name in the codebook.
+  const naming =
+    values === undefined
+      ? undefined
+      : namingFor(values.intl, {
+          context: NO_SITE,
+          codebook: values.codebook,
+          dynamicAttributes: isRecord(values.dynamicAttributes)
+            ? values.dynamicAttributes
+            : {},
+          labelText: firstText,
+          wordingOf,
+        });
+  return dynamicAttributePillName(
+    dynamicAttributeWordings(
+      dynamicAttribute,
+      wordingOf,
+      naming === undefined
+        ? undefined
+        : (name) => `[${presentationalTextValue(naming.recordedLabel(name))}]`,
+    ),
+  );
+};
 
 /** The first text of a localized string, in whichever language has one. */
 const firstText = (value: unknown): string => {
@@ -283,6 +309,14 @@ export function nameDynamicAttribute(
     dynamicAttribute,
     owner.localization,
     owner.locale,
+    {
+      intl,
+      codebook: owner.codebook,
+      dynamicAttributes: valueAtPath(owner.place, [
+        ...ownerPath(owner),
+        'dynamicAttributes',
+      ]),
+    },
   );
   const version = dynamicAttributeVersionAt(dynamicAttribute, rest);
   if (version === undefined) return { name };

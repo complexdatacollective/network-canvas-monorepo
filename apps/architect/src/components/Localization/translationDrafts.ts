@@ -197,12 +197,18 @@ const dynamicValueProblem = (
   if (row.dynamicValues === undefined) return undefined;
   const at = pathKey([...row.path, locale]);
   const hits = [
-    { path: [...row.path], value, dynamicValues: row.dynamicValues },
+    {
+      path: [...row.path],
+      value,
+      dynamicValues: row.dynamicValues,
+      // Number wording may also show the number (`count`).
+      ...(row.arguments !== undefined && { arguments: row.arguments }),
+    },
   ];
-  // A node type's own label is checked against its codebook entry; any
-  // other text against its stage.
+  // A node type's own label, and the wording of its dynamic attributes, are
+  // checked against its codebook entry; any other text against its stage.
   const problems =
-    row.dynamicValues === 'nodeLabel'
+    row.path[0] === 'codebook'
       ? findNodeLabelProblems({ codebook: protocol.codebook }, hits)
       : findDynamicValueProblems(
           {

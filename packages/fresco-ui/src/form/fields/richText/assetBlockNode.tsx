@@ -11,21 +11,46 @@ import {
 import {
   type ComponentType,
   createContext,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   useContext,
+  useEffect,
+  useRef,
+  useState,
 } from 'react';
 
 import {
   ASSET_BLOCK_DEFAULTS,
+  ASSET_BLOCK_SIZES,
   type AssetBlockAttributes,
   type AssetBlockKind,
-  isAssetBlockAlignment,
+  type AssetBlockSize,
   isAssetBlockSize,
 } from '@codaco/shared-consts';
 
-import { assetBlockSpacingVariants } from '../../../assetBlockLayout';
-import { cva } from '../../../utils/cva';
-import { useBlockHovered } from './blockFrames';
+import {
+  ASSET_BLOCK_DRAGGED_HEIGHT,
+  assetBlockMediaVariants,
+  assetBlockSpacingVariants,
+} from '../../../assetBlockLayout';
+import { cx, cva } from '../../../utils/cva';
+import { isRightToLeft } from '../../../utils/horizontalOverflow';
+import {
+  nameOfStep,
+  nearestStep,
+  RESIZE_STEPS,
+  type ResizeStep,
+  stepBeside,
+  type StepWidth,
+  widthDraggedTo,
+  widthsOfSteps,
+} from './assetBlockResize';
+import {
+  BLOCK_FRAME_OFFSET,
+  BLOCK_FRAME_WIDTH,
+  useBlockHovered,
+} from './blockFrames';
 
 export const ASSET_BLOCK_NODE = 'assetBlock';
 
@@ -78,6 +103,29 @@ export type RichTextAssetBlockViewProps = Readonly<{
    */
   active: boolean;
   update: (changes: Partial<RichTextAssetBlockAttributes>) => void;
+  /**
+   * The handle that resizes the file: shown while the block is selected,
+   * focus is in the field (`active`) and the field can be changed, `null`
+   * otherwise. A view that draws a picture
+   * (an image or a video) puts it inside the element its frame is drawn round
+   * (`blockBoxProps(true)`), on whose bottom corner at the end of the line it
+   * sits; one that draws no picture (an audio player, a file it cannot show)
+   * leaves it out.
+   *
+   * Dragged, the picture grows and shrinks with the pointer, and takes the
+   * nearest size when it is let go; from the keyboard, the arrow keys move it
+   * a size at a time. Either is one change, undone in one step.
+   */
+  resizeHandle: ReactNode;
+  /**
+   * While the handle is being dragged, the size that the picture would take
+   * if it were let go now (`null`: as wide as the page), for the view to name
+   * beside the handle; `undefined` otherwise. While it is dragged the view
+   * draws the picture with `assetBlockMediaVariants({ dragged: true })` in
+   * place of its size, which holds it to the height that the pointer has
+   * dragged it to.
+   */
+  resizing: Readonly<{ size: AssetBlockSize | null }> | undefined;
   remove: () => void;
   /** Selects this block, with the keyboard in the text. */
   returnToText: () => void;
@@ -161,7 +209,6 @@ const attributesOf = (
       ? attrs.description
       : DEFAULTS.description,
   size: isAssetBlockSize(attrs.size) ? attrs.size : DEFAULTS.size,
-  align: isAssetBlockAlignment(attrs.align) ? attrs.align : DEFAULTS.align,
   autoplay: attrs.autoplay !== false,
   loop: attrs.loop !== false,
 });
@@ -221,6 +268,246 @@ const IN_SELECTED_TEXT = { inSelectedText: true } as const;
 const isInSelectedText = (decorations: readonly { spec: unknown }[]) =>
   decorations.some((decoration) => decoration.spec === IN_SELECTED_TEXT);
 
+// How large the resize handle is to take hold of, round the 16 pixels of it
+// that are drawn.
+const HANDLE_SIZE = 24;
+
+// Where the handle's middle goes, out from the picture: on the middle of the
+// line of the frame drawn round a selected block (whose outer edge is
+// `BLOCK_FRAME_OFFSET` out), less half the handle.
+const HANDLE_OFFSET = -(
+  BLOCK_FRAME_OFFSET -
+  BLOCK_FRAME_WIDTH / 2 +
+  HANDLE_SIZE / 2
+);
+
+// How far the pointer moves before the picture follows it, so that a press
+// that does not move changes nothing.
+const DRAG_THRESHOLD = 5;
+
+// The narrowest that a picture is drawn while it is dragged.
+const MIN_DRAGGED_WIDTH = 24;
+
+/** A drag of the handle, from where the pointer took hold. */
+type Held = {
+  x: number;
+  y: number;
+  /** The picture as it was drawn when the pointer took hold. */
+  start: Readonly<{ width: number; height: number }>;
+  /** How wide the page is: the widest that the picture can be drawn. */
+  full: number;
+  /** How wide the picture is drawn at each size. */
+  steps: readonly StepWidth[];
+  /** Whether the end of a line is on the left. */
+  rightToLeft: boolean;
+  /** The element the dragged height is given on (`ASSET_BLOCK_DRAGGED_HEIGHT`). */
+  wrapper: HTMLElement;
+  /** Whether the pointer has moved far enough for the picture to follow it. */
+  moving: boolean;
+  /** The size the picture would take if it were let go now. */
+  nearest: ResizeStep;
+};
+
+/**
+ * The handle on the bottom corner of a selected picture, at the end of the
+ * line, that resizes it. Dragged, the picture grows and shrinks with the
+ * pointer, and when it is let go it takes the nearest of the sizes it can be
+ * given (`RESIZE_STEPS`). A slider to a screen reader: the arrow keys, Home
+ * and End move it from one size to another, and Escape returns to the text.
+ *
+ * A picture is centred on its line, so the handle at its end corner keeps
+ * under the pointer as the picture grows towards both edges.
+ *
+ * The block's node view gives it to the block's view (`resizeHandle`); it is
+ * exported for a view drawn outside an editor, such as in a story. It must
+ * stand inside the element the view's frame is drawn round
+ * (`blockBoxProps(true)`), within an element marked `data-asset-block`, which
+ * the dragged height is given on.
+ */
+export function AssetBlockResizeHandle({
+  size,
+  onPreview,
+  onResize,
+  onLeave,
+}: Readonly<{
+  size: ResizeStep;
+  /** Says what a drag would do, or (given `undefined`) that it has ended. */
+  onPreview: (resizing: Readonly<{ size: ResizeStep }> | undefined) => void;
+  onResize: (size: ResizeStep) => void;
+  onLeave: () => void;
+}>) {
+  const probeRef = useRef<HTMLSpanElement>(null);
+  const held = useRef<Held | null>(null);
+  // A handle taken away while it is dragged (the block stops being
+  // selected) leaves the picture at its size.
+  useEffect(
+    () => () => {
+      held.current?.wrapper.style.removeProperty(ASSET_BLOCK_DRAGGED_HEIGHT);
+    },
+    [],
+  );
+
+  // What each band holds a picture's height to, read from the classes that
+  // hold it, since they are given in units of the page (`rem`, `vh`).
+  const bandHeights = (): Record<AssetBlockSize, number> => {
+    const heights: Record<AssetBlockSize, number> = {
+      small: 0,
+      medium: 0,
+      large: 0,
+    };
+    const probe = probeRef.current;
+    if (probe === null) return heights;
+    for (const band of ASSET_BLOCK_SIZES) {
+      probe.className = cx(
+        'invisible absolute size-0',
+        assetBlockMediaVariants({ size: band }),
+      );
+      const limit = Number.parseFloat(getComputedStyle(probe).maxHeight);
+      heights[band] = Number.isFinite(limit) ? limit : 0;
+    }
+    return heights;
+  };
+
+  const release = () => {
+    const drag = held.current;
+    held.current = null;
+    drag?.wrapper.style.removeProperty(ASSET_BLOCK_DRAGGED_HEIGHT);
+    onPreview(undefined);
+  };
+
+  // Each step, the drawn picture follows the pointer. Its height is set on
+  // the element round the block rather than drawn again, since it changes
+  // with every move of the pointer.
+  const follow = (drag: Held, clientX: number, clientY: number) => {
+    const across = (clientX - drag.x) * (drag.rightToLeft ? -1 : 1);
+    const down = clientY - drag.y;
+    if (
+      !drag.moving &&
+      Math.max(Math.abs(across), Math.abs(down)) < DRAG_THRESHOLD
+    ) {
+      return;
+    }
+    const width = widthDraggedTo(
+      drag.start,
+      { across, down },
+      { min: MIN_DRAGGED_WIDTH, max: drag.full },
+    );
+    const height = width / (drag.start.width / drag.start.height);
+    drag.wrapper.style.setProperty(ASSET_BLOCK_DRAGGED_HEIGHT, `${height}px`);
+    const nearest = nearestStep(width, drag.steps, size);
+    if (!drag.moving || nearest !== drag.nearest) {
+      drag.moving = true;
+      drag.nearest = nearest;
+      onPreview({ size: nearest });
+    }
+  };
+
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onLeave();
+      return;
+    }
+    // The key that points towards the end of the line makes it larger.
+    const towardsEnd = isRightToLeft(event.currentTarget) ? -1 : 1;
+    const next: ResizeStep | undefined =
+      event.key === 'ArrowUp'
+        ? stepBeside(size, 1)
+        : event.key === 'ArrowDown'
+          ? stepBeside(size, -1)
+          : event.key === 'ArrowRight'
+            ? stepBeside(size, towardsEnd === 1 ? 1 : -1)
+            : event.key === 'ArrowLeft'
+              ? stepBeside(size, towardsEnd === 1 ? -1 : 1)
+              : event.key === 'Home'
+                ? RESIZE_STEPS[0]
+                : event.key === 'End'
+                  ? RESIZE_STEPS.at(-1)
+                  : undefined;
+    if (next === undefined) return;
+    event.preventDefault();
+    if (next !== size) onResize(next);
+  };
+
+  return (
+    <div
+      {...assetBlockControlsProps}
+      role="slider"
+      tabIndex={0}
+      // Read only by a screen reader, so plain English.
+      lang="en"
+      aria-label="Display size"
+      aria-valuemin={0}
+      aria-valuemax={RESIZE_STEPS.length - 1}
+      aria-valuenow={RESIZE_STEPS.indexOf(size)}
+      aria-valuetext={nameOfStep(size)}
+      data-asset-block-resize=""
+      className={cx(
+        'focusable pointer-events-auto absolute touch-none rounded-full',
+        'cursor-nwse-resize rtl:cursor-nesw-resize',
+        // Drawn as the block's tab is: the input colour, edged in the
+        // colour of a selected block.
+        'before:bg-input before:border-primary before:absolute before:inset-1 before:rounded-full before:border-2',
+      )}
+      style={{
+        width: HANDLE_SIZE,
+        height: HANDLE_SIZE,
+        bottom: HANDLE_OFFSET,
+        insetInlineEnd: HANDLE_OFFSET,
+      }}
+      // A press here is not one on the block, which would select it again,
+      // nor the start of moving it or of selecting text.
+      onMouseDown={(event) => event.preventDefault()}
+      onDragStart={(event) => event.preventDefault()}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        const handle = event.currentTarget;
+        const box = handle.closest('[data-block-boxed]');
+        const wrapper = handle.closest<HTMLElement>('[data-asset-block]');
+        if (box === null || wrapper === null) return;
+        const drawn = box.getBoundingClientRect();
+        if (drawn.width === 0 || drawn.height === 0) return;
+        const full = wrapper.getBoundingClientRect().width;
+        handle.setPointerCapture(event.pointerId);
+        held.current = {
+          x: event.clientX,
+          y: event.clientY,
+          start: { width: drawn.width, height: drawn.height },
+          full,
+          steps: widthsOfSteps({
+            full,
+            ratio: drawn.width / drawn.height,
+            heights: bandHeights(),
+          }),
+          rightToLeft: isRightToLeft(handle),
+          wrapper,
+          moving: false,
+          nearest: size,
+        };
+      }}
+      onPointerMove={(event) => {
+        const drag = held.current;
+        if (drag !== null) follow(drag, event.clientX, event.clientY);
+      }}
+      onPointerUp={(event) => {
+        const drag = held.current;
+        if (drag === null) return;
+        follow(drag, event.clientX, event.clientY);
+        const { moving, nearest } = drag;
+        release();
+        if (moving && nearest !== size) onResize(nearest);
+      }}
+      onLostPointerCapture={() => {
+        if (held.current !== null) release();
+      }}
+      onKeyDown={onKeyDown}
+    >
+      <span ref={probeRef} aria-hidden className="invisible absolute size-0" />
+    </div>
+  );
+}
+
 function AssetBlockView({
   node,
   selected,
@@ -233,6 +520,15 @@ function AssetBlockView({
   const { blocks, editable, active } = useContext(AssetBlockFieldContext);
   const hovered = useBlockHovered(editor, getPos);
   const attributes = attributesOf(node.attrs);
+  // What a drag of the resize handle would do, while it is dragged.
+  const [resizing, setResizing] = useState<
+    Readonly<{ size: ResizeStep }> | undefined
+  >(undefined);
+  // Shown with the block's frame: while the block is selected and focus is in
+  // the field. A selection the field has lost is not drawn. A handle being
+  // dragged stays until it is let go, since the settings that had focus are
+  // hidden while it is.
+  const resizable = selected && editable && (active || resizing !== undefined);
   const select = () => {
     const position = getPos();
     if (position === undefined) return;
@@ -255,11 +551,13 @@ function AssetBlockView({
       // control) still acts.
       onPointerDown={(event: ReactPointerEvent<HTMLElement>) => {
         if (event.button !== 0) return;
-        // Not a press in its tab, whose buttons select it themselves.
+        // Not a press in its tab, whose buttons select it themselves, nor
+        // on its resize handle, which needs it selected already.
         if (
           event.target instanceof Element &&
           event.target.closest(`[${FILE_ATTRIBUTE}]`) !== null &&
-          event.target.closest('[data-block-tab]') === null
+          event.target.closest('[data-block-tab]') === null &&
+          event.target.closest('[data-asset-block-resize]') === null
         ) {
           select();
         }
@@ -281,6 +579,18 @@ function AssetBlockView({
           update={(changes) => {
             if (editable) updateAttributes(changes);
           }}
+          resizeHandle={
+            resizable ? (
+              <AssetBlockResizeHandle
+                size={attributes.size}
+                onPreview={setResizing}
+                // One change to the text, so one step to undo.
+                onResize={(size) => updateAttributes({ size })}
+                onLeave={select}
+              />
+            ) : null
+          }
+          resizing={resizable ? resizing : undefined}
           remove={() => {
             if (!editable) return;
             // Its controls go with the block, and focus that was in them
@@ -310,7 +620,9 @@ function AssetBlockView({
  *
  * Reached with the arrow keys like any block, and selected by a press on its
  * file. Its settings open from the settings button in its tab (`BlockTab`),
- * or with Enter on the selected block (see `DocumentBlocks`).
+ * or with Enter on the selected block (see `DocumentBlocks`). While it is
+ * selected, a picture is resized with the handle on its corner
+ * (`AssetBlockResizeHandle`), which Tab reaches after the settings button.
  */
 export const AssetBlockNode = TiptapNode.create({
   name: ASSET_BLOCK_NODE,
@@ -345,14 +657,6 @@ export const AssetBlockNode = TiptapNode.create({
           isAssetBlockSize(attributes.size)
             ? { 'data-size': attributes.size }
             : {},
-      },
-      align: {
-        default: DEFAULTS.align,
-        parseHTML: (element) => {
-          const align = element.getAttribute('data-align');
-          return isAssetBlockAlignment(align) ? align : DEFAULTS.align;
-        },
-        renderHTML: (attributes) => ({ 'data-align': attributes.align }),
       },
       autoplay: {
         default: DEFAULTS.autoplay,

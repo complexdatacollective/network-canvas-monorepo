@@ -49,6 +49,21 @@ const holdsBranches = (node: ProseMirrorNode): boolean => {
   return first !== null && !node.isTextblock && holdsSections(first.type);
 };
 
+/**
+ * Whether `block` is the one empty line of a logic block's branch that shows
+ * nothing. It is where the branch's content is written, not a block that the
+ * researcher made: it has no handle, and is not moved.
+ */
+const isEmptyBranchLine = (view: EditorView, block: DrawnBlock): boolean => {
+  if (!block.node.isTextblock || block.node.content.size !== 0) return false;
+  const $block = view.state.doc.resolve(block.pos);
+  return (
+    $block.depth > 0 &&
+    holdsSections($block.parent.type) &&
+    $block.parent.childCount === 1
+  );
+};
+
 const drawnChildren = (
   view: EditorView,
   container: ProseMirrorNode,
@@ -83,7 +98,8 @@ const nearestTo = (blocks: readonly DrawnBlock[], y: number) => {
  * the space between two blocks counts as over the nearer. A point inside a
  * logic block is over the block in its branch at that height, from the
  * branch's own gutter onwards, or over the logic block itself where its
- * branches show no block (its heading, a branch's label).
+ * branches show no block (its heading, a branch's label, a branch that
+ * shows nothing).
  */
 export const blockAtPoint = (
   view: EditorView,
@@ -107,8 +123,12 @@ export const blockAtPoint = (
         branchDom.querySelector('[data-node-view-content]') ?? branchDom;
       const shownBox = shown.getBoundingClientRect();
       if (y < shownBox.top || y > shownBox.bottom) return;
-      inner =
+      const nearest =
         nearestTo(drawnChildren(view, branch, branchPos + 1), y)?.block ?? null;
+      // A branch that shows nothing has no block of its own in it: the
+      // pointer there is over the logic block.
+      inner =
+        nearest === null || isEmptyBranchLine(view, nearest) ? null : nearest;
     });
     if (inner === null) return current;
     current = inner;
@@ -614,7 +634,11 @@ export function BlockFrameLayer({
       chosen === null
         ? undefined
         : blocks.find((block) => block.pos === chosen.pos);
-    const forHandle = hovered ?? selected;
+    const handled = hovered ?? selected;
+    const forHandle =
+      handled === undefined || isEmptyBranchLine(view, handled)
+        ? undefined
+        : handled;
     const next: Drawing = {
       // A paragraph or a heading is text, which the caret and the
       // selection already mark: only a block of another kind has a frame.

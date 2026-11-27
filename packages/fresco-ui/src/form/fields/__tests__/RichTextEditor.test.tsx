@@ -1960,6 +1960,57 @@ describe('typing into an ordinary field that holds text', () => {
   });
 });
 
+describe('a placeholder that changes as the text is written', () => {
+  /**
+   * A host that says the text shows nothing only while it is empty, as a
+   * version of a dynamic attribute does, and passes an empty placeholder
+   * otherwise.
+   */
+  function Host({ onText }: Readonly<{ onText: (text: string) => void }>) {
+    const [value, setValue] = useState<JSONContent>(emptyDocument);
+    const text = (value.content ?? [])
+      .flatMap((block) => block.content ?? [])
+      .map((node) => node.text ?? '')
+      .join('');
+    return (
+      <RichTextEditorField
+        id="version"
+        name="version"
+        aria-label="Version"
+        singleLine
+        changeMode="input"
+        value={value}
+        placeholder={text === '' ? 'Shows nothing' : ''}
+        onChange={(next) => {
+          if (next === undefined) return;
+          setValue(next);
+          onText(
+            (next.content ?? [])
+              .flatMap((block) => block.content ?? [])
+              .map((node) => node.text ?? '')
+              .join(''),
+          );
+        }}
+      />
+    );
+  }
+
+  it('keeps the editor being typed in, so every letter is kept', async () => {
+    const onText = vi.fn();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(<Host onText={onText} />);
+    const editor = await screen.findByRole('textbox', { name: 'Version' });
+    expect(editor).toHaveAttribute('aria-placeholder', 'Shows nothing');
+
+    await user.type(editor, 'someone');
+
+    await waitFor(() => expect(onText).toHaveBeenLastCalledWith('someone'));
+    expect(screen.getByRole('textbox', { name: 'Version' })).toBe(editor);
+    expect(editor).toHaveFocus();
+    expect(editor).not.toHaveAttribute('aria-placeholder');
+  });
+});
+
 describe('undo and redo of values and versions', () => {
   const NAME_TOKEN = { type: 'inlineValue', attrs: { id: 'name' } };
   const helloDocument = {

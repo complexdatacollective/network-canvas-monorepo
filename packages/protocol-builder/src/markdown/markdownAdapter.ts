@@ -8,7 +8,6 @@ import {
   assetBlockMarkdown,
   assetBlockSettings,
   escapeMarkdownText,
-  isAssetBlockAlignment,
   isAssetBlockSize,
   linkDestinationMarkdown,
   linkTitleMarkdown,
@@ -915,14 +914,13 @@ const serializeAssetBlock = (node: RichTextContent): string => {
   const attributes: Partial<
     Record<keyof RichTextAssetBlockAttributes, unknown>
   > = node.attrs ?? {};
-  const { assetId, description, size, align, autoplay, loop } = attributes;
+  const { assetId, description, size, autoplay, loop } = attributes;
   if (typeof assetId !== 'string' || assetId === '') return '';
   return assetBlockMarkdown({
     assetId,
     ...(typeof description === 'string' &&
       description.trim() !== '' && { description }),
     ...(isAssetBlockSize(size) && { size }),
-    ...(isAssetBlockAlignment(align) && { align }),
     ...(autoplay === false && { autoplay }),
     ...(loop === false && { loop }),
   });

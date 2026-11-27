@@ -1,3 +1,5 @@
+import { isRecord, valueAtPath } from '@codaco/shared-consts';
+
 import { dynamicValueNameFor } from '../schemas/9/dynamic-value-names.ts';
 import { wordingPresent } from '../schemas/9/protocol-wording.ts';
 import type { Protocol } from '../schemas/index.ts';
@@ -55,11 +57,16 @@ const expectedLocalesFrom = (
   const ownTexts = hits().filter((hit) =>
     isOwnTextOf(textPlaceOf(hit.path), place.owner),
   );
+  const definitions = valueAtPath(protocol, [
+    ...place.owner,
+    'dynamicAttributes',
+  ]);
   return localesShowingDynamicAttribute(
     dynamicValueNameFor({ kind: 'dynamicAttribute', id: place.id }),
     ownTexts,
     protocol,
     protocol.localization,
+    isRecord(definitions) ? definitions : {},
   );
 };
 

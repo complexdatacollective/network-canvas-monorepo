@@ -1,5 +1,4 @@
 import type {
-  AssetBlockAlignment,
   AssetBlockSize,
   ColorReference,
   ComponentType,
@@ -345,7 +344,6 @@ export type AssetBlockInput = {
   /** What the file shows or says; the image's alt text and the player's name. */
   description?: TextInput;
   size?: AssetBlockSize;
-  align?: AssetBlockAlignment;
   autoplay?: boolean;
   loop?: boolean;
 };

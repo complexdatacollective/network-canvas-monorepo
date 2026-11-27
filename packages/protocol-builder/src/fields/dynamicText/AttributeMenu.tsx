@@ -139,13 +139,17 @@ const attributeMenuGroups = (
   }
   options.set(
     'dynamic',
-    Object.keys(environment.dynamicAttributes.values).map((id) => {
-      const name = dynamicAttributeName(id);
-      return {
-        value: name,
-        label: environment.naming.pillFor(name).name,
-      };
-    }),
+    // In a dynamic attribute's own wording, not itself, nor one whose
+    // wording shows it.
+    Object.keys(environment.dynamicAttributes.values)
+      .filter(environment.dynamicAttributes.mayShow)
+      .map((id) => {
+        const name = dynamicAttributeName(id);
+        return {
+          value: name,
+          label: environment.naming.pillFor(name).name,
+        };
+      }),
   );
   const canCreate =
     onCreate !== undefined &&
@@ -179,11 +183,21 @@ const attributeMenuGroups = (
  * The Attribute button of a text editor's toolbar, and the list it opens:
  * every value that text here can show, the dynamic attributes declared beside
  * the text, and a row that creates one. The list also opens where `{` is
- * typed, and the value chosen then replaces the `{`.
+ * typed, and the value chosen then replaces the `{`. In number wording, the
+ * attribute that it counts puts in the number (`counted`).
  */
 export function AttributeMenu({
   insert,
-}: Readonly<{ insert: RichTextInsertState }>) {
+  counted,
+}: Readonly<{
+  insert: RichTextInsertState;
+  /**
+   * For number wording: the attribute whose number it is worded for (its
+   * value name), and the value that stands for that number in a version
+   * (`#`). Choosing the attribute puts in the number.
+   */
+  counted?: Readonly<{ name: string; valueId: string }>;
+}>) {
   const { commands } = insert;
   const state = useAttributeMenuState(insert);
   // One opening of the dialog that creates a dynamic attribute, kept while
@@ -216,7 +230,11 @@ export function AttributeMenu({
           }}
           onSelect={(name) => {
             state.setMenuOpen(false);
-            commands.insertInlineValue(name);
+            commands.insertInlineValue(
+              counted !== undefined && name === counted.name
+                ? counted.valueId
+                : name,
+            );
           }}
           onClose={() => {
             if (!creatingNow.current) state.close();

@@ -11,7 +11,6 @@ export const assetBlockAttributes = (
   assetId: 'a1',
   description: '',
   size: null,
-  align: 'center',
   autoplay: true,
   loop: true,
   ...changes,

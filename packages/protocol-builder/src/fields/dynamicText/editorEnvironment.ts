@@ -1,10 +1,11 @@
-import { createContext, useContext } from 'react';
+import { createContext, type ReactNode, useContext } from 'react';
 
 import type { LocaleTag } from '@codaco/protocol-validation';
 
 import type { ConditionDraft } from '../../localization/conditionText.ts';
 import type { DynamicValueChoice } from '../../localization/dynamicValueCatalog.ts';
 import type { ConditionScope } from '../../rules/ConditionRulesControl.tsx';
+import type { DynamicMessageSite } from './messageSite.ts';
 import type { ValueNaming } from './valueNaming.ts';
 
 /**
@@ -33,6 +34,44 @@ type EditorDynamicAttributes = Readonly<{
    * any language.
    */
   usageCount: (id: string) => number;
+  /**
+   * Whether the text may show the dynamic attribute `id`: every one, except
+   * in the wording of a dynamic attribute's version, which may not show the
+   * dynamic attribute itself or one whose wording shows it.
+   */
+  mayShow: (id: string) => boolean;
+}>;
+
+/** What an editor of one version's wording of a dynamic attribute is given. */
+export type WordingEditorProps = Readonly<{
+  id: string;
+  name: string;
+  /** One translation, as the protocol stores it, or empty. */
+  message: string;
+  onMessageChange: (message: string) => void;
+  locale: LocaleTag;
+  /** Where the dynamic attribute is shown: its owner's text. */
+  site: DynamicMessageSite;
+  /** The dynamic attribute's id; absent while it is being created. */
+  ownDynamicAttribute?: string | undefined;
+  /** For number wording: the value name of the attribute that it counts. */
+  counted?: string | undefined;
+  readOnly: boolean;
+  placeholder?: string | undefined;
+  ariaLabelledBy: string;
+  ariaDescribedBy: string;
+  ariaInvalid: boolean;
+}>;
+
+/**
+ * The editors of a dynamic attribute's wording: one line of text for a
+ * version, and the versions of number wording. Given by the text's editor,
+ * which the settings of a dynamic attribute are drawn inside, since those
+ * editors draw the settings in turn.
+ */
+export type WordingEditors = Readonly<{
+  version: (props: WordingEditorProps) => ReactNode;
+  number: (props: WordingEditorProps) => ReactNode;
 }>;
 
 /**
@@ -46,6 +85,13 @@ export type DynamicTextEnvironment = Readonly<{
    * or a node type's label.
    */
   owner: 'stage' | 'nodeLabel';
+  /**
+   * Where the text sits, as its editor was given it: what the editor of a
+   * dynamic attribute's wording, inside the text's editor, is given.
+   */
+  site: DynamicMessageSite;
+  /** The editors of a dynamic attribute's wording (`WordingEditors`). */
+  editors: WordingEditors;
   /** The language being edited. */
   locale: LocaleTag;
   /** The protocol's default language. */

@@ -740,7 +740,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'asset-block.audio',
     'asset-block.video',
     'asset-block.size',
-    'asset-block.align',
     'asset-block.autoplay',
     'asset-block.loop',
     'asset-block.description',

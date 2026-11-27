@@ -13,7 +13,10 @@ import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
-import { DYNAMIC_VALUE_MARKER } from '@codaco/protocol-validation';
+import {
+  DYNAMIC_VALUE_MARKER,
+  inlineMarkdownText,
+} from '@codaco/protocol-validation';
 
 import {
   type DynamicTextPart,
@@ -44,18 +47,18 @@ function DynamicValue({ text }: { text: string }) {
 const partKey = (part: DynamicTextPart, index: number) =>
   typeof part === 'string' ? `text-${index}` : `value-${index}`;
 
-/** A value as it shows: wording as the words around it, a value marked out. */
-function ShownPart({ part }: { part: Exclude<DynamicTextPart, string> }) {
-  return part.wording === true ? (
-    <>{part.text}</>
-  ) : (
-    <DynamicValue text={part.text} />
-  );
+/**
+ * A dynamic attribute's version in plain text: its words without markup,
+ * shown as the words around it, and each value it shows marked out.
+ */
+function PlainWording({ parts }: { parts: readonly DynamicTextPart[] }) {
+  return <DynamicTextParts parts={inlineMarkdownText(parts)} />;
 }
 
 /**
  * Resolved plain text, with each value it shows marked out, and a dynamic
- * attribute's wording shown as the words around it.
+ * attribute's wording shown as the words around it, without its bold or
+ * italics, which plain text cannot show.
  */
 export function DynamicTextParts({
   parts,
@@ -64,13 +67,17 @@ export function DynamicTextParts({
 }) {
   return (
     <>
-      {parts.map((part, index) =>
-        typeof part === 'string' ? (
-          <Fragment key={partKey(part, index)}>{part}</Fragment>
+      {parts.map((part, index) => {
+        const key = partKey(part, index);
+        if (typeof part === 'string') {
+          return <Fragment key={key}>{part}</Fragment>;
+        }
+        return part.wording === true ? (
+          <PlainWording key={key} parts={part.parts} />
         ) : (
-          <ShownPart key={partKey(part, index)} part={part} />
-        ),
-      )}
+          <DynamicValue key={key} text={part.text} />
+        );
+      })}
     </>
   );
 }
@@ -177,7 +184,18 @@ function DynamicValueSpan({
   const index = node?.properties?.[VALUE_INDEX_PROPERTY];
   const value = typeof index === 'string' ? values[Number(index)] : undefined;
   // Any other span is unwrapped, as it was before spans were allowed.
-  return value === undefined ? <>{children}</> : <ShownPart part={value} />;
+  if (value === undefined) return <>{children}</>;
+  // A dynamic attribute's version is markdown of its own, drawn in the value's
+  // place, so that its markup and the text's are never read as one.
+  return value.wording === true ? (
+    <DynamicMarkdown
+      parts={value.parts}
+      allowedElements={ALLOWED_MARKDOWN_LABEL_TAGS}
+      render={<Fragment />}
+    />
+  ) : (
+    <DynamicValue text={value.text} />
+  );
 }
 
 const DYNAMIC_MARKDOWN_COMPONENTS = { span: DynamicValueSpan };

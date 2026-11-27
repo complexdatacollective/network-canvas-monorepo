@@ -57,7 +57,7 @@ describe('createAssetBlockImages', () => {
 
   it('reads the file from the address however it is spelled', () => {
     const { container } = render(
-      <Block url="asset:a1?size=small&align=end" alt="" />,
+      <Block url="asset:a1?size=small&loop=false" alt="" />,
     );
     expect(container.querySelector('bdi')).toHaveTextContent('harbour.png');
   });

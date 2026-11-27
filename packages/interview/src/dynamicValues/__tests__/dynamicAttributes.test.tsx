@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -19,11 +19,15 @@ import { testId, testVariableId } from '../../__tests__/testIds';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import { useResolveLocalizedStringIn } from '../../localization/ProtocolLocalizationProvider';
 import { DynamicMarkdown, DynamicTextParts } from '../DynamicText';
-import type { DynamicValueSources } from '../resolveDynamicText';
+import {
+  type DynamicValueSources,
+  markdownSource,
+} from '../resolveDynamicText';
 
 const GENDER = testVariableId('gender');
 const CHILDREN = testVariableId('children');
 const AGE = testVariableId('age');
+const NAME = testVariableId('name');
 const WOMAN = testId('option woman');
 const MAN = testId('option man');
 const ADULT = testId('condition adult');
@@ -39,6 +43,7 @@ const VARIABLES: Record<string, Variable> = {
   },
   [CHILDREN]: { name: 'children', type: 'number' },
   [AGE]: { name: 'age', type: 'number' },
+  [NAME]: { name: 'name', type: 'text' },
 } as Record<string, Variable>;
 
 const CONDITIONS: Conditions = ConditionsSchema.parse({
@@ -63,6 +68,12 @@ const ID = {
   work: testId('dynamic work'),
   you: testId('dynamic you'),
   gone: testId('dynamic gone'),
+  dear: testId('dynamic dear'),
+  family: testId('dynamic family'),
+  kidsOf: testId('dynamic kids of'),
+  loose: testId('dynamic loose'),
+  loopA: testId('dynamic loop a'),
+  loopB: testId('dynamic loop b'),
 };
 
 const ego = (variableId: string) =>
@@ -98,6 +109,62 @@ const DEFINITIONS: DynamicAttributes = DynamicAttributesSchema.parse({
     logic: 'participant',
     participant: { en: 'you' },
     otherwise: { en: 'this person' },
+  },
+  // Wording that is bold or italic and shows an attribute.
+  [ID.dear]: {
+    logic: 'conditions',
+    cases: [
+      {
+        condition: ADULT,
+        when: 'met',
+        wording: { en: `**dear** {${ego(NAME)}}` },
+      },
+    ],
+    otherwise: { en: `*young* {${ego(NAME)}}` },
+  },
+  // Wording that shows another dynamic attribute.
+  [ID.family]: {
+    logic: 'conditions',
+    cases: [
+      {
+        condition: ADULT,
+        when: 'met',
+        wording: {
+          en: `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: ID.pronoun })}} family`,
+        },
+      },
+    ],
+    otherwise: { en: 'the family' },
+  },
+  // Number wording whose versions show an attribute.
+  [ID.kidsOf]: {
+    logic: 'number',
+    value: ego(CHILDREN),
+    missing: { en: 'no one' },
+    wording: {
+      en: `{count, plural, one {# child of **{${ego(NAME)}}**} other {# children of {${ego(NAME)}}}}`,
+    },
+  },
+  // Markup that is not closed inside the wording.
+  [ID.loose]: {
+    logic: 'participant',
+    participant: { en: '*you' },
+    otherwise: { en: '*them' },
+  },
+  // Two dynamic attributes whose wording shows each other.
+  [ID.loopA]: {
+    logic: 'participant',
+    participant: { en: 'a' },
+    otherwise: {
+      en: `a {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: ID.loopB })}}`,
+    },
+  },
+  [ID.loopB]: {
+    logic: 'participant',
+    participant: { en: 'b' },
+    otherwise: {
+      en: `b {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: ID.loopA })}}`,
+    },
   },
 });
 
@@ -270,5 +337,134 @@ describe('dynamic attributes in the interview', () => {
 
   it('shows nothing for a dynamic attribute that the text’s owner does not have', () => {
     expect(shown({ en: `Hello{${nameOf(ID.gone)}}!` })).toBe('Hello!');
+  });
+});
+
+/** The text drawn as plain text or as markdown, with the element it is in. */
+const drawn = (
+  message: Readonly<Record<string, string>>,
+  markdown: boolean,
+  {
+    attributes = {},
+    participant,
+  }: { attributes?: Record<string, unknown>; participant?: boolean } = {},
+): HTMLElement => {
+  // One drawing at a time.
+  cleanup();
+  render(
+    <TestProtocolLocalization localization={LOCALIZATION}>
+      <Drawn
+        value={message}
+        markdown={markdown}
+        sources={{
+          intrinsics: { now: undefined },
+          attributes: { ego: attributes },
+          labels: {},
+          conditions: CONDITIONS,
+          dynamicAttributes: DEFINITIONS,
+          ...(participant !== undefined && {
+            participants: { node: participant },
+          }),
+          variablesFor: (role) => (role === 'ego' ? VARIABLES : undefined),
+        }}
+      />
+    </TestProtocolLocalization>,
+  );
+  return screen.getByTestId('drawn');
+};
+
+describe('the wording of a dynamic attribute in the interview', () => {
+  it('shows the values that the wording shows, each filled in as a value', () => {
+    const message = { en: `Hello, {${nameOf(ID.dear)}}.` };
+    expect(shown(message, { attributes: { [AGE]: 40, [NAME]: 'Ann' } })).toBe(
+      'Hello, dear Ann.',
+    );
+    expect(shown(message, { attributes: { [AGE]: 9, [NAME]: 'Ann' } })).toBe(
+      'Hello, young Ann.',
+    );
+    const element = drawn(message, true, {
+      attributes: { [AGE]: 40, [NAME]: 'Ann' },
+    });
+    expect(
+      [...element.querySelectorAll('[data-dynamic-value]')].map(
+        (value) => value.textContent,
+      ),
+    ).toEqual(['Ann']);
+  });
+
+  it('shows the dynamic attributes that the wording shows', () => {
+    const message = { en: `Ask about {${nameOf(ID.family)}}.` };
+    expect(
+      shown(message, { attributes: { [AGE]: 40, [GENDER]: ['woman'] } }),
+    ).toBe('Ask about her family.');
+    expect(shown(message, { attributes: { [AGE]: 9 } })).toBe(
+      'Ask about the family.',
+    );
+  });
+
+  it('shows the number and the values in each version of number wording', () => {
+    const message = { en: `You named {${nameOf(ID.kidsOf)}}.` };
+    expect(
+      shown(message, { attributes: { [CHILDREN]: 1, [NAME]: 'Ann' } }),
+    ).toBe('You named 1 child of Ann.');
+    expect(
+      shown(message, { attributes: { [CHILDREN]: 3, [NAME]: 'Ann' } }),
+    ).toBe('You named 3 children of Ann.');
+  });
+
+  it('draws bold and italics in formatted text, and only the words in plain text', () => {
+    const message = { en: `Hello, {${nameOf(ID.dear)}}.` };
+    const attributes = { [AGE]: 40, [NAME]: 'Ann' };
+    const formatted = drawn(message, true, { attributes });
+    expect(formatted).toHaveTextContent('Hello, dear Ann.');
+    expect(formatted.querySelector('strong')?.textContent).toBe('dear');
+    const plain = drawn(message, false, { attributes });
+    expect(plain).toHaveTextContent('Hello, dear Ann.');
+    expect(plain.querySelector('strong')).toBeNull();
+    expect(plain.textContent).not.toContain('*');
+    const young = drawn(message, true, {
+      attributes: { [AGE]: 9, [NAME]: 'Ann' },
+    });
+    expect(young.querySelector('em')?.textContent).toBe('young');
+  });
+
+  it('never reads the markup of the wording with the markup around it', () => {
+    // `*you` and the `*` after it would be italics if read as one text.
+    const message = { en: `Ask {${nameOf(ID.loose)}} and your* family.` };
+    const element = drawn(message, true, { participant: true });
+    expect(element).toHaveTextContent('Ask *you and your* family.');
+    expect(element.querySelector('em')).toBeNull();
+  });
+
+  it('writes the wording as markdown, with its values as text, for text read as markdown', () => {
+    function Source() {
+      const resolveIn = useResolveLocalizedStringIn();
+      const resolved = resolveIn(
+        { en: `Hello, {${nameOf(ID.dear)}}.` },
+        {
+          intrinsics: { now: undefined },
+          attributes: { ego: { [AGE]: 40, [NAME]: '*Ann*' } },
+          labels: {},
+          conditions: CONDITIONS,
+          dynamicAttributes: DEFINITIONS,
+          variablesFor: (role) => (role === 'ego' ? VARIABLES : undefined),
+        },
+      );
+      return <p data-testid="source">{markdownSource(resolved)}</p>;
+    }
+    render(
+      <TestProtocolLocalization localization={LOCALIZATION}>
+        <Source />
+      </TestProtocolLocalization>,
+    );
+    expect(screen.getByTestId('source').textContent).toBe(
+      'Hello, **dear** \\*Ann\\*.',
+    );
+  });
+
+  it('shows nothing where wording would show a dynamic attribute already being shown', () => {
+    expect(
+      shown({ en: `Then {${nameOf(ID.loopA)}}.` }, { participant: false }),
+    ).toBe('Then a b.');
   });
 });

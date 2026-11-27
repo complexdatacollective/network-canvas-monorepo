@@ -1651,17 +1651,9 @@
     "defaultMessage": "If known",
     "description": "Label of the version of a dynamic attribute that is shown when the number it depends on is known. It contains one version for each plural form, such as “1 child” and “3 children”."
   },
-  "protocolBuilder.dynamicAttribute.numberWordingUnreadable": {
-    "defaultMessage": "This wording cannot be saved as it is written. Write it again.",
-    "description": "Problem shown under the wording of a dynamic attribute for singular or plural numbers when, in the language being edited, it uses something that this wording cannot show. This can happen when the wording was imported from elsewhere."
-  },
   "protocolBuilder.dynamicAttribute.otherLanguage": {
     "defaultMessage": "The logic is the same in every language. The wording that you enter here is used only in {language}.",
     "description": "Note in the popover of a dynamic attribute while the text is edited in a language that is not the protocol’s default language. language is the name of the language being edited, such as “Spanish”."
-  },
-  "protocolBuilder.dynamicAttribute.plainWordsOnly": {
-    "defaultMessage": "Write this version as plain words, without placeholders or formatting.",
-    "description": "Problem shown under a version of a dynamic attribute whose wording, in the language being edited, contains something other than plain words, such as a placeholder in braces. This can happen when the wording was imported from elsewhere."
   },
   "protocolBuilder.dynamicAttribute.reference": {
     "defaultMessage": "{language}: {wording}",
@@ -1682,6 +1674,10 @@
   "protocolBuilder.dynamicAttribute.usedOnStage": {
     "defaultMessage": "Changes apply everywhere that this dynamic attribute is used on this stage. It is used in {count, plural, one {# place} other {# places}}.",
     "description": "Note in the popover of a dynamic attribute of a stage. count is how many translatable strings of the stage use it."
+  },
+  "protocolBuilder.dynamicAttribute.versionUnreadable": {
+    "defaultMessage": "This wording cannot be saved as it is written. Write it again.",
+    "description": "Problem shown under a version of a dynamic attribute whose wording, in the language being edited, uses something that the wording cannot contain, such as a choice between versions inside its sentence. This can happen when the wording was imported from elsewhere."
   },
   "protocolBuilder.dynamicAttribute.wording": {
     "defaultMessage": "Wording",

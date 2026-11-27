@@ -341,7 +341,7 @@ describe('the versions of a new dynamic attribute', () => {
     const unknown = within(dialog).getByRole('textbox', {
       name: 'If not known',
     });
-    expect(unknown).toHaveAttribute('placeholder', 'Shows nothing');
+    expect(unknown).toHaveAttribute('aria-placeholder', 'Shows nothing');
 
     await user.type(
       within(dialog).getByRole('textbox', { name: 'Happy' }),
@@ -362,11 +362,13 @@ describe('the versions of a new dynamic attribute', () => {
     );
   });
 
-  it('are stored as the words typed, braces and apostrophes included', async () => {
+  it('are stored as the words written, braces and apostrophes included', async () => {
     const { user, held, dialog } = await openDialog();
     const happy = within(dialog).getByRole('textbox', { name: 'Happy' });
-    await user.type(happy, "you {{sic} it's");
-    expect(happy).toHaveValue("you {sic} it's");
+    // Typing a brace offers attributes, as in other text, so it is pasted.
+    await user.click(happy);
+    await user.paste("you {sic} it's");
+    await waitFor(() => expect(happy).toHaveTextContent("you {sic} it's"));
     await user.click(
       within(dialog).getByRole('button', { name: 'Create dynamic attribute' }),
     );
@@ -467,10 +469,13 @@ describe('the settings of a dynamic attribute', () => {
 });
 
 describe('a version edited in the settings of a dynamic attribute', () => {
-  const openSettings = async (definition: DynamicAttribute) => {
+  const openSettings = async (
+    definition: DynamicAttribute,
+    others: Readonly<Record<string, DynamicAttribute>> = {},
+  ) => {
     const host = renderHost({
       message: `Hello {${PRONOUN_NAME}} today`,
-      dynamicAttributes: { [PRONOUN]: definition },
+      dynamicAttributes: { ...others, [PRONOUN]: definition },
     });
     const editor = await screen.findByRole('textbox');
     const pill = await waitFor(() => {
@@ -495,22 +500,105 @@ describe('a version edited in the settings of a dynamic attribute', () => {
         answers: [{ answer: HAPPY_KEY, wording: { en: '' } }],
       }),
     );
-    expect(happy).toHaveAttribute('placeholder', 'Shows nothing');
+    expect(happy).toHaveAttribute('aria-placeholder', 'Shows nothing');
     expect(within(popover).queryByText(/^Write /)).toBeNull();
   });
 
-  it('says what is wrong with wording that is not plain words, as an imported version can be', async () => {
+  it('can be made bold or italic with the buttons of its own toolbar', async () => {
+    const { user, held, popover } = await openSettings(PRONOUN_DEFINITION);
+    const happy = within(popover).getByRole('textbox', { name: 'Happy' });
+    await user.click(happy);
+    await user.keyboard('{Control>}a{/Control}');
+    const toolbar = attributeButtonOf(happy).closest('[role="toolbar"]');
+    if (!(toolbar instanceof HTMLElement)) throw new Error('No toolbar');
+    expect(
+      within(toolbar).getByRole('button', { name: /^Italic/ }),
+    ).toBeVisible();
+    await user.click(within(toolbar).getByRole('button', { name: /^Bold/ }));
+
+    await waitFor(() =>
+      expect(held.current.dynamicAttributes[PRONOUN]).toMatchObject({
+        answers: [{ answer: HAPPY_KEY, wording: { en: '**happy one**' } }],
+      }),
+    );
+  });
+
+  it('can show an attribute, put in from its Attribute menu', async () => {
+    const { user, held, popover } = await openSettings(PRONOUN_DEFINITION);
+    const happy = within(popover).getByRole('textbox', { name: 'Happy' });
+    await user.click(happy);
+    await user.click(attributeButtonOf(happy));
+    const menu = await screen.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
+    await user.click(within(menu).getByRole('option', { name: /^age/ }));
+
+    await waitFor(() =>
+      expect(held.current.dynamicAttributes[PRONOUN]).toMatchObject({
+        answers: [
+          {
+            answer: HAPPY_KEY,
+            wording: { en: expect.stringContaining(`{${AGE}}`) },
+          },
+        ],
+      }),
+    );
+  });
+
+  it('is not offered the dynamic attribute itself, or one whose wording shows it', async () => {
+    const SHOWS_PRONOUN = testId('dynamic/shows-pronoun');
+    const { user, popover } = await openSettings(PRONOUN_DEFINITION, {
+      [SHOWS_PRONOUN]: {
+        ...PRONOUN_DEFINITION,
+        missing: { en: `zebra {${PRONOUN_NAME}}` },
+        other: { en: 'zebra' },
+      },
+      [YEARS]: YEARS_DEFINITION,
+    });
+    const happy = within(popover).getByRole('textbox', { name: 'Happy' });
+    await user.click(happy);
+    await user.click(attributeButtonOf(happy));
+    const menu = await screen.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
+
+    // Another dynamic attribute is offered...
+    expect(
+      await within(menu).findByRole('option', { name: /^some years/ }),
+    ).toBeInTheDocument();
+    // ...but not this one, nor one that would show this one in its own
+    // wording.
+    expect(within(menu).queryByRole('option', { name: /^someone/ })).toBeNull();
+    expect(within(menu).queryByRole('option', { name: /zebra/ })).toBeNull();
+  });
+
+  it('says that wording it cannot show is to be written again, as an imported version can be', async () => {
     const { popover } = await openSettings({
       ...PRONOUN_DEFINITION,
-      other: { en: 'you {sic}' },
+      other: { en: 'you {sic, select, a {b} other {c}}' },
     });
     expect(
       within(popover).getByText(
-        'Write this version as plain words, without placeholders or formatting.',
+        'This wording cannot be saved as it is written. Write it again.',
       ),
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * The Attribute button of the field that `box` is in: in a dynamic
+ * attribute's settings, each version's field has its own toolbar.
+ */
+const attributeButtonOf = (box: HTMLElement): HTMLElement => {
+  let field = box.parentElement;
+  while (field !== null && field.querySelector('[role="toolbar"]') === null) {
+    field = field.parentElement;
+  }
+  const toolbar = field?.querySelector<HTMLElement>('[role="toolbar"]');
+  if (toolbar === null || toolbar === undefined)
+    throw new Error('The box has no toolbar.');
+  return within(toolbar).getByRole('button', { name: 'Attribute' });
+};
 
 describe('the number wording of a dynamic attribute', () => {
   const openSettings = async () => {
@@ -556,6 +644,27 @@ describe('the number wording of a dynamic attribute', () => {
     );
   });
 
+  it('is stored as empty wording when every version of a language is emptied', async () => {
+    const { user, held, popover } = await openSettings();
+    const [one] = await within(popover).findAllByRole('textbox', {
+      name: /^When it is/,
+    });
+    if (one === undefined) throw new Error('No box for 1');
+    await user.type(one, 'año');
+    await waitFor(() =>
+      expect(held.current.dynamicAttributes[YEARS]).toMatchObject({
+        wording: { es: expect.stringContaining('año') },
+      }),
+    );
+    await user.keyboard('{Control>}a{/Control}{Backspace}');
+
+    await waitFor(() =>
+      expect(held.current.dynamicAttributes[YEARS]).toMatchObject({
+        wording: { es: '' },
+      }),
+    );
+  });
+
   it('starts each version empty, and offers the number, named for the attribute that it counts, to put in', async () => {
     const { user, held, popover } = await openSettings();
     const boxes = await within(popover).findAllByRole('textbox', {
@@ -570,9 +679,7 @@ describe('the number wording of a dynamic attribute', () => {
     const [one] = boxes;
     if (one === undefined) throw new Error('No box for 1');
     await user.click(one);
-    await user.click(
-      within(popover).getByRole('button', { name: 'Attribute' }),
-    );
+    await user.click(attributeButtonOf(one));
     const menu = await screen.findByRole('dialog', {
       name: 'Insert an attribute',
     });

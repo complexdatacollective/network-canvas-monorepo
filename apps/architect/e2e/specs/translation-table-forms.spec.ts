@@ -283,7 +283,8 @@ test.describe('the translation table, for text that differs between languages', 
       await expect(formText).toBeFocused();
     };
     // The English wording of the version for a happy participant, in its own
-    // row.
+    // row: a cell that shows the wording, as the cell of any text that can
+    // show values does until it has focus.
     const happy = rows
       .getByRole('row')
       .filter({
@@ -291,8 +292,9 @@ test.describe('the translation table, for text that differs between languages', 
           name: /^Dynamic attributes › .* › Happy$/,
         }),
       })
-      .getByRole('textbox', { name: /English$/ });
-    await expect(happy).toHaveValue('happy friend');
+      .getByRole('button', { name: /English$/ })
+      .locator('xpath=ancestor::td[1]');
+    await expect(happy).toHaveText('happy friend');
 
     await openFormText();
     await formText
@@ -304,13 +306,15 @@ test.describe('the translation table, for text that differs between languages', 
       name: 'Happy',
       exact: true,
     });
-    await expect(wording).toHaveValue('happy friend');
-    await wording.clear();
+    await expect(wording).toHaveText('happy friend');
+    await wording.click();
+    await page.keyboard.press('ControlOrMeta+a');
     await wording.pressSequentially('glad friend');
+    await expect(wording).toHaveText('glad friend');
     await page.keyboard.press('Escape');
     await expect(popover).toBeHidden();
     // The version's row shows the wording, which is not saved yet.
-    await expect(happy).toHaveValue('glad friend');
+    await expect(happy).toHaveText('glad friend');
 
     // Another change, so that the save writes the stage.
     const stageName = row(rows, 'Stage name').getByRole('textbox', {
@@ -319,7 +323,7 @@ test.describe('the translation table, for text that differs between languages', 
     await stageName.fill('About you now');
     await openFormText();
     await page.keyboard.press('Escape');
-    await expect(happy).toHaveValue('happy friend');
+    await expect(happy).toHaveText('happy friend');
 
     await translationTable(page)
       .getByRole('button', { name: 'Save', exact: true })
@@ -369,10 +373,25 @@ test.describe('the translation table, for text that differs between languages', 
     table = await openTable(page);
     const rows = stageRows(table, welcome);
     await expect(rows.getByText(NOT_USED, { exact: true })).toHaveCount(0);
-    await expect(rows.getByRole('textbox', { name: /Spanish$/ })).toHaveCount(
-      // The stage name, and each version of the dynamic attribute.
-      1 + versions,
-    );
+    // Each version's Spanish cell can show values, so it is opened as the
+    // cell of other such text is, and then edited there.
+    const spanishWording = rows
+      .getByRole('row')
+      .filter({
+        has: page.getByRole('rowheader', { name: /^Dynamic attributes › / }),
+      })
+      .getByRole('button', { name: /Spanish$/ });
+    await expect(spanishWording).toHaveCount(versions);
+    await spanishWording.first().click();
+    await expect(
+      rows
+        .getByRole('row')
+        .filter({ has: page.getByRole('textbox', { name: /Spanish$/ }) })
+        .getByRole('rowheader', { name: /^Dynamic attributes › / }),
+    ).toHaveCount(1);
+    await expect(
+      rows.getByRole('textbox', { name: /Dynamic attributes › .*Spanish$/ }),
+    ).toBeFocused();
   });
 
   test("puts an attribute inserted at the end of a form's text outside the question of its last field, which is not edited in the table", async ({

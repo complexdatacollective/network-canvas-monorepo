@@ -16,14 +16,15 @@ import {
   dynamicMessageParts,
   dynamicValueCaseOf,
   dynamicValueReferencesIn,
+  inlineMarkdownText,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
   isSameOptionValue,
   type LocaleTag,
   type LocalizedString,
-  type LogicChoice,
   logicOfDynamicAttribute,
   markdownTree,
+  NUMBER_WORDING_COUNT,
   type ParsedDynamicValuePath,
   type Variable,
 } from '@codaco/protocol-validation';
@@ -59,46 +60,18 @@ export type DynamicValueSources = LogicSources &
 const MISSING: DynamicValueReading = { missing: true };
 
 /**
- * How a dynamic attribute's chosen version becomes text: its wording in the
- * language of the text that shows it (`locale`), falling back as protocol
- * text does, and a number's wording formatted with its count.
- */
-export type DynamicAttributeWording = Readonly<{
-  locale: LocaleTag;
-  wordingOf: (
-    choice: LogicChoice<LocalizedString>,
-    locale: LocaleTag,
-  ) => string;
-}>;
-
-/**
  * The value a name in a message stands for, here. A name that stands for
  * nothing (`parsed` undefined) reads as missing, as does a value about a role
  * that is not on screen and a condition the text's stage does not declare.
+ * A dynamic attribute is read by `wordingPart`, not here.
  */
 const resolveDynamicValue = (
   parsed: ParsedDynamicValuePath | undefined,
   sources: DynamicValueSources,
-  wording?: DynamicAttributeWording,
-): DynamicValueReading => {
-  if (parsed === undefined) return MISSING;
-  if (parsed.kind === 'dynamicAttribute') {
-    const definition =
-      sources.dynamicAttributes === undefined
-        ? undefined
-        : readOwnProperty(sources.dynamicAttributes, parsed.id);
-    if (definition === undefined || wording === undefined) return MISSING;
-    const text = wording.wordingOf(
-      chooseVersion(
-        logicOfDynamicAttribute(definition),
-        logicInputsFor(sources, wording.locale),
-      ),
-      wording.locale,
-    );
-    return text === '' ? MISSING : { missing: false, value: text };
-  }
-  return readDynamicValue(parsed, sources);
-};
+): DynamicValueReading =>
+  parsed === undefined || parsed.kind === 'dynamicAttribute'
+    ? MISSING
+    : readDynamicValue(parsed, sources);
 
 /** How values are written, in the language the participant reads. */
 export type DynamicValueFormatters = Readonly<{
@@ -107,8 +80,15 @@ export type DynamicValueFormatters = Readonly<{
   resolveLabel: (label: LocalizedString) => string;
   /** "Yes" and "No", for a true or false value with no option labels. */
   booleanWords: Readonly<{ yes: string; no: string }>;
-  /** A dynamic attribute's chosen version as text (see `DynamicAttributeWording`). */
-  wordingOf: DynamicAttributeWording['wordingOf'];
+  /**
+   * The wording of a dynamic attribute's chosen version, as written: in the
+   * language of the text that shows it (`textLocale`) when it has one there,
+   * else as any protocol text falls back, with the language it is in.
+   */
+  versionOf: (
+    wording: LocalizedString,
+    textLocale: LocaleTag,
+  ) => Readonly<{ message: string; locale: LocaleTag }>;
 }>;
 
 const DATE_ONLY = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
@@ -246,14 +226,26 @@ const formatDynamicValue = (
 
 /**
  * A piece of resolved text: words of the message, or a value in it, with the
- * name the message gives it and its text. A dynamic attribute's chosen
- * wording is marked `wording`: it is the researcher's wording, shown as the
- * words around it are, and not a value filled in for the participant. It is
- * still kept apart from the words, so that markdown in it shows as typed.
+ * name the message gives it and its text.
+ *
+ * A dynamic attribute's chosen version is marked `wording`: it is the
+ * researcher's wording, shown as the words around it are, and not a value
+ * filled in for the participant. Its `parts` are the version resolved in
+ * turn: its own words, which are one line of markdown (bold, italics), and
+ * the values it shows, which are filled in as any other value is. Its
+ * `text` is the words it shows, without markup, values and all. It is kept
+ * apart from the words around it, so that its markup and theirs are never
+ * read as one.
  */
 export type DynamicTextPart =
   | string
-  | Readonly<{ name: string; text: string; wording?: true }>;
+  | Readonly<{ name: string; text: string; wording?: undefined }>
+  | Readonly<{
+      name: string;
+      text: string;
+      wording: true;
+      parts: readonly DynamicTextPart[];
+    }>;
 
 export type DynamicText = Readonly<{
   parts: readonly DynamicTextPart[];
@@ -316,25 +308,135 @@ export const resolveDynamicText = (
   formatters: DynamicValueFormatters,
 ): DynamicText | undefined => {
   if (!message.includes('{')) return undefined;
-  const references = referencesIn(message);
-  if (references.length === 0) return undefined;
-  warnOfUnknownNames(message, references);
-
-  const wording: DynamicAttributeWording = {
-    locale,
-    wordingOf: formatters.wordingOf,
+  if (referencesIn(message).length === 0) return undefined;
+  const parts = resolveParts(message, locale, sources, formatters, {
+    extra: NO_VALUES,
+    resolving: NOTHING_RESOLVING,
+  });
+  return {
+    parts,
+    text: parts
+      .map((part) => (typeof part === 'string' ? part : part.text))
+      .join(''),
   };
-  const resolved = new Map<string, DynamicValueReading>(
-    references.map(({ name, parsed }) => [
-      name,
-      resolveDynamicValue(parsed, sources, wording),
-    ]),
+};
+
+const NO_VALUES: ReadonlyMap<string, DynamicValueReading> = new Map();
+const NOTHING_RESOLVING: ReadonlySet<string> = new Set();
+
+type Resolving = Readonly<{
+  /**
+   * Values the message has besides those of `sources`: the number that a
+   * dynamic attribute's number wording is worded for.
+   */
+  extra: ReadonlyMap<string, DynamicValueReading>;
+  /**
+   * The dynamic attributes whose versions are being resolved, from the
+   * outermost in: a version that shows one of them again would never
+   * finish, so there it shows nothing. Validation refuses such wording.
+   */
+  resolving: ReadonlySet<string>;
+}>;
+
+/**
+ * The words that resolved parts show, without markup: their markdown read
+ * as one line, each value as its text.
+ */
+const plainWordsOf = (parts: readonly DynamicTextPart[]): string =>
+  inlineMarkdownText(parts)
+    .map((part) => (typeof part === 'string' ? part : part.text))
+    .join('');
+
+type WordingPart = Extract<DynamicTextPart, Readonly<{ wording: true }>>;
+
+/**
+ * The dynamic attribute `id`, named `name`, as a part of text written in
+ * `locale`: the version its logic chooses here, resolved in turn with the
+ * values here and, for number wording, its number
+ * (`NUMBER_WORDING_COUNT`). Undefined, as a missing value is, where the
+ * text's owner does not have it, where it is already being resolved further
+ * out, and where its version shows no words.
+ */
+const wordingPart = (
+  name: string,
+  id: string,
+  locale: LocaleTag,
+  sources: DynamicValueSources,
+  formatters: DynamicValueFormatters,
+  resolving: ReadonlySet<string>,
+): WordingPart | undefined => {
+  if (resolving.has(id)) return undefined;
+  const definition =
+    sources.dynamicAttributes === undefined
+      ? undefined
+      : readOwnProperty(sources.dynamicAttributes, id);
+  if (definition === undefined) return undefined;
+  const choice = chooseVersion(
+    logicOfDynamicAttribute(definition),
+    logicInputsFor(sources, locale),
   );
-  const wordingNames = new Set(
-    references.flatMap(({ name, parsed }) =>
-      parsed?.kind === 'dynamicAttribute' ? [name] : [],
-    ),
+  const version = formatters.versionOf(choice.content, locale);
+  const parts = resolveParts(
+    version.message,
+    version.locale,
+    sources,
+    formatters,
+    {
+      extra:
+        choice.kind === 'counted'
+          ? new Map([
+              [NUMBER_WORDING_COUNT, { missing: false, value: choice.count }],
+            ])
+          : NO_VALUES,
+      resolving: new Set([...resolving, id]),
+    },
   );
+  const text = plainWordsOf(parts);
+  return text === '' ? undefined : { name, text, wording: true, parts };
+};
+
+/**
+ * The parts of `message`, written in `locale`, as the values here read it
+ * (see `resolveDynamicText`). A message that shows no values is its words,
+ * with the message's escapes read.
+ */
+const resolveParts = (
+  message: string,
+  locale: LocaleTag,
+  sources: DynamicValueSources,
+  formatters: DynamicValueFormatters,
+  { extra, resolving }: Resolving,
+): DynamicTextPart[] => {
+  const references = message.includes('{') ? referencesIn(message) : [];
+  warnOfUnknownNames(
+    message,
+    references.filter(({ name }) => !extra.has(name)),
+  );
+
+  const wordings = new Map<string, WordingPart | undefined>();
+  const resolved = new Map<string, DynamicValueReading>();
+  for (const { name, parsed } of references) {
+    const own = extra.get(name);
+    if (own !== undefined) {
+      resolved.set(name, own);
+    } else if (parsed?.kind === 'dynamicAttribute') {
+      const part = wordingPart(
+        name,
+        parsed.id,
+        locale,
+        sources,
+        formatters,
+        resolving,
+      );
+      wordings.set(name, part);
+      resolved.set(
+        name,
+        part === undefined ? MISSING : { missing: false, value: part.text },
+      );
+    } else {
+      resolved.set(name, resolveDynamicValue(parsed, sources));
+    }
+  }
   const stateOf = (
     name: string,
     caseKeys: readonly string[],
@@ -354,27 +456,22 @@ export const resolveDynamicText = (
     };
   };
 
-  const parts = dynamicMessageParts(message, locale, stateOf).flatMap(
+  return dynamicMessageParts(message, locale, stateOf).flatMap(
     (part): DynamicTextPart[] => {
       if (typeof part === 'string') return [part];
+      if (wordings.has(part.argument)) {
+        const wording = wordings.get(part.argument);
+        return wording === undefined ? [] : [wording];
+      }
       const value = resolved.get(part.argument);
       // Validation shows a value only where it is present; one that is
       // missing anyway (a role not on screen) shows nothing.
       if (value === undefined || value.missing) return [];
-      const text = formatDynamicValue(value, formatters);
       return [
-        wordingNames.has(part.argument)
-          ? { name: part.argument, text, wording: true }
-          : { name: part.argument, text },
+        { name: part.argument, text: formatDynamicValue(value, formatters) },
       ];
     },
   );
-  return {
-    parts,
-    text: parts
-      .map((part) => (typeof part === 'string' ? part : part.text))
-      .join(''),
-  };
 };
 
 /**
@@ -668,7 +765,12 @@ export const markdownSource = ({
 }: Readonly<{ text: string; parts?: readonly DynamicTextPart[] }>): string => {
   if (parts === undefined) return text;
   const dropped = valuesInAttributes(parts);
-  return joinMarkdownParts(parts, (part, index) =>
-    dropped.has(index) ? '' : literalMarkdown(part.text),
-  );
+  return joinMarkdownParts(parts, (part, index) => {
+    if (dropped.has(index)) return '';
+    // A dynamic attribute's version is the researcher's markdown, with its
+    // own values written as text.
+    return part.wording === true
+      ? markdownSource({ text: part.text, parts: part.parts })
+      : literalMarkdown(part.text);
+  });
 };

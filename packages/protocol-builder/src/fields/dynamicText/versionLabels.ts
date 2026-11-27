@@ -168,3 +168,33 @@ export const logicVersionLabel = (
       );
   }
 };
+
+/**
+ * How many examples a plural version's label gives of the numbers it is for.
+ */
+const NUMBER_EXAMPLE_COUNT = 3;
+
+/**
+ * What a switch on a number is called, and each of its versions: examples
+ * of the numbers it is for, in `locale`.
+ */
+export const numberSwitchLabels = (intl: IntlShape, locale: LocaleTag) => ({
+  switchLabel: (value: string) => `Wording that fits the number ${value}`,
+  versionLabel: (key: string) => {
+    const exact = /^=(\d+)$/.exec(key);
+    const counts = exact
+      ? [Number(exact[1])]
+      : ([...pluralValueExamples(locale)].find(
+          ([category]) => category === key,
+        )?.[1] ?? []);
+    const shown = counts
+      .slice(0, NUMBER_EXAMPLE_COUNT)
+      .map((count) => intl.formatNumber(count));
+    return intl.formatMessage(versionLabelMessages.numbers, {
+      numbers: intl.formatList(
+        counts.length > NUMBER_EXAMPLE_COUNT ? [...shown, '…'] : shown,
+        { type: 'unit', style: 'short' },
+      ),
+    });
+  },
+});

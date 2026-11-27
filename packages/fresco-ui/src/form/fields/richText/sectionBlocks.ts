@@ -341,6 +341,21 @@ export const moveBlock = (
 };
 
 /**
+ * Whether `target` is in text that can be written in, inside `container`:
+ * not in something drawn there that is not text (a field's control, a
+ * value among the words).
+ */
+const isWrittenIn = (target: EventTarget | null, container: Node): boolean => {
+  if (!(target instanceof Element) || !container.contains(target)) {
+    return false;
+  }
+  const nearest = target.closest('[contenteditable]');
+  return (
+    nearest !== null && nearest.getAttribute('contenteditable') !== 'false'
+  );
+};
+
+/**
  * What every block of a document shares where blocks have frames (see
  * `BlockFrameLayer`):
  *
@@ -355,6 +370,10 @@ export const moveBlock = (
  * - Text typed or pasted over a selected block goes below it.
  * - A click on a section's frame, or on what its view draws that is not
  *   text, selects the whole section.
+ * - A block is moved only by its handle, never by the browser's own drag: a
+ *   press in the text of a selected block (a branch of a logic block, a
+ *   field's question) puts the caret there, as the click would, so that
+ *   moving the pointer selects text rather than picking the block up.
  * - While a block is dragged by its handle, the document shows what dropping
  *   it would do (`blockDragPlugin`).
  */
@@ -392,6 +411,31 @@ export const DocumentBlocks = Extension.create({
       new Plugin({
         key: new PluginKey('documentBlocks'),
         props: {
+          handleDOMEvents: {
+            // ProseMirror lets the browser drag a selected node from any
+            // press inside it, which would carry the whole block (a logic
+            // block, from a press in one of its branches).
+            mousedown: (view, event) => {
+              if (event.button !== 0 || event.shiftKey) return false;
+              const selected = selectedBlockOf(view.state);
+              const dom = selected === null ? null : view.nodeDOM(selected.pos);
+              if (dom === null || !isWrittenIn(event.target, dom)) {
+                return false;
+              }
+              const at = view.posAtCoords({
+                left: event.clientX,
+                top: event.clientY,
+              });
+              if (at === null) return false;
+              view.dispatch(
+                view.state.tr.setSelection(
+                  Selection.near(view.state.doc.resolve(at.pos)),
+                ),
+              );
+              // ProseMirror goes on to handle the press, from the caret.
+              return false;
+            },
+          },
           handleKeyDown: (view, event) => {
             if (
               event.key !== 'Escape' ||

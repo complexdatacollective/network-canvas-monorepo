@@ -1,10 +1,18 @@
-import { findContentDocumentTextProblem } from '../../localization/contentDocumentProblems.ts';
 import {
+  CONTENT_DOCUMENT_PROBLEMS,
+  findContentDocumentTextProblem,
+} from '../../localization/contentDocumentProblems.ts';
+import {
+  type DynamicValueArgument,
   type DynamicValueLookup,
   dynamicValueCaseKeysIn,
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
 } from '../../localization/dynamicValueMessages.ts';
+import {
+  findDeclaredArgumentProblem,
+  type MessageArguments,
+} from '../../localization/messageArguments.ts';
 import type { StageSubject } from './common/subjects.ts';
 import { DynamicAttributeSchema } from './dynamic-attributes.ts';
 import {
@@ -126,6 +134,11 @@ export const dynamicValueContextFor = ({
   sitePath: readonly (string | number)[];
   site: DynamicValueSite;
 }): DynamicValueSiteContext => {
+  // A dynamic attribute's wording is shown wherever its stage's text shows
+  // the dynamic attribute.
+  if (site === 'dynamicAttribute') {
+    return stageDynamicValueContext({ codebook, stage });
+  }
   const stageSubject = stageSubjectOf(stage);
   const form =
     site === 'formField' ? formOf(stage, sitePath, stageSubject) : undefined;
@@ -196,6 +209,11 @@ type SiteHit = Readonly<{
   format?: 'plain' | 'markdown';
   lines?: 'single' | 'multiple';
   fieldBlocks?: true;
+  /**
+   * What the text may use besides dynamic values (see `localizedString`):
+   * the number of a dynamic attribute's number wording.
+   */
+  arguments?: MessageArguments;
 }>;
 
 /**
@@ -213,12 +231,27 @@ export const findSiteMessageProblem = (
   context: DynamicValueSiteContext,
   locale: string,
   text = 'This wording',
+  declared: MessageArguments = {},
 ): string | undefined => {
   const caseKeys = dynamicValueCaseKeysIn(message);
   const looked = new Map<string, ReturnType<DynamicValueLookup>>();
   const argumentOf: DynamicValueLookup = (name) => {
     const known = looked.get(name);
     if (known !== undefined) return known;
+    // What the text declares besides its values: a number to choose a
+    // version by, shown where `#` is written in one of its versions.
+    if (Object.hasOwn(declared, name)) {
+      const number: DynamicValueArgument = {
+        description: 'the number',
+        cases: [],
+        numeric: true,
+        optional: false,
+        unshowable:
+          'Show it by writing “#” in a version of the wording for each number.',
+      };
+      looked.set(name, number);
+      return number;
+    }
     const status = dynamicValueStatus(
       parseDynamicValueName(name),
       context,
@@ -310,8 +343,15 @@ export const findDynamicValueProblems = (
       // that is not a logic block.
       if (
         findDynamicMessageSyntaxProblem(message) !== undefined ||
+        (hit.arguments !== undefined &&
+          findDeclaredArgumentProblem(
+            message,
+            hit.arguments,
+            CONTENT_DOCUMENT_PROBLEMS.inlineChoice,
+          ) !== undefined) ||
         (hit.format !== undefined &&
           hit.lines !== undefined &&
+          hit.arguments === undefined &&
           findContentDocumentTextProblem(message, {
             format: hit.format,
             lines: hit.lines,
@@ -320,7 +360,13 @@ export const findDynamicValueProblems = (
       ) {
         continue;
       }
-      const problem = findSiteMessageProblem(message, context, locale);
+      const problem = findSiteMessageProblem(
+        message,
+        context,
+        locale,
+        undefined,
+        hit.arguments,
+      );
       if (problem !== undefined) {
         problems.push({ path: [...hit.path, locale], message: problem });
       }

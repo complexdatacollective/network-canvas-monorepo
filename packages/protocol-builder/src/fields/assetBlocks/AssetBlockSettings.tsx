@@ -40,7 +40,8 @@ export type AssetBlockFileField = ComponentType<
  * The settings of an image, audio recording or video in a text: its
  * description, whether a recording plays by itself and repeats, the file
  * (chosen with the resource picker that every stage setting uses), and
- * Delete. A picture's size is set by dragging its corner (`ResizeCorner`).
+ * Delete. A picture's size is set by dragging the handle on its corner
+ * (`resizeHandle`).
  *
  * The fields are spaced by their own margins, as every list of fields is.
  */

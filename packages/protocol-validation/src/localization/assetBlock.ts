@@ -1,9 +1,6 @@
 import {
-  ASSET_BLOCK_DEFAULTS,
-  type AssetBlockAlignment,
   boundedCache,
   type AssetBlockSize,
-  isAssetBlockAlignment,
   isAssetBlockSize,
 } from '@codaco/shared-consts';
 
@@ -19,7 +16,7 @@ import { type MessageNode, messageStructure } from './messageStructure.ts';
  * Text holds a block as a markdown image in a paragraph of its own, whose
  * address names the file by its id in the protocol's assets:
  *
- *     ![A map of the study area](asset:8a2f0c1e?size=medium&align=end)
+ *     ![A map of the study area](asset:8a2f0c1e?size=medium)
  *
  * The form is plain CommonMark, so every markdown parser already reads it; it
  * holds no braces, so it is literal text inside the ICU messages that
@@ -37,8 +34,6 @@ export type AssetBlock = Readonly<{
   description?: string;
   /** How tall an image or a video may be. Absent, it takes its own height. */
   size?: AssetBlockSize;
-  /** Where the file sits across the page. Absent, it is centred. */
-  align?: AssetBlockAlignment;
   /** Whether audio or video starts by itself. Absent, it does. */
   autoplay?: boolean;
   /** Whether audio or video starts again when it ends. Absent, it does. */
@@ -49,15 +44,12 @@ export type AssetBlock = Readonly<{
 // what draws a block without reading its markdown holds the same list. They
 // are exported here too, beside the grammar that writes them.
 export {
-  ASSET_BLOCK_ALIGNMENTS,
   ASSET_BLOCK_DEFAULTS,
   ASSET_BLOCK_KINDS,
   ASSET_BLOCK_SIZES,
-  type AssetBlockAlignment,
   type AssetBlockAttributes,
   type AssetBlockKind,
   type AssetBlockSize,
-  isAssetBlockAlignment,
   isAssetBlockKind,
   isAssetBlockSize,
 } from '@codaco/shared-consts';
@@ -97,15 +89,11 @@ const decodeAssetId = (encoded: string): string | undefined => {
 export const assetBlockUrl = ({
   assetId,
   size,
-  align,
   autoplay,
   loop,
 }: AssetBlock): string => {
   const settings = [
     ...(size === undefined ? [] : [`size=${size}`]),
-    ...(align === undefined || align === ASSET_BLOCK_DEFAULTS.align
-      ? []
-      : [`align=${align}`]),
     ...(autoplay === false ? ['autoplay=false'] : []),
     ...(loop === false ? ['loop=false'] : []),
   ];
@@ -169,7 +157,6 @@ export const readAssetBlockUrl = (
   if (assetId === '') problems.push({ kind: 'noAsset' });
 
   let size: AssetBlockSize | undefined;
-  let align: AssetBlockAlignment | undefined;
   let autoplay: boolean | undefined;
   let loop: boolean | undefined;
   for (const [setting, value] of new URLSearchParams(query)) {
@@ -177,9 +164,6 @@ export const readAssetBlockUrl = (
       problems.push({ kind: 'invalidValue', setting, value });
     if (setting === 'size') {
       if (isAssetBlockSize(value)) size = value;
-      else invalid();
-    } else if (setting === 'align') {
-      if (isAssetBlockAlignment(value)) align = value;
       else invalid();
     } else if (setting === 'autoplay' || setting === 'loop') {
       const flag = BOOLEANS[value];
@@ -195,8 +179,6 @@ export const readAssetBlockUrl = (
     block: {
       assetId,
       ...(size !== undefined && { size }),
-      ...(align !== undefined &&
-        align !== ASSET_BLOCK_DEFAULTS.align && { align }),
       ...(autoplay === false && { autoplay }),
       ...(loop === false && { loop }),
     },

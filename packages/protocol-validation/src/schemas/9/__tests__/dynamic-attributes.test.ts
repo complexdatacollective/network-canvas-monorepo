@@ -18,9 +18,12 @@ import { collectLocalizedStringsFromSchema } from '../../../utils/collectLocaliz
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { findDynamicAttributeProblems } from '../dynamic-attribute-validation.ts';
 import {
+  dynamicAttributeMayShow,
   DynamicAttributeSchema,
+  dynamicAttributesShownBy,
   DynamicAttributesSchema,
   dynamicAttributeVersions,
+  valueNamesReadThrough,
 } from '../dynamic-attributes.ts';
 import { dynamicValueNameFor, optionCaseKey } from '../dynamic-value-names.ts';
 import { ProtocolStructureSchema } from '../protocol-structure.ts';
@@ -175,11 +178,7 @@ describe('DynamicAttributeSchema', () => {
         other: localized(''),
       }).success,
     ).toBe(true);
-    for (const wording of [
-      '',
-      '{count, plural, one {} other {# children}}',
-      '{count, plural, one {} other {}}',
-    ]) {
+    for (const wording of ['', '{count, plural, one {} other {# children}}']) {
       expect(
         DynamicAttributeSchema.safeParse({
           logic: 'number',
@@ -826,5 +825,314 @@ describe('a dynamic attribute whose value its text cannot read', () => {
           'This wording has a dynamic attribute whose rules are about the node this stage is about, which this wording does not refer to.',
       },
     ]);
+  });
+});
+
+describe('the wording of a version', () => {
+  const OTHER_ID = testId('other-word');
+  const OTHER = dynamicValueNameFor({ kind: 'dynamicAttribute', id: OTHER_ID });
+  const NAME = nodeValue('name');
+  const EGO_NAME = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'ego',
+    variableId: testVariableId('egoName'),
+  });
+  // Versions for when the person's category is not known, and for any
+  // other answer.
+  const participant = (missing: string, other = 'they') =>
+    answers({ missing: localized(missing), other: localized(other) });
+
+  // A number of the participant, with `missing` shown when it is not known.
+  const egoNumber = (missing: string) => ({
+    logic: 'number',
+    value: dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: testVariableId('egoAge'),
+    }),
+    missing: localized(missing),
+    wording: localized('{count, plural, other {#}}'),
+  });
+
+  it('may be bold or italic and show values, as other one-line text does', () => {
+    expect(
+      DynamicAttributeSchema.safeParse(
+        participant(`**your** friend {${NAME}}`, `*their* {${OTHER}}`),
+      ).success,
+    ).toBe(true);
+    expect(
+      DynamicAttributeSchema.safeParse({
+        logic: 'number',
+        value: nodeValue('age'),
+        missing: localized(`{${NAME}}`),
+        wording: localized(
+          `{count, plural, one {**#** child of {${NAME}}} other {# *children* of {${NAME}}}}`,
+        ),
+      }).success,
+    ).toBe(true);
+  });
+
+  it('cannot choose between versions inside its sentence', () => {
+    const result = DynamicAttributeSchema.safeParse(
+      participant(`{${CATEGORY}, select, missing {a} other {b}}`),
+    );
+    expect(result.error?.issues.map(({ message }) => message)).toEqual([
+      CONTENT_DOCUMENT_PROBLEMS.inlineChoice,
+    ]);
+    const number = DynamicAttributeSchema.safeParse({
+      logic: 'number',
+      value: nodeValue('age'),
+      missing: localized(''),
+      wording: localized(
+        `{count, plural, one {{${CATEGORY}, select, missing {a} other {b}}} other {# children}}`,
+      ),
+    });
+    expect(number.error?.issues.map(({ message }) => message)).toEqual([
+      CONTENT_DOCUMENT_PROBLEMS.inlineChoice,
+    ]);
+  });
+
+  it('shows the number of number wording only as "#"', () => {
+    const result = DynamicAttributeSchema.safeParse({
+      logic: 'number',
+      value: nodeValue('age'),
+      missing: localized(''),
+      wording: localized('{count} children'),
+    });
+    expect(result.success).toBe(false);
+    // Other wording has no number to show.
+    expect(
+      problemsOf(
+        protocolWith(
+          alterForm({ [ATTRIBUTE_ID]: participant('their {count} friends') }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: `${AT}.missing.en`,
+        message: expect.stringContaining('"count"'),
+      },
+    ]);
+  });
+
+  it('is accepted when it shows values that its stage can show', () => {
+    expect(
+      problemsOf(
+        protocolWith(
+          alterForm({
+            [ATTRIBUTE_ID]: participant(`**your** {${NAME}}`, `{${EGO_NAME}}`),
+          }),
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      problemsOf(
+        protocolWith(
+          alterForm({
+            [ATTRIBUTE_ID]: {
+              logic: 'number',
+              value: nodeValue('age'),
+              missing: localized(''),
+              wording: localized(
+                `{count, plural, one {# year of {${NAME}}} other {# years of {${NAME}}}}`,
+              ),
+            },
+          }),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it('is refused where it shows an attribute or a dynamic attribute that does not exist', () => {
+    const missingAttribute = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: testVariableId('nothing'),
+    });
+    expect(
+      problemsOf(
+        protocolWith(
+          alterForm({
+            [ATTRIBUTE_ID]: participant(`{${missingAttribute}}`, `{${OTHER}}`),
+          }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: `${AT}.missing.en`,
+        message: 'This wording refers to an attribute that no longer exists.',
+      },
+      {
+        path: `${AT}.other.en`,
+        message:
+          'This wording refers to a dynamic attribute that no longer exists.',
+      },
+    ]);
+  });
+
+  it('may show another dynamic attribute, which then counts as used', () => {
+    expect(
+      problemsOf(
+        protocolWith(
+          alterForm({
+            [ATTRIBUTE_ID]: participant(`{${OTHER}}`),
+            [OTHER_ID]: participant(`**you**`),
+          }),
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it('needs the wording of a dynamic attribute shown through another in each language that shows it', () => {
+    expect(
+      problemsOf(
+        protocolWith(
+          alterForm({
+            // Only the French wording shows the other dynamic attribute.
+            [ATTRIBUTE_ID]: answers({
+              missing: { en: 'them', fr: `{${OTHER}}` },
+              answers: [],
+              other: { en: 'they', fr: 'ils' },
+            }),
+            // Never written, so reported where it is shown: in French only.
+            [OTHER_ID]: answers({ missing: {}, answers: [], other: {} }),
+          }),
+          ['en', 'fr'],
+        ),
+      ),
+    ).toEqual([
+      {
+        path: `stages.0.dynamicAttributes.${OTHER_ID}.missing.fr`,
+        message: 'Write this version in French.',
+      },
+      {
+        path: `stages.0.dynamicAttributes.${OTHER_ID}.other.fr`,
+        message: 'Write this version in French.',
+      },
+    ]);
+  });
+
+  it('cannot show its own dynamic attribute, directly or through another', () => {
+    expect(
+      problemsOf(
+        protocolWith(
+          alterForm({ [ATTRIBUTE_ID]: participant(`{${ATTRIBUTE}}`) }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: `${AT}.missing.en`,
+        message:
+          'A dynamic attribute cannot show itself. Remove it from the wording of its own version.',
+      },
+    ]);
+    const through =
+      'This wording shows a dynamic attribute whose wording shows this dynamic attribute. A dynamic attribute cannot show itself, either directly or through another dynamic attribute.';
+    expect(
+      problemsOf(
+        protocolWith(
+          alterForm({
+            [ATTRIBUTE_ID]: participant(`{${OTHER}}`),
+            [OTHER_ID]: participant('you', `*{${ATTRIBUTE}}*`),
+          }),
+        ),
+      ),
+    ).toEqual([
+      { path: `${AT}.missing.en`, message: through },
+      {
+        path: `stages.0.dynamicAttributes.${OTHER_ID}.other.en`,
+        message: through,
+      },
+    ]);
+  });
+
+  it('is refused where a text shows it and cannot read a value that its wording shows', () => {
+    const egoForm = {
+      id: testId('ego-form'),
+      type: 'EgoForm',
+      label: localized('About you'),
+      dynamicAttributes: {
+        [ATTRIBUTE_ID]: egoNumber(`{${OTHER}}`),
+        [OTHER_ID]: egoNumber(`{${NAME}}`),
+      },
+      form: formOf([
+        {
+          id: FIELD,
+          variable: 'egoAge',
+          prompt: localized(`How old is {${ATTRIBUTE}}?`),
+        },
+      ]),
+    };
+    expect(
+      problemsOf(protocolWith(egoForm)).filter(
+        ({ path }) => path === 'stages.0.form.fields.0.prompt.en',
+      ),
+    ).toEqual([
+      {
+        path: 'stages.0.form.fields.0.prompt.en',
+        message: expect.stringContaining(
+          'has a dynamic attribute that cannot use an attribute of the node this stage is about',
+        ),
+      },
+    ]);
+  });
+});
+
+describe('what a dynamic attribute reads and shows', () => {
+  const A = testId('a');
+  const B = testId('b');
+  const C = testId('c');
+  const show = (id: string) =>
+    `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id })}}`;
+  const definitions = {
+    [A]: {
+      logic: 'participant',
+      participant: localized(`${show(B)} {${CATEGORY}}`),
+      otherwise: localized('they'),
+    },
+    [B]: {
+      logic: 'number',
+      value: nodeValue('age'),
+      missing: localized(''),
+      wording: localized(`{count, plural, other {# ${show(C)}}}`),
+    },
+    [C]: {
+      logic: 'participant',
+      participant: localized('you'),
+      otherwise: localized(`{${nodeValue('name')}}`),
+    },
+  };
+
+  it('follows the wording of the dynamic attributes it shows', () => {
+    expect([...dynamicAttributesShownBy(A, definitions)].toSorted()).toEqual(
+      [B, C].toSorted(),
+    );
+    expect(
+      valueNamesReadThrough(
+        [dynamicValueNameFor({ kind: 'dynamicAttribute', id: A })],
+        definitions,
+      ).toSorted(),
+    ).toEqual(
+      [
+        dynamicValueNameFor({ kind: 'participant', role: 'node' }),
+        CATEGORY,
+        nodeValue('age'),
+        nodeValue('name'),
+      ].toSorted(),
+    );
+  });
+
+  it('may show only dynamic attributes that do not show it', () => {
+    const withCycle = {
+      ...definitions,
+      [C]: { ...definitions[C], otherwise: localized(show(A)) },
+    };
+    expect(dynamicAttributeMayShow(A, B, definitions)).toBe(true);
+    expect(dynamicAttributeMayShow(C, B, definitions)).toBe(false);
+    expect(dynamicAttributeMayShow(C, C, definitions)).toBe(false);
+    expect(dynamicAttributeMayShow(C, A, definitions)).toBe(false);
+    expect(dynamicAttributeMayShow(A, C, withCycle)).toBe(false);
+    // Reading wording that shows itself still finishes.
+    expect(dynamicAttributesShownBy(A, withCycle).has(A)).toBe(true);
   });
 });

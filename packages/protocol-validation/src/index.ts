@@ -175,12 +175,10 @@ export {
   shownFieldIds,
 } from './localization/logicChoice.ts';
 export {
-  ASSET_BLOCK_ALIGNMENTS,
   ASSET_BLOCK_DEFAULTS,
   ASSET_BLOCK_KINDS,
   ASSET_BLOCK_SIZES,
   type AssetBlock,
-  type AssetBlockAlignment,
   type AssetBlockAttributes,
   type AssetBlockKind,
   type AssetBlockSize,
@@ -188,14 +186,12 @@ export {
   assetBlocksInMarkdown,
   assetBlocksInMessage,
   assetBlockUrl,
-  isAssetBlockAlignment,
   isAssetBlockKind,
   isAssetBlockSize,
   isAssetBlockUrl,
   readAssetBlockUrl,
 } from './localization/assetBlock.ts';
 export {
-  assetBlockAlignmentShows,
   assetBlockFile,
   assetBlockSettings,
   assetInManifest,
@@ -335,11 +331,21 @@ export {
   DynamicAttributeSchema,
   DynamicAttributesSchema,
   type DynamicAttributeVersion,
+  dynamicAttributeMayShow,
   dynamicAttributeOfLogic,
+  dynamicAttributesShownBy,
+  dynamicAttributeValueNames,
   dynamicAttributeVersions,
+  dynamicAttributeWordingNames,
   logicOfDynamicAttribute,
+  NUMBER_WORDING_ARGUMENTS,
+  NUMBER_WORDING_COUNT,
   readDynamicAttributeLogic,
+  valueNamesReadThrough,
 } from './schemas/9/dynamic-attributes.ts';
+// One line of markdown, with values between its pieces, as the words it
+// shows.
+export { inlineMarkdownText } from './localization/inlineMarkdownText.ts';
 // The protocol's check of its dynamic attributes, for an editor that checks
 // one stage before it saves it.
 export {

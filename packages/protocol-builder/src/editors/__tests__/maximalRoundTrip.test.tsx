@@ -220,7 +220,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
           '',
           'Welcome to this interview.',
           '',
-          '![A map of the regions.](asset:rubberduck?size=large&align=start&autoplay=false&loop=false)',
+          '![A map of the regions.](asset:rubberduck?size=large&autoplay=false&loop=false)',
         ].join('\n'),
       },
       interviewScript: 'Read this aloud.',
@@ -652,7 +652,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
  */
 /**
  * `stage` with its dynamic attribute shown at the end of the first line of
- * the first text that can show one, and is not only a block (a field or an
+ * the first text of the stage's own that can show one, and is not only a block (a field or an
  * asset alone in its paragraph). A save drops a dynamic attribute that no
  * text uses, so a stage that declares one has to show it.
  */
@@ -660,12 +660,16 @@ const withTheWordShown = (stage: MaximalStage): MaximalStage => {
   const { fields, type } = stage;
   if (fields.dynamicAttributes === undefined) return stage;
   const shown = `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: CONSENT_WORD })}}`;
-  const hit = collectLocalizedStringsFromSchema(stageSchema, {
-    ...fields,
-    type,
-  }).find(
-    ({ dynamicValues, value }) =>
+  const hit = collectLocalizedStringsFromSchema(
+    stageSchema,
+    { ...fields, type },
+    'owner',
+  ).find(
+    ({ dynamicValues, place, value }) =>
       dynamicValues !== undefined &&
+      // The wording of the dynamic attribute itself can show values too,
+      // but a dynamic attribute cannot show itself.
+      place.kind !== 'dynamicAttributeWording' &&
       typeof value['en-US'] === 'string' &&
       !value['en-US'].startsWith('!['),
   );

@@ -8,7 +8,7 @@ import {
 } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import RichTextEditorField, {
   type RichTextAssetBlocks,
   type RichTextCommands,
@@ -18,7 +18,6 @@ import RichTextEditorField, {
   ToolbarButton,
   toolbarLabelledButtonStyles,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import {
   dynamicValueNamesIn,
   findSiteMessageProblem,
@@ -26,44 +25,31 @@ import {
   parseDynamicValueName,
 } from '@codaco/protocol-validation';
 
-import {
-  asConditionDraft,
-  type ConditionDraft,
-  conditionAboutChoices,
-  conditionCodebook,
-  conditionSentence,
-} from '../../localization/conditionText.ts';
+import type { ConditionDraft } from '../../localization/conditionText.ts';
 import {
   type DynamicValueChoice,
-  dynamicValueChoices,
   isFlagChoice,
 } from '../../localization/dynamicValueCatalog.ts';
-import {
-  resolveStoredTranslation,
-  resolveTranslation,
-} from '../../localization/localizedText.ts';
 import {
   documentToMessage,
   type FieldText,
   type MessageDocumentFormat,
   messageToDocument,
 } from '../../localization/messageDocument.ts';
-import { useEditingLanguage } from '../../localization/ProtocolLocalization.tsx';
 import {
   PLAIN_TEXT_TOOLBAR,
   richTextToolbarFor,
 } from '../../localization/textShape.ts';
 import { useMessageDocument } from '../../localization/useMessageDocument.ts';
 import type { RichTextContent } from '../../markdown/markdownAdapter.ts';
-import type { ConditionScope } from '../../rules/ConditionRulesControl.tsx';
 import { variablePillSpec } from '../VariablePill.tsx';
 import { AttributeMenu } from './AttributeMenu.tsx';
 import { newConditionVersion } from './dynamicAttributeDraft.ts';
 import { DynamicAttributePopover } from './DynamicAttributePopover.tsx';
 import { dynamicAttributeName } from './dynamicAttributeWrites.ts';
 import {
-  type DynamicTextEnvironment,
   DynamicTextEnvironmentContext,
+  type WordingEditors,
 } from './editorEnvironment.ts';
 import {
   type LogicBlockState,
@@ -73,7 +59,8 @@ import {
 import { useLogicBlocks } from './LogicBlockView.tsx';
 import { firstAvailableLogicOption } from './logicOptions.ts';
 import type { DynamicMessageSite } from './messageSite.ts';
-import { namingFor } from './valueNaming.ts';
+import { NumberWordingEditor } from './NumberWordingEditor.tsx';
+import { useEditorEnvironment } from './useEditorEnvironment.ts';
 
 const messages = defineMessages({
   logicBlock: {
@@ -136,6 +123,12 @@ type DynamicMessageEditorProps = Readonly<{
   locale: LocaleTag;
   site: DynamicMessageSite;
   /**
+   * For the wording of a version of a dynamic attribute: its id, so that the
+   * Attribute menu does not offer the dynamic attribute itself, or one whose
+   * wording shows it (`dynamicAttributeMayShow`).
+   */
+  ownDynamicAttribute?: string;
+  /**
    * False where the host says what is wrong with the text itself, as the
    * translation table does once the researcher leaves the cell.
    */
@@ -148,8 +141,6 @@ type DynamicMessageEditorProps = Readonly<{
    */
   commandsRef?: RefObject<RichTextCommands | null>;
 }>;
-
-const NOTHING: Readonly<Record<string, unknown>> = Object.freeze({});
 
 /**
  * What the toolbar calls the group of insert tools, by what the tools put
@@ -166,7 +157,6 @@ const INSERT_TOOLS_LABELS = {
     multiLine: 'Insert an attribute, field or logic block',
   },
 } as const;
-const ONE_PLACE = () => 1;
 const EMPTY_DOCUMENT: RichTextContent = {
   type: 'doc',
   content: [{ type: 'paragraph' }],
@@ -202,13 +192,12 @@ export function DynamicMessageEditor({
   onMessageChange,
   locale,
   site,
+  ownDynamicAttribute,
   showsProblems = true,
   className,
   commandsRef,
 }: DynamicMessageEditorProps) {
   const intl = useAppIntl();
-  const appDirection = useAppDirection();
-  const { localization } = useEditingLanguage();
   const holdsAssetBlocks = assetBlocks !== undefined;
   const format = useMemo(
     (): MessageDocumentFormat => ({
@@ -220,23 +209,6 @@ export function DynamicMessageEditor({
   );
   const multiLine = markdown && !singleLine;
   const { context } = site;
-  const conditionValues = site.conditions?.values ?? NOTHING;
-  const dynamicAttributes = site.dynamicAttributes?.values ?? NOTHING;
-  const setConditions = readOnly ? undefined : site.conditions?.set;
-  const setDynamicAttributes = readOnly
-    ? undefined
-    : site.dynamicAttributes?.set;
-  const subject = site.conditions?.subject;
-  const codebook = site.conditions?.codebook;
-  const aboutChoices = conditionAboutChoices(context, subject);
-  const allowEgoRules =
-    site.conditions?.allowEgoRules === true && context.roles.has('ego');
-  // An “If” can be written where conditions can be, and where there is
-  // something for its rules to be about.
-  const writesConditions =
-    setConditions !== undefined && (aboutChoices.length > 0 || allowEgoRules);
-  const [pendingLogicBlock, setPendingLogicBlock] =
-    useState<HTMLElement | null>(null);
   const [openPill, setOpenPill] = useState<OpenPill | null>(null);
   // The editor's commands, for a pill's settings, which stand outside the
   // editor and can take the pill out of the text: the host's ref, if it
@@ -246,94 +218,23 @@ export function DynamicMessageEditor({
 
   const logicBlocks = useLogicBlocks();
 
-  const labelText = (label: unknown): string =>
-    label === undefined
-      ? ''
-      : resolveTranslation(label, localization, locale).text;
-  const naming = namingFor(intl, {
-    context,
-    codebook,
-    conditions: conditionValues,
-    dynamicAttributes: dynamicAttributes,
-    labelText,
-    wordingOf: (wording) =>
-      resolveStoredTranslation(wording, localization, locale),
-    interfaceLanguage: { lang: intl.locale, dir: appDirection },
-  });
-  const choices = dynamicValueChoices(context);
-  const scope: ConditionScope = {
-    aboutChoices,
-    codebook,
-    subject,
-    allowEgoRules,
-  };
-  const sentenceOf = (condition: ConditionDraft): string =>
-    conditionSentence(condition, {
-      codebook: conditionCodebook(
-        codebook,
-        subject,
-        condition.about ?? aboutChoices[0],
-        allowEgoRules,
-      ),
-      intl,
-      localization,
-      locale,
-    });
-
-  const environment: DynamicTextEnvironment = {
-    owner: site.owner ?? 'stage',
+  const { environment, naming, choices, pillLabelsKey } = useEditorEnvironment({
+    site,
     locale,
-    defaultLocale: localization?.defaultLocale ?? locale,
-    naming,
-    choices,
-    conditions: {
-      values: conditionValues,
-      ...(setConditions !== undefined && { set: setConditions }),
-      scope,
-      writes: writesConditions,
-    },
-    dynamicAttributes: {
-      values: dynamicAttributes,
-      ...(setDynamicAttributes !== undefined && { set: setDynamicAttributes }),
-      usageCount: site.dynamicAttributeUsage ?? ONE_PLACE,
-    },
-    isForm: fields !== undefined,
-    ...(fields !== undefined && {
-      formFieldVariable: (fieldId: string) =>
-        fields.fieldText(fieldId)?.variable,
-    }),
-    editable: !readOnly && disabled !== true,
-    labelText,
-    sentenceOf,
-    conditionSentence: (conditionId) =>
-      sentenceOf(
-        asConditionDraft(
-          Object.hasOwn(conditionValues, conditionId)
-            ? conditionValues[conditionId]
-            : undefined,
-        ),
-      ),
-    pendingLogicBlock,
-    setPendingLogicBlock,
-  };
+    readOnly,
+    disabled,
+    formFieldVariable:
+      fields === undefined
+        ? undefined
+        : (fieldId: string) => fields.fieldText(fieldId)?.variable,
+    ownDynamicAttribute,
+    editors: WORDING_EDITORS,
+  });
+  const conditionValues = environment.conditions.values;
+  const setConditions = environment.conditions.set;
+  const writesConditions = environment.conditions.writes;
+  const { setPendingLogicBlock } = environment;
 
-  // What every pill says, so a renamed attribute, a changed dynamic attribute
-  // or another language redraws the pills of a document already open. Worked
-  // out again only when one of those changes, not on every keystroke.
-  const pillLabelsKey = useMemo(
-    () =>
-      JSON.stringify([
-        locale,
-        intl.locale,
-        appDirection,
-        choices.map((choice) => [
-          choice.name,
-          presentationalTextValue(naming.valueLabel(choice)),
-        ]),
-        dynamicAttributes,
-      ]),
-    [locale, intl.locale, appDirection, choices, naming, dynamicAttributes],
-  );
   const pillsKey = JSON.stringify([
     pillLabelsKey,
     message === '' ? [] : dynamicValueNamesIn(message),
@@ -507,3 +408,23 @@ export function DynamicMessageEditor({
     </DynamicTextEnvironmentContext>
   );
 }
+
+/**
+ * The editors of a dynamic attribute's wording (`WordingEditors`): a version
+ * is one line of markdown that shows values, as other one-line text is; number
+ * wording is `NumberWordingEditor`. For a host that draws number wording on
+ * its own, as the translation table does.
+ */
+export const WORDING_EDITORS: WordingEditors = {
+  version: ({ onMessageChange, ...props }) => (
+    <DynamicMessageEditor
+      {...props}
+      markdown
+      singleLine
+      onMessageChange={(message) => onMessageChange(message ?? '')}
+    />
+  ),
+  number: ({ placeholder: _placeholder, ...props }) => (
+    <NumberWordingEditor {...props} editors={WORDING_EDITORS} />
+  ),
+};

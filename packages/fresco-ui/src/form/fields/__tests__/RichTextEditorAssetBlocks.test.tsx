@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -163,7 +163,7 @@ describe('a block the value holds', () => {
     expect(screen.getByTestId('view')).toHaveAttribute('data-editable', 'true');
   });
 
-  it('keeps a valid size and alignment', async () => {
+  it('keeps a valid size, and drops an alignment, which no block has', async () => {
     const field = renderField({
       value: doc(
         block({ assetId: 'a1', size: 'small', align: 'end', loop: false }),
@@ -172,11 +172,9 @@ describe('a block the value holds', () => {
     });
     await field.editor();
 
-    expect(attributesShown()).toMatchObject({
-      size: 'small',
-      align: 'end',
-      loop: false,
-    });
+    expect(attributesShown()).toEqual(
+      assetBlockAttributes({ size: 'small', loop: false }),
+    );
   });
 
   it('changes its attributes when the view updates them, and says so', async () => {
@@ -533,6 +531,148 @@ describe('controls a view draws over the page', () => {
       screen.getByRole('textbox', { name: 'Description' }),
     ).toBeInTheDocument();
     expect(field.onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('the resize handle', () => {
+  // Nothing but a block, so the field opens with it selected.
+  const openOnBlock = async (attrs: Record<string, unknown> = {}) => {
+    const field = renderField({
+      autoFocus: true,
+      value: doc(block({ assetId: 'a1', ...attrs })),
+    });
+    const editor = await field.editor();
+    await waitFor(() => {
+      expect(screen.getByTestId('view')).toHaveAttribute(
+        'data-selected',
+        'true',
+      );
+    });
+    return { field, editor };
+  };
+
+  const handle = () => screen.getByRole('slider', { name: 'Display size' });
+
+  it('is a slider named in English, showing the size the block has', async () => {
+    await openOnBlock({ size: 'medium' });
+
+    expect(handle()).toHaveAttribute('lang', 'en');
+    expect(handle()).toHaveAttribute('aria-valuetext', 'Medium');
+    expect(handle()).toHaveAttribute('aria-valuenow', '1');
+    expect(handle()).toHaveAttribute('aria-valuemin', '0');
+    expect(handle()).toHaveAttribute('aria-valuemax', '3');
+    // Inside the element that the view's frame is drawn round.
+    expect(screen.getByTestId('picture')).toContainElement(handle());
+  });
+
+  it('is not shown while the block is not selected, nor in a field that cannot be edited', async () => {
+    const field = renderField({
+      value: doc(
+        paragraph('Before'),
+        block({ assetId: 'a1' }),
+        paragraph('After'),
+      ),
+    });
+    const editor = await field.editor();
+    // The caret in the text.
+    await field.user.click(within(editor).getByText('After'));
+    await waitFor(() => {
+      expect(screen.getByTestId('view')).toHaveAttribute(
+        'data-selected',
+        'false',
+      );
+    });
+    expect(screen.queryByRole('slider')).toBeNull();
+
+    // Selected, it shows; once the field cannot be edited, it goes.
+    field.change({ value: doc(block({ assetId: 'a1' })), autoFocus: true });
+    expect(
+      await screen.findByRole('slider', { name: 'Display size' }),
+    ).toBeInTheDocument();
+    field.change({
+      value: doc(block({ assetId: 'a1' })),
+      autoFocus: true,
+      readOnly: true,
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('slider')).toBeNull();
+    });
+  });
+
+  it('goes with the frame when focus leaves the field, the block still selected', async () => {
+    const { field } = await openOnBlock();
+    render(<button type="button">Elsewhere</button>);
+    expect(handle()).toBeInTheDocument();
+
+    await field.user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('slider')).toBeNull();
+    });
+    expect(screen.getByTestId('view')).toHaveAttribute('data-selected', 'true');
+  });
+
+  it.each([
+    ['{ArrowDown}', null, 'large'],
+    ['{ArrowLeft}', null, 'large'],
+    ['{ArrowUp}', 'small', 'medium'],
+    ['{ArrowUp}', 'large', null],
+    ['{ArrowRight}', 'small', 'medium'],
+    ['{Home}', 'large', 'small'],
+    ['{End}', 'small', null],
+  ] as const)(
+    'moves a size at a time with %s, from %s to %s',
+    async (key, from, to) => {
+      const { field } = await openOnBlock({ size: from });
+      act(() => handle().focus());
+
+      await field.user.keyboard(key);
+
+      await waitFor(() => {
+        expect(attributesShown().size).toBe(to);
+      });
+      expect(field.lastDocument()?.content?.[0]).toMatchObject({
+        type: 'assetBlock',
+        attrs: { size: to },
+      });
+      // Focus stays on the handle, which names the new size.
+      expect(handle()).toHaveFocus();
+      expect(handle()).toHaveAttribute(
+        'aria-valuetext',
+        to === null
+          ? 'Full size'
+          : { small: 'Small', medium: 'Medium', large: 'Large' }[to],
+      );
+    },
+  );
+
+  it('changes nothing past either end', async () => {
+    const { field } = await openOnBlock({ size: 'small' });
+    act(() => handle().focus());
+
+    await field.user.keyboard('{ArrowDown}{Home}');
+
+    expect(attributesShown().size).toBe('small');
+    expect(field.onChange).not.toHaveBeenCalled();
+  });
+
+  it('returns to the text with Escape, where one undo takes the size back', async () => {
+    const { field, editor } = await openOnBlock({ size: 'small' });
+    act(() => handle().focus());
+    await field.user.keyboard('{ArrowUp}');
+    await waitFor(() => {
+      expect(attributesShown().size).toBe('medium');
+    });
+
+    await field.user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(editor).toHaveFocus();
+    });
+    expect(screen.getByTestId('view')).toHaveAttribute('data-selected', 'true');
+    await field.user.keyboard(withMod('z'));
+
+    await waitFor(() => {
+      expect(attributesShown().size).toBe('small');
+    });
   });
 });
 

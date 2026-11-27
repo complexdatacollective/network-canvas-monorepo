@@ -5,7 +5,6 @@ import {
   dynamicValueNamesIn,
   MISSING_CASE,
 } from '../../localization/dynamicValueMessages.ts';
-import { logicValueNames } from '../../localization/logic.ts';
 import {
   type MessageNode,
   messageStructure,
@@ -14,10 +13,11 @@ import {
 import type { StageSubject } from './common/subjects.ts';
 import {
   type DynamicAttribute,
-  logicOfDynamicAttribute,
+  valueNamesReadThrough,
 } from './dynamic-attributes.ts';
 import {
   BOOLEAN_CASES,
+  dynamicValueNameFor,
   type DynamicValueRole,
   INTRINSIC_DYNAMIC_VALUES,
   optionCaseKey,
@@ -47,7 +47,13 @@ import { isSameOptionValue } from './variables/variable.ts';
  *   draws one: only that node, by its attributes and the label the interview
  *   would otherwise choose for it. It sits on no stage, so
  *   `nodeLabelValueContext` gives what it can show rather than
- *   `dynamicValueRolesAt`.
+ *   `dynamicValueRolesAt`;
+ * - `dynamicAttribute`, the wording of a version of a dynamic attribute,
+ *   shown wherever its owner's text shows the dynamic attribute: what any
+ *   text of its owner can show (`stageDynamicValueContext`, or a node label's
+ *   own context). Whether each value it shows can be read where the dynamic
+ *   attribute is shown is checked with the text that shows it
+ *   (`dynamicValueStatus`).
  *
  * Text at any site can also choose its wording by a condition: a set of
  * rules asked of what the text can show there (see `conditions.ts`).
@@ -56,7 +62,8 @@ export type DynamicValueSite =
   | 'stageText'
   | 'prompt'
   | 'formField'
-  | 'nodeLabel';
+  | 'nodeLabel'
+  | 'dynamicAttribute';
 
 export {
   type AttributeDynamicValueRole,
@@ -648,12 +655,15 @@ export const dynamicValueStatus = (
         problem: `chooses between versions by each value of ${description}, but ${ANSWERS_ARE_NOT_CASES}`,
       };
     }
-    // The definition's own logic is read where the text is shown, so each
-    // value it reads must be one that this text can read. A value that does
-    // not exist, or an answer that it does not have, is a problem of the
-    // definition, reported there (`findDynamicAttributeProblems`).
-    for (const readName of logicValueNames(
-      logicOfDynamicAttribute(definition),
+    // The definition's own logic and wording are read where the text is
+    // shown, and so are those of the dynamic attributes its wording shows,
+    // so each value they read must be one that this text can read. A value
+    // that does not exist, an answer that it does not have, and a dynamic
+    // attribute that shows itself are problems of the definition, reported
+    // there (`findDynamicAttributeProblems`).
+    for (const readName of valueNamesReadThrough(
+      [dynamicValueNameFor(parsed)],
+      Object.fromEntries(context.dynamicAttributes ?? []),
     )) {
       const read = parseDynamicValueName(readName);
       const status = dynamicValueStatus(

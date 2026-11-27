@@ -141,14 +141,6 @@ const inlineValue = (id: string): RichTextContent => ({
   attrs: { id },
 });
 
-/**
- * The editor's content for the number that the plural on `argument` shows
- * (`#`), to put into one of its versions.
- */
-export const countContent = (argument: string): RichTextContent[] => [
-  inlineValue(countTokenId(argument)),
-];
-
 // ---------------------------------------------------------------------------
 // Logic blocks as the editor holds them
 // ---------------------------------------------------------------------------

@@ -1,14 +1,18 @@
 import { z } from 'zod';
 
+import { dynamicValueNamesIn } from '../../localization/dynamicValueMessages.ts';
 import {
   type Logic,
+  logicValueNames,
   logicVersions,
   type LogicVersionRole,
   type NumberVersionsByMessage,
 } from '../../localization/logic.ts';
+import type { MessageArguments } from '../../localization/messageArguments.ts';
+import { parseDynamicValueName } from './dynamic-value-names.ts';
 import {
   emptyOrNonBlankText,
-  localizedMessage,
+  heldTranslations,
   localizedString,
   type LocalizedString,
 } from './localized-string.ts';
@@ -30,22 +34,45 @@ import {
  */
 
 /**
- * The wording of one version: a few plain words, on one line. An empty
- * version shows nothing (a mark shown only for some answers, say).
+ * The wording of one version: a few words on one line, written as any other
+ * one line of text is (markdown, so bold and italics, and the values its
+ * owner's text can show, including other dynamic attributes). An empty
+ * version shows nothing (a mark shown only for some answers, say). Which
+ * values it shows, and that no dynamic attribute shows itself through it, is
+ * checked against its owner (`findDynamicAttributeProblems`).
  */
 const versionWording = () =>
-  localizedString(emptyOrNonBlankText(), { format: 'plain', lines: 'single' });
+  localizedString(
+    emptyOrNonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    { dynamicValues: 'dynamicAttribute' },
+  );
+
+/**
+ * The name, in number wording, of the number that it is worded for.
+ */
+export const NUMBER_WORDING_COUNT = 'count';
+
+/**
+ * What number wording may use besides the values that other wording shows:
+ * the number it is worded for, as a plural whose versions may be empty.
+ */
+export const NUMBER_WORDING_ARGUMENTS: MessageArguments = {
+  [NUMBER_WORDING_COUNT]: { kind: 'plural', emptyVersions: true },
+};
 
 /**
  * The wording for a number, with a version for each plural category that the
- * language has (`{count, plural, one {# child} other {# children}}`). The
- * wording, or the version of any plural category, may be empty, and then
- * shows nothing.
+ * language has (`{count, plural, one {# child} other {# children}}`), each
+ * written as other wording is (`versionWording`). The wording, or the
+ * version of any plural category, may be empty, and then shows nothing.
  */
 const numberWording = () =>
-  localizedMessage(emptyOrNonBlankText(), {
-    arguments: { count: { kind: 'plural', emptyVersions: true } },
-  });
+  localizedString(
+    emptyOrNonBlankText(),
+    { format: 'markdown', lines: 'single' },
+    { dynamicValues: 'dynamicAttribute', arguments: NUMBER_WORDING_ARGUMENTS },
+  );
 
 const DYNAMIC_VALUE_NAME = 'dynamicValueName' as const;
 
@@ -354,3 +381,125 @@ export const dynamicAttributeVersions = (
     role,
     ...(key !== undefined && { key }),
   }));
+
+/**
+ * Every value name that the wording of a dynamic attribute's versions shows,
+ * in any language, each once: attributes, other dynamic attributes and the
+ * rest. The number that number wording is worded for is not a value.
+ * `definition` is read leniently, as a dynamic attribute that is still being
+ * written has it; one that is not a dynamic attribute shows none.
+ */
+export const dynamicAttributeWordingNames = (
+  definition: unknown,
+): readonly string[] => {
+  const logic = readDynamicAttributeLogic(definition);
+  if (logic === undefined) return [];
+  const names = new Set<string>();
+  for (const { role, content } of logicVersions(logic)) {
+    for (const message of Object.values(heldTranslations(content))) {
+      for (const name of dynamicValueNamesIn(message)) {
+        if (role === 'number' && name === NUMBER_WORDING_COUNT) continue;
+        names.add(name);
+      }
+    }
+  }
+  return [...names];
+};
+
+/**
+ * Every value name that a dynamic attribute reads, each once: what its logic
+ * chooses a version by (`logicValueNames`), then what its versions' wording
+ * shows (`dynamicAttributeWordingNames`). Read leniently.
+ */
+export const dynamicAttributeValueNames = (
+  definition: unknown,
+): readonly string[] => {
+  const logic = readDynamicAttributeLogic(definition);
+  return [
+    ...new Set([
+      ...(logic === undefined ? [] : logicValueNames(logic)),
+      ...dynamicAttributeWordingNames(definition),
+    ]),
+  ];
+};
+
+type Definitions = Readonly<Record<string, unknown>>;
+
+/** The ids of the dynamic attributes that `names` name, in order. */
+const dynamicAttributeIdsIn = (names: readonly string[]): string[] =>
+  names.flatMap((name) => {
+    const parsed = parseDynamicValueName(name);
+    return parsed?.kind === 'dynamicAttribute' ? [parsed.id] : [];
+  });
+
+/**
+ * The dynamic attributes of `definitions` that the wording of the dynamic
+ * attribute `id` shows, directly or through the wording of the ones it
+ * shows, each once. Includes `id` itself when it shows itself, directly or
+ * through others. One that `definitions` lacks is left out.
+ */
+export const dynamicAttributesShownBy = (
+  id: string,
+  definitions: Definitions,
+): ReadonlySet<string> => {
+  const shown = new Set<string>();
+  const pending = [id];
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (next === undefined || !Object.hasOwn(definitions, next)) continue;
+    for (const shownId of dynamicAttributeIdsIn(
+      dynamicAttributeWordingNames(definitions[next]),
+    )) {
+      if (shown.has(shownId) || !Object.hasOwn(definitions, shownId)) {
+        continue;
+      }
+      shown.add(shownId);
+      pending.push(shownId);
+    }
+  }
+  return shown;
+};
+
+/**
+ * Whether the wording of the dynamic attribute `id` may show the dynamic
+ * attribute `candidate`: not itself, and not one that shows it, directly or
+ * through others, which would never finish showing. What the Attribute menu
+ * of a version's wording offers.
+ */
+export const dynamicAttributeMayShow = (
+  id: string,
+  candidate: string,
+  definitions: Definitions,
+): boolean =>
+  candidate !== id && !dynamicAttributesShownBy(candidate, definitions).has(id);
+
+/**
+ * Every value name that the dynamic attributes named in `names` read, through
+ * their logic and their wording and through the dynamic attributes their
+ * wording shows, each once, with none of the dynamic attributes' own names:
+ * what a text that shows them needs to be read. A dynamic attribute that
+ * `definitions` lacks reads nothing.
+ */
+export const valueNamesReadThrough = (
+  names: readonly string[],
+  definitions: Definitions,
+): readonly string[] => {
+  const read = new Set<string>();
+  const visited = new Set<string>();
+  const pending = [...names];
+  while (pending.length > 0) {
+    const name = pending.shift();
+    if (name === undefined) continue;
+    const parsed = parseDynamicValueName(name);
+    if (parsed?.kind !== 'dynamicAttribute') {
+      read.add(name);
+      continue;
+    }
+    if (visited.has(parsed.id) || !Object.hasOwn(definitions, parsed.id)) {
+      continue;
+    }
+    visited.add(parsed.id);
+    pending.push(...dynamicAttributeValueNames(definitions[parsed.id]));
+  }
+  return [...read];
+};

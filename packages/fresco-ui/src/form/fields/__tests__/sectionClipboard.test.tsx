@@ -54,7 +54,6 @@ const englishForm = doc(
       assetId: 'network',
       description: 'A network',
       size: null,
-      align: 'center',
       autoplay: true,
       loop: true,
     },

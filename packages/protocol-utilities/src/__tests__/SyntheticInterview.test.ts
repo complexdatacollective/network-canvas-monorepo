@@ -1944,11 +1944,11 @@ describe('addInformationStage content', () => {
       text: 'Look',
       blocks: [
         { assetId: 'img-1', description: 'A map', size: 'large' },
-        { assetId: 'vid-1', autoplay: false, loop: false, align: 'end' },
+        { assetId: 'vid-1', autoplay: false, loop: false },
       ],
     });
     expect(contentOf(synth).en).toBe(
-      '# Media\n\nLook\n\n![A map](asset:img-1?size=large)\n\n![](asset:vid-1?align=end&autoplay=false&loop=false)',
+      '# Media\n\nLook\n\n![A map](asset:img-1?size=large)\n\n![](asset:vid-1?autoplay=false&loop=false)',
     );
   });
 

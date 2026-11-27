@@ -24,7 +24,6 @@ import {
   useRef,
 } from 'react';
 
-import { cx } from '../../../utils/cva';
 import { FIELD_BLOCK_NODE } from './fieldBlockNode';
 import { PLACEHOLDER_CLASSES } from './placeholderClasses';
 import { insertSection, SECTION_GROUP } from './sectionBlocks';
@@ -91,6 +90,12 @@ export type RichTextLogicBlockViewProps = Readonly<{
   remove: () => void;
   /** Selects the whole block, with the keyboard in the text. */
   select: () => void;
+  /**
+   * Selects the whole block and leaves focus where it is: for a control of
+   * the block's own that opens over the page, such as its settings, which
+   * take focus themselves.
+   */
+  selectKeepingFocus: () => void;
   /** The block as drawn, for anchoring a popover to. */
   element: () => HTMLElement | null;
   /** Where the document's field blocks are, seen from this block, now. */
@@ -364,6 +369,11 @@ function LogicBlockView({
               if (position === undefined) return;
               editor.chain().focus().setNodeSelection(position).run();
             }}
+            selectKeepingFocus={() => {
+              const position = getPos();
+              if (position === undefined) return;
+              editor.commands.setNodeSelection(position);
+            }}
             element={() => frame.current}
             fieldScope={() => {
               const position = getPos();
@@ -398,13 +408,10 @@ function LogicBranchView({ node, editor, getPos }: ReactNodeViewProps) {
       data-logic-branch-view=""
       data-key={branchOf(node).key}
       data-empty={empty || undefined}
-      className={cx(
-        'border-info/40 px-4 py-3 not-first:border-t not-first:border-dashed',
-        empty && 'flex flex-wrap items-baseline gap-x-2',
-      )}
+      className="px-4 pt-3 last:pb-4"
     >
       {blocks !== null && (
-        <div contentEditable={false} className="select-none">
+        <div contentEditable={false} className="mb-1.5 select-none">
           <blocks.BranchLabel
             blockMeta={block?.attrs.meta as unknown}
             branch={branchOf(node)}
@@ -415,11 +422,16 @@ function LogicBranchView({ node, editor, getPos }: ReactNodeViewProps) {
         </div>
       )}
       {/*
-        What the branch shows starts 40px in, a gutter for the drag handles of
-        the blocks in it (see `BlockFrameLayer`). An empty branch holds none,
-        and says so on the line of its label.
+        What the branch shows is written in a box of its own, as wide as the
+        block, under its label. The box is not a block: it has no handle and
+        is not moved. It starts with a gutter for the drag handles of the
+        blocks in it, 40px before them (see `BlockFrameLayer`). An empty
+        branch holds none: its one empty line says that nothing is shown.
       */}
-      <NodeViewContent className={empty ? 'min-w-0 flex-1' : 'ps-6'} />
+      <NodeViewContent
+        data-logic-branch-content=""
+        className="bg-input rounded-sm border border-current/15 py-2 ps-12 pe-4"
+      />
     </NodeViewWrapper>
   );
 }

@@ -23,7 +23,6 @@ import {
   messageVariants,
   missingPlacementsOf,
   type MissingPlacement,
-  pluralCategoriesOf,
   pluralCountExamples,
   pluralValueExamples,
   printMessageStructure,
@@ -32,7 +31,6 @@ import {
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { asLocalizedString } from '../localization/localizedText.ts';
 import {
-  countContent,
   countTokenId,
   documentToMessageNodes,
   inlineContent,
@@ -53,7 +51,7 @@ import {
   useAttributeMenuState,
 } from './dynamicText/AttributeMenuButton.tsx';
 import { MessageNodesSummary } from './dynamicText/DynamicMessageSummary.tsx';
-import { versionLabelMessages } from './dynamicText/versionLabels.ts';
+import { numberSwitchLabels } from './dynamicText/versionLabels.ts';
 import {
   type MessageArgumentLabels,
   messageArgumentLabels,
@@ -123,31 +121,6 @@ const pluralCategories = (locale: LocaleTag): string[] => {
   );
   return [...categories, 'other'];
 };
-
-/**
- * What a switch on a number is called, and each of its versions: examples
- * of the numbers it is for, in `locale`.
- */
-const numberSwitchLabels = (intl: IntlShape, locale: LocaleTag) => ({
-  switchLabel: (value: string) => `Wording that fits the number ${value}`,
-  versionLabel: (key: string) => {
-    const exact = /^=(\d+)$/.exec(key);
-    const counts = exact
-      ? [Number(exact[1])]
-      : ([...pluralValueExamples(locale)].find(
-          ([category]) => category === key,
-        )?.[1] ?? []);
-    const shown = counts
-      .slice(0, EXAMPLE_COUNT)
-      .map((count) => intl.formatNumber(count));
-    return intl.formatMessage(versionLabelMessages.numbers, {
-      numbers: intl.formatList(
-        counts.length > EXAMPLE_COUNT ? [...shown, '…'] : shown,
-        { type: 'unit', style: 'short' },
-      ),
-    });
-  },
-});
 
 /** Whether some version of a switch in `nodes`, at any depth, shows nothing. */
 const hasBlankVersion = (nodes: readonly MessageNode[]): boolean =>
@@ -576,30 +549,7 @@ type LocalizedMessageVersionsProps = Readonly<{
   autoFocus?: boolean;
   /** Classes for the editor's own frame, which holds its text and toolbar. */
   className?: string;
-  /**
-   * For the number wording of a dynamic attribute (`{count, plural, …}`): a
-   * language without wording yet starts from an empty version for each of
-   * its plural forms, so that each can be written (nothing is stored until
-   * one is), and the Attribute menu offers the number, which a version shows
-   * only where it is put in.
-   */
-  numberWording?: boolean;
-  /**
-   * Names of placeholders, by argument, in place of the names that Network
-   * Canvas gives them: the number of number wording named for the attribute
-   * it counts, say.
-   */
-  valueLabels?: Readonly<Record<string, string>>;
 }>;
-
-/**
- * A plural message on `count` with an empty version for each of `locale`'s
- * plural forms: where number wording starts.
- */
-const numberWordingTemplate = (locale: LocaleTag): string =>
-  `{count, plural, ${pluralCategoriesOf(locale)
-    .map((category) => `${category} {}`)
-    .join(' ')}}`;
 
 /**
  * One translation of a localized message, edited as other text is: one line
@@ -626,23 +576,10 @@ export function LocalizedMessageVersions({
   ariaInvalid,
   autoFocus = false,
   className,
-  numberWording = false,
-  valueLabels,
 }: LocalizedMessageVersionsProps) {
-  // What the editor opens: the stored translation, or where number wording
-  // starts.
-  const shown =
-    numberWording && message === '' ? numberWordingTemplate(locale) : message;
   const intl = useAppIntl();
   const labelLanguage = useInterfaceLanguage();
-  const ownLabels = useMessageArgumentLabels();
-  const argumentLabels =
-    valueLabels === undefined
-      ? ownLabels
-      : {
-          ...ownLabels,
-          placeholderLabels: { ...ownLabels.placeholderLabels, ...valueLabels },
-        };
+  const argumentLabels = useMessageArgumentLabels();
   const { valueLabel, labels } = messageNaming(
     declaration,
     locale,
@@ -650,7 +587,7 @@ export function LocalizedMessageVersions({
     argumentLabels,
   );
 
-  const missing = missingPlacementsOf(shown, declaration, locale);
+  const missing = missingPlacementsOf(message, declaration, locale);
   // Whether the version being written requires `argument` and does not show
   // it: some version of the message for the cases that the caret is in.
   const missingIn =
@@ -667,21 +604,10 @@ export function LocalizedMessageVersions({
 
   // What the Attribute menu offers: each placeholder, as a value the
   // interview fills in, and each choice and number as wording with a
-  // version for each of its cases or plural forms. Number wording is that
-  // plural's versions, so its number is offered as a value, to put in a
-  // version.
+  // version for each of its cases or plural forms.
   const entries: SuppliedWordingEntry[] = Object.entries(declaration).map(
     ([argument, declared]): SuppliedWordingEntry => {
       const label = valueLabel(argument);
-      if (numberWording && declared.kind === 'plural') {
-        return {
-          value: `value:${argument}`,
-          label,
-          group: 'interview',
-          required: missingIn(argument),
-          content: countContent(argument),
-        };
-      }
       if (declared.kind === 'text') {
         return {
           value: `value:${argument}`,
@@ -761,7 +687,7 @@ export function LocalizedMessageVersions({
   const labelsKey = `${intl.locale}:${locale}`;
 
   const opened = useMessageDocument({
-    text: shown,
+    text: message,
     // The labels follow the languages and the declaration; the message
     // decides the document.
     openKey: `${name}:${labelsKey}:${JSON.stringify(declaration)}`,
@@ -771,9 +697,6 @@ export function LocalizedMessageVersions({
       const nodes = documentToMessageNodes(document, FORMAT);
       return isBlankStructure(nodes) ? undefined : printMessageStructure(nodes);
     },
-    // The template that number wording starts from is written only once it
-    // is changed.
-    holds: (written) => (written ?? '') === message || written === shown,
     onWrite: onMessageChange,
   });
 

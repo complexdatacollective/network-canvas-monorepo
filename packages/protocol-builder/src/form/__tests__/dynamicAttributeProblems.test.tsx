@@ -109,15 +109,15 @@ describe('a dynamic attribute whose version the schema refuses', () => {
     ]);
   });
 
-  it('names the dynamic attribute and the version when the wording is not plain words', async () => {
+  it('names the dynamic attribute and the version when the wording chooses between versions inside its sentence', async () => {
     const harness = await openWithAnswer(HAPPY, {
-      other: { 'en-US': 'you {sic}' },
+      other: { 'en-US': 'you {sic, select, a {b} other {c}}' },
     });
 
     expect(await harness.submit()).toBeNull();
     expect(harness.problems()).toEqual([
       expect.stringMatching(
-        /^Dynamic attribute “fine \/ cheerful \/ you \{sic\}”, version “Any other answer”: /,
+        /^Dynamic attribute “fine \/ cheerful.*”, version “Any other answer”: This wording chooses between versions inside a sentence/,
       ),
     ]);
   });

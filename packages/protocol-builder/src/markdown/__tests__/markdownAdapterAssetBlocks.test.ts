@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
 import {
-  ASSET_BLOCK_ALIGNMENTS,
   ASSET_BLOCK_SIZES,
   assetBlocksInMarkdown,
 } from '@codaco/protocol-validation';
@@ -41,14 +40,11 @@ describe('reading an asset image as a block', () => {
   });
 
   it('reads every setting from the address', () => {
-    expect(
-      read('![](asset:a1?size=large&align=end&autoplay=false&loop=false)'),
-    ).toEqual({
+    expect(read('![](asset:a1?size=large&autoplay=false&loop=false)')).toEqual({
       type: 'doc',
       content: [
         blockNode({
           size: 'large',
-          align: 'end',
           autoplay: false,
           loop: false,
         }),
@@ -70,7 +66,6 @@ describe('reading an asset image as a block', () => {
       'assetId',
       'description',
       'size',
-      'align',
       'autoplay',
       'loop',
     ]);
@@ -182,11 +177,11 @@ describe('writing a block as markdown', () => {
     );
   });
 
-  it('writes a default alignment, autoplay and loop as nothing', () => {
+  it('writes a default autoplay and loop as nothing', () => {
     expect(
       write({
         type: 'doc',
-        content: [blockNode({ align: 'center', autoplay: true, loop: true })],
+        content: [blockNode({ autoplay: true, loop: true })],
       }),
     ).toBe('![](asset:a1)');
   });
@@ -211,24 +206,25 @@ describe('writing a block as markdown', () => {
     expect(write({ type: 'doc', content: [blockNode({})] })).not.toBe('');
   });
 
-  it('ignores a size or alignment the editor could not have set', () => {
+  // Every block is centred: an alignment that a saved value holds is no
+  // setting of a block's, and is not written.
+  it('ignores a size or an alignment that the editor could not have set', () => {
     expect(
       write({
         type: 'doc',
-        content: [blockNode({ size: 'huge', align: 'diagonal' })],
+        content: [blockNode({ size: 'huge', align: 'end' })],
       }),
     ).toBe('![](asset:a1)');
   });
 
   it.each([
     ['a size', { size: 'medium' }, '![](asset:a1?size=medium)'],
-    ['an alignment', { align: 'end' }, '![](asset:a1?align=end)'],
     ['autoplay off', { autoplay: false }, '![](asset:a1?autoplay=false)'],
     ['loop off', { loop: false }, '![](asset:a1?loop=false)'],
     [
       'everything',
-      { size: 'small', align: 'start', autoplay: false, loop: false },
-      '![](asset:a1?size=small&align=start&autoplay=false&loop=false)',
+      { size: 'small', autoplay: false, loop: false },
+      '![](asset:a1?size=small&autoplay=false&loop=false)',
     ],
   ])('writes %s', (_kind, attrs, expected) => {
     expect(write({ type: 'doc', content: [blockNode(attrs)] })).toBe(expected);
@@ -236,15 +232,13 @@ describe('writing a block as markdown', () => {
 });
 
 describe('a block through markdown and back', () => {
-  // Every setting a block can be given, so a new size or position is
+  // Every setting a block can be given, so a new size or setting is
   // covered as soon as it exists.
   const sizes = [null, ...ASSET_BLOCK_SIZES];
   const flags = [true, false] as const;
   const combinations = sizes.flatMap((size) =>
-    ASSET_BLOCK_ALIGNMENTS.flatMap((align) =>
-      flags.flatMap((autoplay) =>
-        flags.map((loop) => ({ size, align, autoplay, loop })),
-      ),
+    flags.flatMap((autoplay) =>
+      flags.map((loop) => ({ size, autoplay, loop })),
     ),
   );
 
@@ -390,7 +384,7 @@ describe('a line break beside a block', () => {
 describe('a block whose address is written between angle brackets', () => {
   const written = [
     '![A map](<asset:a1>)',
-    '![A map](<asset:a1?size=small&align=end>)',
+    '![A map](<asset:a1?size=small&loop=false>)',
     '![A map](<asset:a1> "A title")',
     'Before\n\n![A map](<asset:a1>)\n\nAfter > before',
     '1. Item\n\n   ![A map](<asset:a1>)',

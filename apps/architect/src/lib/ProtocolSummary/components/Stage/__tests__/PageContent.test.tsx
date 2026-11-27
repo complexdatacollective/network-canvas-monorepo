@@ -100,9 +100,9 @@ describe('Protocol Summary page content', () => {
     expect(screen.getByText(/Some/)).toBeInTheDocument();
   });
 
-  it('prints an image block with its description, size and position, and no playback', () => {
+  it('prints an image block with its description and size, and no playback', () => {
     renderStage('Information', {
-      en: '![A map of the area](asset:map?size=medium&align=end)',
+      en: '![A map of the area](asset:map?size=medium)',
     });
 
     expect(rowsOf(only('image'))).toEqual([
@@ -110,7 +110,6 @@ describe('Protocol Summary page content', () => {
       ['Name', 'map.png'],
       ['Description', 'A map of the area'],
       ['Block Size', 'Medium'],
-      ['Position', 'Where a line of text ends'],
     ]);
   });
 
@@ -124,7 +123,7 @@ describe('Protocol Summary page content', () => {
     ).toHaveAttribute('href', expect.stringContaining('#asset-map'));
   });
 
-  it('leaves out the size and position of an image as wide as the page, and the description of one with none', () => {
+  it('leaves out the size of an image as wide as the page, and the description of one with none', () => {
     renderStage('Information', { en: '![](asset:map)' });
 
     expect(rowsOf(only('image'))).toEqual([
@@ -133,47 +132,42 @@ describe('Protocol Summary page content', () => {
     ]);
   });
 
-  it('leaves out the position of a sized image that is centred, and of an unsized one that names a side', () => {
+  // Every block is centred, so the summary never says where one sits, even
+  // for an address that tries to place it.
+  it('prints no position for a block whose address tries to place it', () => {
     renderStage('Information', {
-      en: '![](asset:map?size=small)\n\n![](asset:map?align=start)',
+      en: '![](asset:map?size=small&align=start)',
     });
 
-    const [centred, unsized] = blocks('image');
-    expect(rowsOf(centred as Element)).toEqual([
+    expect(rowsOf(only('image'))).toEqual([
       ['Type', 'Image'],
       ['Name', 'map.png'],
       ['Block Size', 'Small'],
     ]);
-    expect(rowsOf(unsized as Element)).toEqual([
-      ['Type', 'Image'],
-      ['Name', 'map.png'],
-    ]);
   });
 
-  it('prints an audio block with its position and playback, and never a size', () => {
+  it('prints an audio block with its playback, and never a size', () => {
     renderStage('Information', {
-      en: '![Their song](asset:song?size=large&align=start&autoplay=false&loop=false)',
+      en: '![Their song](asset:song?size=large&autoplay=false&loop=false)',
     });
 
     expect(rowsOf(only('audio'))).toEqual([
       ['Type', 'Audio'],
       ['Name', 'song.mp3'],
       ['Description', 'Their song'],
-      ['Position', 'Where a line of text starts'],
       ['Playback', 'Started by the participant, and plays once'],
     ]);
   });
 
   it('prints a video block with its size and playback', () => {
     renderStage('Information', {
-      en: '![](asset:clip?size=large&align=end)',
+      en: '![](asset:clip?size=large)',
     });
 
     expect(rowsOf(only('video'))).toEqual([
       ['Type', 'Video'],
       ['Name', 'clip.mp4'],
       ['Block Size', 'Large'],
-      ['Position', 'Where a line of text ends'],
       ['Playback', 'Starts automatically and repeats'],
     ]);
   });
@@ -417,10 +411,10 @@ describe('a page printed as the interview reads it', () => {
   it.each([
     ['a bare address', '![Map](asset:map)'],
     ['a bracketed address', '![Map](<asset:map>)'],
-    ['a bare address with settings', '![Map](asset:map?size=small&align=end)'],
+    ['a bare address with settings', '![Map](asset:map?size=small&loop=false)'],
     [
       'a bracketed address with settings',
-      '![Map](<asset:map?size=small&align=end>)',
+      '![Map](<asset:map?size=small&loop=false>)',
     ],
     ['a bare address with a title', '![Map](asset:map "The area")'],
     ['a bracketed address with a title', '![Map](<asset:map> "The area")'],

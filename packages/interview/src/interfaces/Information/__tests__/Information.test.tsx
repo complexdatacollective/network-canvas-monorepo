@@ -440,73 +440,42 @@ describe('a block’s size', () => {
   });
 });
 
-describe('a block’s alignment', () => {
-  it('sits a sized image at the start or the end of its box', async () => {
+describe('where a block sits', () => {
+  // Markdown has no way to place an image, so every block is centred on its
+  // line, and an address that tries to place one (`align`) places nothing.
+  it('centres a sized image in its box, whatever its address says', async () => {
     renderInformation(
       makeStage(
         [
           '# Page',
-          assetBlockMarkdown({
-            assetId: 'img-1',
-            size: 'small',
-            align: 'start',
-            description: 'start',
-          }),
-          assetBlockMarkdown({
-            assetId: 'img-1',
-            size: 'small',
-            description: 'centre',
-          }),
-          assetBlockMarkdown({
-            assetId: 'img-1',
-            size: 'small',
-            align: 'end',
-            description: 'end',
-          }),
+          '![plain](asset:img-1?size=small)',
+          '![placed](asset:img-1?size=small&align=end)',
         ].join('\n\n'),
       ),
       [IMAGE],
     );
 
     await waitFor(() =>
-      expect(document.querySelectorAll('img')).toHaveLength(3),
+      expect(document.querySelectorAll('img')).toHaveLength(2),
     );
-    expect(screen.getByAltText('start')).toHaveClass('object-left');
-    expect(screen.getByAltText('start')).not.toHaveClass('object-right');
-    expect(screen.getByAltText('end')).toHaveClass('object-right');
-    expect(screen.getByAltText('end')).not.toHaveClass('object-left');
-    expect(screen.getByAltText('centre')).not.toHaveClass('object-left');
-    expect(screen.getByAltText('centre')).not.toHaveClass('object-right');
-  });
-
-  it('leaves an image with no size nowhere to sit but the full width', async () => {
-    renderInformation(pageWith({ assetId: 'img-1', align: 'end' }), [IMAGE]);
-
-    expect(await mediaElement('img')).not.toHaveClass('object-right');
-  });
-
-  it.each([
-    ['start', 'justify-start'],
-    ['center', 'justify-center'],
-    ['end', 'justify-end'],
-  ] as const)('sits an audio player at the %s', async (align, expected) => {
-    // `center` is written as no setting at all, which is how it is stored.
-    renderInformation(pageWith({ assetId: 'aud-1', align }), [AUDIO]);
-
-    const audio = await mediaElement('audio');
-    const block = audio.closest('[data-asset-block]');
-    expect(block).toHaveClass('flex', expected);
-    for (const other of ['justify-start', 'justify-center', 'justify-end']) {
-      if (other !== expected) expect(block).not.toHaveClass(other);
+    for (const name of ['plain', 'placed']) {
+      const image = screen.getByAltText(name);
+      expect(image).toHaveClass('max-h-48', 'object-contain');
+      expect(image.className).not.toMatch(/object-(left|right)/);
     }
   });
 
-  it('centres an audio player that names no alignment', async () => {
-    renderInformation(pageWith({ assetId: 'aud-1' }), [AUDIO]);
+  it.each(['![](asset:aud-1)', '![](asset:aud-1?align=start)'])(
+    'centres an audio player on its line (%s)',
+    async (markdown) => {
+      renderInformation(makeStage(`# Page\n\n${markdown}`), [AUDIO]);
 
-    const audio = await mediaElement('audio');
-    expect(audio.closest('[data-asset-block]')).toHaveClass('justify-center');
-  });
+      const audio = await mediaElement('audio');
+      const block = audio.closest('[data-asset-block]');
+      expect(block).toHaveClass('flex', 'justify-center');
+      expect(block?.className).not.toMatch(/justify-(start|end)/);
+    },
+  );
 });
 
 describe('a block’s autoplay and loop settings', () => {

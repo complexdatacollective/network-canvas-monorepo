@@ -147,7 +147,7 @@ test('keeps a placed image, byte for byte, through an edit of the text around it
   architectPage,
   openInformationPage,
 }) => {
-  const block = '![A photo](asset:photo-asset?size=large&align=end)';
+  const block = '![A photo](asset:photo-asset?size=large&loop=false)';
   await openInformationPage(
     informationProtocol(`# Welcome\n\n${block}\n\nBye`),
     PHOTO_FILE,
@@ -211,7 +211,7 @@ test('shows an image’s settings only while it is selected and the researcher i
   await expect(settings).toBeHidden();
 });
 
-test('resizes an image by dragging its corner, a size at a time', async ({
+test('resizes an image by dragging the handle on its corner, to the nearest size', async ({
   architectPage,
   openInformationPage,
 }) => {
@@ -236,15 +236,19 @@ test('resizes an image by dragging its corner, a size at a time', async ({
   const x = handle.x + handle.width / 2;
   const y = handle.y + handle.height / 2;
 
-  // The size follows how far the pointer has gone from where it took hold,
-  // not where it is: a little way up is one size smaller, further is two.
-  // (A square picture held to 60% of this 720px window is 432px tall; Medium
-  // holds it to 384px and Small to 192px.)
+  // The picture follows how far the pointer has gone from where it took
+  // hold, and the nearest size is named: a little way up is one size
+  // smaller, further is two. (A square picture held to 60% of this 720px
+  // window is 432px tall; Medium holds it to 384px and Small to 192px.)
   await architectPage.mouse.move(x, y);
   await architectPage.mouse.down();
   await architectPage.mouse.move(x, y - 60, { steps: 5 });
-  // While it is dragged, the size it would take is named beside the corner,
-  // and the settings stand aside.
+  // While it is dragged, the picture is drawn at the height it is dragged
+  // to, the size it would take is named beside the handle, and the settings
+  // stand aside.
+  await expect
+    .poll(async () => (await image.boundingBox())?.height ?? 0)
+    .toBeCloseTo(432 - 60, 0);
   const pill = (name: string) =>
     new StageEditor(architectPage).richText().getByText(name, { exact: true });
   await expect(pill('Medium')).toBeVisible();
@@ -265,55 +269,47 @@ test('resizes an image by dragging its corner, a size at a time', async ({
   );
 });
 
-// The corner is drawn on the frame round the selected picture, at the bottom,
-// on the side the picture grows towards: away from the side it is held
-// against.
-for (const [align, corner] of [
-  ['start', 'right'],
-  ['end', 'left'],
-] as const) {
-  test(`puts the resize corner on the bottom ${corner} of the frame of an image aligned to the ${align}`, async ({
-    architectPage,
-    openInformationPage,
-  }) => {
-    const address = `size=small&align=${align}`;
-    await openInformationPage(
-      informationProtocol(
-        `# Welcome\n\n![A photo](asset:photo-asset?${address})\n\nBye.`,
-      ),
-      DRAWN_FILES,
-    );
-    const blocks = new AssetBlocks(architectPage);
-    await blocks.image('A photo').click();
-    const block = blocks.block('A photo');
-    await expect(block).toHaveAttribute('data-selected', 'true');
-    // Selecting the block opens nothing.
-    await expect(blocks.settings()).toHaveCount(0);
+// The handle is drawn on the frame round the selected picture, on its bottom
+// corner at the end of the line: the right, in text that reads left to right.
+test('puts the resize handle on the bottom right corner of the frame of a selected image', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.',
+    ),
+    DRAWN_FILES,
+  );
+  const blocks = new AssetBlocks(architectPage);
+  await blocks.image('A photo').click();
+  const block = blocks.block('A photo');
+  await expect(block).toHaveAttribute('data-selected', 'true');
+  // Selecting the block opens nothing.
+  await expect(blocks.settings()).toHaveCount(0);
 
-    const handle = await blocks.resizeCorner().boundingBox();
-    if (handle === null) throw new Error('The corner is not drawn');
-    const frame = await blocks.selectedFrame().evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      // The middle of the frame's line, inside its outer edge.
-      const inset =
-        Number.parseFloat(getComputedStyle(element).borderTopWidth) / 2;
-      return {
-        width: Number.parseFloat(getComputedStyle(element).borderTopWidth),
-        left: box.left + inset,
-        right: box.right - inset,
-        bottom: box.bottom - inset,
-      };
-    });
-    // A frame is drawn, or there is no line for the corner to sit on.
-    expect(frame.width).toBeGreaterThan(0);
-    const middle = {
-      x: handle.x + handle.width / 2,
-      y: handle.y + handle.height / 2,
+  const handle = await blocks.resizeCorner().boundingBox();
+  if (handle === null) throw new Error('The handle is not drawn');
+  const frame = await blocks.selectedFrame().evaluate((element) => {
+    const box = element.getBoundingClientRect();
+    // The middle of the frame's line, inside its outer edge.
+    const inset =
+      Number.parseFloat(getComputedStyle(element).borderTopWidth) / 2;
+    return {
+      width: Number.parseFloat(getComputedStyle(element).borderTopWidth),
+      right: box.right - inset,
+      bottom: box.bottom - inset,
     };
-    expect(Math.abs(middle.y - frame.bottom)).toBeLessThanOrEqual(2);
-    expect(Math.abs(middle.x - frame[corner])).toBeLessThanOrEqual(2);
   });
-}
+  // A frame is drawn, or there is no line for the handle to sit on.
+  expect(frame.width).toBeGreaterThan(0);
+  const middle = {
+    x: handle.x + handle.width / 2,
+    y: handle.y + handle.height / 2,
+  };
+  expect(Math.abs(middle.y - frame.bottom)).toBeLessThanOrEqual(2);
+  expect(Math.abs(middle.x - frame.right)).toBeLessThanOrEqual(2);
+});
 
 test('replaces the file of a placed image, keeping its settings', async ({
   architectPage,
@@ -321,7 +317,7 @@ test('replaces the file of a placed image, keeping its settings', async ({
 }) => {
   await openInformationPage(
     informationProtocol(
-      '# Welcome\n\n![A photo](asset:photo-asset?size=small&align=end)\n\nBye.',
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small&loop=false)\n\nBye.',
       { moreFiles: true },
     ),
     DRAWN_FILES,
@@ -368,8 +364,8 @@ test('replaces the file of a placed image, keeping its settings', async ({
   await architectPage.keyboard.press('Enter');
   await expect(settings).toBeVisible();
 
-  // The block now shows the other file, under the same description; its size
-  // and alignment are kept in the saved text below.
+  // The block now shows the other file, under the same description; its other
+  // settings are kept in the saved text below.
   await expect(file.getByText('garden.svg', { exact: true })).toBeVisible();
   await expect(settings.getByLabel('Description', { exact: true })).toHaveValue(
     'A photo',
@@ -380,7 +376,7 @@ test('replaces the file of a placed image, keeping its settings', async ({
     (pageText(saved) ?? '').includes('asset:garden-asset'),
   );
   expect(pageText(stage)).toBe(
-    '# Welcome\n\n![A photo](asset:garden-asset?size=small&align=end)\n\nBye.',
+    '# Welcome\n\n![A photo](asset:garden-asset?size=small&loop=false)\n\nBye.',
   );
 });
 

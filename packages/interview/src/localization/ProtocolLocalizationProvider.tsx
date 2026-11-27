@@ -352,14 +352,12 @@ export function useResolveLocalizedStringWhereLocalized():
           },
           // A version's wording, in the language of the text that shows it
           // when it has one there, else as any protocol text falls back.
-          wordingOf: (choice, textLocale) => {
-            const shown = resolveText(choice.content, localization, [
+          versionOf: (wording, textLocale) => {
+            const shown = resolveText(wording, localization, [
               textLocale,
               ...resolutionOrder,
             ]);
-            return choice.kind === 'counted'
-              ? format(shown.locale, shown.text, { count: choice.count })
-              : format(shown.locale, shown.text);
+            return { message: shown.text, locale: shown.locale };
           },
         };
         const dynamic = resolveDynamicText(

@@ -17,9 +17,11 @@ import {
   type DynamicValueSiteContext,
   FALSE_CASE,
   type LocaleTag,
-  type MessageArguments,
-  messageText,
-  messageVariants,
+  dynamicMessageParts,
+  dynamicValueNamesIn,
+  inlineMarkdownText,
+  type MessagePart,
+  NUMBER_WORDING_COUNT,
   optionIdFromCaseKey,
   type ParsedDynamicValuePath,
   parseDynamicValueName,
@@ -199,20 +201,52 @@ export type ValueNaming = Readonly<{
   pillFor: (name: string) => VariablePillProps;
 }>;
 
-/** What number wording may use: the number it is worded for. */
-const NUMBER_WORDING_ARGUMENTS: MessageArguments = {
-  count: { kind: 'plural' },
-};
+/**
+ * How a value that wording shows is written in a summary of it in words: by
+ * what it is called, in square brackets, as in "[Name]’s doctor".
+ */
+export type WordingValueText = (name: string) => string;
+
+/** Each value shown by its name alone, where nothing names it better. */
+const valueNamed: WordingValueText = (name) => `[${name}]`;
+
+/**
+ * One version of wording, read as `dynamicMessageParts` gives it, as the
+ * words it shows: its markdown without bold or italics, each value written
+ * by `valueText`.
+ */
+const wordsOf = (
+  parts: readonly MessagePart[],
+  valueText: WordingValueText,
+): string =>
+  inlineMarkdownText(parts)
+    .map((part) => (typeof part === 'string' ? part : valueText(part.argument)))
+    .join('');
+
+/** Every value present: a summary chooses no version by a value. */
+const PRESENT = () => ({ missing: false }) as const;
+
+/**
+ * The wording of a version as it reads: its words, without bold or italics,
+ * and each value it shows as `valueText` writes it.
+ */
+export const versionWordingText = (
+  message: string,
+  locale: LocaleTag,
+  valueText: WordingValueText = valueNamed,
+): string => wordsOf(dynamicMessageParts(message, locale, PRESENT), valueText);
 
 /**
  * Number wording as it reads: each of its versions, in `locale`'s plural
- * forms, showing the first number it is for ("1 child", "2 children").
+ * forms, showing the first number it is for ("1 child", "2 children"), with
+ * each other value as `valueText` writes it. Wording that does not change
+ * with the number reads once.
  */
 export const numberWordingExamples = (
   message: string,
   locale: LocaleTag,
+  valueText: WordingValueText = valueNamed,
 ): string[] => {
-  const examples = [...pluralCountExamples(locale)];
   let format: (count: number) => string = String;
   try {
     const numbers = new Intl.NumberFormat(locale);
@@ -220,19 +254,23 @@ export const numberWordingExamples = (
   } catch {
     // A tag that Intl does not know shows the number in plain digits.
   }
-  return messageVariants(message, NUMBER_WORDING_ARGUMENTS, locale).map(
-    ({ when, parts }) => {
-      const count = examples.find(
-        ([category]) => category === when.count,
-      )?.[1][0];
-      return parts
-        .map((part) => {
-          if (typeof part === 'string') return part;
-          return count === undefined ? '' : format(count);
-        })
-        .join('');
-    },
-  );
+  if (!dynamicValueNamesIn(message).includes(NUMBER_WORDING_COUNT)) {
+    return [versionWordingText(message, locale, valueText)];
+  }
+  return [...pluralCountExamples(locale)].flatMap(([, counts]) => {
+    const count = counts[0];
+    if (count === undefined) return [];
+    const parts = dynamicMessageParts(message, locale, (name) =>
+      name === NUMBER_WORDING_COUNT
+        ? { missing: false, count }
+        : { missing: false },
+    );
+    return [
+      wordsOf(parts, (name) =>
+        name === NUMBER_WORDING_COUNT ? format(count) : valueText(name),
+      ),
+    ];
+  });
 };
 
 /** The first translation that `wording` has, with its language. */
@@ -247,20 +285,22 @@ const firstTranslation = (wording: unknown): StoredTranslation | undefined => {
  * The wordings of a dynamic attribute in branch order, as `wordingOf` reads
  * each version (see `dynamicAttributeVersions`): number wording as each of
  * its plural versions with an example number, any other version as its
- * words. What its pill shows, joined by `dynamicAttributePillName`.
+ * words, each value that a version shows written by `valueText`. What its
+ * pill shows, joined by `dynamicAttributePillName`.
  */
 export const dynamicAttributeWordings = (
   dynamicAttribute: DynamicAttribute,
   wordingOf: (
     wording: unknown,
   ) => StoredTranslation | undefined = firstTranslation,
+  valueText: WordingValueText = valueNamed,
 ): string[] =>
   dynamicAttributeVersions(dynamicAttribute).flatMap((version) => {
     const found = wordingOf(version.wording);
     if (found === undefined) return [];
     return version.role === 'number'
-      ? numberWordingExamples(found.message, found.locale)
-      : [messageText(found.message)];
+      ? numberWordingExamples(found.message, found.locale, valueText)
+      : [versionWordingText(found.message, found.locale, valueText)];
   });
 
 /** Whether `path` begins with every part of `prefix`. */
@@ -356,7 +396,13 @@ export const namingFor = (
       : codebookVariable(sources.codebook, parsed.variableId);
   };
   const wordingText = (wording: unknown) => sources.labelText?.(wording) ?? '';
-  const dynamicAttributeName = (id: string): string | undefined => {
+  // `naming` are the dynamic attributes whose names are being written
+  // further out: wording that shows one of them again, which validation
+  // refuses, names it by an ellipsis rather than for ever.
+  const dynamicAttributeName = (
+    id: string,
+    naming: ReadonlySet<string> = new Set(),
+  ): string | undefined => {
     const dynamicAttribute = asDynamicAttribute(
       sources.dynamicAttributes !== undefined &&
         Object.hasOwn(sources.dynamicAttributes, id)
@@ -364,8 +410,17 @@ export const namingFor = (
         : undefined,
     );
     if (dynamicAttribute === undefined) return undefined;
+    const within = new Set([...naming, id]);
     return dynamicAttributePillName(
-      dynamicAttributeWordings(dynamicAttribute, sources.wordingOf),
+      dynamicAttributeWordings(dynamicAttribute, sources.wordingOf, (name) => {
+        const parsed = parseDynamicValueName(name);
+        if (parsed?.kind === 'dynamicAttribute') {
+          if (within.has(parsed.id)) return '…';
+          const shown = dynamicAttributeName(parsed.id, within);
+          return shown === undefined ? '' : `[${shown}]`;
+        }
+        return `[${presentationalTextValue(recordedLabel(name))}]`;
+      }),
     );
   };
   const recordedLabel = (name: string): PresentationalText => {

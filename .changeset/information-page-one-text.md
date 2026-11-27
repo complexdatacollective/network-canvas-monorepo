@@ -17,13 +17,13 @@ together in a single editor in Architect, in the order participants read them.
 The page heading is a heading at the top of the page. An image, audio recording
 or video is added from the editor's toolbar (Insert image, Insert audio, Insert
 video) and appears in the text as a block, which can be dragged to another place.
-Selecting a block opens its settings beside it: a description for participants
-who cannot see or hear it, a display size for images and videos, where it sits
-across the page, and, for audio and video, whether it starts playing
-automatically and whether it repeats when it ends. Both are on unless you turn
-them off. An image or video can also be resized by dragging the handle at its
-corner, which takes it to the nearest of the display sizes. The editor grows
-with the page, so all of it stays in view.
+The settings button of a block opens its settings beside it: a description for
+participants who cannot see or hear it, and, for audio and video, whether it
+starts playing automatically and whether it repeats when it ends. Both are on
+unless you turn them off. Every block is centered on its line. To resize a
+selected image or video, drag the handle at its corner, or press the arrow keys
+while the handle has focus; the block takes the nearest of the display sizes.
+The editor grows with the page, so all of it stays in view.
 
 Each language of a protocol has its own localized string for the page, so a
 page can show a different file in each language. The translation table shows each file as a line naming
@@ -61,13 +61,14 @@ For developers: the schema 9 Information stage is `{ content }`, a localized
 markdown string declared with `assetBlocks: true`, in place of `title` and
 `items`, and the `Item` type is gone. A file is written as a markdown image in
 a paragraph of its own whose address names an asset:
-`![description](asset:<assetId>?size=small|medium|large&align=start|end&autoplay=false&loop=false)`.
+`![description](asset:<assetId>?size=small|medium|large&autoplay=false&loop=false)`.
+Every block is centered on its line.
 `@codaco/shared-consts` exports what a block can be (`ASSET_BLOCK_KINDS`,
-`ASSET_BLOCK_SIZES`, `ASSET_BLOCK_ALIGNMENTS`, `ASSET_BLOCK_DEFAULTS`, their
+`ASSET_BLOCK_SIZES`, `ASSET_BLOCK_DEFAULTS`, their
 guards and the `AssetBlockAttributes` type).
 `@codaco/protocol-validation` exports the grammar (`assetBlockMarkdown`,
 `readAssetBlockUrl`, `assetBlocksInMessage` and others) and how a block is
-shown (`assetBlockFile`, `assetBlockSettings`, `assetBlockAlignmentShows`), reports a block whose
+shown (`assetBlockFile`, `assetBlockSettings`), reports a block whose
 asset is missing or is not an image, audio or video, or that is written where
 none can be shown (inside a heading, a link, a `select` or `plural` version,
 or with a dynamic value in its description or address), reading the text as

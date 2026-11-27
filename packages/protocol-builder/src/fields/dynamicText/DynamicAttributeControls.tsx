@@ -3,15 +3,12 @@ import { useId } from 'react';
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   type DynamicAttribute,
   DynamicAttributeSchema,
-  escapeMessageText,
-  messageText,
 } from '@codaco/protocol-validation';
 
 import { useLanguageNaming } from '../../localization/LanguageNaming.tsx';
@@ -20,7 +17,6 @@ import {
   conditionProblem,
   type ConditionScope,
 } from '../../rules/ConditionRulesControl.tsx';
-import { LocalizedMessageVersions } from '../LocalizedMessageField.tsx';
 import VariablePickerField, {
   type VariablePickerOption,
 } from '../VariablePickerField.tsx';
@@ -54,6 +50,7 @@ import {
 import {
   dynamicAttributeVersionAt,
   numberWordingExamples,
+  versionWordingText,
   valueNamingMessages,
 } from './valueNaming.ts';
 import { logicVersionLabel } from './versionLabels.ts';
@@ -128,19 +125,12 @@ const messages = defineMessages({
     description:
       'Shown under a version of a dynamic attribute while it is edited in a language that is not the protocol’s default language, when the version is empty in the default language, so that nothing is shown in its place. language is that language’s name, such as “English”.',
   },
-  plainWordsOnly: {
-    id: 'protocolBuilder.dynamicAttribute.plainWordsOnly',
-    defaultMessage:
-      'Write this version as plain words, without placeholders or formatting.',
-    description:
-      'Problem shown under a version of a dynamic attribute whose wording, in the language being edited, contains something other than plain words, such as a placeholder in braces. This can happen when the wording was imported from elsewhere.',
-  },
-  numberWordingUnreadable: {
-    id: 'protocolBuilder.dynamicAttribute.numberWordingUnreadable',
+  versionUnreadable: {
+    id: 'protocolBuilder.dynamicAttribute.versionUnreadable',
     defaultMessage:
       'This wording cannot be saved as it is written. Write it again.',
     description:
-      'Problem shown under the wording of a dynamic attribute for singular or plural numbers when, in the language being edited, it uses something that this wording cannot show. This can happen when the wording was imported from elsewhere.',
+      'Problem shown under a version of a dynamic attribute whose wording, in the language being edited, uses something that the wording cannot contain, such as a choice between versions inside its sentence. This can happen when the wording was imported from elsewhere.',
   },
   chooseAttribute: {
     id: 'protocolBuilder.dynamicAttribute.chooseAttribute',
@@ -199,7 +189,8 @@ const versionKeyAt = (
  * What stops the draft being saved: a condition version without rules (or with
  * a rule its codebook refuses), no attribute, or a version whose wording in the
  * language being edited the dynamic attribute's own schema refuses, such as
- * wording with a placeholder in it. A version may be empty: it shows nothing.
+ * wording that chooses between versions inside its sentence. A version may be
+ * empty: it shows nothing.
  */
 export const draftProblems = (
   draft: DynamicAttributeDraft,
@@ -241,11 +232,7 @@ export const draftProblems = (
   for (const issue of parsed.success ? [] : parsed.error.issues) {
     const key = versionKeyAt(dynamicAttribute, issue.path);
     if (key === undefined || Object.hasOwn(wordings, key)) continue;
-    wordings[key] = intl.formatMessage(
-      key === NUMBER_WORDING
-        ? messages.numberWordingUnreadable
-        : messages.plainWordsOnly,
-    );
+    wordings[key] = intl.formatMessage(messages.versionUnreadable);
   }
   return { conditionVersions, ...(value !== undefined && { value }), wordings };
 };
@@ -258,6 +245,11 @@ export const hasDraftProblems = (problems: DraftProblems): boolean =>
 type DynamicAttributeControlsProps = Readonly<{
   /** Unique among the controls on screen. */
   name: string;
+  /**
+   * The dynamic attribute's id, which its wording may not show; absent while
+   * it is being created, when nothing can show it yet.
+   */
+  id?: string;
   draft: DynamicAttributeDraft;
   onChange: (draft: DynamicAttributeDraft) => void;
   /** Shown once the researcher has tried to save. */
@@ -270,10 +262,14 @@ type DynamicAttributeControlsProps = Readonly<{
  * The controls of a dynamic attribute, for the dialog that creates one and
  * the popover that edits one: its logic, the rules of each case (or the
  * attribute whose answers or number it reads), and one short wording for
- * each version, in the language being edited.
+ * each version, in the language being edited. Each version is written as
+ * other one-line text is, in bold or italics and with the values that the
+ * text can show, including other dynamic attributes that do not show this
+ * one.
  */
 export function DynamicAttributeControls({
   name,
+  id,
   draft,
   onChange,
   problems,
@@ -335,25 +331,21 @@ export function DynamicAttributeControls({
     if (stored === undefined) {
       return intl.formatMessage(messages.noReference, { language });
     }
-    // Number wording is shown as it reads, one version for each plural form.
+    // As it reads, each value by its name; number wording one version for
+    // each plural form.
+    const { naming } = environment;
+    const valueText = (valueName: string) =>
+      `[${presentationalTextValue(naming.recordedLabel(valueName))}]`;
     const wording =
       key === NUMBER_WORDING
-        ? numberWordingExamples(stored, defaultLocale)
+        ? numberWordingExamples(stored, defaultLocale, valueText)
             .filter((example) => example.trim() !== '')
             .join(' / ')
-        : messageText(stored);
+        : versionWordingText(stored, defaultLocale, valueText);
     return wording.trim() === ''
       ? intl.formatMessage(messages.referenceShowsNothing, { language })
       : intl.formatMessage(messages.reference, { language, wording });
   };
-
-  // The attribute whose answer number wording counts, by name.
-  const countedName =
-    draft.option === 'number'
-      ? attributeOptionsFor(environment, 'number').find(
-          (option) => option.value === draft.value,
-        )?.label
-      : undefined;
 
   // A label beside its version's wording; each version is spaced from the
   // next by its own margin.
@@ -477,26 +469,21 @@ export function DynamicAttributeControls({
                   {label}
                 </span>
                 <div className="flex min-w-0 flex-col gap-1">
-                  <LocalizedMessageVersions
-                    id={inputId}
-                    name={inputId}
-                    message={draft.wordings[key]?.[locale] ?? ''}
-                    onMessageChange={(message) =>
-                      onChange(draftWithWording(draft, key, locale, message))
-                    }
-                    readOnly={readOnly}
-                    declaration={{ count: { kind: 'plural' } }}
-                    locale={locale}
-                    ariaLabelledBy={`${inputId}-label`}
-                    ariaDescribedBy={note === false ? '' : noteId}
-                    ariaInvalid={problem !== undefined}
-                    numberWording
-                    // The number is the answer to the attribute it counts,
-                    // and is named for it.
-                    {...(countedName !== undefined && {
-                      valueLabels: { count: countedName },
-                    })}
-                  />
+                  {environment.editors.number({
+                    id: inputId,
+                    name: inputId,
+                    message: stored ?? '',
+                    onMessageChange: (message) =>
+                      onChange(draftWithWording(draft, key, locale, message)),
+                    readOnly,
+                    locale,
+                    site: environment.site,
+                    ownDynamicAttribute: id,
+                    counted: draft.value,
+                    ariaLabelledBy: `${inputId}-label`,
+                    ariaDescribedBy: note === false ? '' : noteId,
+                    ariaInvalid: problem !== undefined,
+                  })}
                   {note}
                 </div>
               </div>
@@ -504,42 +491,36 @@ export function DynamicAttributeControls({
           }
           return (
             <div key={key} className={rowClass}>
-              <label
-                htmlFor={inputId}
+              <span
+                id={`${inputId}-label`}
                 className="pt-2 text-sm font-semibold text-current/70"
               >
                 {label}
-              </label>
+              </span>
               <div className="flex min-w-0 flex-col gap-1">
-                <InputField
-                  id={inputId}
-                  name={inputId}
-                  size="sm"
-                  readOnly={readOnly}
-                  // Plain words, stored as a message that shows them as
-                  // they are typed: braces and apostrophes are escaped.
-                  value={messageText(stored ?? '')}
+                {environment.editors.version({
+                  id: inputId,
+                  name: inputId,
+                  readOnly,
+                  message: stored ?? '',
                   // An empty version shows nothing, except where a language
-                  // has not been written yet and falls back to another.
-                  {...((stored === '' ||
-                    (stored === undefined && locale === defaultLocale)) && {
-                    placeholder: intl.formatMessage(
-                      valueNamingMessages.showsNothing,
-                    ),
-                  })}
-                  aria-invalid={problem !== undefined}
-                  {...(note !== false && { 'aria-describedby': noteId })}
-                  onChange={(text) =>
-                    onChange(
-                      draftWithWording(
-                        draft,
-                        key,
-                        locale,
-                        escapeMessageText(text ?? ''),
-                      ),
-                    )
-                  }
-                />
+                  // has not been written yet and falls back to another. The
+                  // placeholder is never taken away, only emptied, so that
+                  // the first letter typed keeps the editor it is typed in.
+                  placeholder:
+                    stored === '' ||
+                    (stored === undefined && locale === defaultLocale)
+                      ? intl.formatMessage(valueNamingMessages.showsNothing)
+                      : '',
+                  ariaLabelledBy: `${inputId}-label`,
+                  ariaDescribedBy: note === false ? '' : noteId,
+                  ariaInvalid: problem !== undefined,
+                  onMessageChange: (message) =>
+                    onChange(draftWithWording(draft, key, locale, message)),
+                  locale,
+                  site: environment.site,
+                  ownDynamicAttribute: id,
+                })}
                 {note}
               </div>
             </div>

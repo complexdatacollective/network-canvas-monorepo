@@ -65,6 +65,7 @@ function LogicBlockView({
   editable,
   update,
   remove,
+  selectKeepingFocus,
   fieldScope,
   branchesWithContent,
 }: RichTextLogicBlockViewProps) {
@@ -148,9 +149,8 @@ function LogicBlockView({
           name="Logic block settings"
           open={open}
           onOpenChange={setSettingsOpen}
-          // Selecting the block would move focus into the text, which
-          // closes the settings: they open over the block as it is.
-          select={() => undefined}
+          // Selected as they open, with focus left for them to take.
+          select={selectKeepingFocus}
         >
           <LogicBlockSettings
             key={openings}

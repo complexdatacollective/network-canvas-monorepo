@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import type { AssetBlock } from '../assetBlock.ts';
 import {
-  assetBlockAlignmentShows,
   assetBlockFile,
   assetBlockSettings,
   assetInManifest,
@@ -110,36 +109,10 @@ describe('assetBlockFile', () => {
   });
 });
 
-describe('assetBlockAlignmentShows', () => {
-  it('shows for audio, which has no size', () => {
-    expect(assetBlockAlignmentShows('audio', undefined)).toBe(true);
-    expect(assetBlockAlignmentShows('audio', null)).toBe(true);
-  });
-
-  it.each(['image', 'video'] as const)(
-    'does not show for %s as wide as the page',
-    (kind) => {
-      expect(assetBlockAlignmentShows(kind, undefined)).toBe(false);
-      expect(assetBlockAlignmentShows(kind, null)).toBe(false);
-    },
-  );
-
-  it.each([
-    ['image', 'small'],
-    ['image', 'medium'],
-    ['image', 'large'],
-    ['video', 'small'],
-    ['video', 'large'],
-  ] as const)('shows for %s held to %s', (kind, size) => {
-    expect(assetBlockAlignmentShows(kind, size)).toBe(true);
-  });
-});
-
 describe('assetBlockSettings', () => {
   it('gives the defaults for every setting a block leaves out', () => {
     expect(assetBlockSettings({})).toEqual({
       size: undefined,
-      align: 'center',
       autoplay: true,
       loop: true,
     });
@@ -149,29 +122,28 @@ describe('assetBlockSettings', () => {
     expect(
       assetBlockSettings({
         size: 'small',
-        align: 'end',
         autoplay: false,
         loop: false,
       }),
-    ).toEqual({ size: 'small', align: 'end', autoplay: false, loop: false });
+    ).toEqual({ size: 'small', autoplay: false, loop: false });
   });
 
   it('keeps a setting written at its default', () => {
-    expect(
-      assetBlockSettings({ align: 'center', autoplay: true, loop: true }),
-    ).toEqual({ size: undefined, align: 'center', autoplay: true, loop: true });
+    expect(assetBlockSettings({ autoplay: true, loop: true })).toEqual({
+      size: undefined,
+      autoplay: true,
+      loop: true,
+    });
   });
 
   it('reads each setting on its own', () => {
     expect(assetBlockSettings({ loop: false })).toEqual({
       size: undefined,
-      align: 'center',
       autoplay: true,
       loop: false,
     });
-    expect(assetBlockSettings({ align: 'start', size: 'large' })).toEqual({
+    expect(assetBlockSettings({ size: 'large' })).toEqual({
       size: 'large',
-      align: 'start',
       autoplay: true,
       loop: true,
     });
@@ -181,7 +153,6 @@ describe('assetBlockSettings', () => {
     const block: AssetBlock = { assetId: 'map', description: 'A map' };
     expect(assetBlockSettings(block)).toEqual({
       size: undefined,
-      align: 'center',
       autoplay: true,
       loop: true,
     });

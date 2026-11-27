@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -286,7 +286,7 @@ const protocolWithNumberWording = (() => {
 })();
 
 describe('TranslationTable: the number wording of a dynamic attribute', () => {
-  it('opens a language without wording with a version for each of its plural forms, and offers nothing to put in', async () => {
+  it('opens a language without wording with a version for each of its plural forms', async () => {
     const { user } = renderTable(protocolWithNumberWording);
 
     const name = /Wording for singular or plural numbers French$/;
@@ -299,8 +299,146 @@ describe('TranslationTable: the number wording of a dynamic attribute', () => {
         version.getAttribute('data-version'),
       ),
     ).toEqual(['one', 'many', 'other']);
+  });
+
+  it('offers what its stage can show, and not the dynamic attribute itself, to put in a version', async () => {
+    const { user } = renderTable(protocolWithNumberWording);
+
+    const name = /Wording for singular or plural numbers French$/;
+    await user.click(screen.getByRole('button', { name }));
+    await screen.findByRole('textbox', { name });
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
+
+    const menu = await screen.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
     expect(
-      screen.queryByRole('button', { name: 'Attribute' }),
-    ).not.toBeInTheDocument();
+      await within(menu).findByRole('option', { name: /^age/ }),
+    ).toBeInTheDocument();
+    // The dynamic attribute whose wording this is would show itself.
+    expect(
+      within(menu).queryByRole('option', { name: /^of an age we do not know/ }),
+    ).toBeNull();
+  });
+
+  it('saves a translation that shows the number', async () => {
+    const { store, user } = renderTable(protocolWithNumberWording);
+
+    const name = /Wording for singular or plural numbers French$/;
+    await user.click(screen.getByRole('button', { name }));
+    await screen.findByRole('textbox', { name });
+    const one = document.querySelector<HTMLElement>('[data-version="one"]');
+    if (one === null) throw new Error('No version for 1');
+    await user.type(one, 'an ');
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
+    const menu = await screen.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
+    // The attribute that the dynamic attribute counts puts in the number.
+    await user.click(within(menu).getByRole('option', { name: /^age/ }));
+    await waitFor(() =>
+      expect(one.querySelector('[data-inline-value]')).not.toBeNull(),
+    );
+    await leaveCell(user);
+
+    expect(screen.getByRole('button', { name })).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(getProtocol(store.getState())?.stages[0]).toMatchObject({
+        dynamicAttributes: {
+          [YEARS]: {
+            wording: {
+              fr: expect.stringMatching(/^{count, plural, one {an #} /),
+            },
+          },
+        },
+      }),
+    );
+  });
+});
+
+const PLACE_NAME_ID = testVariableId('placeName');
+const PLACE_NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: PLACE_NAME_ID,
+});
+const NEAR = testId('dynamic/near');
+
+/**
+ * A node type whose label shows a dynamic attribute, with English wording
+ * only, whose versions may show what is known of the node.
+ */
+const protocolWithLabelWording = (() => {
+  const base = dynamicValuesProtocol({ en: WELCOME });
+  return {
+    ...base,
+    codebook: {
+      ...base.codebook,
+      node: {
+        place: {
+          name: 'Place',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: { [PLACE_NAME_ID]: { name: 'place_name', type: 'text' } },
+          dynamicLabel: {
+            text: {
+              en: `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: NEAR })}}`,
+              fr: `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: NEAR })}}`,
+            },
+            dynamicAttributes: {
+              [NEAR]: {
+                logic: 'answers',
+                value: PLACE_NAME,
+                missing: { en: 'a place', fr: 'un lieu' },
+                answers: [],
+                other: { en: `near {${PLACE_NAME}}` },
+              },
+            },
+          },
+        },
+      },
+    },
+  } as unknown as CurrentProtocol;
+})();
+
+describe('TranslationTable: the wording of a dynamic attribute of a label', () => {
+  it('offers what is known of the node, and saves a translation that shows it', async () => {
+    const { store, user } = renderTable(protocolWithLabelWording);
+
+    const name = /Any other answer French$/;
+    await user.click(screen.getByRole('button', { name }));
+    const editor = await screen.findByRole('textbox', { name });
+    await waitFor(() => expect(editor).toHaveFocus());
+    await user.type(editor, 'près de ');
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
+    const menu = await screen.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
+    await user.click(
+      await within(menu).findByRole('option', { name: /^place_name/ }),
+    );
+    await waitFor(() =>
+      expect(editor.querySelector('[data-inline-value]')).not.toBeNull(),
+    );
+    await leaveCell(user);
+
+    expect(screen.getByRole('button', { name })).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        getProtocol(store.getState())?.codebook.node?.place?.dynamicLabel,
+      ).toMatchObject({
+        dynamicAttributes: {
+          [NEAR]: { other: { fr: `près de {${PLACE_NAME}}` } },
+        },
+      }),
+    );
   });
 });
