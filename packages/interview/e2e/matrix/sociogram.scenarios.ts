@@ -1723,7 +1723,7 @@ function buildDirectedConnectReverse(): ScenarioDefinition {
   const ids: { nameVarIds: string[] } = { nameVarIds: [] };
   return {
     id: 'directed-connect-reverse',
-    covers: ['codebook.edge.directed', 'prompts[].edges.create'],
+    covers: ['codebook.edge=directed-type', 'prompts[].edges.create'],
     seedNetwork: true,
     build: () => buildTwoTypeConnectStage(ids),
     run: async ({ page, protocol, interview }) => {
@@ -1757,7 +1757,7 @@ function buildEndpointRulesDisable(): ScenarioDefinition {
   const ids: { nameVarIds: string[] } = { nameVarIds: [] };
   return {
     id: 'endpoint-rules-disable',
-    covers: ['codebook.edge.endpointRules'],
+    covers: ['codebook.edge=endpoint-rules'],
     seedNetwork: true,
     // People go to venues, and nothing else.
     build: () =>

@@ -36,7 +36,6 @@ type Line = {
   to: string;
   type: string;
   ids: string[];
-  directed: boolean;
   arrowAtFrom: boolean;
   arrowAtTo: boolean;
 };
@@ -60,7 +59,6 @@ function linesFor(
         to: edge.to,
         type: edge.type,
         ids: [id],
-        directed: false,
         arrowAtFrom: false,
         arrowAtTo: false,
       });
@@ -75,7 +73,6 @@ function linesFor(
         to: edge.to,
         type: edge.type,
         ids: [id],
-        directed: true,
         arrowAtFrom: false,
         arrowAtTo: true,
       };
@@ -205,7 +202,7 @@ export default function EdgeLayer({
         const dy = (to.y - from.y) * height;
         const length = Math.hypot(dx, dy);
         if (
-          !line.directed ||
+          !(arrowAtTo ?? arrowAtFrom) ||
           !measured ||
           length <= 2 * (nodeRadius + ARROW_LENGTH)
         ) {
