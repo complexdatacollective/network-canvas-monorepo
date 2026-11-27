@@ -136,7 +136,6 @@ const NavigationButton = ({
   className,
   wrapperClassName,
   buttonRef,
-  index,
   entering,
   layoutDependency,
   option = false,
@@ -146,8 +145,6 @@ const NavigationButton = ({
   ref?: Ref<HTMLDivElement>;
   buttonRef?: Ref<HTMLButtonElement>;
   wrapperClassName?: string;
-  /** The button's place on the bar (see `barItemMotion`). */
-  index: number;
   /** Whether the bar is appearing for the first time (see `barItemMotion`). */
   entering: boolean;
   /** Which optional controls the bar shows (see `barItemMotion`). */
@@ -156,15 +153,12 @@ const NavigationButton = ({
   option?: boolean;
 }) => {
   const reduceMotion = usePrefersReducedMotion() ?? false;
-  const isRtl = useDirection() === 'rtl';
   return (
     <motion.div
       ref={ref}
       {...barItemMotion({
         reduceMotion,
-        isRtl,
         entering,
-        index,
         layoutDependency,
       })}
       className={wrapperClassName}
@@ -192,13 +186,11 @@ const NavigationButton = ({
 const LanguageSwitcherControl = ({
   ref,
   orientation,
-  isRtl,
   entering,
   layoutDependency,
 }: {
   ref?: Ref<HTMLDivElement>;
   orientation: NavigationOrientation;
-  isRtl: boolean;
   entering: boolean;
   layoutDependency: string;
 }) => {
@@ -211,9 +203,7 @@ const LanguageSwitcherControl = ({
       ref={ref}
       {...barItemMotion({
         reduceMotion,
-        isRtl,
         entering,
-        index: 2,
         layoutDependency,
       })}
       className={barControlVariants({ orientation })}
@@ -231,8 +221,8 @@ const LanguageSwitcherControl = ({
         {...BAR_OPTION_BUTTON}
         color="dynamic"
         className={barOptionIconClassName}
-        // A rail's popover opens away from the screen edge the rail is on.
-        side={orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'}
+        // A rail's popover opens beside the rail, away from the screen edge.
+        side={orientation === 'vertical' ? 'inline-end' : 'top'}
         align="start"
       />
     </motion.div>
@@ -507,7 +497,6 @@ const Navigation = ({
               entering={barEntering}
               layoutDependency={barLayout}
               key="exit"
-              index={0}
               option
               wrapperClassName={barControlVariants({ orientation })}
               onClick={() => void handleExit()}
@@ -525,9 +514,7 @@ const Navigation = ({
               key="text-size"
               {...barItemMotion({
                 reduceMotion: shouldReduceMotion,
-                isRtl,
                 entering: barEntering,
-                index: 1,
                 layoutDependency: barLayout,
               })}
               className={barControlVariants({ orientation })}
@@ -536,14 +523,8 @@ const Navigation = ({
                 scales={TEXT_SCALE_OPTIONS}
                 value={shownTextScale}
                 onChange={(scale) => onTextScaleChange?.(scale)}
-                // A rail's popup opens away from the screen edge the rail is on.
-                side={
-                  orientation === 'vertical'
-                    ? isRtl
-                      ? 'left'
-                      : 'right'
-                    : 'top'
-                }
+                // A rail's popup opens beside the rail, away from the screen edge.
+                side={orientation === 'vertical' ? 'inline-end' : 'top'}
                 triggerVariant={BAR_OPTION_BUTTON.variant}
                 triggerSize={BAR_OPTION_BUTTON.size}
                 triggerClassName={barOptionIconClassName}
@@ -558,7 +539,6 @@ const Navigation = ({
               layoutDependency={barLayout}
               key="language"
               orientation={orientation}
-              isRtl={isRtl}
             />
           )}
         </AnimatePresence>
@@ -580,9 +560,7 @@ const Navigation = ({
             onClick={() => setMenuOpen(true)}
             {...barItemMotion({
               reduceMotion: shouldReduceMotion,
-              isRtl,
               entering: barEntering,
-              index: 4,
               layoutDependency: barLayout,
             })}
             layout
@@ -601,9 +579,7 @@ const Navigation = ({
             className={progressContainerClassName}
             {...barItemMotion({
               reduceMotion: shouldReduceMotion,
-              isRtl,
               entering: barEntering,
-              index: 4,
               layoutDependency: barLayout,
             })}
             layout
@@ -616,7 +592,6 @@ const Navigation = ({
           entering={barEntering}
           layoutDependency={barLayout}
           wrapperClassName={barControlVariants({ orientation })}
-          index={5}
           onClick={moveBackward}
           disabled={disableMoveBackward}
           icon={<BackIcon />}
@@ -634,7 +609,6 @@ const Navigation = ({
             pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
           )}
           wrapperClassName={barControlVariants({ orientation })}
-          index={6}
           onClick={moveForward}
           disabled={disableMoveForward}
           icon={<ForwardIcon className="size-8" strokeWidth="3px" />}

@@ -1,6 +1,5 @@
 'use client';
 
-import { useDirection } from '@base-ui/react/direction-provider';
 import { AnimatePresence, motion, useWillChange } from 'motion/react';
 import { useCallback, useId, useState } from 'react';
 
@@ -36,7 +35,6 @@ export default function PassphrasePrompter({
   entering,
   layoutDependency,
 }: PassphrasePrompterProps) {
-  const isRtl = useDirection() === 'rtl';
   const { showPassphrasePrompter, passphraseChosen } = usePassphrase();
   // Whether the open dialog chooses the interview's passphrase or asks for
   // it, fixed when it opens so that it does not change while it closes.
@@ -71,9 +69,7 @@ export default function PassphrasePrompter({
                     key="lock"
                     {...barItemMotion({
                       reduceMotion,
-                      isRtl,
                       entering,
-                      index: 3,
                       layoutDependency,
                     })}
                     className={cx(
@@ -112,9 +108,7 @@ export default function PassphrasePrompter({
               technology does not meet the same text twice. */}
           <TooltipContent
             aria-hidden="true"
-            side={
-              orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'
-            }
+            side={orientation === 'vertical' ? 'inline-end' : 'top'}
             className="max-w-[min(var(--available-width),var(--container-md))]"
           >
             <AppMessage message={messages.protectedAnswersLocked} />

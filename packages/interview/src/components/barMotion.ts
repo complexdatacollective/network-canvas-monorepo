@@ -1,4 +1,9 @@
-import type { MotionProps, Variant, Variants } from 'motion/react';
+import type {
+  MotionProps,
+  TargetAndTransition,
+  Variant,
+  Variants,
+} from 'motion/react';
 
 import {
   segmentLayoutSpring,
@@ -7,70 +12,64 @@ import {
 
 /**
  * How long the bar takes to slide in, in seconds. The controls on it when it
- * first appears start growing in once it has.
+ * first appears fade in once it has.
  */
 export const BAR_ENTRANCE = 0.6;
 
-// The delay between one control's entrance and the next.
-const STAGGER = 0.05;
+// How long the controls take to fade in with the bar, in seconds.
+const ENTRANCE_FADE = 0.3;
 
-// How far a control travels as it comes in with the bar, from the start of
-// the line (the left, or the right in a right-to-left interview).
-const ENTRANCE_TRAVEL = 24;
-
-// The spring a control comes in on with the bar: heavier and slower to
-// settle than the toolbar's, so the bar's controls land with some weight.
-const ENTRANCE_SPRING = {
-  type: 'spring',
-  stiffness: 260,
-  damping: 26,
-  mass: 1.4,
-} as const;
-
-/**
- * What a control needs to know to come in: whether it comes in with the bar,
- * when, and from how far.
- */
-type BarItemCustom = Readonly<{
-  entering: boolean;
-  delay: number;
-  travel: number;
-}>;
-
-const target = (variant: Variant | undefined) =>
+const target = (variant: Variant | undefined): TargetAndTransition =>
   typeof variant === 'object' ? variant : {};
 
 const grown = target(segmentPresenceVariants.animate);
 
+// The controls on the bar when it first appears fade in together once it has
+// slid in.
+const entranceFade = {
+  opacity: { delay: BAR_ENTRANCE, duration: ENTRANCE_FADE },
+};
+
 /**
- * The segmented toolbar's grow-in and shrink-away. A control's `custom` says
- * how long it waits before growing in, in seconds, and how far it travels as
- * it does (0 for a control added after the bar has appeared).
+ * `opacity` is kept for that fade and `filter` for a control's own coming and
+ * going, so the target a control animates to is the same whichever way it
+ * arrived. A control's `custom` (whether it arrived with the bar) changes one
+ * frame after the bar appears, and a target that read it would change then
+ * too, stopping the fade.
+ *
+ * A control that arrives with the bar starts fully grown and transparent; one
+ * added later starts opaque and shrunk into a blur.
  *
  * Once grown in, a control is left with no `filter`: a filter keeps it in a
  * layer of its own, which makes its hover feedback lag behind the pointer.
  */
 const barVariants: Variants = {
-  initial: ({ travel }: BarItemCustom) => ({
-    ...target(segmentPresenceVariants.initial),
-    x: travel,
-  }),
-  animate: ({ entering, delay }: BarItemCustom) => ({
-    ...grown,
-    x: 0,
-    transition: { ...(entering ? ENTRANCE_SPRING : grown.transition), delay },
+  initial: (entering: boolean) =>
+    entering
+      ? { opacity: 0, scale: 1, filter: 'blur(0px) opacity(100%)' }
+      : { ...target(segmentPresenceVariants.initial), opacity: 1 },
+  animate: {
+    scale: grown.scale,
+    filter: grown.filter,
+    opacity: 1,
+    transition: { ...grown.transition, ...entranceFade },
     transitionEnd: { filter: 'none' },
-  }),
+  },
   exit: target(segmentPresenceVariants.exit),
 };
 
-/** With reduced motion a control only fades. */
+/** With reduced motion a control only fades, by the same split. */
 const fadeVariants: Variants = {
-  initial: { opacity: 0 },
-  animate: ({ delay }: BarItemCustom) => ({
+  initial: (entering: boolean) =>
+    entering
+      ? { opacity: 0, filter: 'opacity(100%)' }
+      : { opacity: 1, filter: 'opacity(0%)' },
+  animate: {
     opacity: 1,
-    transition: { delay },
-  }),
+    filter: 'opacity(100%)',
+    transition: entranceFade,
+    transitionEnd: { filter: 'none' },
+  },
   exit: { opacity: 0 },
 };
 
@@ -80,12 +79,10 @@ const fadeVariants: Variants = {
  * and shrinks back into one when it goes, and the controls that stay glide
  * to their new places.
  *
- * Each control animates by itself. A control that is on the bar when the bar
- * first appears (`entering`) waits until the bar has slid in, then grows in
- * after the control before it (`index`, its place on the bar), coming in from
- * the start of the line on a heavier spring. A control added later grows in
- * at once, in place, on the toolbar's spring. When animations are turned off,
- * the delays are skipped with them, so the controls are simply there.
+ * Each control animates by itself. The controls on the bar when the bar first
+ * appears (`entering`) fade in together once the bar has slid in. When
+ * animations are turned off, the delay is skipped with them, so the controls
+ * are simply there.
  *
  * A control glides only if it renders again when another comes or goes, so
  * that Motion can measure where it was. The React Compiler skips a control
@@ -97,23 +94,15 @@ const fadeVariants: Variants = {
  */
 export const barItemMotion = ({
   reduceMotion,
-  isRtl,
   entering,
-  index,
   layoutDependency,
 }: {
   reduceMotion: boolean;
-  isRtl: boolean;
   entering: boolean;
-  index: number;
   layoutDependency: string;
 }): MotionProps => ({
   variants: reduceMotion ? fadeVariants : barVariants,
-  custom: {
-    entering,
-    delay: entering ? BAR_ENTRANCE + index * STAGGER : 0,
-    travel: entering ? (isRtl ? ENTRANCE_TRAVEL : -ENTRANCE_TRAVEL) : 0,
-  } satisfies BarItemCustom,
+  custom: entering,
   initial: 'initial',
   animate: 'animate',
   exit: 'exit',
