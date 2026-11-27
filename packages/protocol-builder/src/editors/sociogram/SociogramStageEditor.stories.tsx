@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
@@ -58,6 +58,42 @@ export const Editing: Story = {
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
     ).toHaveTextContent('"label": { "en-US": "Sociogram (revised)" }');
+  },
+};
+
+/**
+ * Choosing what a prompt asks the participant to do. Each task shows only its
+ * own settings: highlighting asks for the attribute it marks, and connecting
+ * asks for the kind of connection it creates.
+ */
+export const ChoosingATask: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const [editFirstPrompt] = canvas.getAllByRole('button', {
+      name: 'Edit prompt',
+    });
+    if (editFirstPrompt === undefined) throw new Error('No prompt to edit.');
+    await userEvent.click(editFirstPrompt);
+    // The row dialog is portalled out of the canvas.
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await userEvent.click(
+      dialog.getByRole('option', { name: /Highlight nodes/u }),
+    );
+    await waitFor(async () => {
+      await expect(dialog.getByText('Boolean attribute')).toBeVisible();
+    });
+    await expect(dialog.queryByText('Created edge type')).toBeNull();
+
+    await userEvent.click(
+      dialog.getByRole('option', { name: /Connect nodes/u }),
+    );
+    await waitFor(async () => {
+      await expect(dialog.getByText('Created edge type')).toBeVisible();
+    });
+    await expect(dialog.queryByText('Boolean attribute')).toBeNull();
   },
 };
 

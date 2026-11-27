@@ -1,21 +1,15 @@
-import { useMemo } from 'react';
-
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import type { Stage } from '@codaco/protocol-validation';
 
 import LayoutPickerField from '../../../fields/LayoutPickerField.tsx';
 import UnreachableLayoutAlert, {
   useUnreachableLayoutTypes,
 } from '../../../fields/UnreachableLayoutAlert.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
-import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
-import { useStageNodeTypes } from '../../../sections/useStageSubject.ts';
-import { useProtocolContext } from '../../../state/protocolContext.ts';
 import type { StageSection } from '../../defineStageEditor.tsx';
+import { useDraftSociogram } from './useDraftSociogram.ts';
 
 const LAYOUT_FIELD = 'layout';
 
@@ -40,34 +34,6 @@ const messages = defineMessages({
       'Label of the control choosing the layout of the codebook that this sociogram stage stores node positions in.',
   },
 });
-
-/**
- * The saved Sociogram with the layout and node types being edited: whether
- * it reads or sets its layout depends on the rest of the saved stage. A
- * stage not saved yet is not judged.
- */
-function useDraftSociogram(): Stage | undefined {
-  const { identity } = useStageEditorForm();
-  const { orderedStages } = useProtocolContext();
-  const layout = useStageValue(LAYOUT_FIELD);
-  const nodeTypes = useStageNodeTypes();
-  return useMemo(() => {
-    const saved = orderedStages.find((stage) => stage.id === identity.id);
-    const [first, ...rest] = nodeTypes;
-    if (
-      saved?.type !== 'Sociogram' ||
-      typeof layout !== 'string' ||
-      first === undefined
-    ) {
-      return undefined;
-    }
-    return {
-      ...saved,
-      layout,
-      subject: { entity: 'node', types: [first, ...rest] },
-    };
-  }, [identity.id, layout, nodeTypes, orderedStages]);
-}
 
 function SociogramLayoutSection() {
   const intl = useAppIntl();

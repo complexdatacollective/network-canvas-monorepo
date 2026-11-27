@@ -592,42 +592,6 @@
     "es": "Añade al menos una pregunta y arrastra las preguntas para cambiar su orden.",
     "from": "74a07e626 architect.sections.sociogramPrompts.sociogramPrompts.addAtLeastOnePromptAnd"
   },
-  "protocolBuilder.networkCanvas.tapBehaviourLabel": {
-    "en": "Interaction type",
-    "es": "Tipo de interacción",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.interactionType"
-  },
-  "protocolBuilder.networkCanvas.tapCreateEdgeDescription": {
-    "en": "Clicking or tapping a node allows the participant to create an edge.",
-    "es": "Al pulsar un nodo, la persona participante puede crear un vínculo.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.clickingOrTappingANodeAllows",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.networkCanvas.tapCreateEdgeLabel": {
-    "en": "Edge creation",
-    "es": "Creación de vínculos",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.edgeCreation"
-  },
-  "protocolBuilder.networkCanvas.tapDescription": {
-    "en": "Choose whether tapping a node toggles an attribute or creates an edge.",
-    "es": "Elige si pulsar un nodo alterna un atributo o crea un vínculo.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.chooseWhetherTappingANodeToggles"
-  },
-  "protocolBuilder.networkCanvas.tapHighlightDescription": {
-    "en": "Clicking or tapping a node toggles a boolean attribute between true and false.",
-    "es": "Al pulsar un nodo, se alterna un atributo booleano entre verdadero y falso.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.clickingOrTappingANodeToggles"
-  },
-  "protocolBuilder.networkCanvas.tapHighlightLabel": {
-    "en": "Attribute toggling",
-    "es": "Alternar atributo",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.attributeToggling"
-  },
-  "protocolBuilder.networkCanvas.tapTitle": {
-    "en": "Node interaction",
-    "es": "Interacción con nodos",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.nodeInteraction"
-  },
   "protocolBuilder.networkCanvas.tickListEmptyState": {
     "en": "Nothing to choose from yet. Create what this list offers in the codebook first.",
     "es": "Todavía no hay nada que elegir. Crea antes en el libro de códigos lo que ofrece esta lista.",

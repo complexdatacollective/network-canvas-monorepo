@@ -92,7 +92,8 @@ describe('the canvas sections, read in Spanish', () => {
     });
 
     const prompt = await openPrompt(harness, 0, 'Edit pregunta');
-    expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();
+    // The fixture's first prompt is a connect task.
+    expect(prompt.getByText('Tipo de vínculo creado')).toBeInTheDocument();
   });
 
   /**
@@ -112,6 +113,7 @@ describe('the canvas sections, read in Spanish', () => {
           prompts: [
             {
               id: 'sociogram-prompt-1',
+              task: 'layout',
               text: 'Coloca a las personas que se conocen cerca',
               edges: { display: [LOST_EDGE] },
             },

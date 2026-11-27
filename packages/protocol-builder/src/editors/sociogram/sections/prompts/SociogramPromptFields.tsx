@@ -1,16 +1,8 @@
-import {
-  type ComponentType,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ComponentType, useEffect, useMemo, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
@@ -42,7 +34,6 @@ import {
 } from '../../../../sections/canvas/codebookChoices.ts';
 import OptionalTickList from '../../../../sections/canvas/OptionalTickList.tsx';
 import {
-  asNestedBoolean,
   asNestedIdList,
   asNestedText,
   asText,
@@ -65,12 +56,13 @@ const TEXT_FIELD = 'text';
 const SORT_ORDER_FIELD = 'sortOrder';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const CREATE_EDGE_FIELD = 'edges.create';
+export const TASK_FIELD = 'task';
 /**
- * Where a prompt keeps the attribute a tap marks, exported so the list around
- * this dialog can refuse a pick against the same path the control writes.
+ * The attribute a highlight task marks, held in the dialog under its own name.
+ * The saved prompt keeps it in its one highlight entry, which
+ * `SociogramPromptsSection` builds from this value when the row is saved.
  */
-export const HIGHLIGHT_VARIABLE_FIELD = 'highlight.variable';
-const ALLOW_HIGHLIGHTING_FIELD = 'highlight.allowHighlighting';
+export const HIGHLIGHT_VARIABLE_FIELD = 'highlightVariable';
 
 /** Both pickers take an open prop bag from the field wrapper. */
 const VariablePicker = VariablePickerField as ComponentType<
@@ -78,56 +70,41 @@ const VariablePicker = VariablePickerField as ComponentType<
 >;
 const EntityTypePicker = EntityTypePickerField;
 
-/**
- * What tapping a node does.
- *
- * One choice rather than two independent switches, because the two are
- * mutually exclusive: a prompt that both creates edges and toggles an
- * attribute is refused by the stage schema, and the interview would silently
- * let edge creation win.
- *
- * "Tapping does nothing" is not a third choice. It is the section being
- * switched off — released Architect's own shape, and the truthful one: the
- * prompt then holds neither `edges.create` nor `highlight`, which is not a
- * setting the researcher picked but a question they did not answer.
- */
-const TAP_CREATE_EDGE = 'create-edge';
-const TAP_HIGHLIGHT = 'highlight';
+const TASK_LAYOUT = 'layout';
+const TASK_HIGHLIGHT = 'highlight';
+const TASK_CONNECT = 'connect';
 
-type TapBehaviour = typeof TAP_CREATE_EDGE | typeof TAP_HIGHLIGHT;
+type SociogramTask =
+  | typeof TASK_LAYOUT
+  | typeof TASK_HIGHLIGHT
+  | typeof TASK_CONNECT;
+
+const asTask = (value: unknown): SociogramTask | undefined =>
+  value === TASK_LAYOUT || value === TASK_HIGHLIGHT || value === TASK_CONNECT
+    ? value
+    : undefined;
 
 /**
- * `allowHighlighting`, not `variable`, is what says a tap marks the node.
- *
- * The two are different configurations, and the schema says so: the attribute
- * site carries `usageRequiresSibling: 'allowHighlighting'`, and the interview
- * shows a node HIGHLIGHTED wherever `variable` says it is, whatever the flag
- * holds, while gating the tap-to-toggle branch on the flag alone. A prompt
- * naming an attribute with the flag off therefore highlights the nodes
- * something else already recorded that attribute for, and the participant
- * cannot change it — a reading of an attribute a form may well validate
- * elsewhere.
+ * The attribute of a saved prompt's first highlight entry. While a stage runs
+ * one node type, a highlight task has exactly one entry.
  */
-const tapBehaviourOf = (
-  item: Record<string, unknown>,
-): TapBehaviour | undefined => {
-  if (asNestedText(item.edges, 'create') !== undefined) return TAP_CREATE_EDGE;
-  if (asNestedBoolean(item.highlight, 'allowHighlighting') === true) {
-    return TAP_HIGHLIGHT;
-  }
-  return undefined;
+export const firstHighlightVariable = (
+  highlight: unknown,
+): string | undefined => {
+  if (!Array.isArray(highlight)) return undefined;
+  const [first]: unknown[] = highlight;
+  return asNestedText(first, 'variable');
 };
 
 /**
  * One task this sociogram sets, and everything the canvas does while it is on
  * screen.
  *
- * A sociogram prompt is not only its text: it decides where the nodes are
- * remembered, which connections are drawn, and what tapping a node does. All
- * of it names codebook attributes and edge types, which are read from the
- * protocol here rather than from anything the stage carries — so a
- * collaborator's change to the codebook changes what this dialog offers
- * without the dialog asking for it.
+ * A prompt is one of three tasks: the participant places nodes (layout), taps
+ * nodes to mark them (highlight), or taps two nodes to connect them (connect).
+ * The attributes and edge types the task names are read from the protocol
+ * here, so a collaborator's change to the codebook changes what this dialog
+ * offers.
  */
 export function SociogramPromptFields({ item }: RowEditorProps) {
   const intl = useAppIntl();
@@ -177,18 +154,8 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
     asNestedIdList(item.edges, 'display'),
   );
   const committedCreate = asNestedText(item.edges, 'create');
-  const committedHighlight = asNestedText(item.highlight, 'variable');
-  // The flag as the row HOLDS it — `false` and absent are different answers,
-  // and putting one back in place of the other rewrites the prompt.
-  const committedAllowHighlightingValue = asNestedBoolean(
-    item.highlight,
-    'allowHighlighting',
-  );
-  const committedAllowHighlighting = committedAllowHighlightingValue === true;
-
-  const [tapBehaviour, setTapBehaviour] = useState<TapBehaviour | undefined>(
-    () => tapBehaviourOf(item),
-  );
+  const committedHighlight = asText(item[HIGHLIGHT_VARIABLE_FIELD]);
+  const committedTask = asTask(item[TASK_FIELD]) ?? TASK_LAYOUT;
 
   // The interview writes a mark around the codebook's rules as a tap toggles
   // it, so the attribute may not be one a form field collects.
@@ -201,8 +168,14 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
       : { currentValue: committedHighlight }),
   });
 
-  const live = useFormValue([CREATE_EDGE_FIELD, DISPLAY_EDGES_FIELD] as const);
-  const createdEdge = asText(live[CREATE_EDGE_FIELD]);
+  const live = useFormValue([
+    TASK_FIELD,
+    CREATE_EDGE_FIELD,
+    DISPLAY_EDGES_FIELD,
+  ] as const);
+  const task = asTask(live[TASK_FIELD]) ?? committedTask;
+  const createdEdge =
+    task === TASK_CONNECT ? asText(live[CREATE_EDGE_FIELD]) : undefined;
   const displayedEdges = useMemo(
     () =>
       Array.isArray(live[DISPLAY_EDGES_FIELD])
@@ -212,48 +185,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
         : [],
     [live],
   );
-
-  /**
-   * The flag the interview gates tap-to-mark on, kept in step with the choice
-   * above it.
-   *
-   * Written rather than rendered because there is no second decision to make:
-   * the schema pairs `allowHighlighting` with `highlight.variable`, and a
-   * control for it could only contradict the behaviour chooser. It is written
-   * on EVERY opening of a marked prompt, not only when the choice changes,
-   * because a `variable` arriving without its flag is a prompt that HIGHLIGHTS
-   * nodes rather than one that marks them.
-   *
-   * Turned OFF for a prompt that had it on, and CLEARED for one this dialog
-   * turned it on for. Writing `false` for every other prompt made opening a
-   * dialog and closing it again an answer: a prompt that had never said
-   * anything about tapping acquired `highlight.allowHighlighting: false` the
-   * first time anyone looked at it, and an unanswered question saved as an
-   * answer is content in the protocol the researcher did not write.
-   */
-  const markedHere = useRef(false);
-  useEffect(() => {
-    if (tapBehaviour === TAP_HIGHLIGHT) {
-      markedHere.current = true;
-      setRowValue(ALLOW_HIGHLIGHTING_FIELD, true);
-      return;
-    }
-    if (committedAllowHighlighting) {
-      setRowValue(ALLOW_HIGHLIGHTING_FIELD, false);
-      return;
-    }
-    if (!markedHere.current) return;
-    // Put back, not cleared. A prompt that arrived saying `false` said it, and
-    // visiting the marking option and leaving again is not the researcher
-    // unsaying it — while one that arrived saying nothing goes on saying
-    // nothing, which is the reason this branch exists.
-    setRowValue(ALLOW_HIGHLIGHTING_FIELD, committedAllowHighlightingValue);
-  }, [
-    committedAllowHighlighting,
-    committedAllowHighlightingValue,
-    setRowValue,
-    tapBehaviour,
-  ]);
 
   /**
    * Whether the connection this prompt draws was chosen HERE, in this dialog.
@@ -297,69 +228,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   }, [createdEdge, displayedEdges, drawChosenHere, setRowValue]);
 
   /**
-   * What the researcher is moving AWAY from, when the move is the section
-   * being switched off.
-   *
-   * Closing the section unmounts the controls inside it, and the section's own
-   * unmount policy discards the values they were holding — so a write-back
-   * made in the open-state handler would be thrown away a moment later. The
-   * side being left is parked here instead and written in the effect below,
-   * which React runs after the children have gone.
-   */
-  const leavingTap = useRef<TapBehaviour | undefined>(undefined);
-
-  const writeBackLeaving = useCallback(
-    (left: TapBehaviour | undefined) => {
-      // The side being LEFT is written rather than left to unmount: a value
-      // the researcher entered and then moved away from is parked by the
-      // store, and parked values are replayed into the saved prompt.
-      //
-      // Only that side, and only what the side OWNS. A connection type is a
-      // tap target and nothing else — a prompt that draws nothing has no use
-      // for one — so leaving takes it. The attribute is not:
-      // `highlight.variable` with the flag off is a prompt that HIGHLIGHTS its
-      // nodes by an attribute the participant cannot toggle, which is a
-      // configuration of its own, and the marking picker mounts already
-      // showing that very attribute. Cleared on the way out, visiting "mark
-      // the node" and changing your mind deleted the highlighting — with the
-      // picker unmounted by then and nothing on screen to say it had gone. So
-      // the pick goes back to what the row opened with, and a visit that
-      // changed nothing changes nothing.
-      if (left === TAP_CREATE_EDGE) setRowValue(CREATE_EDGE_FIELD, undefined);
-      if (left === TAP_HIGHLIGHT) {
-        // Unless the prompt arrived MARKING, where the attribute is the tap's
-        // own target rather than something the prompt was told to highlight
-        // by: switching the tap off takes it, which is what turning marking
-        // off has always saved.
-        setRowValue(
-          HIGHLIGHT_VARIABLE_FIELD,
-          committedAllowHighlighting ? undefined : committedHighlight,
-        );
-      }
-    },
-    [committedAllowHighlighting, committedHighlight, setRowValue],
-  );
-
-  useEffect(() => {
-    if (tapBehaviour !== undefined) return;
-    const left = leavingTap.current;
-    if (left === undefined) return;
-    leavingTap.current = undefined;
-    writeBackLeaving(left);
-  }, [tapBehaviour, writeBackLeaving]);
-
-  const chooseTapBehaviour = (next: TapBehaviour | undefined) => {
-    if (next === tapBehaviour) return;
-    const left = tapBehaviour;
-    setTapBehaviour(next);
-    if (next === undefined) {
-      leavingTap.current = left;
-      return;
-    }
-    writeBackLeaving(left);
-  };
-
-  /**
    * The connection types on offer, plus the ones this prompt names and the
    * codebook has lost.
    *
@@ -395,17 +263,22 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   // Held for as long as the reader's language does not change: the control's
   // options are part of what it registers with, and a fresh array every render
   // re-registers it.
-  const tapOptions = useMemo<RichSelectOption[]>(
+  const taskOptions = useMemo<RichSelectOption[]>(
     () => [
       {
-        value: TAP_CREATE_EDGE,
-        label: intl.formatMessage(messages.tapCreateEdgeLabel),
-        description: intl.formatMessage(messages.tapCreateEdgeDescription),
+        value: TASK_LAYOUT,
+        label: intl.formatMessage(messages.taskLayoutLabel),
+        description: intl.formatMessage(messages.taskLayoutDescription),
       },
       {
-        value: TAP_HIGHLIGHT,
-        label: intl.formatMessage(messages.tapHighlightLabel),
-        description: intl.formatMessage(messages.tapHighlightDescription),
+        value: TASK_HIGHLIGHT,
+        label: intl.formatMessage(messages.taskHighlightLabel),
+        description: intl.formatMessage(messages.taskHighlightDescription),
+      },
+      {
+        value: TASK_CONNECT,
+        label: intl.formatMessage(messages.taskConnectLabel),
+        description: intl.formatMessage(messages.taskConnectDescription),
       },
     ],
     [intl],
@@ -427,6 +300,46 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           initialValue={asLocalizedString(item[TEXT_FIELD])}
           required={intl.formatMessage(messages.promptTextRequired)}
         />
+      </Section>
+
+      <Section
+        title={intl.formatMessage(messages.taskTitle)}
+        description={intl.formatMessage(messages.taskDescription)}
+      >
+        <Field<typeof RichSelectGroupField>
+          name={TASK_FIELD}
+          label={intl.formatMessage(messages.taskLabel)}
+          component={RichSelectGroupField}
+          options={taskOptions}
+          initialValue={committedTask}
+          required={intl.formatMessage(messages.taskRequired)}
+        />
+        {task === TASK_CONNECT && (
+          <Field<typeof EntityTypePicker>
+            name={CREATE_EDGE_FIELD}
+            label={intl.formatMessage(messages.promptCreateEdgeLabel)}
+            component={EntityTypePicker}
+            entityType="edge"
+            initialValue={committedCreate}
+            required={intl.formatMessage(messages.promptCreateEdgeRequired)}
+          />
+        )}
+        {task === TASK_HIGHLIGHT && (
+          <>
+            <Field<typeof VariablePicker>
+              name={HIGHLIGHT_VARIABLE_FIELD}
+              label={intl.formatMessage(messages.promptHighlightLabel)}
+              hint={intl.formatMessage(messages.promptHighlightHint)}
+              component={VariablePicker}
+              options={highlightOptions}
+              emptyMessage={intl.formatMessage(messages.promptHighlightEmpty)}
+              initialValue={committedHighlight}
+              required={intl.formatMessage(messages.promptHighlightRequired)}
+              {...highlightCreate.createProps}
+            />
+            {highlightCreate.editor}
+          </>
+        )}
       </Section>
 
       <Section
@@ -456,57 +369,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           properties={sortableProperties}
           committedRules={item[SORT_ORDER_FIELD]}
         />
-      </Section>
-
-      <Section
-        title={intl.formatMessage(messages.tapTitle)}
-        description={intl.formatMessage(messages.tapDescription)}
-        toggleable
-        defaultOpen={tapBehaviourOf(item) !== undefined}
-        onOpenChange={(open) => {
-          // Switching the section off is what saying "tapping does nothing"
-          // has always done: the side being LEFT is written back, exactly as
-          // it was when this was a third card.
-          if (!open) chooseTapBehaviour(undefined);
-          return true;
-        }}
-      >
-        <UnconnectedField
-          name="tap-behaviour"
-          label={intl.formatMessage(messages.tapBehaviourLabel)}
-          component={RichSelectGroupField}
-          value={tapBehaviour}
-          onChange={(next) =>
-            chooseTapBehaviour(next === TAP_HIGHLIGHT ? next : TAP_CREATE_EDGE)
-          }
-          options={tapOptions}
-        />
-        {tapBehaviour === TAP_CREATE_EDGE && (
-          <Field<typeof EntityTypePicker>
-            name={CREATE_EDGE_FIELD}
-            label={intl.formatMessage(messages.promptCreateEdgeLabel)}
-            component={EntityTypePicker}
-            entityType="edge"
-            initialValue={committedCreate}
-            required={intl.formatMessage(messages.promptCreateEdgeRequired)}
-          />
-        )}
-        {tapBehaviour === TAP_HIGHLIGHT && (
-          <>
-            <Field<typeof VariablePicker>
-              name={HIGHLIGHT_VARIABLE_FIELD}
-              label={intl.formatMessage(messages.promptHighlightLabel)}
-              hint={intl.formatMessage(messages.promptHighlightHint)}
-              component={VariablePicker}
-              options={highlightOptions}
-              emptyMessage={intl.formatMessage(messages.promptHighlightEmpty)}
-              initialValue={committedHighlight}
-              required={intl.formatMessage(messages.promptHighlightRequired)}
-              {...highlightCreate.createProps}
-            />
-            {highlightCreate.editor}
-          </>
-        )}
       </Section>
 
       <Section

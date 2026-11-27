@@ -16,15 +16,9 @@ import { sociogramLayout } from './sections/SociogramLayoutSection.tsx';
  * they are performed on: what is drawn behind the nodes, and how the nodes are
  * arranged when the stage opens.
  *
- * `behaviours.automaticLayout` is the only member of the shared canvas
- * behaviours this interface offers, and the other two are deliberately left
- * out. `freeDraw` and `allowRepositioning` are EXPRESSIBLE on a sociogram
- * because the schema shares that object with the narrative interface, and the
- * interview honours neither: `Sociogram.tsx` reads no drawing flag, and
- * repositioning is unconditionally on there by a recorded decision (#673,
- * decision #12). A switch promising a behaviour the participant will never get
- * is worse than no switch. A stage somebody else authored carrying one of them
- * keeps it: an unrendered key is not a key this editor may throw away.
+ * `behaviours.automaticLayout` is the only behaviour a sociogram has. Whether
+ * nodes can be moved follows from each prompt's task: only a positioning task
+ * lets the participant place and move them.
  */
 export const sociogramStageEditor = defineStageEditor('Sociogram', [
   subjectPicker({ entity: 'node', filter: true }),

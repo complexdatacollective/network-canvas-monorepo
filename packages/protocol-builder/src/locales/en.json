@@ -4027,6 +4027,14 @@
     "defaultMessage": "What this field accepts",
     "description": "Label of the group of settings the chosen input control takes — the two ends of a scale, the window a date must fall in."
   },
+  "protocolBuilder.networkCanvas.firstUseDescription": {
+    "defaultMessage": "No earlier stage places nodes in this layout, and the first prompt of this stage is not a positioning task. Nodes that are not placed cannot be highlighted or connected. Make the first prompt a positioning task, or choose Automatic mode under Node layout.",
+    "description": "Text of the warning in the prompts section of a sociogram stage. A layout is a named set of node positions. A positioning task is the prompt task in which participants place nodes. Automatic mode is a choice in the Node layout section of the same stage, which places nodes without the participant."
+  },
+  "protocolBuilder.networkCanvas.firstUseTitle": {
+    "defaultMessage": "Nodes are not placed before this task",
+    "description": "Title of the warning in the prompts section of a sociogram stage. It is shown when this stage is the first in the interview to use its layout, and its first prompt is not a positioning task."
+  },
   "protocolBuilder.networkCanvas.formFieldAddTitle": {
     "defaultMessage": "Add a form field",
     "description": "Title of the dialog a researcher fills in for a NEW field of a network composer form."
@@ -4547,33 +4555,45 @@
     "defaultMessage": "The “{attributeName}” attribute cannot be asked for with this input control. Choose another control, or record this field in a different attribute.",
     "description": "Refusal shown when a network composer form field is saved with an input control that cannot collect the kind of answer its attribute holds — because a collaborator changed that attribute while this field was open. attributeName is the researcher-facing name of the codebook attribute. Both ways out are offered because an attribute can be changed to a kind no control at all can ask for."
   },
-  "protocolBuilder.networkCanvas.tapBehaviourLabel": {
-    "defaultMessage": "Interaction type",
-    "description": "Label of the control choosing between the two things tapping a node can do."
+  "protocolBuilder.networkCanvas.taskConnectDescription": {
+    "defaultMessage": "Participants tap two nodes to create or remove an edge between them.",
+    "description": "Says what the participant does in the connecting task. An edge is a connection between two nodes."
   },
-  "protocolBuilder.networkCanvas.tapCreateEdgeDescription": {
-    "defaultMessage": "Clicking or tapping a node allows the participant to create an edge.",
-    "description": "Says what the participant does to draw a connection. A connection is an edge."
+  "protocolBuilder.networkCanvas.taskConnectLabel": {
+    "defaultMessage": "Connect nodes",
+    "description": "Name of the sociogram task in which the participant taps two nodes to create an edge between them. The sentence under it is taskConnectDescription."
   },
-  "protocolBuilder.networkCanvas.tapCreateEdgeLabel": {
-    "defaultMessage": "Edge creation",
-    "description": "Name of the choice where tapping two nodes draws a relationship between them. Offered as one of three cards; the sentence under it is tapCreateEdgeDescription."
+  "protocolBuilder.networkCanvas.taskDescription": {
+    "defaultMessage": "Choose what participants do on the canvas while this prompt is shown. Nodes can be moved only in a positioning task.",
+    "description": "Description of the task group in the sociogram prompt dialog. The canvas is the area on which the participant places nodes. A positioning task is the first of the three choices offered."
   },
-  "protocolBuilder.networkCanvas.tapDescription": {
-    "defaultMessage": "Choose whether tapping a node toggles an attribute or creates an edge.",
-    "description": "Description of the tapping-a-node group."
+  "protocolBuilder.networkCanvas.taskHighlightDescription": {
+    "defaultMessage": "Participants tap a node to set a Boolean attribute to true or false.",
+    "description": "Says what the participant does in the highlighting task. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it."
   },
-  "protocolBuilder.networkCanvas.tapHighlightDescription": {
-    "defaultMessage": "Clicking or tapping a node toggles a boolean attribute between true and false.",
-    "description": "Says what marking a node does to the attribute behind it."
+  "protocolBuilder.networkCanvas.taskHighlightLabel": {
+    "defaultMessage": "Highlight nodes",
+    "description": "Name of the sociogram task in which tapping a node turns a true-or-false attribute on and off. The sentence under it is taskHighlightDescription."
   },
-  "protocolBuilder.networkCanvas.tapHighlightLabel": {
-    "defaultMessage": "Attribute toggling",
-    "description": "Name of the choice where tapping a node turns a true-or-false attribute on and off. Offered as one of three cards; the sentence under it is tapHighlightDescription."
+  "protocolBuilder.networkCanvas.taskLabel": {
+    "defaultMessage": "Task type",
+    "description": "Label of the control that chooses one of the three tasks a sociogram prompt can set: positioning nodes, highlighting nodes, or connecting nodes."
   },
-  "protocolBuilder.networkCanvas.tapTitle": {
-    "defaultMessage": "Node interaction",
-    "description": "Heading of the group inside the sociogram prompt dialog deciding what the participant tapping a node does."
+  "protocolBuilder.networkCanvas.taskLayoutDescription": {
+    "defaultMessage": "Participants drag nodes onto the canvas and move them. Positions are stored in the layout of this stage.",
+    "description": "Says what the participant does in the positioning task. A layout is a named set of node positions in the codebook; the stage chooses one."
+  },
+  "protocolBuilder.networkCanvas.taskLayoutLabel": {
+    "defaultMessage": "Position nodes",
+    "description": "Name of the sociogram task in which the participant places nodes on the canvas and moves them. The sentence under it is taskLayoutDescription."
+  },
+  "protocolBuilder.networkCanvas.taskRequired": {
+    "defaultMessage": "Choose the task that this prompt sets.",
+    "description": "Refusal shown under the task control when the researcher saves a sociogram prompt without choosing a task."
+  },
+  "protocolBuilder.networkCanvas.taskTitle": {
+    "defaultMessage": "Task",
+    "description": "Heading of the group inside the sociogram prompt dialog that chooses what the participant does while this prompt is shown."
   },
   "protocolBuilder.networkCanvas.tickListEmptyState": {
     "defaultMessage": "Nothing to choose from yet. Create what this list offers in the codebook first.",

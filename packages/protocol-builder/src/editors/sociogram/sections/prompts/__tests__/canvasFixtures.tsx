@@ -43,7 +43,10 @@ export const promptsOf = (
     : [];
 
 /** A sociogram holding exactly one prompt, so a save can be read whole. */
-export const sociogramHolding = (prompt: Record<string, unknown>) => ({
+export const sociogramHolding = (
+  prompt: Record<string, unknown>,
+  fields: Record<string, unknown> = {},
+) => ({
   stage: {
     id: testId('sociogram-stage'),
     type: 'Sociogram' as const,
@@ -54,6 +57,7 @@ export const sociogramHolding = (prompt: Record<string, unknown>) => ({
       behaviours: { automaticLayout: true },
       layout: fixtureLayoutId('layout'),
       prompts: [prompt],
+      ...fields,
     },
   },
   sections: sociogramSections,
@@ -84,7 +88,7 @@ export const openPrompt = async (
  * One of the open prompt dialog's attribute pickers, waited for.
  *
  * `attributeField` is synchronous, and the picker a prompt marks nodes with is
- * drawn only once tapping has been told to mark them — so it is not on screen
+ * drawn only once the prompt is a highlight task — so it is not on screen
  * at the moment that answer is given. Waiting here keeps that wait covering ONE
  * thing: the picker arriving.
  */

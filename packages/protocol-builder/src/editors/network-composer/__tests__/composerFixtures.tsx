@@ -249,19 +249,29 @@ export const highlightInASociogram = (
   // cannot watch its own claim arrive — a picker goes on offering the value it
   // is holding, whatever the filters say — can watch a second one instead.
   const marking = prompts.findIndex(
-    (prompt) =>
-      isRecord(prompt) &&
-      isRecord(prompt.highlight) &&
-      prompt.highlight.allowHighlighting === true,
+    (prompt) => isRecord(prompt) && prompt.task === 'highlight',
   );
   const held = prompts[marking];
   if (!isRecord(held)) {
     throw new Error('the fixture sociogram has no marking prompt');
   }
+  const [entry] = Array.isArray(held.highlight) ? held.highlight : [];
+  if (!isRecord(entry)) {
+    throw new Error('the fixture marking prompt has no highlight entry');
+  }
   const marked = variableIds.map((variableId, index) => ({
     ...held,
     id: index === 0 ? held.id : testId(`sociogram-marking-${String(index)}`),
-    highlight: { allowHighlighting: true, variable: variableId },
+    highlight: [
+      {
+        ...entry,
+        id:
+          index === 0
+            ? entry.id
+            : testId(`sociogram-highlight-${String(index)}`),
+        variable: variableId,
+      },
+    ],
   }));
   const updated: SectionDoc = {
     ...stage,

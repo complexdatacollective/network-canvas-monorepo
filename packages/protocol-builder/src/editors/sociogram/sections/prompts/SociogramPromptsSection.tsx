@@ -1,5 +1,12 @@
 import { useCallback, useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import {
+  createProtocolObjectId,
+  isFirstStageUsingLayout,
+} from '@codaco/protocol-validation';
+
 import {
   buildVariableRoleMap,
   hasValidatedUse,
@@ -15,44 +22,57 @@ import type {
 } from '../../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../../protocol-context.ts';
-import {
-  asNestedBoolean,
-  asNestedText,
-} from '../../../../sections/canvas/rowValues.ts';
+import { asText } from '../../../../sections/canvas/rowValues.ts';
 import PromptsSection from '../../../../sections/PromptsSection.tsx';
 import { useStageSubject } from '../../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../../state/protocolContext.ts';
+import { useDraftSociogram } from '../useDraftSociogram.ts';
 import {
+  firstHighlightVariable,
   HIGHLIGHT_VARIABLE_FIELD,
   SociogramPromptFields,
   SociogramPromptPreview,
+  TASK_FIELD,
 } from './SociogramPromptFields.tsx';
 import { sociogramPromptMessages as messages } from './sociogramPromptMessages.ts';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/** The highlight entry id a saved prompt already has, kept across saves. */
+const firstHighlightId = (highlight: unknown): string | undefined => {
+  if (!Array.isArray(highlight)) return undefined;
+  const [first]: unknown[] = highlight;
+  return isRecord(first) ? asText(first.id) : undefined;
+};
+
+/**
+ * Opens a prompt with its highlight attribute in the dialog's own field, so the
+ * picker edits one value rather than the saved list of entries.
+ */
+const expandPrompt = (row: RowValues): RowValues => {
+  const variable = firstHighlightVariable(row.highlight);
+  return variable === undefined
+    ? row
+    : { ...row, [HIGHLIGHT_VARIABLE_FIELD]: variable };
+};
+
 /**
  * The tasks this sociogram sets, in order.
  *
  * The list, its ordering, its dialog and its rule that a stage must ask
- * something are the package's shared prompt section; everything this interface
- * adds is inside the row dialog — where the nodes are remembered, which
- * connections are drawn, and what tapping a node does.
- *
- * What it adds of its own is the save-time half of one rule the picker inside
- * the dialog already applies: a prompt that lets the participant TAP an
- * attribute writes it without checking it, so it may not take one a form
- * collects. The picker never offers such an attribute, and that is not enough
- * on its own — the codebook is read live, so a collaborator adding a form
- * field on the attribute this dialog is holding drops it from the option list
- * while the pick stays in the form, and the row would close on a
- * validated/unvalidated writer conflict the protocol then refuses.
+ * something are the package's shared prompt section. This section adds the
+ * shape of a saved prompt, which depends on its task, the check that a
+ * highlight task does not mark an attribute a form collects, and a warning
+ * when no node can have been placed before this stage's first prompt.
  */
 export default function SociogramPromptsSection() {
+  const intl = useAppIntl();
   const { savedFields, identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
+  const subjectType = subject?.entity === 'node' ? subject.type : undefined;
+  const draft = useDraftSociogram();
 
   // This stage's own committed uses are excluded, exactly as the picker's are:
   // the attribute a prompt is already holding is claimed BY that prompt, and
@@ -70,26 +90,12 @@ export default function SociogramPromptsSection() {
   );
 
   /**
-   * This row's own SAVED attribute, where the saved row already marked with it.
+   * The attribute this row's SAVED highlight task marks.
    *
-   * Read from the stage the editor opened on rather than from the row the
-   * dialog opened on: the two differ once a prompt has been edited more than
-   * once before the stage is saved, and only the saved value keeps an
-   * attribute the protocol ALREADY binds here saveable. A researcher cannot be
-   * asked to repair this stage by editing a form in another one they may not
-   * be able to reach.
-   *
-   * Read from the stage as the protocol last STORED it, not from the working
-   * document: a row committed structurally earlier in this same edit moves the
-   * working one, and a conflict the researcher introduced a moment ago would
-   * then exempt itself.
-   *
-   * `allowHighlighting` is what makes the saved prompt a writer, and only a
-   * saved writer's pick is a conflict this edit did not introduce. A prompt
-   * that merely HIGHLIGHTS its nodes by the attribute reads it and writes
-   * nothing, so a form is free to collect the same one — and switching that
-   * prompt to "mark the node" turns the very same id into an unvalidated
-   * writer of an attribute something else validates.
+   * Read from the stage as the protocol last stored it: only a pick that the
+   * protocol already contains is a conflict this edit did not introduce, and
+   * a researcher cannot be asked to repair this stage by editing a form in
+   * another stage.
    */
   const savedMarkFor = useCallback(
     (rowId: unknown): string => {
@@ -98,9 +104,8 @@ export default function SociogramPromptsSection() {
       const row = saved.find(
         (candidate) => isRecord(candidate) && candidate.id === rowId,
       );
-      const highlight = isRecord(row) ? row.highlight : undefined;
-      if (asNestedBoolean(highlight, 'allowHighlighting') !== true) return '';
-      return asNestedText(highlight, 'variable') ?? '';
+      if (!isRecord(row) || row.task !== 'highlight') return '';
+      return firstHighlightVariable(row.highlight) ?? '';
     },
     [savedFields],
   );
@@ -108,23 +113,8 @@ export default function SociogramPromptsSection() {
   const beforeSave = useCallback(
     (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
       if (subject === undefined) return { row };
-      // Only a prompt that MARKS is judged, and `allowHighlighting` is what
-      // says so — never `variable`, which a prompt that merely highlights
-      // its nodes carries too. The flag is also what puts the marking picker
-      // on screen, so a refusal has a control to land on: a highlighting
-      // renders no picker at all, and a refusal aimed at that path would be
-      // one no field owns and nothing renders — the dialog would refuse to
-      // close with nothing on screen to say why, and only Cancel would
-      // escape. A form collecting the attribute is no conflict for a prompt
-      // that only READS it, which is the other half of the same fact.
-      //
-      // The row carries the value either way: a field the dialog is not
-      // showing is put back where it belongs when the submit assembles the
-      // row, so reading the row cannot tell the two configurations apart.
-      if (asNestedBoolean(row.highlight, 'allowHighlighting') !== true) {
-        return { row };
-      }
-      const pick = asNestedText(row.highlight, 'variable');
+      if (row[TASK_FIELD] !== 'highlight') return { row };
+      const pick = asText(row[HIGHLIGHT_VARIABLE_FIELD]);
       if (pick === undefined) return { row };
 
       const issue = crossClassPickIssue({
@@ -142,14 +132,98 @@ export default function SociogramPromptsSection() {
     [allVariables, roleMap, savedMarkFor, subject],
   );
 
+  /**
+   * The saved shape of a prompt: only the fields of its own task. Fields of a
+   * task the researcher switched away from are dropped, and a highlight task
+   * gets its one entry for the stage's node type.
+   */
+  const collapseRow = useCallback(
+    (row: unknown): unknown => {
+      if (!isRecord(row)) return row;
+      const {
+        [HIGHLIGHT_VARIABLE_FIELD]: highlightVariable,
+        highlight,
+        edges,
+        ...rest
+      } = row;
+      const task = rest[TASK_FIELD];
+      const display = isRecord(edges) ? edges.display : undefined;
+      const create = isRecord(edges) ? edges.create : undefined;
+      const keptEdges = {
+        ...(display === undefined ? {} : { display }),
+        ...(task === 'connect' && create !== undefined ? { create } : {}),
+      };
+      const variable = asText(highlightVariable);
+      return {
+        ...rest,
+        ...(Object.keys(keptEdges).length === 0 ? {} : { edges: keptEdges }),
+        ...(task === 'highlight' &&
+        variable !== undefined &&
+        subjectType !== undefined
+          ? {
+              highlight: [
+                {
+                  id: firstHighlightId(highlight) ?? createProtocolObjectId(),
+                  type: subjectType,
+                  variable,
+                },
+              ],
+            }
+          : {}),
+      };
+    },
+    [subjectType],
+  );
+
+  const itemTemplate = useCallback(() => ({ [TASK_FIELD]: 'layout' }), []);
+
+  const automaticLayout =
+    draft?.type === 'Sociogram' && draft.behaviours?.automaticLayout === true;
+  const firstPrompt =
+    draft?.type === 'Sociogram' ? draft.prompts[0] : undefined;
+  const showFirstUseAlert =
+    draft?.type === 'Sociogram' &&
+    firstPrompt !== undefined &&
+    firstPrompt.task !== 'layout' &&
+    !automaticLayout &&
+    isFirstStageUsingLayout(
+      {
+        codebook: protocolContext.codebook,
+        stages: [
+          ...protocolContext.orderedStages.map((stage) =>
+            stage.id === draft.id ? draft : stage,
+          ),
+          ...(protocolContext.orderedStages.some(
+            (stage) => stage.id === draft.id,
+          )
+            ? []
+            : [draft]),
+        ],
+      },
+      draft.id,
+      draft.layout,
+    );
+
   return (
     <PromptsSection
       PromptEditor={SociogramPromptFields}
       PromptPreview={SociogramPromptPreview}
       beforeSave={beforeSave}
+      expand={expandPrompt}
+      collapseRow={collapseRow}
+      itemTemplate={itemTemplate}
       description={messages.sociogramPromptsDescription}
       waitingDescription={messages.sociogramPromptsWaitingDescription}
       fieldHint={messages.sociogramPromptsFieldHint}
-    />
+    >
+      {showFirstUseAlert && (
+        <Alert variant="warning">
+          <AlertTitle>{intl.formatMessage(messages.firstUseTitle)}</AlertTitle>
+          <AlertDescription>
+            {intl.formatMessage(messages.firstUseDescription)}
+          </AlertDescription>
+        </Alert>
+      )}
+    </PromptsSection>
   );
 }

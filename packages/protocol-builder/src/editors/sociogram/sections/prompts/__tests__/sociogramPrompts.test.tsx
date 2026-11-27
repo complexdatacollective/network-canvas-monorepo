@@ -52,32 +52,33 @@ const sortPropertyOptions = (prompt: ReturnType<typeof within>): string[] =>
     .map((option) => option.value)
     .filter((value) => value !== '');
 
-/**
- * Switches the tap section on, if it is not already, and chooses a behaviour.
- *
- * "Tapping does nothing" is the section being OFF — released Architect's own
- * shape — so reaching either card means switching it on first, and every test
- * that chooses one goes through here.
- */
-const chooseTapBehaviour = async (
+/** Chooses the task that a prompt sets. */
+const chooseTask = async (
   harness: ReturnType<typeof renderStageEditor>,
   prompt: ReturnType<typeof within>,
   name: RegExp,
 ): Promise<void> => {
-  await switchTapping(harness, prompt, true);
   await harness.user.click(await prompt.findByRole('option', { name }));
 };
 
-/** The section's own switch, which is where "tapping does nothing" lives. */
-const switchTapping = async (
+const saveDialog = async (
   harness: ReturnType<typeof renderStageEditor>,
   prompt: ReturnType<typeof within>,
-  on: boolean,
 ): Promise<void> => {
-  const toggle = prompt.getByRole('switch', { name: 'Node interaction' });
-  if (toggle.getAttribute('aria-checked') === String(on)) return;
-  await harness.user.click(toggle);
+  await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
 };
+
+/** The fixture's prompts, read from the fixture itself. */
+const fixturePrompts = (): Record<string, unknown>[] =>
+  promptsOf({ prompts: loadFixtureStage('sociogram-1').fields.prompts });
+
+const openEditor = () => ({
+  stageId: 'sociogram-1' as const,
+  sections: sociogramSections,
+});
 
 /** The id the fixture gives its first prompt, read from the fixture itself. */
 const fixturePromptId = (): unknown => {
@@ -86,11 +87,6 @@ const fixturePromptId = (): unknown => {
     ? first.id
     : undefined;
 };
-
-const openEditor = () => ({
-  stageId: 'sociogram-1' as const,
-  sections: sociogramSections,
-});
 
 describe('the tasks a sociogram sets', () => {
   it('lists what the stage already holds', async () => {
@@ -108,140 +104,67 @@ describe('the tasks a sociogram sets', () => {
     ).toBeInTheDocument();
   });
 
-  /**
-   * Tapping a node either draws a connection or marks the node; the schema
-   * refuses a prompt that does both, and the interview would silently let edge
-   * creation win. So choosing one has to take the other away.
-   */
-  it('stops creating connections when tapping is asked to do nothing', async () => {
+  it('offers the three tasks', async () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
-    await switchTapping(harness, prompt, false);
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
+    const options = within(
+      prompt.getByRole('listbox', { name: 'Task type' }),
+    ).getAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual([
+      expect.stringContaining('Position nodes'),
+      expect.stringContaining('Highlight nodes'),
+      expect.stringContaining('Connect nodes'),
+    ]);
+    // The fixture's first prompt is a connect task.
+    expect(
+      prompt.getByRole('option', { name: /Connect nodes/ }),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
 
-    const saved = await harness.submit();
-    expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual({
+  it("switching task drops the other task's fields", async () => {
+    const harness = renderStageEditor(openEditor());
+
+    // The connect task becomes a highlight task: its created edge type goes.
+    let prompt = await openPrompt(harness);
+    await chooseTask(harness, prompt, /Highlight nodes/);
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Boolean attribute'),
+      HIGHLIGHTED,
+    );
+    await saveDialog(harness, prompt);
+
+    // The highlight task becomes a layout task: its highlight entry goes.
+    prompt = await openPrompt(harness, 1);
+    await chooseTask(harness, prompt, /Position nodes/);
+    await saveDialog(harness, prompt);
+
+    const [first, second] = promptsOf(
+      (await harness.submit())?.stageDocument ?? {},
+    );
+    expect(first).toEqual({
       id: fixturePromptId(),
+      task: 'highlight',
       text: { 'en-US': 'Place the people who know each other close together' },
       edges: { display: [KNOWS] },
-      highlight: { allowHighlighting: false },
+      highlight: [
+        { id: expect.any(String), type: PERSON, variable: HIGHLIGHTED },
+      ],
     });
+    expect(second).toMatchObject({ task: 'layout' });
+    expect(second).not.toHaveProperty('highlight');
+    expect(second?.edges).toEqual({ display: [KNOWS] });
   });
 
-  /**
-   * Tapping a node does one of TWO things, as released Architect offered it
-   * (`sections/SociogramPrompts/PromptFieldsTapBehaviour.tsx:114-130`).
-   * "Tapping does nothing" was never a third setting: it is the section
-   * switched off, which is the truthful shape — the prompt then holds neither
-   * `edges.create` nor `highlight`, and an unanswered question saved as an
-   * answer is content the researcher did not write.
-   */
-  it('offers two tap behaviours, inside a section that can be switched off', async () => {
+  it('keeps the id of a highlight entry it saves again', async () => {
     const harness = renderStageEditor(openEditor());
 
-    const prompt = await openPrompt(harness);
-    await switchTapping(harness, prompt, true);
-    // The whole list, so a third card reappearing fails here.
-    expect(
-      prompt
-        .getByRole('listbox', { name: 'Interaction type' })
-        .querySelectorAll('[role="option"]').length,
-    ).toBe(2);
-    expect(prompt.queryByRole('option', { name: /Nothing/ })).toBeNull();
-    expect(
-      prompt.getByRole('option', { name: /Edge creation/ }),
-    ).toBeInTheDocument();
-    expect(
-      prompt.getByRole('option', { name: /Attribute toggling/ }),
-    ).toBeInTheDocument();
-  });
+    const prompt = await openPrompt(harness, 1);
+    await saveDialog(harness, prompt);
 
-  /** A prompt that says nothing about tapping opens with the section off. */
-  it('opens a prompt that taps do nothing on with the section off, and saves it unchanged', async () => {
-    const SILENT_PROMPT = {
-      id: testId('sociogram-prompt-1'),
-      text: { 'en-US': 'Place the people who know each other close together' },
-    };
-    const harness = renderStageEditor(sociogramHolding(SILENT_PROMPT));
-
-    const prompt = await openPrompt(harness);
-    expect(
-      prompt.getByRole('switch', { name: 'Node interaction' }),
-    ).toHaveAttribute('aria-checked', 'false');
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const saved = await harness.submit();
-    expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual(SILENT_PROMPT);
-  });
-
-  /**
-   * And switching it off after choosing marking does not leave the flag on: a
-   * prompt saying `allowHighlighting: true` is one whose participants can
-   * toggle the attribute, which is exactly what switching the section off
-   * withdraws.
-   */
-  it('does not leave the marking flag on when the section is switched off', async () => {
-    // A prompt that has never said anything about tapping, so what the save
-    // holds is this edit alone.
-    const harness = renderStageEditor(
-      sociogramHolding({
-        id: testId('sociogram-prompt-1'),
-        text: {
-          'en-US': 'Place the people who know each other close together',
-        },
-      }),
-    );
-
-    const prompt = await openPrompt(harness);
-    await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
-    await chooseAttributeById(
-      harness.user,
-      await promptAttributeField('Boolean attribute'),
-      HIGHLIGHTED,
-    );
-    await switchTapping(harness, prompt, false);
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const saved = promptsOf((await harness.submit())?.stageDocument ?? {})[0];
-    // Absent, not `{ allowHighlighting: false }`: a prompt that never answered
-    // the question still has not. The prompt itself is asserted first, so a
-    // stage that did not save at all says so rather than throwing.
-    expect(saved).toMatchObject({ id: testId('sociogram-prompt-1') });
-    expect(saved).not.toHaveProperty('highlight');
-  });
-
-  it('marks nodes with the attribute the researcher chose', async () => {
-    const harness = renderStageEditor(openEditor());
-
-    const prompt = await openPrompt(harness);
-    await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
-    await chooseAttributeById(
-      harness.user,
-      await promptAttributeField('Boolean attribute'),
-      HIGHLIGHTED,
-    );
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const saved = await harness.submit();
-    const first = promptsOf(saved?.stageDocument ?? {})[0];
-    expect(first?.highlight).toEqual({
-      allowHighlighting: true,
-      variable: HIGHLIGHTED,
-    });
-    expect(first?.edges).toEqual({ display: [KNOWS] });
+    const saved = promptsOf((await harness.submit())?.stageDocument ?? {})[1];
+    expect(saved?.highlight).toEqual(fixturePrompts()[1]?.highlight);
   });
 
   /**
@@ -252,39 +175,37 @@ describe('the tasks a sociogram sets', () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness, 1);
-    await chooseTapBehaviour(harness, prompt, /Edge creation/);
+    await chooseTask(harness, prompt, /Connect nodes/);
     await harness.user.click(
       await prompt.findByRole('radio', { name: /family_edge/ }),
     );
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
+    await saveDialog(harness, prompt);
 
-    const saved = await harness.submit();
-    expect(promptsOf(saved?.stageDocument ?? {})[1]?.edges).toEqual({
+    const saved = promptsOf((await harness.submit())?.stageDocument ?? {})[1];
+    expect(saved?.edges).toEqual({
       display: [KNOWS, FAMILY_EDGE],
       create: FAMILY_EDGE,
     });
+    expect(saved).not.toHaveProperty('highlight');
   });
 });
 
 /**
- * Tapping a node WRITES the attribute it marks, without the codebook's
- * validation rules running — so a prompt may not mark one a form collects.
+ * Tapping a node in a highlight task WRITES the attribute it marks, without
+ * the codebook's validation rules running, so a prompt may not mark one that a
+ * form collects.
  *
- * The picker enforces that by never letting such an attribute be chosen, and
- * the codebook is read live: a collaborator adding the form field while the
- * dialog is open marks the attribute unavailable and leaves the pick sitting
- * in the form. Nothing then refused the row, so Save committed a prompt the
- * protocol reports as a writer conflict.
+ * The picker never offers such an attribute, and the codebook is read live: a
+ * collaborator adding the form field while the dialog is open marks the
+ * attribute unavailable and leaves the pick in the form. The row's own gate
+ * refuses it.
  */
 describe('a highlight attribute a form starts collecting mid-edit', () => {
   it('refuses the row rather than closing on the conflict', async () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
-    await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
+    await chooseTask(harness, prompt, /Highlight nodes/);
     await chooseAttributeById(
       harness.user,
       await promptAttributeField('Boolean attribute'),
@@ -292,21 +213,12 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     );
 
     collectInAForm(harness, HIGHLIGHTED);
-    // The picker is built from the live codebook, so the attribute the field
-    // holds being marked unavailable IS the collaborator's change arriving —
-    // and that is the state the row's own gate has to refuse from. Waited for
-    // rather than assumed: a save clicked before the change lands is refused
-    // by nothing, which is the defect this test exists for.
     await within(await promptAttributeField('Boolean attribute')).findByText(
       'The “Alter Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
     );
 
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
 
-    // The dialog staying open IS the refusal, and the reason is the one the
-    // codebook editor gives for the same conflict — read back through the same
-    // decode the render site uses, because it travels encoded on a
-    // plain-string contract.
     await prompt.findByText(
       readMessage(validatedElsewhereMessage('highlighted')),
     );
@@ -314,23 +226,90 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
   });
 
   /**
-   * And the other half: a conflict the protocol ALREADY holds does not make
-   * the prompt that holds it unsaveable. The researcher cannot be asked to fix
-   * a stage by editing a form in another one they may not even be able to
-   * reach.
+   * A conflict that the protocol ALREADY contains does not make the prompt
+   * unsaveable. The researcher cannot be asked to fix a stage by editing a
+   * form in another stage.
    */
   it('still saves a prompt whose attribute the protocol already collects', async () => {
     const harness = renderStageEditor(openEditor());
-    // The prompt that already marks `highlighted`, and the form field that
-    // conflicts with it, arriving before anything is edited.
     collectInAForm(harness, HIGHLIGHTED);
 
     const prompt = await openPrompt(harness, 1);
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await saveDialog(harness, prompt);
+  });
+});
 
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+/**
+ * No stage before this one places nodes in its layout, so a first prompt that
+ * is not a positioning task meets only unplaced nodes, which it cannot use.
+ */
+describe('the warning about a first prompt that places no nodes', () => {
+  const FRESH_LAYOUT = testId('fresh-layout');
+  const WARNING_TITLE = enIntl.formatMessage(
+    sociogramPromptMessages.firstUseTitle,
+  );
+  const CONNECT_PROMPT = {
+    id: testId('sociogram-prompt-1'),
+    task: 'connect',
+    text: { 'en-US': 'Link the people who know each other' },
+    edges: { create: KNOWS, display: [KNOWS] },
+  };
+
+  it('first-use alert appears when the first prompt is not a layout task', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(CONNECT_PROMPT, {
+        layout: FRESH_LAYOUT,
+        behaviours: {},
+      }),
     );
+
+    expect(await screen.findByText(WARNING_TITLE)).toBeInTheDocument();
+    expect(harness.outline()).toHaveLength(4);
+  });
+
+  it('no first-use alert when automatic layout is on', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(CONNECT_PROMPT, {
+        layout: FRESH_LAYOUT,
+        behaviours: { automaticLayout: true },
+      }),
+    );
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    expect(
+      screen.getByText('Link the people who know each other'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(WARNING_TITLE)).not.toBeInTheDocument();
+  });
+
+  it('no first-use alert when the first prompt is a layout task', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(
+        { ...CONNECT_PROMPT, task: 'layout', edges: { display: [KNOWS] } },
+        { layout: FRESH_LAYOUT, behaviours: {} },
+      ),
+    );
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    expect(screen.queryByText(WARNING_TITLE)).not.toBeInTheDocument();
+  });
+
+  it('warns as soon as the first prompt is changed to a connect task', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(
+        { ...CONNECT_PROMPT, task: 'layout', edges: { display: [KNOWS] } },
+        { layout: FRESH_LAYOUT, behaviours: {} },
+      ),
+    );
+
+    const prompt = await openPrompt(harness);
+    await chooseTask(harness, prompt, /Connect nodes/);
+    await harness.user.click(
+      await prompt.findByRole('radio', { name: /knows/ }),
+    );
+    await saveDialog(harness, prompt);
+
+    expect(await screen.findByText(WARNING_TITLE)).toBeInTheDocument();
   });
 });
 
@@ -350,6 +329,7 @@ describe('a connection type this protocol does not define', () => {
 
   const DISPLAYING_A_LOST_TYPE = {
     id: testId('sociogram-prompt-1'),
+    task: 'layout',
     text: { 'en-US': 'Place the people who know each other close together' },
     edges: { display: [KNOWS, LOST_EDGE] },
   };
@@ -458,87 +438,6 @@ describe('a connection type this protocol does not define', () => {
 });
 
 /**
- * A prompt that HIGHLIGHTS its nodes by an attribute without letting the
- * participant change it.
- *
- * `highlight.variable` alone is display-only by the schema's own reading —
- * `entity-attribute-reference` tags the site `usageRequiresSibling:
- * 'allowHighlighting'`, and the interview gates its tap-to-toggle branch on
- * the flag while reading `variable` for the highlight regardless. So the
- * attribute is one this stage READS, and nothing the participant does here
- * writes it.
- */
-describe('a prompt that only highlights its nodes', () => {
-  const DISPLAY_ONLY_PROMPT = {
-    id: testId('sociogram-prompt-1'),
-    text: { 'en-US': 'Place the people who know each other close together' },
-    highlight: { variable: HIGHLIGHTED, allowHighlighting: false },
-  };
-
-  /**
-   * Opening the dialog and saving it is not a decision about anything, and the
-   * one it must not make is this one: classified by `highlight.variable` alone,
-   * the prompt opened on "mark the node" and an effect wrote
-   * `allowHighlighting: true` behind it — so merely looking at a display-only
-   * prompt handed the participant a switch that writes to an attribute the
-   * researcher had reserved for reading, and the data collected changed.
-   */
-  it('does not start writing the attribute it only reads', async () => {
-    const harness = renderStageEditor(sociogramHolding(DISPLAY_ONLY_PROMPT));
-
-    const prompt = await openPrompt(harness);
-    // Tapping does nothing, which is exactly what this prompt says: the
-    // highlighting is drawn from an attribute the participant cannot toggle.
-    // Said by the section being switched off, as released Architect said it.
-    expect(
-      prompt.getByRole('switch', { name: 'Node interaction' }),
-    ).toHaveAttribute('aria-checked', 'false');
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const saved = await harness.submit();
-    expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual(
-      DISPLAY_ONLY_PROMPT,
-    );
-  });
-
-  /**
-   * And choosing what tapping does leaves the highlighting alone.
-   *
-   * The chooser owns the two things a TAP can do, so it clears the side it is
-   * leaving and nothing else. Clearing both of the other two on every change
-   * threw away a `highlight.variable` that had never been on screen — the
-   * researcher was answering a question about tapping, and the answer took the
-   * prompt's highlighting with it.
-   */
-  it('keeps the highlighting when the researcher says what tapping does', async () => {
-    const harness = renderStageEditor(sociogramHolding(DISPLAY_ONLY_PROMPT));
-
-    const prompt = await openPrompt(harness);
-    await chooseTapBehaviour(harness, prompt, /Edge creation/);
-    await harness.user.click(
-      await prompt.findByRole('radio', { name: /family_edge/ }),
-    );
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const saved = promptsOf((await harness.submit())?.stageDocument ?? {})[0];
-    expect(saved?.highlight).toEqual({
-      variable: HIGHLIGHTED,
-      allowHighlighting: false,
-    });
-    expect(saved?.edges).toEqual({
-      create: FAMILY_EDGE,
-      display: [FAMILY_EDGE],
-    });
-  });
-});
-
-/**
  * A prompt that collects a connection without drawing it.
  *
  * `edges.create` and `edges.display` are independent: the interview's canvas
@@ -553,6 +452,7 @@ describe('a prompt that only highlights its nodes', () => {
 describe('a prompt that draws a connection it does not show', () => {
   const COLLECTS_WITHOUT_SHOWING = {
     id: testId('sociogram-prompt-1'),
+    task: 'connect',
     text: { 'en-US': 'Place the people who know each other close together' },
     edges: { create: KNOWS, display: [] },
   };
@@ -564,7 +464,7 @@ describe('a prompt that draws a connection it does not show', () => {
 
     const prompt = await openPrompt(harness);
     expect(
-      prompt.getByRole('option', { name: /Edge creation/ }),
+      prompt.getByRole('option', { name: /Connect nodes/ }),
     ).toHaveAttribute('aria-selected', 'true');
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -615,243 +515,40 @@ describe('a prompt that draws a connection it does not show', () => {
   });
 });
 
-/**
- * What tapping a node does, and what the prompt saves for it.
- *
- * `highlight.allowHighlighting` is the flag the interview gates tap-to-mark
- * on, and `highlight.variable` is what shows a node HIGHLIGHTED whatever the
- * flag holds. So the two are different configurations, and one rule decides both
- * halves of this family: the FLAG says whether the prompt writes the
- * attribute, and the attribute alone never does.
- *
- * Enumerated rather than asserted case by case, because each of the three tap
- * choices has to be right against each of the three committed prompts — no
- * highlight at all, one that only highlights, one that already marks — and the
- * two failures this replaces were each one cell of that table. A prompt sent
- * to "mark the node" and back kept the `true` written on the way in beside an
- * attribute the chooser had just cleared; and a highlighting prompt switched to
- * marking escaped the writer-conflict check as an unchanged pick, because the
- * check read the attribute and not the flag.
- */
-describe('what tapping a node does, against what the prompt already said', () => {
-  const HIGHLIGHT_ATTRIBUTE = HIGHLIGHTED;
-
-  const promptSaying = (
-    highlight?: Record<string, unknown>,
-  ): Record<string, unknown> => ({
-    id: testId('sociogram-prompt-1'),
-    text: { 'en-US': 'Place the people who know each other close together' },
-    ...(highlight === undefined ? {} : { highlight }),
-  });
-
-  /** The section switched off, which is how a prompt says tapping does nothing. */
-  const NOTHING = 'off';
-  const CREATE_EDGE = /Edge creation/;
-  const MARK = /Attribute toggling/;
-
-  type Case = Readonly<{
-    /** What the protocol holds for this prompt's `highlight`. */
-    committed?: Record<string, unknown>;
-    /** Whether a form elsewhere collects the attribute, making it validated. */
-    collected?: boolean;
-    /** The tap choices the researcher makes, in order. */
-    taps: readonly (RegExp | typeof NOTHING)[];
-    /** An attribute chosen while "mark the node" is the current choice. */
-    marks?: string;
-    /** An edge type chosen while "create a connection" is the current choice. */
-    draws?: string;
-    /** The prompt's `highlight` after the save, or a refusal instead. */
-    expected: Record<string, unknown> | undefined | 'refused';
-  }>;
-
-  const cases: Readonly<Record<string, Case>> = {
-    'a prompt with no highlight, marked': {
-      taps: [MARK],
-      marks: HIGHLIGHT_ATTRIBUTE,
-      expected: { allowHighlighting: true, variable: HIGHLIGHT_ATTRIBUTE },
-    },
-    'a prompt with no highlight, marked and then left alone again': {
-      taps: [MARK, NOTHING],
-      expected: undefined,
-    },
-    'a prompt with no highlight, marked and then set to draw instead': {
-      taps: [MARK, CREATE_EDGE],
-      draws: 'family_edge',
-      expected: undefined,
-    },
-    'a highlighting prompt, opened and saved': {
-      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-      taps: [],
-      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-    },
-    /**
-     * Visiting the marking option and changing your mind is not a decision
-     * about the attribute this prompt highlights by.
-     *
-     * The picker mounts already showing that attribute, so there is nothing
-     * on screen to say the prompt is about to lose it — and leaving the
-     * marking side cleared it, taking the highlighting with it. Leaving puts
-     * back exactly what the row opened with, the pick and the flag beside it,
-     * and both destinations that keep an attribute meaningful say the same
-     * thing.
-     */
-    'a highlighting prompt visited on marking and left alone again': {
-      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-      taps: [MARK, NOTHING],
-      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-    },
-    /**
-     * And a prompt that never wrote the flag at all goes on not writing it.
-     *
-     * The row above arrived saying `false`, so putting back what it opened
-     * with and writing `false` are the same edit, and every other cell of this
-     * table says `false` too — which leaves the difference between the flag a
-     * prompt HOLDS and the flag it is treated as holding untested. This prompt
-     * holds no `allowHighlighting` key, and visiting the marking option and
-     * leaving again must not add one: `false` is the interview's answer to
-     * "does tapping mark this node", and a protocol that never answered it
-     * still has not.
-     */
-    'a highlighting prompt with no flag at all, visited on marking and left alone again':
-      {
-        committed: { variable: HIGHLIGHT_ATTRIBUTE },
-        taps: [MARK, NOTHING],
-        expected: { variable: HIGHLIGHT_ATTRIBUTE },
-      },
-    'a highlighting prompt visited on marking and set to draw instead': {
-      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-      taps: [MARK, CREATE_EDGE],
-      draws: 'family_edge',
-      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-    },
-    /**
-     * The prompt READS the attribute, so a form collecting it is not a
-     * conflict at all — and there is no marking picker on screen for a
-     * refusal to land on. Refused anyway, this row could not be saved and
-     * could not say why: the dialog simply stayed open.
-     */
-    'a highlighting prompt whose attribute a form collects, opened and saved': {
-      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-      collected: true,
-      taps: [],
-      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-    },
-    'a highlighting prompt whose attribute a form collects, switched to marking':
-      {
-        committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
-        collected: true,
-        taps: [MARK],
-        expected: 'refused',
-      },
-    'a marking prompt whose attribute a form already collects, opened and saved':
-      {
-        committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
-        collected: true,
-        taps: [],
-        expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
-      },
-    'a marking prompt, told to do nothing': {
-      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
-      taps: [NOTHING],
-      expected: { allowHighlighting: false },
-    },
-  };
-
-  it.each(Object.entries(cases))('%s', async (_name, scenario) => {
-    const harness = renderStageEditor(
-      sociogramHolding(promptSaying(scenario.committed)),
-    );
-    if (scenario.collected === true) {
-      collectInAForm(harness, HIGHLIGHT_ATTRIBUTE);
-    }
-
-    const prompt = await openPrompt(harness);
-    for (const tap of scenario.taps) {
-      if (tap === NOTHING) {
-        await switchTapping(harness, prompt, false);
-        continue;
-      }
-      await chooseTapBehaviour(harness, prompt, tap);
-      if (tap === MARK && scenario.marks !== undefined) {
-        await chooseAttributeById(
-          harness.user,
-          await promptAttributeField('Boolean attribute'),
-          scenario.marks,
-        );
-      }
-      if (tap === CREATE_EDGE && scenario.draws !== undefined) {
-        await harness.user.click(
-          await prompt.findByRole('radio', { name: scenario.draws }),
-        );
-      }
-    }
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-
-    if (scenario.expected === 'refused') {
-      // The dialog staying open IS the refusal, and the reason is the one the
-      // codebook editor gives for the same conflict.
-      await prompt.findByText(
-        readMessage(validatedElsewhereMessage('highlighted')),
-      );
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      return;
-    }
-
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-    const saved = promptsOf((await harness.submit())?.stageDocument ?? {})[0];
-    if (scenario.expected === undefined) {
-      // Absent, not empty: an unanswered question saved as an answer is
-      // content in the researcher's protocol that the researcher did not
-      // write.
-      expect(saved).not.toHaveProperty('highlight');
-      return;
-    }
-    expect(saved?.highlight).toEqual(scenario.expected);
-    // `toEqual` reads a key holding `undefined` as one that is not there, and
-    // the rows above turn on which keys a saved prompt HAS: a flag written as
-    // `false` and a flag never written are different protocols.
-    expect(Object.keys(saved?.highlight ?? {}).toSorted()).toEqual(
-      Object.keys(scenario.expected).toSorted(),
-    );
-  });
-});
-
-/**
- * Opening a prompt to look at it is not an edit.
- *
- * Every saved shape of tap behaviour, cancelled untouched, closes without the
- * discard confirmation. A prompt that marks nodes once opened already dirty:
- * the dialog restates `allowHighlighting: true` on opening, and that write
- * was measured against nothing rather than against the `true` the prompt
- * already held.
- */
+/** Opening a prompt and cancelling it without a change asks nothing. */
 describe('a prompt opened and cancelled untouched', () => {
   const DISCARD_TITLE = 'Discard your changes?';
   const FRIEND = testTypeId('friend');
 
-  const promptSaying = (
-    tap: Record<string, unknown>,
+  const promptSetting = (
+    task: Record<string, unknown>,
   ): Record<string, unknown> => ({
     id: testId('sociogram-prompt-1'),
     text: 'Place the people who know each other close together',
-    ...tap,
+    ...task,
   });
 
   it.each([
-    ['taps do nothing', {}],
+    ['a positioning task', { task: 'layout' }],
     [
-      'only highlights',
-      { highlight: { variable: HIGHLIGHTED, allowHighlighting: false } },
+      'a highlight task',
+      {
+        task: 'highlight',
+        highlight: [
+          {
+            id: testId('highlight-entry'),
+            type: PERSON,
+            variable: HIGHLIGHTED,
+          },
+        ],
+      },
     ],
     [
-      'marks nodes',
-      { highlight: { variable: HIGHLIGHTED, allowHighlighting: true } },
+      'a connect task',
+      { task: 'connect', edges: { create: FRIEND, display: [FRIEND] } },
     ],
-    ['draws a connection', { edges: { create: FRIEND, display: [FRIEND] } }],
-  ])('closes without asking, for a prompt that %s', async (_name, tap) => {
-    const harness = renderStageEditor(sociogramHolding(promptSaying(tap)));
+  ])('closes without asking, for %s', async (_name, task) => {
+    const harness = renderStageEditor(sociogramHolding(promptSetting(task)));
 
     const prompt = await openPrompt(harness);
     await harness.user.click(prompt.getByRole('button', { name: 'Cancel' }));
@@ -862,19 +559,15 @@ describe('a prompt opened and cancelled untouched', () => {
     expect(screen.queryByText(DISCARD_TITLE)).not.toBeInTheDocument();
   });
 
-  // The guard the cases above expect silence from does speak: without this, a
-  // Cancel that never consulted it would pass them all.
+  // The guard that the cases above expect silence from does speak: without
+  // this, a Cancel that never consulted it would pass them all.
   it('asks once the researcher has changed something', async () => {
     const harness = renderStageEditor(
-      sociogramHolding(
-        promptSaying({
-          highlight: { variable: HIGHLIGHTED, allowHighlighting: true },
-        }),
-      ),
+      sociogramHolding(promptSetting({ task: 'layout' })),
     );
 
     const prompt = await openPrompt(harness);
-    await switchTapping(harness, prompt, false);
+    await chooseTask(harness, prompt, /Connect nodes/);
     await harness.user.click(prompt.getByRole('button', { name: 'Cancel' }));
 
     expect(await screen.findByText(DISCARD_TITLE)).toBeInTheDocument();
@@ -946,9 +639,7 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
-    await harness.user.click(
-      prompt.getByRole('option', { name: /Attribute toggling/ }),
-    );
+    await chooseTask(harness, prompt, /Highlight nodes/);
     await inventAttribute(
       harness.user,
       await promptAttributeField('Boolean attribute'),
@@ -979,10 +670,9 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     expect(harness.hostCodebook().node?.[PERSON]?.variables).toHaveProperty(
       created[0],
     );
-    expect(promptsOf(saved?.stageDocument ?? {})[0]?.highlight).toEqual({
-      allowHighlighting: true,
-      variable: created[0],
-    });
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.highlight).toEqual([
+      { id: expect.any(String), type: PERSON, variable: created[0] },
+    ]);
   });
 });
 
@@ -1004,6 +694,7 @@ describe('a connections list with nothing in it', () => {
     const harness = renderStageEditor(
       sociogramHolding({
         id: testId('sociogram-prompt-1'),
+        task: 'layout',
         text: {
           'en-US': 'Place the people who know each other close together',
         },
@@ -1043,6 +734,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   const NICKNAME = testVariableId('nickname');
   const SORTED_PROMPT = {
     id: testId('sociogram-prompt-1'),
+    task: 'layout',
     text: { 'en-US': 'Place the people who know each other close together' },
     sortOrder: [
       {

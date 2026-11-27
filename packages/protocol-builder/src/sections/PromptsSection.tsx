@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -256,6 +256,8 @@ export type PromptsSectionProps = Readonly<{
   addTitle?: MessageDescriptor;
   editTitle?: MessageDescriptor;
   itemNoun?: MessageDescriptor;
+  /** Shown in the section below the list, such as a warning about the list. */
+  children?: ReactNode;
 }>;
 
 /**
@@ -293,6 +295,7 @@ export default function PromptsSection({
   addTitle = promptsSectionMessages.addTitle,
   editTitle = promptsSectionMessages.editTitle,
   itemNoun = promptsSectionMessages.itemNoun,
+  children,
 }: PromptsSectionProps) {
   const intl = useAppIntl();
   const subject = useStageValue('subject');
@@ -365,6 +368,7 @@ export default function PromptsSection({
           {...(optional ? {} : { required: AT_LEAST_ONE_PROMPT })}
         />
       </RowList>
+      {children}
     </BuilderSection>
   );
 }

@@ -103,48 +103,82 @@ export const sociogramPromptMessages = defineMessages({
     description:
       'Shown in place of the sort-rules list while the prompt sorts by nothing in particular, saying what happens instead.',
   },
-  tapTitle: {
-    id: 'protocolBuilder.networkCanvas.tapTitle',
-    defaultMessage: 'Node interaction',
+  taskTitle: {
+    id: 'protocolBuilder.networkCanvas.taskTitle',
+    defaultMessage: 'Task',
     description:
-      'Heading of the group inside the sociogram prompt dialog deciding what the participant tapping a node does.',
+      'Heading of the group inside the sociogram prompt dialog that chooses what the participant does while this prompt is shown.',
   },
-  tapDescription: {
-    id: 'protocolBuilder.networkCanvas.tapDescription',
+  taskDescription: {
+    id: 'protocolBuilder.networkCanvas.taskDescription',
     defaultMessage:
-      'Choose whether tapping a node toggles an attribute or creates an edge.',
-    description: 'Description of the tapping-a-node group.',
-  },
-  tapBehaviourLabel: {
-    id: 'protocolBuilder.networkCanvas.tapBehaviourLabel',
-    defaultMessage: 'Interaction type',
+      'Choose what participants do on the canvas while this prompt is shown. Nodes can be moved only in a positioning task.',
     description:
-      'Label of the control choosing between the two things tapping a node can do.',
+      'Description of the task group in the sociogram prompt dialog. The canvas is the area on which the participant places nodes. A positioning task is the first of the three choices offered.',
   },
-  tapCreateEdgeLabel: {
-    id: 'protocolBuilder.networkCanvas.tapCreateEdgeLabel',
-    defaultMessage: 'Edge creation',
+  taskLabel: {
+    id: 'protocolBuilder.networkCanvas.taskLabel',
+    defaultMessage: 'Task type',
     description:
-      'Name of the choice where tapping two nodes draws a relationship between them. Offered as one of three cards; the sentence under it is tapCreateEdgeDescription.',
+      'Label of the control that chooses one of the three tasks a sociogram prompt can set: positioning nodes, highlighting nodes, or connecting nodes.',
   },
-  tapCreateEdgeDescription: {
-    id: 'protocolBuilder.networkCanvas.tapCreateEdgeDescription',
+  taskRequired: {
+    id: 'protocolBuilder.networkCanvas.taskRequired',
+    defaultMessage: 'Choose the task that this prompt sets.',
+    description:
+      'Refusal shown under the task control when the researcher saves a sociogram prompt without choosing a task.',
+  },
+  taskLayoutLabel: {
+    id: 'protocolBuilder.networkCanvas.taskLayoutLabel',
+    defaultMessage: 'Position nodes',
+    description:
+      'Name of the sociogram task in which the participant places nodes on the canvas and moves them. The sentence under it is taskLayoutDescription.',
+  },
+  taskLayoutDescription: {
+    id: 'protocolBuilder.networkCanvas.taskLayoutDescription',
     defaultMessage:
-      'Clicking or tapping a node allows the participant to create an edge.',
+      'Participants drag nodes onto the canvas and move them. Positions are stored in the layout of this stage.',
     description:
-      'Says what the participant does to draw a connection. A connection is an edge.',
+      'Says what the participant does in the positioning task. A layout is a named set of node positions in the codebook; the stage chooses one.',
   },
-  tapHighlightLabel: {
-    id: 'protocolBuilder.networkCanvas.tapHighlightLabel',
-    defaultMessage: 'Attribute toggling',
+  taskHighlightLabel: {
+    id: 'protocolBuilder.networkCanvas.taskHighlightLabel',
+    defaultMessage: 'Highlight nodes',
     description:
-      'Name of the choice where tapping a node turns a true-or-false attribute on and off. Offered as one of three cards; the sentence under it is tapHighlightDescription.',
+      'Name of the sociogram task in which tapping a node turns a true-or-false attribute on and off. The sentence under it is taskHighlightDescription.',
   },
-  tapHighlightDescription: {
-    id: 'protocolBuilder.networkCanvas.tapHighlightDescription',
+  taskHighlightDescription: {
+    id: 'protocolBuilder.networkCanvas.taskHighlightDescription',
     defaultMessage:
-      'Clicking or tapping a node toggles a boolean attribute between true and false.',
-    description: 'Says what marking a node does to the attribute behind it.',
+      'Participants tap a node to set a Boolean attribute to true or false.',
+    description:
+      'Says what the participant does in the highlighting task. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it.',
+  },
+  taskConnectLabel: {
+    id: 'protocolBuilder.networkCanvas.taskConnectLabel',
+    defaultMessage: 'Connect nodes',
+    description:
+      'Name of the sociogram task in which the participant taps two nodes to create an edge between them. The sentence under it is taskConnectDescription.',
+  },
+  taskConnectDescription: {
+    id: 'protocolBuilder.networkCanvas.taskConnectDescription',
+    defaultMessage:
+      'Participants tap two nodes to create or remove an edge between them.',
+    description:
+      'Says what the participant does in the connecting task. An edge is a connection between two nodes.',
+  },
+  firstUseTitle: {
+    id: 'protocolBuilder.networkCanvas.firstUseTitle',
+    defaultMessage: 'Nodes are not placed before this task',
+    description:
+      'Title of the warning in the prompts section of a sociogram stage. It is shown when this stage is the first in the interview to use its layout, and its first prompt is not a positioning task.',
+  },
+  firstUseDescription: {
+    id: 'protocolBuilder.networkCanvas.firstUseDescription',
+    defaultMessage:
+      'No earlier stage places nodes in this layout, and the first prompt of this stage is not a positioning task. Nodes that are not placed cannot be highlighted or connected. Make the first prompt a positioning task, or choose Automatic mode under Node layout.',
+    description:
+      'Text of the warning in the prompts section of a sociogram stage. A layout is a named set of node positions. A positioning task is the prompt task in which participants place nodes. Automatic mode is a choice in the Node layout section of the same stage, which places nodes without the participant.',
   },
   promptCreateEdgeLabel: {
     id: 'protocolBuilder.networkCanvas.promptCreateEdgeLabel',
