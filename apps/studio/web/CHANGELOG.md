@@ -1,5 +1,27 @@
 # @codaco/studio-web
 
+## 1.0.3
+
+### Patch Changes
+
+- The language picker no longer shows an "Interface language" heading above its list of languages. Screen readers still announce the picker as "Interface language".
+- Text that only a screen reader reads, such as the language menu's name and the names of icon-only buttons, is now English in every language, and is marked `lang="en"` where that does not also mark translated text, so a screen reader reads it in an English voice. Visible text, placeholders and tooltips stay translated.
+- Changes you make to the codebook while editing a stage are now part of that
+  stage's edit. This includes an attribute's validation rules, new attributes and
+  types, answer options, input controls, renamed attributes, encrypted attributes
+  and family pedigree symbols, and wording shared by every stage of a kind. The
+  stage editor shows these changes as unsaved
+  work, and they are saved together with the stage. Cancelling the stage undoes
+  them. Previously these changes were saved immediately and stayed even after the
+  stage was cancelled.
+- A section the host refuses now names, on each issue, the object inside it that the issue is about. `SectionIssue` has an optional `objectId`, the id of the nearest object holding the failing value, such as the sort rule inside a prompt, and `toSectionIssues` turns a section schema's refusal into these issues.
+
+  A new protocol is now made the way Architect makes one, with `createEmptyProtocol` from `@codaco/protocol-builder-core`. It starts with an empty participant codebook and an empty list of resources, as well as its Finish Screen stage.
+
+  In the editor, choosing a validation problem about one item in a list, such as a prompt, a form field or a rule, now opens its screen and moves focus to that item's row, rather than to the list that holds it.
+
+  When a stage cannot be added because part of it is not valid, the message now says that your changes are still in the editor. It used to say they had been discarded, which was not true.
+
 ## 1.0.2
 
 ### Patch Changes
