@@ -251,11 +251,7 @@ export const analyse = (
           );
         return;
       }
-      if (
-        a.id === 'name' ||
-        a.id === 'layout' ||
-        (scope === 'ego' && a.id === 'consent')
-      ) {
+      if (a.id === 'name' || (scope === 'ego' && a.id === 'consent')) {
         // a replacement no other attribute here already uses
         const taken = (x: string) =>
           seen.has(x) || list.some((o) => o !== a && slug(o.id) === x);
@@ -602,16 +598,12 @@ export const analyse = (
       );
       return '';
     }
-    if (
-      id === 'name' ||
-      id === 'layout' ||
-      nameAlias.get(`${scope}/${id}`) === 'name'
-    ) {
+    if (id === 'name' || nameAlias.get(`${scope}/${id}`) === 'name') {
       add(
         'degraded',
         'RESERVED_ID',
         path,
-        `"${ref}" is reserved for the built-in ${id === 'layout' ? 'map position' : 'name'}; it cannot be a yes_no tag. Removed.`,
+        `"${ref}" is reserved for the built-in name; it cannot be a yes_no tag. Removed.`,
       );
       return '';
     }
@@ -1548,7 +1540,7 @@ export const analyse = (
               return false;
             }
             let loc = slug(p.locationAttributeId) || `country_${i + 1}`;
-            if (loc === 'name' || loc === 'layout') loc = `${loc}_country`;
+            if (loc === 'name') loc = `${loc}_country`;
             // Each map question records its own answer: a second prompt on
             // the same location would overwrite the first.
             if (mappedLocations.has(`${scope}/${loc}`)) {

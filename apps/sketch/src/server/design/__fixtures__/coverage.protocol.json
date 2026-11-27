@@ -116,10 +116,6 @@
               "unique": true
             }
           },
-          "1739f1b3-c5d3-5800-9848-e6e0b46c1594": {
-            "name": "layout",
-            "type": "layout"
-          },
           "b8e882ca-7a84-52fb-8a8c-02bfbac1603a": {
             "name": "year_of_study",
             "type": "number",
@@ -234,10 +230,6 @@
               "unique": true
             }
           },
-          "2581e04d-98ef-5367-b445-8c9c3861969a": {
-            "name": "layout",
-            "type": "layout"
-          },
           "6dc523b4-cace-57c9-a730-59fa2809d08a": {
             "name": "visit_freq",
             "type": "ordinal",
@@ -345,10 +337,6 @@
               "unique": true
             }
           },
-          "9e9d85e4-5330-54d0-9c39-2075d6376e4c": {
-            "name": "layout",
-            "type": "layout"
-          },
           "76142aa3-ea78-5163-a3f9-8afe583980c4": {
             "name": "mentor_role",
             "type": "text",
@@ -383,6 +371,17 @@
             ]
           }
         }
+      }
+    },
+    "layouts": {
+      "410f4475-b54e-512d-ae0c-59ea76467d78": {
+        "name": "layout_classmate"
+      },
+      "6573dc70-945e-5f82-bc43-9d0a3cd2e651": {
+        "name": "layout_place"
+      },
+      "ba069401-16a8-58c8-b20a-9055ec5d0762": {
+        "name": "layout_mentor"
       }
     },
     "edge": {
@@ -1239,6 +1238,7 @@
         "entity": "node",
         "types": ["1aa2837e-5f05-55ca-b098-4d22754cbcca"]
       },
+      "layout": "6573dc70-945e-5f82-bc43-9d0a3cd2e651",
       "background": {
         "concentricCircles": 4,
         "skewedTowardCenter": true
@@ -1251,9 +1251,6 @@
           "id": "241f256d-f4bc-5688-b8fb-24162fac43c7",
           "text": {
             "en": "Tap your **favourite** places."
-          },
-          "layout": {
-            "layoutVariable": "2581e04d-98ef-5367-b445-8c9c3861969a"
           },
           "highlight": {
             "allowHighlighting": true,
@@ -1293,7 +1290,7 @@
           "label": {
             "en": "What you do"
           },
-          "layoutVariable": "2581e04d-98ef-5367-b445-8c9c3861969a",
+          "layout": "6573dc70-945e-5f82-bc43-9d0a3cd2e651",
           "groupVariable": "51a087dc-e9b9-575e-aaee-71279df9ea79",
           "highlight": [
             {
@@ -1336,6 +1333,7 @@
         "entity": "node",
         "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
+      "layout": "410f4475-b54e-512d-ae0c-59ea76467d78",
       "background": {
         "concentricCircles": 4,
         "skewedTowardCenter": true
@@ -1348,9 +1346,6 @@
           "id": "b79070b5-05bb-59c3-b39c-9e20232f2884",
           "text": {
             "en": "Arrange your classmates."
-          },
-          "layout": {
-            "layoutVariable": "1739f1b3-c5d3-5800-9848-e6e0b46c1594"
           },
           "edges": {
             "display": [
@@ -1397,7 +1392,7 @@
         "types": ["16f7d809-2892-561f-b66c-e7d2de3c3775"]
       },
       "quickAdd": "f8b60e21-e002-5daf-84a0-4d4f4b82f9fc",
-      "layoutVariable": "9e9d85e4-5330-54d0-9c39-2075d6376e4c",
+      "layout": "ba069401-16a8-58c8-b20a-9055ec5d0762",
       "nodeForm": {
         "fields": [
           {

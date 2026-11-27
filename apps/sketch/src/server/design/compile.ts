@@ -268,6 +268,7 @@ export const compile = (
   const key = (scope: string, attrId: string) =>
     keyOf.get(`${scope}/${attrId}`)!;
   const nodeKey = new Map<string, string>();
+  const layoutKey = new Map<string, string>();
   const relKey = new Map<string, string>();
   const typeKeys = new Set<string>();
   const claimType = (id: string) => {
@@ -370,14 +371,8 @@ export const compile = (
       vars[claim(scope, 'name', tk)] = pedigreeOf.has(n.id)
         ? { name: 'name', type: 'text', component: 'Text' }
         : variableFor(nameAttribute(n.nameQuestion), 'name', true);
-      if (needsLayout.has(n.id))
-        vars[claim(scope, 'layout', tk)] = { name: 'layout', type: 'layout' };
       // every declared id up front, so a generated `<id>_other` never takes one
-      const names = new Set([
-        'name',
-        'layout',
-        ...n.attributes.map((a) => a.id),
-      ]);
+      const names = new Set(['name', ...n.attributes.map((a) => a.id)]);
       for (const a of n.attributes) {
         const k = claim(scope, a.id, tk);
         vars[k] = variableFor(a, a.id, askedInForm.has(`${scope}/${a.id}`));
@@ -450,6 +445,17 @@ export const compile = (
       sourceMap.set(`codebook.node.${tk}`, `nodeTypes "${n.id}"`);
     });
     codebook.node = nodes;
+    // One layout per placed node type. Layout names are unique across the
+    // codebook, and the node type key is already unique and slugged.
+    const layouts: Json = {};
+    for (const n of d.nodeTypes) {
+      if (!needsLayout.has(n.id)) continue;
+      const lk = `layout_${nodeKey.get(n.id)!}`;
+      layoutKey.set(n.id, lk);
+      layouts[lk] = { name: lk };
+      sourceMap.set(`codebook.layouts.${lk}`, `nodeTypes "${n.id}"`);
+    }
+    if (Object.keys(layouts).length) codebook.layouts = layouts;
   }
   const edges: Json = {};
   if (d.relationships.length) {
@@ -1097,14 +1103,12 @@ export const compile = (
         break;
       }
       case 'sociogram': {
-        const layoutVariable = key(scope, 'layout');
         const automaticLayout = !s.prompts.some((p) => p.task === 'position');
         lastSociogramAuto.set(s.nodeTypeId, automaticLayout);
         const prompts = s.prompts.map((p, i) => {
           const out: Json = {
             id: `p${i + 1}`,
             text: prompt(s.id, i, p.text),
-            layout: { layoutVariable },
           };
           if (p.task === 'connect') {
             const ek = relKey.get(p.relationshipId)!;
@@ -1125,6 +1129,7 @@ export const compile = (
           withFilter({
             ...base(s.id, 'Sociogram', label(s.id, humanise(s.id))),
             subject: nodeSubject(s.nodeTypeId),
+            layout: layoutKey.get(s.nodeTypeId)!,
             background: { concentricCircles: 4, skewedTowardCenter: true },
             behaviours: { automaticLayout },
             prompts,
@@ -1156,7 +1161,7 @@ export const compile = (
             ...base(s.id, 'NetworkComposer', label(s.id, humanise(s.id))),
             subject: nodeSubject(s.nodeTypeId),
             quickAdd: key(scope, 'name'),
-            layoutVariable: key(scope, 'layout'),
+            layout: layoutKey.get(s.nodeTypeId)!,
             ...(s.attributeIds.length
               ? {
                   nodeForm: {
@@ -1207,7 +1212,7 @@ export const compile = (
                 label: localized(
                   pick(W.prompt.get(`${s.id}/view${i + 1}`)?.text, v.label),
                 ),
-                layoutVariable: key(scope, 'layout'),
+                layout: layoutKey.get(s.nodeTypeId)!,
                 ...(v.groupByAttributeId
                   ? { groupVariable: key(scope, v.groupByAttributeId) }
                   : {}),

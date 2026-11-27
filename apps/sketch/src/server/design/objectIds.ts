@@ -70,7 +70,8 @@ export const sketchTypeId = (key: string) => typeIdIn(`type:${key}`);
 export const sketchVariableId = (key: string) =>
   variableIdIn(`variable:${key}`);
 
-const sketchLayoutId = (key: string) => variableIdIn(`layout:${key}`);
+/** The id of the layout the compiler keys `key`. */
+export const sketchLayoutId = (key: string) => variableIdIn(`layout:${key}`);
 
 /**
  * A source map path (`codebook.<entity>.<type>` or one that goes on to

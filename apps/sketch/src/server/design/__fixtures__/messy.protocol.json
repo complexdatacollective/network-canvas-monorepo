@@ -120,10 +120,6 @@
               "unique": true
             }
           },
-          "f9fc70bb-bcc4-5094-9477-6a4a9ade1890": {
-            "name": "layout",
-            "type": "layout"
-          },
           "e8a7e81e-1135-5734-9936-9398943783d8": {
             "name": "person_first_name",
             "type": "text",
@@ -161,6 +157,11 @@
             "component": "Toggle"
           }
         }
+      }
+    },
+    "layouts": {
+      "9c9e8f39-aa3e-51a9-84ac-e70ed21a6579": {
+        "name": "layout_person"
       }
     },
     "edge": {
@@ -382,6 +383,7 @@
         "entity": "node",
         "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
+      "layout": "9c9e8f39-aa3e-51a9-84ac-e70ed21a6579",
       "background": {
         "concentricCircles": 4,
         "skewedTowardCenter": true
@@ -394,9 +396,6 @@
           "id": "5f575ca6-1da5-5e0d-8be8-3bb76de3e3cf",
           "text": {
             "en": "Mark helpers"
-          },
-          "layout": {
-            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           },
           "highlight": {
             "allowHighlighting": true,

@@ -34,7 +34,7 @@ export type DesignIssue = {
 
 /** Attribute after analysis: `builtin` marks attributes Sketch created. */
 export type NAttribute = Omit<DesignAttribute, 'kind'> & {
-  builtin?: 'name' | 'layout' | 'other' | 'location' | 'consent' | 'tag';
+  builtin?: 'name' | 'other' | 'location' | 'consent' | 'tag';
   kind: AttributeKind | 'location';
 };
 

@@ -517,10 +517,6 @@
               "unique": true
             }
           },
-          "f9fc70bb-bcc4-5094-9477-6a4a9ade1890": {
-            "name": "layout",
-            "type": "layout"
-          },
           "57ae97be-13bd-5eda-b574-f6f62bfaa6cd": {
             "name": "new_friend",
             "type": "boolean",
@@ -716,6 +712,11 @@
             ]
           }
         }
+      }
+    },
+    "layouts": {
+      "9c9e8f39-aa3e-51a9-84ac-e70ed21a6579": {
+        "name": "layout_person"
       }
     },
     "edge": {
@@ -1129,6 +1130,7 @@
         "entity": "node",
         "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
+      "layout": "9c9e8f39-aa3e-51a9-84ac-e70ed21a6579",
       "background": {
         "concentricCircles": 4,
         "skewedTowardCenter": true
@@ -1141,18 +1143,12 @@
           "id": "605ac758-f0a7-587c-917f-2321e18ee287",
           "text": {
             "en": "Place the people you are **closest to** nearest the centre."
-          },
-          "layout": {
-            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           }
         },
         {
           "id": "40244c3a-8f1e-582f-91e9-3e93f802dcc1",
           "text": {
             "en": "Draw a line between any two people who **know each other**."
-          },
-          "layout": {
-            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           },
           "edges": {
             "create": "1701f5b2-eae8-53df-ad7d-dd9dc66a8ead",
@@ -1163,9 +1159,6 @@
           "id": "9de9546b-29a2-542f-ac5b-8c39a5b40b3b",
           "text": {
             "en": "Tap everyone you **usually drink alcohol with**."
-          },
-          "layout": {
-            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           },
           "edges": {
             "display": ["1701f5b2-eae8-53df-ad7d-dd9dc66a8ead"]
@@ -1434,7 +1427,7 @@
           "label": {
             "en": "Who drinks heavily"
           },
-          "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890",
+          "layout": "9c9e8f39-aa3e-51a9-84ac-e70ed21a6579",
           "groupVariable": "e2abf2ff-5f4a-5085-8af3-42ae8abe8abd",
           "edges": {
             "display": [
@@ -1453,7 +1446,7 @@
           "label": {
             "en": "Who you drink with"
           },
-          "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890",
+          "layout": "9c9e8f39-aa3e-51a9-84ac-e70ed21a6579",
           "edges": {
             "display": [
               {
@@ -1480,7 +1473,7 @@
           "label": {
             "en": "How you met"
           },
-          "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890",
+          "layout": "9c9e8f39-aa3e-51a9-84ac-e70ed21a6579",
           "groupVariable": "6c7fdce2-7723-57f5-9f65-70f49800fa7f"
         }
       ],

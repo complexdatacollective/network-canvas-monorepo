@@ -10,7 +10,12 @@ import { findVariableRoleConflicts } from '@codaco/protocol-validation';
 import { analyse } from '../analyse.ts';
 import { buildProtocol } from '../build.ts';
 import { buildWordingRequest } from '../feedback.ts';
-import { sketchStageId, sketchTypeId, sketchVariableId } from '../objectIds.ts';
+import {
+  sketchLayoutId,
+  sketchStageId,
+  sketchTypeId,
+  sketchVariableId,
+} from '../objectIds.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
 type Json = Record<string, unknown>;
@@ -1262,7 +1267,7 @@ describe('instrument attributes', () => {
     expect(canvas).toMatchObject({
       type: 'NetworkComposer',
       quickAdd: sketchVariableId('person_name'),
-      layoutVariable: sketchVariableId('person_layout'),
+      layout: sketchLayoutId('layout_person'),
       convexHullVariable: sketchVariableId('person_circles'),
       nodeForm: {
         fields: [
@@ -1274,6 +1279,10 @@ describe('instrument attributes', () => {
     // it creates the people, so it is never skipped for want of them
     expect(canvas.skipLogic).toBeUndefined();
     expect(stageById(r.stages, 'story').type).toBe('Narrative');
+    // the narrative reads the positions the composer set
+    expect(stageById(r.stages, 'story').presets).toEqual([
+      expect.objectContaining({ layout: sketchLayoutId('layout_person') }),
+    ]);
     // the participant may have arranged the composer by hand
     expect(stageById(r.stages, 'story').behaviours).toMatchObject({
       automaticLayout: false,
