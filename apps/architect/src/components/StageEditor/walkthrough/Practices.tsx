@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { springs, stagger } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
@@ -88,10 +89,8 @@ export default function Practices({
             initial={reducedMotion ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
-              type: 'spring',
-              duration: 0.4,
-              bounce: 0.2,
-              delay: 0.15 + groupIndex * 0.1,
+              ...springs.pop,
+              delay: 0.15 + groupIndex * stagger.loose,
             }}
           >
             <div className="mb-2 flex items-center gap-2">

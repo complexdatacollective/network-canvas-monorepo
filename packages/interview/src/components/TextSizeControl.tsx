@@ -4,7 +4,7 @@ import { Popover } from '@base-ui/react/popover';
 import { ALargeSmall } from 'lucide-react';
 import { useId, useMemo } from 'react';
 
-import { IconButton } from '@codaco/fresco-ui/Button';
+import { type ButtonProps, IconButton } from '@codaco/fresco-ui/Button';
 import {
   ArrowSvg,
   BaseUISharedPopoverContainer,
@@ -13,6 +13,7 @@ import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
 } from '@codaco/fresco-ui/popoverArrow';
+import { type PopupSide, usePhysicalSide } from '@codaco/fresco-ui/popupSide';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 
@@ -23,7 +24,10 @@ type TextSizeControlProps = {
   scales: readonly number[];
   value: number;
   onChange: (scale: number) => void;
-  side: 'top' | 'left' | 'right';
+  side: PopupSide;
+  /** The trigger's look, so it matches the bar's other buttons. */
+  triggerVariant?: ButtonProps['variant'];
+  triggerSize?: ButtonProps['size'];
   /** Classes for the trigger, so it matches the bar's other buttons. */
   triggerClassName?: string;
 };
@@ -39,9 +43,12 @@ export default function TextSizeControl({
   value,
   onChange,
   side,
+  triggerVariant = 'text',
+  triggerSize = 'xl',
   triggerClassName,
 }: TextSizeControlProps) {
   const portalContainer = usePortalContainer();
+  const physicalSide = usePhysicalSide(side);
   const nameId = useId();
 
   // Each size is named as a percentage, written as the interview's language
@@ -62,8 +69,8 @@ export default function TextSizeControl({
         render={
           <IconButton
             color="dynamic"
-            variant="text"
-            size="xl"
+            variant={triggerVariant}
+            size={triggerSize}
             icon={<ALargeSmall />}
             className={triggerClassName}
             aria-label="Text size"
@@ -75,7 +82,7 @@ export default function TextSizeControl({
       <Popover.Portal container={portalContainer ?? undefined}>
         <Popover.Positioner
           className="z-3000"
-          side={side}
+          side={physicalSide}
           align="center"
           sideOffset={10}
           arrowPadding={POPOVER_ARROW_PADDING}

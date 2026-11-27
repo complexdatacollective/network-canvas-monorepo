@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { Fragment, type ReactNode, useCallback, useRef } from 'react';
 
 import { usePageBackgroundTargetRef } from '@codaco/art';
+import { springs } from '@codaco/fresco-ui/motion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
@@ -103,7 +104,7 @@ function CollapsedNav({ className }: { className?: string }) {
                   <motion.span
                     aria-hidden
                     layoutId="workflowNavIndicator"
-                    transition={{ type: 'spring', duration: 0.35, bounce: 0 }}
+                    transition={springs.snap}
                     style={{ borderRadius: 12 }}
                     className={cx(
                       'absolute inset-0 shadow-sm',

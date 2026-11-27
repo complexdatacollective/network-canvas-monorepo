@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { type ReactNode, type RefObject, useId, useState } from 'react';
 
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { springs } from '@codaco/fresco-ui/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import Prompts from '../../components/Prompts';
@@ -109,7 +110,7 @@ const CollapsablePrompts = (props: {
                 height: 'auto',
                 opacity: 1,
                 transition: {
-                  height: { type: 'spring', stiffness: 300, damping: 24 },
+                  height: springs.pop,
                   opacity: { duration: 0.15 },
                 },
               }

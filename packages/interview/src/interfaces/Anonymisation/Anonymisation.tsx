@@ -22,6 +22,7 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { exitTween, springs } from '@codaco/fresco-ui/motion';
 import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -163,8 +164,7 @@ function AnonymisationInner(props: AnonymisationProps) {
               y: 0,
             }}
             transition={{
-              type: 'spring',
-              damping: 15,
+              ...springs.settle,
               delay: 0.2,
             }}
           >
@@ -179,7 +179,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                   key="success"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: 'spring', damping: 15 }}
+                  transition={springs.settle}
                 >
                   <Alert ref={alertRef} variant="success">
                     <AlertDescription>
@@ -194,7 +194,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                   key="form"
                   initial={{ opacity: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
+                  transition={exitTween}
                 >
                   <Surface className="mt-6" spacing="sm" shadow="sm">
                     <FormWithoutProvider

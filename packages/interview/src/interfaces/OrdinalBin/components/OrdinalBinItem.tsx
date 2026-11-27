@@ -4,6 +4,7 @@ import { memo, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { exitTween, springs } from '@codaco/fresco-ui/motion';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { SortOrder, Stage } from '@codaco/protocol-validation';
@@ -53,9 +54,9 @@ const itemVariants = {
   animate: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring' as const, stiffness: 500, damping: 30 },
+    transition: springs.pop,
   },
-  exit: { opacity: 0, y: '20%', transition: { duration: 0.15 } },
+  exit: { opacity: 0, y: '20%', transition: exitTween },
 };
 
 // A bin represents a 'missing value' (e.g. N/A) when its option value is

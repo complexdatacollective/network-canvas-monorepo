@@ -7,6 +7,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button } from '../../Button';
+import { springs } from '../../motion';
 import OptionLabel from '../../OptionLabel';
 import {
   type PresentationalText,
@@ -126,12 +127,6 @@ const booleanIndicatorVariants = cva({
   ],
 });
 
-const selectionSpring = {
-  type: 'spring' as const,
-  duration: 0.3,
-  bounce: 0.15,
-};
-
 type BooleanFieldProps = CreateFormFieldProps<
   boolean,
   'fieldset',
@@ -168,11 +163,7 @@ function BooleanIndicator({
           r="10"
           initial={false}
           animate={{ scale: isSelected ? 1 : 0 }}
-          transition={{
-            type: 'spring',
-            bounce: 0.3,
-            duration: isSelected ? 0.3 : 0.15,
-          }}
+          transition={springs.press}
         />
       </svg>
     </span>
@@ -325,7 +316,7 @@ export default function BooleanField(props: BooleanFieldProps) {
               whileTap={
                 optionDisabled || readOnly ? undefined : { scale: 0.98 }
               }
-              transition={selectionSpring}
+              transition={springs.press}
             >
               <BooleanIndicator
                 isSelected={isSelected}

@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
 import type { ReactElement, ReactNode } from 'react';
 
+import { reduced, springs } from '../motion';
 import { usePrefersReducedMotion } from '../reducedMotion';
 import { cva, cx } from '../utils/cva';
 
@@ -105,7 +106,7 @@ export default function SegmentedSwitcher<T extends string>({
   className,
   disabled,
 }: SegmentedSwitcherProps<T>) {
-  const reduced = usePrefersReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const activeIndex = options.findIndex((option) => option.value === value);
 
   return (
@@ -209,11 +210,7 @@ export default function SegmentedSwitcher<T extends string>({
                 gridColumn: activeIndex + 1,
                 borderRadius: 9999,
               }}
-              transition={
-                reduced
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 380, damping: 32 }
-              }
+              transition={reduced(springs.snap, reduceMotion)}
             />
           )}
         </ToggleGroup>

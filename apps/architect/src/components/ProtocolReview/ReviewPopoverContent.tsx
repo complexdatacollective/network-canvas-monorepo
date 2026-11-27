@@ -16,7 +16,6 @@ import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   REVIEW_PROVIDER_NAMES,
   type ReviewErrorCode,
@@ -470,20 +469,15 @@ const ReviewPopoverContent = ({
   const captionId = useId();
 
   const [view, setView] = useState<PanelView>({ kind: 'list' });
-  // Whether the view has changed since the panel opened: the first view
-  // arrives with the panel, and only a later one slides in.
-  const [switched, setSwitched] = useState(false);
   // The problem last shown, whose row takes focus when the list comes back.
   const returnTo = useRef<string | null>(null);
   const [dismissRefused, setDismissRefused] = useState(false);
 
   const openFinding = (findingId: string) => {
-    setSwitched(true);
     setView({ kind: 'problem', findingId });
   };
   const showList = () => {
     if (view.kind === 'problem') returnTo.current = view.findingId;
-    setSwitched(true);
     setView({ kind: 'list' });
   };
 
@@ -804,16 +798,10 @@ const ReviewPopoverContent = ({
   // editor, whose toolbar needs more room than the list does.
   const frame =
     'flex max-h-[min(54rem,calc(var(--available-height,100dvh)-0.5rem))] w-[min(32rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-[inherit] has-[[data-wide-editor]]:w-[min(48rem,calc(100vw-2rem))]';
-  // A view that replaces another arrives with a short fade and rise. The
-  // spring utility transitions every property, so only these two keep it:
-  // the width, which changes while an editor is open, must not spring.
-  const arriving =
-    switched &&
-    'spring-short motion-safe:[transition-property:opacity,translate]! motion-reduce:transition-none starting:translate-y-2 starting:opacity-0';
 
   if (shown) {
     return (
-      <div key={shown.id} className={cx(frame, arriving)}>
+      <div key={shown.id} className={frame}>
         <ReviewProblemView
           finding={shown}
           index={shownIndex}
@@ -828,7 +816,7 @@ const ReviewPopoverContent = ({
   }
 
   return (
-    <div key="list" className={cx(frame, arriving)}>
+    <div key="list" className={frame}>
       <div className="flex items-start gap-4 px-6 pt-6 pb-4">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <PopoverTitle

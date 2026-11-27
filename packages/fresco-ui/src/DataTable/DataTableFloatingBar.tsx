@@ -9,6 +9,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import CloseButton from '../CloseButton';
 import { MotionSurface } from '../layout/Surface';
+import { floatingBarPresence } from '../motion';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 import { type DataTableFeatures } from './features';
@@ -47,10 +48,10 @@ export function DataTableFloatingBar<TData extends RowData>({
           floating
           spacing="sm"
           shadow="md"
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
+          variants={floatingBarPresence}
+          initial="initial"
+          animate="animate"
+          exit="exit"
           className={cx(
             'fixed inset-x-4 bottom-4 z-50 mx-auto flex w-fit flex-wrap items-center justify-center gap-4 rounded',
             className,

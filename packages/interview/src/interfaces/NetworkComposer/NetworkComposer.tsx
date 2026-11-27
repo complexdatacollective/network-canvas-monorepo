@@ -2,13 +2,14 @@
 
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { reduced, springs } from '@codaco/fresco-ui/motion';
 import Node from '@codaco/fresco-ui/Node';
 import type { ActivationSource } from '@codaco/fresco-ui/Node';
 import OptionLabel from '@codaco/fresco-ui/OptionLabel';
@@ -746,19 +747,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
               initial={{ y: '120%', scale: 0.96, opacity: 0 }}
               animate={{ y: 0, scale: 1, opacity: 1 }}
               exit={{ y: '120%', scale: 0.96, opacity: 0 }}
-              transition={
-                shouldReduceMotion
-                  ? { duration: 0 }
-                  : {
-                      default: {
-                        type: 'spring',
-                        stiffness: 180,
-                        damping: 22,
-                        mass: 1.25,
-                      },
-                      opacity: { duration: 0.2 },
-                    }
-              }
+              transition={reduced(
+                { default: springs.settle, opacity: { duration: 0.2 } },
+                shouldReduceMotion,
+              )}
               className="pointer-events-auto w-full max-w-4xl"
             >
               <ScrollArea
@@ -778,7 +770,19 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
                     <Toggle
                       key={option.value}
                       value={option.value}
-                      className="focusable spring-short h-full min-w-0 rounded border-2 border-transparent px-3 py-2 text-sm leading-tight font-medium wrap-break-word text-white shadow data-pressed:border-white data-pressed:font-bold data-pressed:shadow-xl data-pressed:ring-4 data-pressed:ring-white/80 data-pressed:ring-inset"
+                      // Pressing and selecting animate as they do in
+                      // ToggleButtonGroup: the button shrinks slightly while
+                      // it is held, and the selection frame springs in.
+                      render={
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          transition={reduced(
+                            springs.press,
+                            shouldReduceMotion,
+                          )}
+                        />
+                      }
+                      className="focusable relative h-full min-w-0 rounded border-2 border-transparent px-3 py-2 text-sm leading-tight font-medium wrap-break-word text-white shadow data-pressed:font-bold"
                       style={
                         option.colorIndex !== undefined
                           ? {
@@ -787,6 +791,22 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
                           : undefined
                       }
                     >
+                      <AnimatePresence initial={false}>
+                        {selectedGroupValues.includes(option.value) && (
+                          <motion.span
+                            key="selected-frame"
+                            aria-hidden
+                            className="pointer-events-none absolute -inset-0.5 rounded border-2 border-white shadow-xl ring-4 ring-white/80 ring-inset"
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            transition={reduced(
+                              springs.press,
+                              shouldReduceMotion,
+                            )}
+                          />
+                        )}
+                      </AnimatePresence>
                       <OptionLabel label={option.label} />
                     </Toggle>
                   ))}

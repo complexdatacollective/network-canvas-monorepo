@@ -8,6 +8,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { floatingBarPresence } from '@codaco/fresco-ui/motion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -72,10 +73,10 @@ export const InterviewsSelectionBar = ({
           floating
           spacing="sm"
           shadow="md"
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
+          variants={floatingBarPresence}
+          initial="initial"
+          animate="animate"
+          exit="exit"
           className={cx(
             'fixed inset-x-4 bottom-4 z-50 mx-auto flex w-fit flex-wrap items-center justify-center gap-4 rounded',
           )}

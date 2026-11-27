@@ -20,6 +20,7 @@ import {
 import type { SiteLocale } from '@codaco/shared-consts';
 
 import { buttonVariants, IconButton } from '../Button';
+import { springs, stagger } from '../motion';
 import { usePortalContainer } from '../PortalContainer';
 import { usePrefersReducedMotion } from '../reducedMotion';
 import Spinner from '../Spinner';
@@ -208,7 +209,7 @@ const softwareMenuVariants: Variants = {
   visible: {
     transition: {
       delayChildren: 0.05,
-      staggerChildren: 0.055,
+      staggerChildren: stagger.tight,
     },
   },
 };
@@ -219,11 +220,7 @@ const softwareCardVariants: Variants = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: {
-      type: 'spring',
-      stiffness: 500,
-      damping: 30,
-    },
+    transition: springs.pop,
   },
 };
 

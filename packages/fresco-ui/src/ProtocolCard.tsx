@@ -1,19 +1,40 @@
 'use client';
 
-import { motion, type HTMLMotionProps } from 'motion/react';
+import { motion, spring, type HTMLMotionProps } from 'motion/react';
 import type { ReactNode } from 'react';
 
+import { springs } from './motion';
 import { cx } from './utils/cva';
 
 export type ProtocolCardProps = Omit<HTMLMotionProps<'div'>, 'children'> & {
   /** Pattern or other artwork positioned behind the card content. */
   background: ReactNode;
-  /** Adds the elevated active-card treatment used by Interviewer. */
+  /**
+   * Marks the card that Interviewer's deck has selected: a change to the
+   * card's shadow eases in while it is active.
+   */
   isActive?: boolean;
   /** Overrides the default deck-style pattern-to-surface gradient. */
   gradientClassName?: string;
   children: ReactNode;
 };
+
+/**
+ * The active card's elevation (a consumer's shadow class, such as Interviewer's
+ * `effect-shadow-2xl`) eases in on the `settle` spring. Only `box-shadow`
+ * transitions: the card is often a Motion `layout` element, and a CSS
+ * transition on its transform or border radius would lag behind the values
+ * that Motion writes each frame.
+ *
+ * The easing is built when a card is first active rather than when the module
+ * loads, so that tests which replace `motion/react` can still import the card.
+ */
+let activeTransition: string | undefined;
+const getActiveTransition = () =>
+  (activeTransition ??= `box-shadow ${spring(
+    springs.settle.visualDuration,
+    springs.settle.bounce,
+  ).toString()}`);
 
 /**
  * Shared visual shell for protocol previews. It owns the card surface,
@@ -26,17 +47,18 @@ export function ProtocolCard({
   gradientClassName,
   className,
   children,
+  style,
   ...props
 }: ProtocolCardProps) {
   return (
     <motion.div
       {...props}
+      style={isActive ? { transition: getActiveTransition(), ...style } : style}
       className={cx(
         'focus-visible:ring-sea-green focus-visible:ring-4 focus-visible:outline-none',
         'text-navy-taupe bg-platinum publish-colors',
         '@container relative w-full overflow-clip rounded',
         'border-platinum-dark border-[0.15cqi]',
-        isActive && 'spring-medium',
         className,
       )}
     >

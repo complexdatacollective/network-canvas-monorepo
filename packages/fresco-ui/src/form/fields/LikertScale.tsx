@@ -4,6 +4,7 @@ import { Slider } from '@base-ui/react/slider';
 import { motion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 
+import { springs } from '../../motion';
 import OptionLabel, { optionLabelText } from '../../OptionLabel';
 import {
   type PresentationalText,
@@ -262,11 +263,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
                   // tab stop. Keep the div out of the tab order.
                   tabIndex={-1}
                   whileTap={{ scale: 1.1 }}
-                  transition={{
-                    type: 'spring',
-                    duration: 0.3,
-                    bounce: 0.4,
-                  }}
+                  transition={springs.press}
                   className={sliderThumbSurfaceVariants({ state: thumbState })}
                 />
               </Slider.Thumb>

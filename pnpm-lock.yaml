@@ -3592,9 +3592,6 @@ importers:
       '@fontsource-variable/readex-pro':
         specifier: 'catalog:'
         version: 5.3.0
-      motion:
-        specifier: 'catalog:'
-        version: 14.6.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3

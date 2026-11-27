@@ -32,6 +32,7 @@ import {
   POPOVER_ARROW_CLASS_NAME,
   POPOVER_ARROW_PADDING,
 } from '../popoverArrow';
+import { type PopupSide, usePhysicalSide } from '../popupSide';
 import { usePortalContainer } from '../PortalContainer';
 import { ScrollArea } from '../ScrollArea';
 import Spinner from '../Spinner';
@@ -94,8 +95,6 @@ const SAVED_NOTICE_MS = 3000;
 export type LocaleSwitcherSaveState = 'idle' | 'saving' | 'saved' | 'failed';
 
 export type LocaleSwitcherDisplay = 'responsive' | 'label' | 'icon';
-
-export type LocaleSwitcherSide = 'top' | 'bottom' | 'left' | 'right';
 
 // In `responsive` display the language name is dropped while the nearest
 // `@container` ancestor is narrower than 36em (the threshold
@@ -182,11 +181,10 @@ export type LocaleSwitcherProps = {
    */
   renderTrigger?: ReactElement;
   /**
-   * Where the popover opens. `left` and `right` are for a switcher in a side
-   * rail; they are physical sides, as the popover's arrow is placed by them,
-   * so a host chooses one for its reading direction.
+   * Where the popover opens. For a switcher in a side rail, `inline-end`
+   * opens it beside the rail in either reading direction.
    */
-  side?: LocaleSwitcherSide;
+  side?: PopupSide;
   align?: 'start' | 'center' | 'end';
   /** Open on first render; for documentation, hosts never need it. */
   defaultOpen?: boolean;
@@ -222,6 +220,7 @@ export default function LocaleSwitcher({
   const listRef = useRef<HTMLDivElement>(null);
   const labelId = useId();
   const portalContainer = usePortalContainer();
+  const physicalSide = usePhysicalSide(side);
   const [query, setQuery] = useState('');
 
   // The footer shows the outcome of a choice made here. `awaiting` is set by
@@ -326,7 +325,7 @@ export default function LocaleSwitcher({
     label === undefined
       ? { 'aria-label': intl.formatMessage(messages.heading) }
       : { 'aria-labelledby': labelId };
-  const Chevron = side === 'top' ? ChevronUp : ChevronDown;
+  const Chevron = physicalSide === 'top' ? ChevronUp : ChevronDown;
   const responsive = display === 'responsive';
   const triggerIcon = icon ?? <Globe aria-hidden />;
 
@@ -413,7 +412,7 @@ export default function LocaleSwitcher({
       )}
       <Combobox.Portal container={portalContainer ?? undefined}>
         <Combobox.Positioner
-          side={side}
+          side={physicalSide}
           align={align}
           sideOffset={10}
           arrowPadding={POPOVER_ARROW_PADDING}

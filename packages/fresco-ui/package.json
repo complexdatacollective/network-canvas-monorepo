@@ -61,6 +61,7 @@
     "./Pips": "./src/Pips.tsx",
     "./Popover": "./src/Popover.tsx",
     "./popoverArrow": "./src/popoverArrow.ts",
+    "./popupSide": "./src/popupSide.ts",
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./PresentationalText": "./src/PresentationalText.ts",
     "./ProgressBar": "./src/ProgressBar.tsx",
@@ -69,6 +70,7 @@
     "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./linkAddress": "./src/linkAddress.ts",
     "./markdownTypedHtml": "./src/markdownTypedHtml.ts",
+    "./motion": "./src/motion.ts",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
     "./RichTextRenderer": "./src/RichTextRenderer.tsx",
@@ -414,6 +416,10 @@
         "types": "./dist/popoverArrow.d.ts",
         "default": "./dist/popoverArrow.js"
       },
+      "./popupSide": {
+        "types": "./dist/popupSide.d.ts",
+        "default": "./dist/popupSide.js"
+      },
       "./PortalContainer": {
         "types": "./dist/PortalContainer.d.ts",
         "default": "./dist/PortalContainer.js"
@@ -445,6 +451,10 @@
       "./markdownTypedHtml": {
         "types": "./dist/markdownTypedHtml.d.ts",
         "default": "./dist/markdownTypedHtml.js"
+      },
+      "./motion": {
+        "types": "./dist/motion.d.ts",
+        "default": "./dist/motion.js"
       },
       "./RenderMarkdown": {
         "types": "./dist/RenderMarkdown.d.ts",

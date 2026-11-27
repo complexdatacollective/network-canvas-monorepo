@@ -10,6 +10,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import { type DataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { type DataTableColumnDef } from '@codaco/fresco-ui/DataTable/types';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
+import { springs } from '@codaco/fresco-ui/motion';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import TimeAgo from '@codaco/fresco-ui/TimeAgo';
 import { updateSettings } from '~/lib/db/api';
@@ -128,7 +129,7 @@ function SortHeader<TData extends RowData>({
           <motion.span
             initial={false}
             animate={{ rotate: sortDir === 'asc' ? 180 : 0 }}
-            transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+            transition={springs.pop}
             className="inline-flex"
           >
             <ArrowDown size={14} aria-hidden />

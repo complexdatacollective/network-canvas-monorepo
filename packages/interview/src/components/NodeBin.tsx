@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
+import { springs } from '@codaco/fresco-ui/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { NcNode } from '@codaco/shared-consts';
 
@@ -156,7 +157,7 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
             }
           : { opacity: 0, y: '25%', scale: 1 }
       }
-      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      transition={springs.pop}
     >
       <BinIllustration />
     </motion.div>

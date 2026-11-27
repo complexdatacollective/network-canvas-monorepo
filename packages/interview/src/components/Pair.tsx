@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { springs } from '@codaco/fresco-ui/motion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { EdgeColor } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
@@ -20,9 +21,7 @@ const pairVariants = {
     y: '0%',
     opacity: 1,
     transition: {
-      type: 'spring' as const,
-      stiffness: 300,
-      damping: 30,
+      ...springs.settle,
       when: 'beforeChildren' as const,
     },
   },
@@ -30,9 +29,7 @@ const pairVariants = {
     y: isForwards ? '-100%' : '100%',
     opacity: 0,
     transition: {
-      type: 'spring' as const,
-      stiffness: 300,
-      damping: 30,
+      ...springs.settle,
       when: 'afterChildren' as const,
     },
   }),

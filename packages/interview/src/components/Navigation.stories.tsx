@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { MotionConfig, MotionGlobalConfig } from 'motion/react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
@@ -899,6 +901,312 @@ export const ExitWithoutTextSize: Story = {
       nav.queryByRole('button', { name: 'Text size' }),
     ).not.toBeInTheDocument();
   },
+};
+
+// These stories are also for trying the animation by hand, so in a browser
+// their play functions leave the bar alone; only the test runner, an
+// automated host, plays them.
+const isTestRunner = () => window.navigator.webdriver;
+
+/**
+ * Automated hosts turn Motion off (`AnimationProvider`), which would let these
+ * stories pass whether or not anything moved. They turn it on again while they
+ * are shown, so the play functions below measure the animation itself. The
+ * flag is global: it is set while rendering, after the provider has set it,
+ * and put back when the story unmounts.
+ */
+const WithMotion = ({ children }: { children: ReactNode }) => {
+  const [skipping] = useState(() => MotionGlobalConfig.skipAnimations);
+  // oxlint-disable-next-line react/immutability -- must be set while rendering, after AnimationProvider has set it and before the bar mounts
+  MotionGlobalConfig.skipAnimations = false;
+  useEffect(
+    () => () => {
+      MotionGlobalConfig.skipAnimations = skipping;
+    },
+    [skipping],
+  );
+  return <MotionConfig skipAnimations={false}>{children}</MotionConfig>;
+};
+
+const ToggledControls = ({
+  orientation,
+}: {
+  orientation: 'vertical' | 'horizontal';
+}) => {
+  const [showExit, setShowExit] = useState(true);
+  const [showTextSize, setShowTextSize] = useState(true);
+  return (
+    <WithMotion>
+      <div className="relative flex h-dvh w-full">
+        {/* oxlint-disable formatjs/no-literal-string-in-jsx -- story controls, not interview copy */}
+        <div className="absolute inset-e-2 top-2 z-10 flex gap-2">
+          <button type="button" onClick={() => setShowExit((show) => !show)}>
+            Toggle exit button
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowTextSize((show) => !show)}
+          >
+            Toggle text size
+          </button>
+        </div>
+        {/* oxlint-enable formatjs/no-literal-string-in-jsx */}
+        <StoryInterviewShell
+          rawPayload={getRawPayload(5)}
+          navigationOrientation={orientation}
+          allowUserScaling={showTextSize}
+          onExit={showExit ? () => {} : undefined}
+        />
+      </div>
+    </WithMotion>
+  );
+};
+
+// The bar's direct child that contains the control whose name starts with
+// this (the language button's name ends with the language).
+const barSlot = (nav: HTMLElement, name: string) =>
+  [...nav.children].find((child) =>
+    child.querySelector(`[aria-label^="${name}"]`),
+  );
+
+const transformOf = (element: Element | undefined) => {
+  const transform = element ? getComputedStyle(element).transform : 'none';
+  return new DOMMatrixReadOnly(transform === 'none' ? undefined : transform);
+};
+
+// Reads the bar over the frames that follow a change. Whether the change
+// animates or not, Motion can hold a control at its old place for the first
+// frame, so a glide is told apart from a jump by a frame on which the control
+// that moves (`mover`) is part of the way between the two places (`glided`).
+// `smallestScale` is the smallest scale of the control that comes or goes
+// (`comer`) while it is on the bar. Eight frames leave room for both even
+// when the frames are slow.
+const sampleFrames = async (
+  nav: HTMLElement,
+  { mover = 'Text size', comer = 'Exit interview' } = {},
+  frames = 8,
+) => {
+  const offsets: number[] = [];
+  let smallestScale = Number.POSITIVE_INFINITY;
+  for (let frame = 0; frame < frames; frame++) {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const offset = transformOf(barSlot(nav, mover));
+    offsets.push(Math.hypot(offset.e, offset.f));
+    const slot = barSlot(nav, comer);
+    if (slot) {
+      smallestScale = Math.min(smallestScale, transformOf(slot).a);
+    }
+  }
+  const distance = Math.max(...offsets);
+  const glided = offsets.some(
+    (offset) => offset > 0.5 && offset < distance - 0.5,
+  );
+  return { glided, smallestScale };
+};
+
+const toggleExit = (canvasElement: HTMLElement) =>
+  within(canvasElement)
+    .getByRole('button', { name: /toggle exit/i })
+    .click();
+
+// Waits until the bar has finished arriving, with every control in place
+// and none of them still animating, and the exit button shown or not.
+const settled = async (nav: HTMLElement, exitShown: boolean) => {
+  await waitFor(
+    () => {
+      expect(Boolean(barSlot(nav, 'Exit interview'))).toBe(exitShown);
+      expect(nav.style.opacity).toBe('1');
+      for (const slot of nav.children) {
+        if (!(slot instanceof HTMLElement)) continue;
+        const offset = transformOf(slot);
+        expect(Math.hypot(offset.e, offset.f)).toBeLessThan(0.5);
+        expect(['', 'none']).toContain(slot.style.filter);
+      }
+    },
+    { timeout: 5_000 },
+  );
+};
+
+const expectControlsComeAndGo = async (canvasElement: HTMLElement) => {
+  const nav = await within(canvasElement).findByRole('navigation');
+  await within(nav).findByRole('button', { name: 'Exit interview' });
+  await settled(nav, true);
+
+  // A removed button stays on the bar while it shrinks away, and Text size
+  // glides into the space it leaves rather than jumping there.
+  toggleExit(canvasElement);
+  await expect(barSlot(nav, 'Exit interview')).toBeDefined();
+  const removal = await sampleFrames(nav);
+  await expect(removal.smallestScale).toBeLessThan(0.99);
+  await expect(removal.glided).toBe(true);
+  await settled(nav, false);
+
+  // An added button grows in, and Text size glides aside to make room.
+  toggleExit(canvasElement);
+  const addition = await sampleFrames(nav);
+  await expect(addition.smallestScale).toBeLessThan(0.99);
+  await expect(addition.glided).toBe(true);
+  await settled(nav, true);
+};
+
+/**
+ * The bar's optional controls animate in and out as the segmented toolbar's
+ * segments do, and the controls that stay glide to their new places. Use the
+ * buttons in the corner to add and remove them.
+ */
+export const ControlsComeAndGo: Story = {
+  name: 'Controls come and go (vertical rail)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  render: () => <ToggledControls orientation="vertical" />,
+  play: async ({ canvasElement }) => {
+    if (!isTestRunner()) return;
+    await expectControlsComeAndGo(canvasElement);
+  },
+};
+
+export const HorizontalControlsComeAndGo: Story = {
+  name: 'Controls come and go (horizontal bar)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  render: () => <ToggledControls orientation="horizontal" />,
+  play: async ({ canvasElement }) => {
+    if (!isTestRunner()) return;
+    await expectControlsComeAndGo(canvasElement);
+  },
+};
+
+/**
+ * With reduced motion a button that comes or goes only fades, and the
+ * other controls move straight to their new places.
+ */
+export const ReducedMotionControlsComeAndGo: Story = {
+  name: 'Controls come and go (reduced motion)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  globals: { reducedMotion: 'always' },
+  render: () => <ToggledControls orientation="vertical" />,
+  play: async ({ canvasElement }) => {
+    if (!isTestRunner()) return;
+    const nav = await within(canvasElement).findByRole('navigation');
+    await within(nav).findByRole('button', { name: 'Exit interview' });
+    await settled(nav, true);
+
+    toggleExit(canvasElement);
+    const removal = await sampleFrames(nav);
+    await expect(removal.glided).toBe(false);
+    await settled(nav, false);
+
+    toggleExit(canvasElement);
+    const addition = await sampleFrames(nav);
+    await expect(addition.glided).toBe(false);
+    await expect(addition.smallestScale).toBeGreaterThan(0.99);
+    await settled(nav, true);
+  },
+};
+
+// A Language Chooser stage, then an information stage, in four languages.
+let languageChooserPayload: string | undefined;
+const getLanguageChooserPayload = () => {
+  if (languageChooserPayload) return languageChooserPayload;
+  const si = new SyntheticInterview();
+  si.setLocalization(SEVERAL_LANGUAGES);
+  si.addStage('LanguageChooser');
+  si.addInformationStage({
+    title: 'Welcome',
+    text: 'Welcome to the interview.',
+  });
+  languageChooserPayload = SuperJSON.stringify(
+    si.getInterviewPayload({ currentStep: 0 }),
+  );
+  return languageChooserPayload;
+};
+
+const LANGUAGE_BUTTON = 'Interview language';
+
+// Follows the bar from a change until the language button has been on it for
+// a dozen frames. Returns the furthest the exit button was moved from its
+// place, which should be nowhere: the language button comes after it. A bar
+// measured in the wrong place while the stages change would send every
+// control flying back. Also returns whether the progress bar glided to make
+// room.
+const followLanguageArrival = async (nav: HTMLElement) => {
+  let exitMoved = 0;
+  const progressOffsets: number[] = [];
+  let framesWithButton = 0;
+  for (let frame = 0; frame < 240 && framesWithButton < 12; frame++) {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const exit = transformOf(barSlot(nav, 'Exit interview'));
+    exitMoved = Math.max(exitMoved, Math.hypot(exit.e, exit.f));
+    const progress = transformOf(barSlot(nav, 'Progress indicator'));
+    progressOffsets.push(Math.hypot(progress.e, progress.f));
+    if (barSlot(nav, LANGUAGE_BUTTON)) framesWithButton++;
+  }
+  const distance = Math.max(...progressOffsets);
+  return {
+    sawButton: framesWithButton > 0,
+    exitMoved,
+    progressGlided: progressOffsets.some(
+      (offset) => offset > 0.5 && offset < distance - 0.5,
+    ),
+  };
+};
+
+const languageButtonStory = (
+  orientation: 'vertical' | 'horizontal',
+): Story => ({
+  parameters: { controls: { exclude: ['stageCount'] } },
+  beforeEach: forgetInterviewLanguage,
+  render: () => (
+    <WithMotion>
+      <div className="flex h-dvh w-full">
+        <StoryInterviewShell
+          rawPayload={getLanguageChooserPayload()}
+          navigationOrientation={orientation}
+          allowUserScaling
+          onExit={() => {}}
+        />
+      </div>
+    </WithMotion>
+  ),
+  play: async ({ canvasElement }) => {
+    if (!isTestRunner()) return;
+    const canvas = within(canvasElement);
+    const nav = await canvas.findByRole('navigation');
+    await within(nav).findByRole('button', { name: 'Exit interview' });
+    await settled(nav, true);
+    await expect(barSlot(nav, LANGUAGE_BUTTON)).toBeUndefined();
+
+    // On the next screen the language button grows in after Text size, the
+    // progress bar glides to give it room, and the buttons before it stay
+    // where they are.
+    await userEvent.click(canvas.getByRole('button', { name: 'Next Step' }));
+    const arrival = await followLanguageArrival(nav);
+    await expect(arrival.sawButton).toBe(true);
+    await expect(arrival.exitMoved).toBeLessThan(0.5);
+    await expect(arrival.progressGlided).toBe(true);
+
+    // Back on the Language Chooser stage it shrinks away again.
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Previous Step' }),
+    );
+    await waitFor(() => expect(barSlot(nav, LANGUAGE_BUTTON)).toBeUndefined(), {
+      timeout: 10_000,
+    });
+  },
+});
+
+/**
+ * The bar has no language button on a Language Chooser stage, because the
+ * stage offers the same choice. Moving on to the next screen brings the
+ * button in, and going back takes it away again, with the same animation as
+ * the bar's other optional buttons.
+ */
+export const LanguageButtonComesAndGoes: Story = {
+  ...languageButtonStory('vertical'),
+  name: 'Language button comes and goes (vertical rail)',
+};
+
+export const HorizontalLanguageButtonComesAndGoes: Story = {
+  ...languageButtonStory('horizontal'),
+  name: 'Language button comes and goes (horizontal bar)',
 };
 
 // A form with one required question, so the screen is ready to continue only

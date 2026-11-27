@@ -1,15 +1,10 @@
 'use client';
 
-import { useDirection } from '@base-ui/react/direction-provider';
-import {
-  AnimatePresence,
-  motion,
-  type Transition,
-  useWillChange,
-} from 'motion/react';
+import { AnimatePresence, motion, useWillChange } from 'motion/react';
 import { useCallback, useId, useState } from 'react';
 
 import { AppMessage } from '@codaco/app-i18n/react';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   Tooltip,
   TooltipContent,
@@ -21,26 +16,25 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import type { NavigationOrientation } from '../Shell';
+import { barItemMotion } from './barMotion';
 import PassphraseOverlay from './PassphraseOverlay';
-
-const transition: Transition = {
-  type: 'spring',
-  stiffness: 400,
-  damping: 30,
-  delay: 0.1,
-};
 
 type PassphrasePrompterProps = {
   orientation: NavigationOrientation;
   /** Placement and flex behaviour of the trigger within the navigation bar. */
   className?: string;
+  /** Whether the bar is appearing for the first time (see `barItemMotion`). */
+  entering: boolean;
+  /** Which optional controls the bar shows (see `barItemMotion`). */
+  layoutDependency: string;
 };
 
 export default function PassphrasePrompter({
   orientation,
   className,
+  entering,
+  layoutDependency,
 }: PassphrasePrompterProps) {
-  const isRtl = useDirection() === 'rtl';
   const { showPassphrasePrompter, passphraseChosen } = usePassphrase();
   // Whether the open dialog chooses the interview's passphrase or asks for
   // it, fixed when it opens so that it does not change while it closes.
@@ -49,6 +43,7 @@ export default function PassphrasePrompter({
   const descriptionId = useId();
 
   const willChange = useWillChange();
+  const reduceMotion = usePrefersReducedMotion() ?? false;
 
   const closeOverlay = useCallback(
     () => setOverlay((current) => ({ ...current, show: false })),
@@ -59,7 +54,10 @@ export default function PassphrasePrompter({
     <>
       <TooltipProvider>
         <Tooltip open={showTooltip} onOpenChange={setShowTooltip}>
-          <AnimatePresence>
+          {/* Like the bar's other optional controls, the button leaves the
+              flow at once while it goes, so the rest of the bar glides
+              over (see `barItemMotion`). */}
+          <AnimatePresence mode="popLayout">
             {showPassphrasePrompter && (
               <TooltipTrigger
                 render={
@@ -69,7 +67,11 @@ export default function PassphrasePrompter({
                     lang="en"
                     aria-describedby={descriptionId}
                     key="lock"
-                    layout
+                    {...barItemMotion({
+                      reduceMotion,
+                      entering,
+                      layoutDependency,
+                    })}
                     className={cx(
                       'bg-platinum focusable group flex aspect-square cursor-pointer items-center justify-center rounded-full',
                       // Only the length along the bar is stated, so when the
@@ -82,13 +84,6 @@ export default function PassphrasePrompter({
                         : 'w-[calc(4.8*var(--theme-root-size))]',
                       className,
                     )}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{
-                      scale: 1,
-                      opacity: 1,
-                    }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={transition}
                     style={{ willChange }}
                     onClick={() =>
                       setOverlay({ show: true, choosing: !passphraseChosen })
@@ -113,9 +108,7 @@ export default function PassphrasePrompter({
               technology does not meet the same text twice. */}
           <TooltipContent
             aria-hidden="true"
-            side={
-              orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'
-            }
+            side={orientation === 'vertical' ? 'inline-end' : 'top'}
             className="max-w-[min(var(--available-width),var(--container-md))]"
           >
             <AppMessage message={messages.protectedAnswersLocked} />

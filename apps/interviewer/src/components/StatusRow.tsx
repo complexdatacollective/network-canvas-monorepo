@@ -13,6 +13,7 @@ import { Link } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { exitTween, springs } from '@codaco/fresco-ui/motion';
 import {
   Popover,
   PopoverContent,
@@ -144,12 +145,12 @@ const variants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 280, damping: 26 },
+    transition: springs.settle,
   },
   exit: {
     opacity: 0,
     y: '100%',
-    transition: { duration: 0.25, ease: 'easeIn' },
+    transition: exitTween,
   },
 } as const;
 
