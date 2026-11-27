@@ -53,6 +53,7 @@ import {
   decryptValue,
   deriveInterviewKey,
 } from '../../packages/interview/src/interfaces/Anonymisation/encryptionFormat.ts';
+import { readSmokeIds } from './interviewer-release-smoke-ids.mjs';
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -147,14 +148,7 @@ if (protocolSource.endsWith('.json')) {
 }
 
 // The fixture's codebook ids are UUIDs, so the stored network is read by the
-// ids its codebook gives each type and variable, found by name.
-const entryNamed = (entries, name, what) => {
-  const found = Object.entries(entries ?? {}).find(
-    ([, entry]) => entry.name === name,
-  );
-  if (!found) throw new Error(`the protocol has no ${what} named ${name}`);
-  return found;
-};
+// ids its codebook gives each type, variable and layout, found by name.
 let ids;
 try {
   const document = JSON.parse(
@@ -166,52 +160,7 @@ try {
           .file('protocol.json')
           .async('string'),
   );
-  const typeOf = (entity, name, variableNames) => {
-    const [id, type] = entryNamed(
-      document.codebook[entity],
-      name,
-      `${entity} type`,
-    );
-    return {
-      id,
-      ...Object.fromEntries(
-        variableNames.map((variable) => [
-          variable,
-          entryNamed(type.variables, variable, `${name} variable`)[0],
-        ]),
-      ),
-    };
-  };
-  ids = {
-    person: typeOf('node', 'Person', [
-      'name',
-      'layout',
-      'context',
-      'closeness',
-    ]),
-    familyMember: typeOf('node', 'family member', [
-      'fm_name',
-      'is_ego',
-      'genderIdentity',
-      'sexAssignedAtBirth',
-    ]),
-    knows: typeOf('edge', 'Knows', []).id,
-    friends: typeOf('edge', 'Friends', []).id,
-    familyEdge: typeOf('edge', 'family_edge', [
-      'relationshipKind',
-      'isGestationalCarrier',
-    ]),
-    ego: Object.fromEntries(
-      ['ego_name', 'consent'].map((variable) => [
-        variable,
-        entryNamed(
-          document.codebook.ego?.variables,
-          variable,
-          'ego variable',
-        )[0],
-      ]),
-    ),
-  };
+  ids = readSmokeIds(document);
 } catch (err) {
   setupFailure(
     `codebook ids unreadable: ${err instanceof Error ? err.message : String(err)}`,
