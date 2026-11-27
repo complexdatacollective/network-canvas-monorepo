@@ -34,7 +34,7 @@ import { CANVAS, CanvasNode, Circles, Edge } from './SociogramScenes';
 const TEXT = {
   placeholder: 'Type a name, then press Enter',
   quickAdd: 'Quick add attribute: name',
-  layout: 'Layout attribute: position',
+  layout: 'Layout: position',
   edgeTypes: ['Friends', 'Family'],
   groups: ['Family', 'Work'],
   tools: [
@@ -59,7 +59,7 @@ const TEXT = {
 const WIDTH = STAGE.right - STAGE.x;
 const HEIGHT = STAGE.bottom - STAGE.y;
 
-/** A position as the layout attribute stores it: 0 to 1 across the canvas. */
+/** A position as the layout stores it: 0 to 1 across the canvas. */
 const normalised = ([x, y]: Point) =>
   [
     ((x - STAGE.x) / WIDTH).toFixed(2),
@@ -662,8 +662,7 @@ export const NetworkComposerAddScene = defineScene(5.6, ({ t }) => {
 
 /**
  * Shows a network composer where the interviewer drags two nodes to new places,
- * and the layout attribute shows each node's new position as x and y
- * coordinates.
+ * and the layout shows each node's new position as x and y coordinates.
  */
 export const NetworkComposerPositionsScene = defineScene(5.2, ({ t }) => {
   const sam = smooth(segment(t, 0.8, 1.0));
