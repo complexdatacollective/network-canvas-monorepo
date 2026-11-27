@@ -83,7 +83,7 @@ describe('attribute-writer usage tags', () => {
           label: localized('Composer'),
           subject: { entity: 'node', types: ['person'] },
           quickAdd: 'name',
-          layoutVariable: 'layoutPosition',
+          layout: 'layoutPosition',
           convexHullVariable: 'category',
         },
       ],
@@ -160,11 +160,11 @@ describe('attribute-writer usage tags', () => {
             label: localized('Map'),
             subject: { entity: 'node', types: ['person'] },
             background: { concentricCircles: 4 },
+            layout: 'layoutPosition',
             prompts: [
               {
                 id: 'p1',
                 text: localized('Place them'),
-                layout: { layoutVariable: 'layoutPosition' },
                 highlight: { allowHighlighting, variable: 'strength' },
               },
             ],
@@ -194,7 +194,7 @@ describe('attribute-writer usage tags', () => {
             {
               id: 'preset-1',
               label: localized('Preset'),
-              layoutVariable: 'layoutPosition',
+              layout: 'layoutPosition',
               groupVariable: 'category',
               highlight: [{ variable: 'strength', label: localized('Strong') }],
             },

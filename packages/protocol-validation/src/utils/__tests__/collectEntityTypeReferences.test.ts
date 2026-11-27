@@ -28,11 +28,11 @@ const protocol = {
       id: 'soc',
       type: 'Sociogram',
       subject: { entity: 'node', types: ['person'] },
+      layout: 'layout-id',
       prompts: [
         {
           id: 'p1',
           text: localized('Who knows whom?'),
-          layout: { layoutVariable: 'layout-var' },
           edges: { create: 'friendship', display: ['friendship', 'conflict'] },
         },
       ],
@@ -57,7 +57,7 @@ const protocol = {
         {
           id: 'preset-1',
           label: localized('Preset'),
-          layoutVariable: 'layout-var',
+          layout: 'layout-id',
           edges: {
             display: [{ type: 'friendship', label: localized('Friendship') }],
           },

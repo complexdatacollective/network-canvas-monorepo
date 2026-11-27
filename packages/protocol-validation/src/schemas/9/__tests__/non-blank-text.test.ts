@@ -124,7 +124,7 @@ describe('a Network Composer field caption', () => {
       label: localized('Compose'),
       subject: { entity: 'node', types: ['person'] },
       quickAdd: 'name',
-      layoutVariable: 'layout',
+      layout: 'layout',
       background: { concentricCircles: 4 },
       edges: [],
       nodeForm: {
@@ -268,7 +268,7 @@ const composerField = (field: Record<string, unknown>) => ({
   label: localized('Compose'),
   subject: { entity: 'node', types: ['person'] },
   quickAdd: 'name',
-  layoutVariable: 'layout',
+  layout: 'layout',
   background: { concentricCircles: 4 },
   edges: [],
   nodeForm: {
@@ -299,7 +299,7 @@ const BLANK_REFUSED_SITES: readonly {
       type: 'Narrative',
       label: localized('Narrative'),
       subject: { entity: 'node', types: ['person'] },
-      presets: [{ id: testId('preset'), label, layoutVariable: 'layout' }],
+      presets: [{ id: testId('preset'), label, layout: 'layout' }],
     }),
     path: ['presets', 0, 'label'],
   },
@@ -315,7 +315,7 @@ const BLANK_REFUSED_SITES: readonly {
         {
           id: testId('preset'),
           label: localized('Preset 1'),
-          layoutVariable: 'layout',
+          layout: 'layout',
           highlight: [{ id: testId('highlight'), variable: 'close', label }],
         },
       ],
@@ -334,7 +334,7 @@ const BLANK_REFUSED_SITES: readonly {
         {
           id: testId('preset'),
           label: localized('Preset 1'),
-          layoutVariable: 'layout',
+          layout: 'layout',
           edges: {
             display: [{ id: testId('edge-display'), type: 'knows', label }],
           },
