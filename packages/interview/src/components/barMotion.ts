@@ -12,14 +12,30 @@ import {
 export const BAR_ENTRANCE = 0.6;
 
 // The delay between one control's entrance and the next.
-const STAGGER = 0.08;
+const STAGGER = 0.05;
 
 // How far a control travels as it comes in with the bar, from the start of
 // the line (the left, or the right in a right-to-left interview).
 const ENTRANCE_TRAVEL = 24;
 
-/** What a control needs to know to come in: when, and from how far. */
-type BarItemCustom = Readonly<{ delay: number; travel: number }>;
+// The spring a control comes in on with the bar: heavier and slower to
+// settle than the toolbar's, so the bar's controls land with some weight.
+const ENTRANCE_SPRING = {
+  type: 'spring',
+  stiffness: 260,
+  damping: 26,
+  mass: 1.4,
+} as const;
+
+/**
+ * What a control needs to know to come in: whether it comes in with the bar,
+ * when, and from how far.
+ */
+type BarItemCustom = Readonly<{
+  entering: boolean;
+  delay: number;
+  travel: number;
+}>;
 
 const target = (variant: Variant | undefined) =>
   typeof variant === 'object' ? variant : {};
@@ -39,10 +55,10 @@ const barVariants: Variants = {
     ...target(segmentPresenceVariants.initial),
     x: travel,
   }),
-  animate: ({ delay }: BarItemCustom) => ({
+  animate: ({ entering, delay }: BarItemCustom) => ({
     ...grown,
     x: 0,
-    transition: { ...grown.transition, delay },
+    transition: { ...(entering ? ENTRANCE_SPRING : grown.transition), delay },
     transitionEnd: { filter: 'none' },
   }),
   exit: target(segmentPresenceVariants.exit),
@@ -67,8 +83,9 @@ const fadeVariants: Variants = {
  * Each control animates by itself. A control that is on the bar when the bar
  * first appears (`entering`) waits until the bar has slid in, then grows in
  * after the control before it (`index`, its place on the bar), coming in from
- * the start of the line. A control added later grows in at once, in place. When animations are turned off, the delays
- * are skipped with them, so the controls are simply there.
+ * the start of the line on a heavier spring. A control added later grows in
+ * at once, in place, on the toolbar's spring. When animations are turned off,
+ * the delays are skipped with them, so the controls are simply there.
  *
  * A control glides only if it renders again when another comes or goes, so
  * that Motion can measure where it was. The React Compiler skips a control
@@ -93,6 +110,7 @@ export const barItemMotion = ({
 }): MotionProps => ({
   variants: reduceMotion ? fadeVariants : barVariants,
   custom: {
+    entering,
     delay: entering ? BAR_ENTRANCE + index * STAGGER : 0,
     travel: entering ? (isRtl ? ENTRANCE_TRAVEL : -ENTRANCE_TRAVEL) : 0,
   } satisfies BarItemCustom,

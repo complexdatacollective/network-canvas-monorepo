@@ -112,12 +112,14 @@ const barMainIconClassName = cx('[&>.lucide]:h-[2em]', barIconButtonClassName);
 
 // The bar's optional buttons (exit, text size, language) are one size
 // smaller, and their icons are dimmed until the button is pointed at, so they
-// stay quieter than Back and Next. The dimming is on the text colour, which
-// the icon follows and which the button's hover changes and transitions
-// together with its fill.
+// stay quieter than Back and Next. The muted colour is the text colour mixed
+// with the surface behind it rather than made transparent, so the icon's
+// overlapping strokes do not add up to brighter patches. The icon follows the
+// text colour, which the button's hover changes and transitions together with
+// its fill.
 const BAR_OPTION_BUTTON = { variant: 'text', size: 'lg' } as const;
 const barOptionIconClassName = cx(
-  'text-current/50 [&>.lucide]:h-[1.5em]',
+  'text-[color-mix(in_oklab,var(--scoped-bg)_50%,currentColor)] [&>.lucide]:h-[1.5em]',
   barIconButtonClassName,
 );
 
