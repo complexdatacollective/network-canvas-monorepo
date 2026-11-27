@@ -977,9 +977,10 @@ function pickedSubjectType(
  * A tick box per type rather than a radio: adding a type keeps everything
  * the stage already says about the others, so it asks nothing, and removing
  * one asks first only when the stage describes that type (`confirmRemoval`).
- * The first type of a stage that has none, and the removal of its last, are
- * the change a single-type picker makes, and ask what it asks
- * (`confirmChange`).
+ * The first type of a stage that has none is the change a single-type picker
+ * makes, and asks what it asks (`confirmChange`). Removing the last type
+ * costs what that change costs, but asks in words of its own
+ * (`confirmLastRemoval`), since no other type is being chosen.
  */
 function NodeTypesPicker({
   id,
@@ -990,6 +991,7 @@ function NodeTypesPicker({
   onFocus,
   confirmChange,
   confirmRemoval,
+  confirmLastRemoval,
   refuseRemoval,
   blockChangeReason,
   disabled,
@@ -1007,6 +1009,7 @@ function NodeTypesPicker({
   onFocus?: EntitySubjectPickerFieldProps['onFocus'];
   confirmChange?: () => EntityTypeChangeConfirmation | undefined;
   confirmRemoval?: (typeId: string) => EntityTypeChangeConfirmation | undefined;
+  confirmLastRemoval?: () => EntityTypeChangeConfirmation | undefined;
   refuseRemoval?: (
     typeId: string,
     remaining: readonly string[],
@@ -1118,7 +1121,9 @@ function NodeTypesPicker({
     if (refuseBlockedChange()) return;
     if (refuseNeededType(typeId)) return;
     const question =
-      live().types.length === 1 ? confirmChange?.() : confirmRemoval?.(typeId);
+      live().types.length === 1
+        ? confirmLastRemoval?.()
+        : confirmRemoval?.(typeId);
     if (!(await askFirst(question))) return;
     onChange(live().types.filter((type) => type !== typeId));
   };
@@ -1213,6 +1218,11 @@ export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
       typeId: string,
     ) => EntityTypeChangeConfirmation | undefined;
     /**
+     * What to ask before the last ticked type is removed, which resets the
+     * stage, or `undefined` to remove it without asking.
+     */
+    confirmLastRemoval?: () => EntityTypeChangeConfirmation | undefined;
+    /**
      * Why one of several ticked types may not be removed, given the types
      * that would be left, or `undefined` while it may. Asked before
      * `confirmRemoval`.
@@ -1239,6 +1249,7 @@ export function EntitySubjectPickerField({
   entityType,
   multiple = false,
   confirmRemoval,
+  confirmLastRemoval,
   refuseRemoval,
   ...props
 }: EntitySubjectPickerFieldProps) {
@@ -1259,6 +1270,7 @@ export function EntitySubjectPickerField({
         onFocus={props.onFocus}
         confirmChange={props.confirmChange}
         confirmRemoval={confirmRemoval}
+        confirmLastRemoval={confirmLastRemoval}
         refuseRemoval={refuseRemoval}
         blockChangeReason={props.blockChangeReason}
         disabled={props.disabled ?? false}

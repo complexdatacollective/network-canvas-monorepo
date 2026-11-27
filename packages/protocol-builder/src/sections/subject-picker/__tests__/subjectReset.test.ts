@@ -200,4 +200,18 @@ describe('the prompts that need a node type', () => {
       ),
     ).toEqual({ highlight: [], connect: [1] });
   });
+
+  it('names no connect prompt whose edge type still joins the types left', () => {
+    expect(
+      promptsNeedingNodeType(
+        [
+          { task: 'connect', edges: { create: 'knows' } },
+          { task: 'connect', edges: { create: 'likes' } },
+        ],
+        A,
+        [B],
+        (edgeType, types) => edgeType === 'knows' && types.includes(B),
+      ),
+    ).toEqual({ highlight: [], connect: [2] });
+  });
 });

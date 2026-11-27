@@ -8251,6 +8251,18 @@
     "defaultMessage": "Prompts on this stage highlight or sort this node type. Removing it from the stage removes those settings. The settings for the other node types are kept.",
     "description": "Body of the confirmation raised when a researcher removes one of several kinds of network member a stage shows. Prompts are the questions or tasks the stage sets the participant; to highlight is to mark the people or places a participant taps, and to sort is to set the order in which they are listed."
   },
+  "protocolBuilder.subjectSection.nodeRemoveLastConfirm": {
+    "defaultMessage": "Remove the last node type",
+    "description": "Button in the confirmation that the researcher sees in the stage editor, which goes ahead with unticking the only kind of network member a stage shows and removes everything else set up on the stage."
+  },
+  "protocolBuilder.subjectSection.nodeRemoveLastDescription": {
+    "defaultMessage": "This is the only node type that this stage shows. If you remove it, the stage has no node type, and everything else that has been set up on this stage is removed.",
+    "description": "Body of the confirmation that the researcher sees in the stage editor when they untick the only kind of network member still ticked on a stage that can show more than one kind. Everything else set up on the stage, such as its prompts, is lost. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.nodeRemoveLastTitle": {
+    "defaultMessage": "Remove the last node type?",
+    "description": "Title of the confirmation that the researcher sees in the stage editor when they untick the only kind of network member still ticked, on a stage that can show more than one kind and that has already been set up."
+  },
   "protocolBuilder.subjectSection.nodeRemoveTitle": {
     "defaultMessage": "Remove this node type?",
     "description": "Title of the confirmation raised when a researcher removes one of several kinds of network member a stage shows, and the stage has settings about that kind."

@@ -1125,7 +1125,7 @@ describe('the node types a Sociogram shows', () => {
   };
 
   const sociogram = (
-    types: readonly string[],
+    types: readonly string[] | undefined,
     prompts: readonly Record<string, unknown>[],
   ) => ({
     stage: {
@@ -1133,7 +1133,7 @@ describe('the node types a Sociogram shows', () => {
       type: 'Sociogram' as const,
       fields: {
         label: en('Sociogram'),
-        subject: { entity: 'node', types },
+        ...(types === undefined ? {} : { subject: { entity: 'node', types } }),
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { automaticLayout: true },
         layout: fixtureLayoutId('layout'),
@@ -1360,6 +1360,195 @@ describe('the node types a Sociogram shows', () => {
       screen.getByRole('checkbox', { name: 'family member' }),
     ).toBeChecked();
     expect((await savedFields(harness)).prompts).toEqual(prompts);
+  });
+
+  const layoutPrompt = {
+    id: testId('layout-prompt'),
+    task: 'layout',
+    text: en('Place everyone'),
+    sortOrder: [personRule],
+  };
+
+  it('keeps a type and its settings when the researcher declines to remove it', async () => {
+    const prompts = [
+      {
+        id: testId('highlight-prompt'),
+        task: 'highlight',
+        text: en('Tap everyone you trust'),
+        highlight: [
+          personEntry,
+          {
+            id: testId('highlight-family'),
+            type: FAMILY_MEMBER,
+            variable: HAS_CONDITION,
+          },
+        ],
+      },
+    ];
+    const harness = renderStageEditor(
+      sociogram([PERSON, FAMILY_MEMBER], prompts),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    expect(
+      await screen.findByText('Remove this node type?'),
+    ).toBeInTheDocument();
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByText('Remove this node type?')).toBeNull(),
+    );
+
+    expect(
+      screen.getByRole('checkbox', { name: 'family member' }),
+    ).toBeChecked();
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({
+      entity: 'node',
+      types: [PERSON, FAMILY_MEMBER],
+    });
+    expect(saved.prompts).toEqual(prompts);
+  });
+
+  describe('removing the last type', () => {
+    const LAST_TITLE = 'Remove the last node type?';
+    const LAST_CONFIRM = 'Remove the last node type';
+    const withProbe = () => ({
+      ...sociogram([PERSON], [layoutPrompt]),
+      sections: (
+        <>
+          {nodeSubjectAndPrompts}
+          <StageSubjectProbe />
+        </>
+      ),
+    });
+
+    it('asks whether to remove the last type, not whether to change it', async () => {
+      const harness = renderStageEditor(withProbe());
+
+      await harness.user.click(
+        await screen.findByRole('checkbox', { name: 'person' }),
+      );
+
+      expect(await screen.findByText(LAST_TITLE)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'This is the only node type that this stage shows. If you remove it, the stage has no node type, and everything else that has been set up on this stage is removed.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Change node type?')).toBeNull();
+      expect(screen.queryByText('Remove this node type?')).toBeNull();
+    });
+
+    it('leaves the stage as it was when the researcher backs out', async () => {
+      const harness = renderStageEditor(withProbe());
+
+      await harness.user.click(
+        await screen.findByRole('checkbox', { name: 'person' }),
+      );
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Cancel' }),
+      );
+      await waitFor(() => expect(screen.queryByText(LAST_TITLE)).toBeNull());
+
+      expect(screen.getByRole('checkbox', { name: 'person' })).toBeChecked();
+      const saved = await savedFields(harness);
+      expect(saved.subject).toEqual({ entity: 'node', types: [PERSON] });
+      expect(saved.prompts).toEqual([layoutPrompt]);
+    });
+
+    it('leaves the stage with no type and resets it once the researcher has said so', async () => {
+      const harness = renderStageEditor(withProbe());
+
+      await harness.user.click(
+        await screen.findByRole('checkbox', { name: 'person' }),
+      );
+      await harness.user.click(
+        await screen.findByRole('button', { name: LAST_CONFIRM }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole('checkbox', { name: 'person' }),
+        ).not.toBeChecked(),
+      );
+      expect(
+        screen.getByRole('status', { name: 'Stage subject' }),
+      ).toHaveTextContent('null');
+      expect(screen.queryByText('Place everyone')).toBeNull();
+    });
+  });
+
+  describe('ticking the first type of a stage that already has prompts', () => {
+    it('asks first, and leaves the stage as it was when the researcher backs out', async () => {
+      const harness = renderStageEditor(sociogram(undefined, [layoutPrompt]));
+
+      await harness.user.click(
+        await screen.findByRole('checkbox', { name: 'person' }),
+      );
+      expect(
+        await screen.findByText('Choose the node type?'),
+      ).toBeInTheDocument();
+      await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+      await waitFor(() =>
+        expect(screen.queryByText('Choose the node type?')).toBeNull(),
+      );
+
+      expect(
+        screen.getByRole('checkbox', { name: 'person' }),
+      ).not.toBeChecked();
+      expect(screen.getByText('Place everyone')).toBeInTheDocument();
+    });
+
+    it('throws the prompts away once the researcher has said so', async () => {
+      const harness = renderStageEditor(sociogram(undefined, [layoutPrompt]));
+
+      await harness.user.click(
+        await screen.findByRole('checkbox', { name: 'person' }),
+      );
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Choose the node type' }),
+      );
+
+      await waitFor(() =>
+        expect(screen.getByRole('checkbox', { name: 'person' })).toBeChecked(),
+      );
+      expect(screen.queryByText('Place everyone')).toBeNull();
+    });
+  });
+
+  it('removes a type without asking when a connect prompt can still join the types left', async () => {
+    const prompts = [
+      {
+        id: testId('connect-prompt'),
+        task: 'connect',
+        text: en('Who knows whom?'),
+        edges: { create: KNOWS, display: [KNOWS] },
+      },
+    ];
+    const harness = renderStageEditor(
+      sociogram([PERSON, FAMILY_MEMBER], prompts),
+    );
+    harness.receiveCodebookUpdate({
+      edge: { [KNOWS]: { name: 'knows', color: 'edge-color-seq-1' } },
+    });
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'family member' }),
+      ).not.toBeChecked(),
+    );
+    expect(
+      screen.queryByText('This node type cannot be removed yet'),
+    ).toBeNull();
+
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({ entity: 'node', types: [PERSON] });
+    expect(saved.prompts).toEqual(prompts);
   });
 
   it('removing a type the prompts say nothing about asks nothing', async () => {

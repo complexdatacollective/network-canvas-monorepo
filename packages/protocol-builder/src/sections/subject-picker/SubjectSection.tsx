@@ -134,6 +134,25 @@ const messages = defineMessages({
     description:
       'Button in the confirmation the researcher sees in the stage editor, which goes ahead with removing one of several kinds of network member a stage shows, along with the settings its prompts have about that kind.',
   },
+  nodeRemoveLastTitle: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveLastTitle',
+    defaultMessage: 'Remove the last node type?',
+    description:
+      'Title of the confirmation that the researcher sees in the stage editor when they untick the only kind of network member still ticked, on a stage that can show more than one kind and that has already been set up.',
+  },
+  nodeRemoveLastDescription: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveLastDescription',
+    defaultMessage:
+      'This is the only node type that this stage shows. If you remove it, the stage has no node type, and everything else that has been set up on this stage is removed.',
+    description:
+      'Body of the confirmation that the researcher sees in the stage editor when they untick the only kind of network member still ticked on a stage that can show more than one kind. Everything else set up on the stage, such as its prompts, is lost. A stage is one step of an interview.',
+  },
+  nodeRemoveLastConfirm: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveLastConfirm',
+    defaultMessage: 'Remove the last node type',
+    description:
+      'Button in the confirmation that the researcher sees in the stage editor, which goes ahead with unticking the only kind of network member a stage shows and removes everything else set up on the stage.',
+  },
   nodeRemoveBlockedTitle: {
     id: 'protocolBuilder.subjectSection.nodeRemoveBlockedTitle',
     defaultMessage: 'This node type cannot be removed yet',
@@ -390,6 +409,20 @@ export default function SubjectSection({
         : undefined,
     [committedFields, intl, storeApi],
   );
+  // Unticking the last type resets the stage as a change does, but there is
+  // no other type to change to, so it asks in words of its own.
+  const discardsConfiguration = useSubjectChangeDiscards();
+  const confirmLastRemoval = useCallback(
+    () =>
+      discardsConfiguration()
+        ? {
+            title: intl.formatMessage(messages.nodeRemoveLastTitle),
+            description: intl.formatMessage(messages.nodeRemoveLastDescription),
+            confirmLabel: intl.formatMessage(messages.nodeRemoveLastConfirm),
+          }
+        : undefined,
+    [discardsConfiguration, intl],
+  );
   // Refused when a prompt could no longer do its task without the type:
   // pruning would leave a highlight task marking nothing, or a connect task
   // whose edge type joins none of the types left.
@@ -445,7 +478,9 @@ export default function SubjectSection({
           component={EntitySubjectPickerField}
           entityType={entity}
           confirmChange={confirmChange}
-          {...(multiple ? { multiple, confirmRemoval, refuseRemoval } : {})}
+          {...(multiple
+            ? { multiple, confirmRemoval, confirmLastRemoval, refuseRemoval }
+            : {})}
           {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
           label={intl.formatMessage(
             multiple ? messages.nodesFieldLabel : words.fieldLabel,

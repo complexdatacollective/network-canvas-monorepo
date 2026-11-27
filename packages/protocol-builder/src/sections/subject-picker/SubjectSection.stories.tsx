@@ -65,7 +65,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The node types a Sociogram shows, ticked in and out. Adding a type keeps everything the prompts say about the others. Removing one asks first when a prompt highlights or sorts it, and then removes only those settings. A removal that would leave a prompt unable to do its task is refused until that prompt is changed.',
+          'The node types a Sociogram shows, ticked in and out. Adding a type keeps everything the prompts say about the others. Removing one asks first when a prompt highlights or sorts it, and then removes only those settings. A removal that would leave a prompt unable to do its task is refused until that prompt is changed. Removing the last type asks first, because it leaves the stage with no node type and removes everything set up on it.',
       },
     },
   },
@@ -241,5 +241,56 @@ export const RemovalRefused: Story = {
     await expect(
       canvas.getByRole('checkbox', { name: 'person' }),
     ).toBeChecked();
+  },
+};
+
+/**
+ * Unticking the last type asks whether to remove it, since the stage is then
+ * left with no node type and everything set up on it is removed. Ticking a
+ * type again afterwards asks nothing.
+ */
+export const RemovingTheLastType: Story = {
+  args: {
+    stage: sociogram(
+      [PERSON],
+      [
+        {
+          id: testId('subject-story-prompt'),
+          task: 'layout',
+          text: { 'en-US': 'Place everyone.' },
+          sortOrder: [personSort],
+        },
+      ],
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'person' }));
+    const question = within(await screen.findByRole('dialog'));
+    await expect(
+      question.getByText('Remove the last node type?'),
+    ).toBeVisible();
+    await expect(question.queryByText('Change node type?')).toBeNull();
+    await userEvent.click(
+      question.getByRole('button', { name: 'Remove the last node type' }),
+    );
+    await waitFor(async () => {
+      await expect(
+        canvas.getByRole('checkbox', { name: 'person' }),
+      ).not.toBeChecked();
+    });
+    await expect(canvas.queryByText('Place everyone.')).toBeNull();
+
+    // Ticking a type again starts the reset stage afresh, with nothing left
+    // to lose, so it asks nothing.
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'person' }));
+    await waitFor(async () => {
+      await expect(
+        canvas.getByRole('checkbox', { name: 'person' }),
+      ).toBeChecked();
+    });
+    await expect(screen.queryByRole('dialog')).toBeNull();
   },
 };
