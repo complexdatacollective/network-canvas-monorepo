@@ -1,6 +1,6 @@
 # Schema 9: directed edges, multiplex stages and stage-owned layouts
 
-Status: approved 2026-11-26.
+Status: approved 2026-11-26, revised 2026-11-27 (see Revisions).
 
 This design replaces an earlier plan for a flat attribute registry, which was
 withdrawn before any of it was built and is not in the repository.
@@ -36,6 +36,8 @@ becomes a construct of its own.
   pedigree stages.
 - Splitting the pedigree edge type into a directed parent type and an
   undirected partner type. Worth its own project after schema 9.
+- Any change to how filter and skip logic rules behave (#2725), apart from
+  keeping rules about layouts working.
 - Any change to `apps/architect-classic` or `apps/interviewer-classic`.
 - Migrating stored interview sessions, or upgrading protocols inside Fresco or
   Interviewer.
@@ -109,7 +111,10 @@ type EdgeDefinition = {
 - Migration leaves every existing edge type undirected with no rules.
 
 Shared helpers, exported from `@codaco/protocol-validation` and used by every
-consumer so that no package reads `directed` or `endpointRules` itself:
+consumer so that no package reads `directed` or `endpointRules` itself. A
+repository test enforces this permanently. When it fails, its message tells the
+developer what to do, and the rule is written down where contributors look for
+it.
 
 ```ts
 isDirectedEdgeType(codebook, edgeType): boolean;
@@ -149,12 +154,18 @@ validation rejects more. (My call: one subject shape for every node stage,
 with the table enforcing "exactly one" where that applies, so there is one way
 to read a node subject.)
 
-| Accepts one or more node types                                                                    | Exactly one node type                                                                                           |
-| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Sociogram, Narrative, Dyad Census, One-to-Many Dyad Census, Tie Strength Census, Network Composer | Name Generator (form, quick add, roster), Categorical Bin, Ordinal Bin, Alter Form, Geospatial, Family Pedigree |
+Network Composer is the one node stage without a stage subject. Its node types
+are the node types of its node entries, in entry order (see Network Composer).
+Code that needs a stage's node types asks one accessor, which reads the
+subject of most stages and the node entries of a Network Composer.
+
+| Accepts one or more node types                                                                                               | Exactly one node type                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Sociogram, Narrative, Dyad Census, One-to-Many Dyad Census, Tie Strength Census, Network Composer (through its node entries) | Name Generator (form, quick add, roster), Categorical Bin, Ordinal Bin, Alter Form, Geospatial, Family Pedigree |
 
 Migration turns each schema 8 `{ entity: 'node', type }` into a one-element
-list.
+list, except on Network Composer, where it becomes the stage's first node
+entry.
 
 ### Layouts
 
@@ -184,8 +195,9 @@ type Codebook = {
   | Sociogram with neither                                    | reads  |
   | Narrative preset                                          | reads  |
 
-- A node type has a layout when it is in the subject of a stage that sets it.
-  Reading does not count. This is computed when needed and never stored. The
+- A node type has a layout when a stage that sets it uses that node type: in
+  its subject, or, for Network Composer, in its node entries. Reading does not
+  count. This is computed when needed and never stored. The
   codebook screen, the exporters and filter authoring all use the one helper.
 - A layout that no stage references is unused. It is listed as such and can be
   deleted. Deleting a layout that a stage references is blocked.
@@ -306,14 +318,26 @@ Directed edges:
 
 ### Network Composer
 
-- Accepts several node types. The stage holds a list of node entries shaped
-  like its existing list of edge entries: each has an `id`, a node type, a
-  toolbar label, a quick-add attribute and an optional form.
+- Accepts several node types, and stores them only in its node entries. The
+  stage has no stage-level subject. Its list of node entries is shaped like
+  its existing list of edge entries: each has an `id`, its own subject naming
+  one node type, a toolbar label, a quick-add attribute and an optional form.
+  The quick-add attribute and the form fields are resolved against the entry's
+  node type, as an edge entry's form is resolved against its edge type.
+- No two node entries may name the same node type, as for edge entries. The
+  stage's node types are the entries' node types, in entry order.
 - Each node entry is its own toolbar button. Pressing it opens the label input
-  for a new node of that type. Migration fills the new toolbar label with the
-  node type's name. (My call.)
+  for a new node of that type. Migration builds the first entry from the
+  schema 8 stage's node type, quick-add attribute and form, fills its toolbar
+  label with the node type's name and removes the stage subject. (My call on
+  the label.)
 - The stage names a layout and always sets it.
-- Group regions are offered only when the stage has one node type.
+- Group regions are offered only when the stage has exactly one node entry.
+  The group attribute is then resolved against that entry's node type.
+- Deleting a node type that one of several node entries names removes that
+  entry, as deleting an edge type removes the edge entry that names it.
+  Deleting the node type of a stage's only node entry is refused, as deleting
+  the only node type of any other stage is.
 - With an edge type selected, nodes its endpoint rules rule out are disabled.
 - Drawing a directed edge follows the Sociogram: first node source, second
   target, reverse order adds the opposite edge, one line with two arrowheads
@@ -361,24 +385,28 @@ the two nodes in a pair, or of the focal node, resolved against the stage's
 single node type. When such a stage has one node type this is unchanged. When
 it has more than one, those roles offer the node label only, as the two ends
 of an edge already do, and validation rejects an attribute. (My call.)
+Inserting attributes there is tracked in #2727 and will be designed together
+with the filter and skip logic rules (#2725).
 
 ## Filters and skip logic
 
-- An edge rule on a directed type gains a setting for which end to keep:
-  either (the default, and today's behaviour), sources, or targets. It is
-  offered only for directed types and rejected by validation elsewhere.
-  Existing rules need no migration.
-- Skip logic behaves as now. Whether any edge of a type exists does not depend
-  on direction, so validation rejects the end setting on a skip logic rule.
-  (My call.)
-- Under "match all", a node rule judges only nodes of its own type and lets
-  other types through. Under "match any" nothing changes. For rules with no
-  attribute: "type exists" under "match all" no longer removes other types,
-  and "type does not exist" still removes that type. Nothing migrates. (My
-  call on the two attribute-less cases.)
-- A node rule may name a layout, with the four operators a layout variable
-  accepts today, for any node type that has that layout. Existing rules of
-  this kind migrate unchanged because the layout keeps the variable's ID.
+Filter and skip logic rules behave exactly as they do in schema 8. Their
+redesign for several node types and directed edges is tracked in #2725 and is
+not part of this design.
+
+- Under "match all", each node rule removes nodes of every other type. A
+  "match all" filter on a stage with several node types therefore keeps only
+  the node type its rules are about.
+- An edge rule keeps both ends of a matching edge, whatever the direction of
+  its edge type. A filter cannot choose the source or the target end of a
+  directed edge.
+- Skip logic ignores direction.
+- Rules about layouts keep working, because removing the layout variable type
+  would otherwise break them. A node rule that named a layout variable in
+  schema 8 now names the layout, which keeps the variable's ID and the same
+  four operators. Such a rule validates, runs, is shown and can be edited as
+  before, and a researcher can write one where they could before. Nothing else
+  about rules changes.
 
 ## Checking a network against endpoint rules
 
@@ -420,8 +448,9 @@ Edge type editor, including inline creation from a stage:
 - Switching "Directed" on a type that stages use is allowed behind a
   confirmation listing the affected stages and what changes. Going back to
   undirected removes the source or target setting on One-to-Many Dyad Census
-  prompts and the end setting on filter rules. The switch is refused when a
-  Family Pedigree is bound to the type.
+  prompts. Filter and skip logic rules need no change, since they ignore
+  direction. The switch is refused when a Family Pedigree is bound to the
+  type.
 - Saving endpoint rules that would leave a stage with nothing valid to do is
   refused, with the list of stages.
 - Deleting a node type that an endpoint rule names is blocked until the rule
@@ -445,7 +474,8 @@ and regenerated interface images, as the repository's conventions require.
 
 ## Migration summary (schema 8 to 9)
 
-1. Node subjects become one-element `types` lists.
+1. Node subjects become one-element `types` lists, except on Network Composer,
+   whose subject step 7 removes.
 2. Each `layout` variable becomes an entry in `codebook.layouts` with the same
    ID and name and is removed from its node type.
 3. Sociogram prompts are rewritten into the task model. A prompt that creates
@@ -462,9 +492,12 @@ and regenerated interface images, as the repository's conventions require.
 6. Sort rules on the Sociogram and One-to-Many Dyad Census gain their node
    type.
 7. Network Composer's single node type, quick-add attribute and form become
-   one node entry. Its layout variable becomes the stage's layout.
-8. Edge types are left as they are. Filter rules are left as they are, apart
-   from any that name a removed ego or edge layout variable.
+   one node entry, and the stage subject is removed. Its layout variable
+   becomes the stage's layout.
+8. Edge types are left as they are. Filter and skip logic rules are left as
+   they are, apart from any that name a removed ego or edge layout variable. A
+   rule naming a node layout variable keeps working, because the layout keeps
+   the variable's ID.
 
 Canonical protocols, templates and fixtures are re-saved once, after the
 migration is complete.
@@ -475,10 +508,24 @@ Researcher documentation for directed edge types, endpoint rules, layouts, the
 Sociogram task model and each changed stage is part of this deliverable, in
 the Documentation changeset lane, with translations verified.
 
+The documentation on filtering and skip logic states plainly that:
+
+- a "match all" filter on a stage with several node types keeps only the node
+  type its rules are about;
+- filters cannot yet choose the source or the target end of a directed edge;
+- skip logic ignores direction.
+
 ## GitHub issues
 
 #1532 and #1669 to #1674 still describe the withdrawn flat registry. They are
 updated and closed once this design has been implemented, and not before.
+
+Two issues hold work that this design leaves out:
+
+- #2725: the filter and skip logic rule system, to be redesigned as a whole
+  for several node types and directed edges.
+- #2727: inserting attributes in census piped text on a stage with several
+  node types, to be designed together with #2725.
 
 ## Left to the builder
 
@@ -488,3 +535,18 @@ updated and closed once this design has been implemented, and not before.
 - Visual details of arrowheads, the reciprocal line and the direction arrow on
   census screens, within the fresco-ui design system.
 - Wording of Architect alerts, confirmations and validation messages.
+
+## Revisions
+
+2026-11-27:
+
+- Network Composer stores its node types only in its node entries and has no
+  stage-level subject.
+- Filter and skip logic rules are out of this design (#2725), apart from
+  keeping rules about layouts working.
+- Census piped text on a stage with several node types stays label only;
+  attributes there are tracked in #2727.
+- The notice about a layout that no stage sets for a node type stays an
+  Architect notice only.
+- The test that stops code reading `directed` or `endpointRules` outside the
+  helpers is permanent, with a failure message that says what to do.
