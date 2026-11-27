@@ -218,6 +218,56 @@ describe('parseExternalNetworkAsset', () => {
     });
   });
 
+  // An exported file names a layout's columns `<layout name>_x` and
+  // `<layout name>_y`; read back, they are one position in that layout.
+  it('reads the two columns of a layout as one position in it', async () => {
+    const MAP = testVariableId('map');
+    stubFetch({ 'stub://roster': 'Name,map_x,map_y\nAda,0.25,0.75\n' });
+
+    const [node] = await parseExternalNetworkAsset({
+      sourceFileName: 'roster.csv',
+      url: 'stub://roster',
+      codebook: { ...codebook, layouts: { [MAP]: { name: 'map' } } },
+      subject: { entity: 'node', type: PERSON },
+    });
+
+    expect(node?.[entityAttributesProperty]).toEqual({
+      [NAME]: 'Ada',
+      [MAP]: { x: 0.25, y: 0.75 },
+    });
+  });
+
+  it('keeps a column named like a position column for the variable of that name when no layout has the name', async () => {
+    const MAP_X = testVariableId('map-x');
+    stubFetch({ 'stub://roster': 'Name,map_x\nAda,0.25\n' });
+    const person = codebook.node?.[PERSON];
+    if (person === undefined) throw new Error('The codebook has no person');
+
+    const [node] = await parseExternalNetworkAsset({
+      sourceFileName: 'roster.csv',
+      url: 'stub://roster',
+      codebook: {
+        ...codebook,
+        node: {
+          ...codebook.node,
+          [PERSON]: {
+            ...person,
+            variables: {
+              ...person.variables,
+              [MAP_X]: { name: 'map_x', type: 'text' },
+            },
+          },
+        },
+      },
+      subject: { entity: 'node', type: PERSON },
+    });
+
+    expect(node?.[entityAttributesProperty]).toEqual({
+      [NAME]: 'Ada',
+      [MAP_X]: '0.25',
+    });
+  });
+
   it('preserves pass-through CSV attributes whose headers are not variable names', async () => {
     stubFetch({
       'stub://roster':

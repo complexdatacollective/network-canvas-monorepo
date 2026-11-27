@@ -561,12 +561,9 @@ export const toggleNodeAttributes = createAppAsyncThunk(
 
     invariant(node, 'Node not found');
 
-    const variablesForType = makeGetCodebookVariablesForNodeType(state)(
-      node.type,
-    );
     const validation = validateAttributePatch(
       attributePatch,
-      new Set(Object.keys(variablesForType)),
+      makeGetWritableAttributeKeysForNodeType(state)(node.type),
     );
 
     invariant(

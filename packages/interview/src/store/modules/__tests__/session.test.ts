@@ -642,6 +642,27 @@ describe('attribute patch reducers', () => {
     expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
   });
 
+  it('toggleNodeAttributes accepts a layout id that is not a variable of the node type', async () => {
+    const store = createMutationStore();
+
+    const result = await store.dispatch(
+      toggleNodeAttributes({
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { [NODE_LAYOUT]: { x: 0.2, y: 0.4 } },
+          unset: [],
+        },
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/TOGGLE_NODE_ATTRIBUTES/fulfilled');
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        NODE_LAYOUT
+      ],
+    ).toStrictEqual({ x: 0.2, y: 0.4 });
+  });
+
   it('rejects unknown toggle keys without mutation', async () => {
     const store = createMutationStore();
     const before = structuredClone(store.getState().session);
