@@ -275,6 +275,69 @@ describe('runExport via the export worker', () => {
     });
   });
 
+  it('schema 9 export through Interviewer gives each layout the node types its stages place in it', async () => {
+    getSessionsForExport.mockResolvedValue([
+      {
+        id: 's9',
+        caseId: 'case-9',
+        startedAt: 1722772800000,
+        finishedAt: 1722776400000,
+        network: { nodes: [], edges: [], ego: {} },
+        protocolHash: 'hash-9',
+      },
+    ]);
+    const codebook = {
+      node: { person: { name: 'Person' }, place: { name: 'Place' } },
+      layouts: { map: { name: 'map' }, spare: { name: 'spare' } },
+    };
+    getProtocolsByHashes.mockResolvedValue([
+      {
+        hash: 'hash-9',
+        name: 'Schema 9 Protocol',
+        codebook,
+        protocol: {
+          stages: [
+            {
+              id: 'sociogram',
+              type: 'Sociogram',
+              label: 'Sociogram',
+              subject: { entity: 'node', types: ['person'] },
+              layout: 'map',
+              prompts: [],
+            },
+            {
+              id: 'narrative',
+              type: 'Narrative',
+              label: 'Narrative',
+              subject: { entity: 'node', types: ['place'] },
+              presets: [{ id: 'preset', label: 'Preset', layout: 'spare' }],
+            },
+          ],
+        },
+      },
+    ]);
+    vi.stubGlobal('Worker', FakeWorker);
+
+    void runExport({
+      options: exportOptions,
+      sessionIds: ['s9'],
+    }).catch(() => {});
+    await vi.waitFor(() => {
+      expect(FakeWorker.instances[0]?.posted).toHaveLength(1);
+    });
+
+    // A Narrative preset only reads its layout, so it gives Place no
+    // position there.
+    expect(
+      FakeWorker.instances[0]?.posted[0]?.data.protocols['hash-9'],
+    ).toEqual({
+      hash: 'hash-9',
+      name: 'Schema 9 Protocol',
+      codebook,
+      layoutNodeTypes: { map: ['person'], spare: [] },
+    });
+  });
+
   it("exports each session's finish outcome, and none it did not record", async () => {
     const network = { nodes: [], edges: [], ego: {} };
     getSessionsForExport.mockResolvedValue([
