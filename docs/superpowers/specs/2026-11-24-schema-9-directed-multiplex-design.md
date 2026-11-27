@@ -37,7 +37,9 @@ becomes a construct of its own.
 - Splitting the pedigree edge type into a directed parent type and an
   undirected partner type. Worth its own project after schema 9.
 - Any change to how filter and skip logic rules behave (#2725), apart from
-  keeping rules about layouts working.
+  keeping rules about layouts working and the limit on conditions about a
+  census pair or a Network Composer node on a stage with several node types
+  (see "Piped text on census stages" and "Network Composer").
 - Any change to `apps/architect-classic` or `apps/interviewer-classic`.
 - Migrating stored interview sessions, or upgrading protocols inside Fresco or
   Interviewer.
@@ -200,7 +202,11 @@ type Codebook = {
   count. This is computed when needed and never stored. The
   codebook screen, the exporters and filter authoring all use the one helper.
 - A layout that no stage references is unused. It is listed as such and can be
-  deleted. Deleting a layout that a stage references is blocked.
+  deleted. Deleting a layout that a stage references is refused in every app.
+  A filter or skip logic rule that names a layout is a use as well, handled as
+  a rule that names a variable is today: in Architect the deletion is refused
+  while a rule names the layout; in Studio the rule is removed with the
+  layout.
 - Architect shows an advisory when a stage that reads a layout includes a node
   type that no stage sets that layout for, since those nodes can never have a
   position. It is an advisory in the builder only. `validateProtocol` has no
@@ -334,10 +340,19 @@ Directed edges:
 - The stage names a layout and always sets it.
 - Group regions are offered only when the stage has exactly one node entry.
   The group attribute is then resolved against that entry's node type.
-- Deleting a node type that one of several node entries names removes that
-  entry, as deleting an edge type removes the edge entry that names it.
-  Deleting the node type of a stage's only node entry is refused, as deleting
-  the only node type of any other stage is.
+- In Studio, deleting a node type that one of several node entries names
+  removes that entry, as deleting an edge type removes the edge entry that
+  names it today. In Architect the deletion is refused while any stage uses
+  the type, as it is today for an edge type that an edge entry names.
+  Deleting the node type of a stage's only node entry is refused everywhere.
+- In the stage editor, removing a node entry or changing its node type is
+  refused, with the list of connections, when an edge entry's type would be
+  left with no pair it allows.
+- A node entry's form and quick-add field can pipe the label and attributes
+  of the node being added, resolved against the entry's node type. A
+  condition about the node may test node attributes only when the stage has
+  one node entry; with several it may hold edge and edge-count rules only, as
+  for the census roles below.
 - With an edge type selected, nodes its endpoint rules rule out are disabled.
 - Drawing a directed edge follows the Sociogram: first node source, second
   target, reverse order adds the opposite edge, one line with two arrowheads
@@ -385,8 +400,11 @@ the two nodes in a pair, or of the focal node, resolved against the stage's
 single node type. When such a stage has one node type this is unchanged. When
 it has more than one, those roles offer the node label only, as the two ends
 of an edge already do, and validation rejects an attribute. (My call.)
-Inserting attributes there is tracked in #2727 and will be designed together
-with the filter and skip logic rules (#2725).
+A condition about one of those roles may not test a node attribute when the
+stage has several node types; it may still hold edge and edge-count rules.
+Inserting attributes there, and node rules in those conditions, are tracked
+in #2727 and will be designed together with the filter and skip logic rules
+(#2725).
 
 ## Filters and skip logic
 
@@ -404,9 +422,16 @@ not part of this design.
 - Rules about layouts keep working, because removing the layout variable type
   would otherwise break them. A node rule that named a layout variable in
   schema 8 now names the layout, which keeps the variable's ID and the same
-  four operators. Such a rule validates, runs, is shown and can be edited as
-  before, and a researcher can write one where they could before. Nothing else
-  about rules changes.
+  four operators. Such a rule validates and runs as before. The rule editor
+  treats a layout as it treated a layout attribute: it is listed for the node
+  types that have it, marked as not usable in a rule, and offered no
+  operator, since a position has no value a rule can compare against. A
+  stored rule that names a layout opens showing the layout's name, is
+  described by that name, and can be pointed at another attribute or
+  deleted.
+- The only other change to rules is the limit on conditions about a census
+  pair or a Network Composer node on a stage with several node types,
+  described above.
 
 ## Checking a network against endpoint rules
 
@@ -436,7 +461,9 @@ Codebook screen and printable codebook:
 - A "Layouts" section lists each layout with the stages that set it, the
   stages that read it and the node types that have it. Each node type's entry
   lists its layouts, read-only, linking back.
-- An unused layout is listed with a delete action.
+- An unused layout is listed with a delete action. A layout that only a rule
+  names is not unused in Architect: it has no delete action and its entry
+  lists the stages whose rules name it.
 - Each edge type's entry shows whether it is directed and its endpoint rules
   in words.
 

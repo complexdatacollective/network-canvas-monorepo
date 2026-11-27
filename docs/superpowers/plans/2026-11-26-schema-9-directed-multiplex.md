@@ -1,7 +1,7 @@
 # Schema 9 directed edges, multiplex stages and stage-owned layouts: implementation plan
 
 Spec: `docs/superpowers/specs/2026-11-24-schema-9-directed-multiplex-design.md`
-(approved 2026-11-26). Read it in full before starting a slice. This plan
+(approved 2026-11-26, amended 2026-11-27). Read it in full before starting a slice. This plan
 records the decisions the design leaves open, the exact shared names, and the
 order of work. Where this plan and the design disagree, the design wins on
 behaviour and this plan wins on names and file placement; raise any real
@@ -49,11 +49,11 @@ typechecking and its tests passing.
 - Every new codebook-naming field carries an `entityTypeReference` or `entityAttributeReference` tag, or the new `layoutReference` tag; usage detection is schema-derived and must stay so.
 - Wrap per-stage schemas with `withUniqueObjectIds`, and apply `withStageSubjectResolution` last because `.extend()` drops meta.
 - Invoke `developing-network-canvas-ui` once per slice immediately before its first user-facing edit (slices 3a, 3b, 4 and 6 to 11).
-- Filter and skip logic rules behave as in schema 8 (issue #2725). No slice changes how a rule runs, adds a rule setting or changes the rule editor, except to keep rules that name a layout working as rules that named a layout variable did (parity, owned by 3a and 3b, see C5).
-- The edge type readers guard (`scripts/invariants/edge-type-field-readers.test.mjs`) is permanent and is never relaxed or removed. A slice that trips it reads the field through the C2 helpers, renames an unrelated identifier, or adds the narrow exemption the guard provides (see slices 5 and 13).
+- Filter and skip logic rules behave as in schema 8 (issue #2725). No slice changes how a rule runs, adds a rule setting or changes the rule editor, with two exceptions: keeping rules that name a layout working as rules that named a layout variable did (parity, owned by 3a, with the Architect codebook half in 3b, see C5); and refusing a node rule in a condition about a census role (slice 8, C12) or about a Network Composer node (slice 9, C11) on a stage with several node types, the conditions counterpart of label-only piped text (design, "Piped text on census stages").
+- The edge type readers guard (`scripts/invariants/edge-type-field-readers.test.mjs`) is permanent and is never relaxed or removed. A slice that trips it reads the field through the C2 helpers, renames an unrelated identifier, or adds the narrow exemption the guard provides (see slices 5 and 13). `pnpm agent:test`, `pnpm agent:check` and the git hooks do not run root invariants (only CI does), so every slice runs `pnpm exec vitest run --config scripts/invariants/vitest.config.mts scripts/invariants/edge-type-field-readers.test.mjs` before its final `pnpm agent:test`, whether or not its "Done when" names it.
 - Invoke `verifying-translations` before committing any non-English text. Every catalog is complete in every locale at all times (`checkFullLocale`), so each slice translates the strings it adds into ar, de, es, fr, it, nl, pt-BR, zh-Hans, zh-Hant (and en-GB where spelling differs), then runs `pnpm --filter <pkg> i18n:extract` and `pnpm --filter <pkg> i18n:stamp`.
 - Participant-visible interview text must be schema interface text or a stage setting; screen-reader-only text stays an English plain string with `lang="en"`.
-- Invoke `finishing-a-refactor` in every slice that introduces a shared helper and converts call sites (1, 2, 2b, 3a, 4, 6).
+- Invoke `finishing-a-refactor` in every slice that introduces a shared helper and converts call sites (1, 2, 2b, 3a, 4, 6, 9).
 - Invoke `verifying-an-interface-change` in every slice that changes an interface's runtime, schema or editor (2, 3a, 4, 6, 7, 8, 9, 10).
 - Invoke `writing-an-oracle-that-can-fail` for every new test; prove each guard test red by a deliberate mutation before keeping it.
 - Invoke `adopting-a-test-baseline` before accepting any changed snapshot or baseline.
@@ -100,8 +100,9 @@ type EdgeDefinition = {
 File: `packages/protocol-validation/src/utils/edgeTypeRules.ts`. Exported by
 name from `packages/protocol-validation/src/index.ts`. No other file in the
 repository reads `directed` or `endpointRules` off an edge definition, except
-the schema definition, the migration, and the builder and Studio writers that
-set them.
+the schema definition, the migration, and the writer files the guard reports
+in the builder, the in-memory host, the Architect host and the Studio host
+(slice 11).
 
 ```ts
 type EdgeRulesCodebook = {
@@ -175,7 +176,7 @@ type StageSubject =
 type ResolvedSubject = { entity: 'ego' } | { entity: 'node'; type: string } | { entity: 'edge'; type: string };
 ```
 
-- `nodeStageSubjectFor(stageType: NodeSubjectStageType)` builds the subject schema for one stage type: `types` is a non-empty array with no duplicates (the duplicate check runs before the cap, so a capped stage still reports a repeat), and `.max(1)` when the capability table says `'single'`. Every stage's list is built from one module-level element schema, `const NODE_TYPE_ELEMENT = entityTypeReference({ entity: 'node' })`, shared with `NodeStageSubjectSchema`, so the 14 stage schemas add no tagged instance and slice 2 leaves `EXPECTED_TAGGED_FIELD_COUNT` unchanged. Each of the 14 node stages uses it. The plain `NodeStageSubjectSchema` remains for code that parses a subject without a stage type.
+- `nodeStageSubjectFor(stageType: NodeSubjectStageType)` builds the subject schema for one stage type: `types` is a non-empty array with no duplicates (the duplicate check runs before the cap, so a capped stage still reports a repeat), and `.max(1)` when the capability table says `'single'`. Every stage's list is built from one module-level element schema, `const NODE_TYPE_ELEMENT = entityTypeReference({ entity: 'node' })`, shared with `NodeStageSubjectSchema`, so the stage schemas add no tagged instance and slice 2 leaves `EXPECTED_TAGGED_FIELD_COUNT` unchanged. Each node stage uses it: 14 until slice 9, then 13 (the Composer leaves). The plain `NodeStageSubjectSchema` remains for code that parses a subject without a stage type.
 - `NodeEntitySubjectSchema = z.strictObject({ entity: z.literal('node'), type: entityTypeReference({ entity: 'node' }) })`, same file: the singular node subject, the node arm of `ResolvedSubject`, used by Network Composer node entries (C11). Its tag is one new tagged instance, counted in slice 9.
 - `ResolvedSubject` replaces `StageSubject` everywhere a single resolved subject is meant: `EntityAttributeReferenceHit.subject`, `utils/referenceSubjects.ts`, `utils/validation-helpers.ts`, `dynamic-value-validation.ts`, and fresco-ui form validation (`packages/fresco-ui/src/form/validation/utils/getVariableDefinition.ts`, `utils/collectNetworkValues.ts`, `src/form/store/types.ts` `stageSubject`; the interview already passes one resolved subject per form). It is exported from `index.ts`.
 - `utils/schemaReferenceWalk.ts` `stageSubjectOf`, which runs at every object, is specified in full: an ego subject, a singular node subject (`{ entity: 'node', type }`, as on a Composer node entry) and an edge subject pass through after a guard that checks `entity` and a string `type`; a node subject with a one-element `types` list resolves to `{ entity: 'node', type: t }`; a node subject with several types resolves to `undefined`; a node subject carrying both `type` and `types` resolves to `undefined`; anything else is not a subject. The unsafe cast there goes.
@@ -195,6 +196,8 @@ type NodeSubjectStageType =
   | 'Sociogram' | 'Narrative' | 'DyadCensus' | 'OneToManyDyadCensus' | 'TieStrengthCensus'
   | 'NetworkComposer' | 'NameGenerator' | 'NameGeneratorQuickAdd' | 'NameGeneratorRoster'
   | 'CategoricalBin' | 'OrdinalBin' | 'AlterForm' | 'Geospatial' | 'FamilyPedigree';
+// From slice 9 'NetworkComposer' has no node subject; it stays in the union
+// only for the capability table.
 
 const STAGE_NODE_TYPE_CAPABILITY: Record<NodeSubjectStageType, 'single' | 'several'>;
 // Takes a string: the guard test passes stage types read from the stage
@@ -223,8 +226,10 @@ Every entry of `STAGE_NODE_TYPE_CAPABILITY` starts at `'single'` (slice 2).
 Raised to `'several'`: Sociogram in slice 6, Narrative in slice 7, the three
 census stages in slice 8, NetworkComposer in slice 9. For every stage but the
 Composer the entry caps the subject's `types` list. The Composer keeps its
-entry after slice 9 removes its stage subject: there the entry governs the
-number of node entries, and `'several'` sets no cap. Every entry of
+entry after slice 9 removes its stage subject, but no schema reads it there:
+the entry is kept only for `nodeTypeCapabilityOf` and for the multi-type guard
+test, which treats a `'several'` stage with two node entries as a two-type
+stage. Every entry of
 `STAGE_EDGE_TYPE_SUPPORT` starts `{ directed: false, endpointRules: false }`
 (slice 1). `stageEdgeTypeSupportIssues` considers the edge-type hits whose path
 starts `['stages', i, …]` and skips, by path, every hit under the stage's
@@ -293,8 +298,8 @@ the test naming paths such as `convexHullVariable`,
 a fixture with two types proves validation rejects it. Each listed entry
 carries that fixture and the issue path validation must report. An entry
 proves its field only when the issue path is under `stages`, lies in the listed
-field, and names a stage of the entry's stage type whose subject lists two or
-more distinct node types; validation reports an issue at that path; and the
+field, and names a stage of the entry's stage type whose node types
+(`getStageNodeTypes`) number two or more; validation reports an issue at that path; and the
 same fixture with the stage's list cut to its first type reports none there,
 so the second type is what validation refuses. Self-checks cover each of those
 conditions. Besides attribute references, the walk reports text whose dynamic
@@ -319,10 +324,11 @@ type Codebook = { node?; edge?; ego?; layouts?: Record<LayoutId, LayoutDefinitio
 - `layouts: codebookRecord(VariableIdSchema, LayoutDefinitionSchema, 'layout').optional()`. A layout id is a variable-namespace UUID because positions are stored on nodes under it; layout keys join the cross-entity record-key uniqueness check.
 - Names are unique among layouts and may not equal the name of any node type's variable, and no derived export column of a layout (`name_x`, `name_y`, the screen-space pair, GraphML `name_X`, `name_Y` and screen-space pair, from `packages/shared-consts/src/export-columns.ts`) may equal a derived column of any node variable or another layout. Checked in `codebook.ts` with a new shared-consts function `findLayoutExportColumnConflicts(layouts, nodeVariablesByType)` in `export-columns.ts` (exported from the shared-consts root entry, which is where `findExportColumnConflicts` lives).
 - The same name rules apply in the other direction during authoring: the name scope used when creating or renaming a node variable in protocol-builder (`fields/variableNameRules.ts` `variableNameScope` and its callers) includes every layout's name and derived export columns, so a node variable named `sociogram` or `sociogram_x` is refused while a layout `sociogram` exists.
-- Filter rules naming a layout (parity only; the rule system is otherwise unchanged, issue #2725): a node rule that named a layout variable in schema 8 keeps validating, running, being shown and being editable in schema 9, now naming the layout (same id, the same four operators), and a researcher can author one wherever the builder let them author a rule against a layout attribute before. Nothing more is added. Each part has one owner:
-  - Validation and reference resolution (slice 3a): validation accepts a node rule whose attribute is a key of `codebook.layouts`, with an operator in `LAYOUT_RULE_OPERATORS`, for any node type, and rejects a node rule naming an attribute that is neither a variable of its type nor a key of `codebook.layouts`. Whether the type has the layout is not a validation rule, because a migrated rule must stay valid when no stage sets the layout for that type. `codebookIdRewrite.filterRuleOwner` resolves such an id to the layout. In studio-sync and the in-memory host a filter rule naming a layout is a reference to it that the reference sweep removes when the layout is deleted, as it removes a rule naming a deleted variable today; only `layoutReference` fields block deletion.
-  - Running (slice 3a): network-query reads node attributes by key and needs no change, because positions stay stored under the layout's id. A test pins that a stage filter rule naming a layout still selects by the stored position.
-  - Showing and editing (slice 3b): the builder's rule editor (`rules/ruleCodebook.ts`, `rules/operators.ts`, `rules/ruleDescription.ts`, `rules/ruleCodebookSource.ts`) treats a layout as it treated a layout attribute: offered in the node rule attribute picker for the node types that have it (`getNodeTypesWithLayout`), with the operators the editor already derives for a position, and a stored rule naming a layout opens, is described by the layout's name, and can be changed or deleted. Architect's printable summary (`lib/ProtocolSummary/components/Rule.tsx`) prints the layout's name.
+- Filter rules naming a layout (parity only; the rule system is otherwise unchanged, issue #2725): a node rule that named a layout variable in schema 8 keeps validating, running, being shown and being editable in schema 9, now naming the layout (same id, the same four operators). Parity is with what the code did, not with authoring it never had: the builder has never offered a layout attribute any operator (`operators.ts` gives `'layout'` no operand candidate, so `operatorsForSubject('layout')` is empty and `canAuthorRuleForType('layout')` is false; `ruleCodebook.ts` lists the attribute with `unavailableReason` "This attribute cannot be used in a rule. Choose another one."), so a researcher could not author one in the builder and still cannot. Nothing more is added; authoring one is #2725's. Each part has one owner:
+  - Validation and reference resolution (slice 3a): validation accepts a node rule whose attribute is a key of `codebook.layouts`, with an operator in `LAYOUT_RULE_OPERATORS`, for any node type, and rejects a node rule naming an attribute that is neither a variable of its type nor a key of `codebook.layouts`. Whether the type has the layout is not a validation rule, because a migrated rule must stay valid when no stage sets the layout for that type. `codebookIdRewrite.filterRuleOwner` resolves such an id to the layout.
+  - Deletion (slice 3a): `layoutReference` hits and filter-rule hits are different kinds of reference and are collected separately. A deletion first collects the `layoutReference` hits; if there is any, it is refused (`ReferencesRemain`) and nothing is written, so a reference held in a list (a Narrative `presets[i].layout`) never reaches the generic sweep, which would drop the preset. Only filter-rule hits are ever passed to the sweep. Hosts then differ as they do for a variable that a rule names: studio-sync, the in-memory host and the Studio host remove the rule with the layout, as they remove a rule naming a deleted variable today; Architect's `deleteLayoutSection` also answers `ReferencesRemain` while a filter or skip logic rule names the layout, as `deleteVariableAsync` refuses a variable a rule names. `findRulesNamingLayout(protocol, layoutId): Array<{ stageId: string; path: (string | number)[] }>` in `utils/layoutUsage.ts`, built on the filter-rule attribute hits, is the one reader of rule uses; Architect's host (3a) and its Codebook Layouts section (3b) use it.
+  - Running (slice 3a): network-query reads node attributes by key and needs no change, because positions stay stored under the layout's id. Tests pin that a stage filter rule and a skip logic rule naming a layout still judge nodes by the stored position.
+  - Showing and editing (slice 3a, so that removing `VariableTypes.layout` leaves the rule editor green in the slice that removes it): the builder's rule editor (`rules/ruleCodebook.ts`, `rules/operators.ts`, `rules/ruleDescription.ts`, `rules/ruleCodebookSource.ts`) treats a layout as it treated a layout attribute. A layout comes from `codebook.layouts` instead of a variable of type `layout`, is listed for the node types that have it (`getNodeTypesWithLayout`, so `ruleCodebookSource.ts` gains the stages) with the existing `unavailableReason` sentence, and is offered no operator. Where a provider gives a codebook without stages (`useRuleCodebook` returns a codebook only), no layout is listed, but a stored rule's layout still resolves by name from `codebook.layouts`. A stored rule naming a layout opens without the "no longer in the codebook" message, keeps its layout selected and shown by name, even when its node type does not have the layout, is described by the layout's name, and can be pointed at another attribute or deleted. Architect's printable summary (`lib/ProtocolSummary/components/Rule.tsx`, which calls the builder's `describeRule`) prints the layout's name.
 - `findPrototypeCodebookKeys` covers `codebook.layouts`.
 - Id rewriting: `CodebookIdRenames` (`utils/codebookIdRewrite.ts`) gains `layoutId?: (layoutId: string) => string`, applied to the keys of `codebook.layouts`, to every `layoutReference` hit, and to every filter-rule attribute hit whose id is a key of `codebook.layouts` (`filterRuleOwner` resolves such an id to the layout, not to a variable owner). `migration-codebook-ids.ts` `assignCodebookIds` claims layout keys first, ahead of node, edge and ego variables: a layout keeps its id (a readable schema 8 key becomes a UUID through `layoutId`, a UUID is kept), and a variable on any entity holding the same key gets a new id with its references rewritten. Slice 2b applies `layoutId` to the keys; slice 3a extends it to `layoutReference` and filter-rule hits when those exist.
 - `VariableTypes.layout` is removed from `variables/types.ts`, from the `satisfies Record<VariableType, …>` tables and from the variable union, for node, ego and edge types alike. `OperatorsByVariableType.layout` moves to `LAYOUT_RULE_OPERATORS = ['EXISTS', 'NOT_EXISTS', 'EXACTLY', 'NOT']` in `filters/filter.ts`.
@@ -368,6 +374,7 @@ getNodeTypesWithLayout(protocol, layoutId: string): readonly string[];
 getLayoutsOfNodeType(protocol, nodeType: string): readonly string[];
 findUnreachableLayoutReads(protocol): Array<{ stageId: string; presetId?: string; layoutId: string; nodeTypes: readonly string[] }>;
 isFirstStageUsingLayout(protocol, stageId: string, layoutId: string): boolean;
+findRulesNamingLayout(protocol, layoutId: string): Array<{ stageId: string; path: (string | number)[] }>;
 ```
 
 Sociogram access: in slice 3a every Sociogram `sets` (participants can drag
@@ -376,7 +383,8 @@ on every prompt until the task model). From slice 4 a Sociogram `sets` when
 otherwise `reads`. A node type has a layout when it is in the node types of a
 stage use with `access: 'sets'`. A use's `nodeTypes` is `getStageNodeTypes(stage)`
 (C4), so for a Network Composer they are its node entries' types. Unused
-layouts are those with no use at all.
+layouts are those with no stage use. In Architect a layout that a rule names
+(`findRulesNamingLayout`) is not offered for deletion either (Deletion, above).
 
 Exporter input (`packages/network-exporters/src/input.ts`):
 
@@ -495,9 +503,10 @@ type NetworkComposerStage = { …base; nodes: [ComposerNodeEntry, ...ComposerNod
 - The Composer stores its node types only in its node entries and has no stage `subject`. Node entries mirror the edge entries: `subject` on each entry makes the walk resolve `quickAdd` and form fields against that entry's type.
 - No two node entries name the same node type (validation, as the existing check on `edges.map((edge) => edge.subject.type)`). The stage's node types are `getStageNodeTypes(stage)` (C4): the entries' types in entry order. Entries are reorderable like edge entries; a reorder changes only the entry order, which is the toolbar order.
 - `convexHullVariable` is valid only when `nodes` has exactly one entry, and resolves against that entry's type through the `soleListEntry` resolution (C4). Validation rejects it with two entries.
+- Piped text and conditions: a site inside a node entry (its `quickAdd` field's text, its form fields) has the `node` role, resolved against the entry's own `subject`, with the type's label and attributes, whatever the number of entries. `formOf` already finds the entry's own `subject`; `dynamicValueRolesAt` gives the `node` role to a form whose own subject is a node, not only to a form of the stage subject. Stage-level `conditions` about `node` are validated against the set of entry types, through the same type-set path C12 gives the census roles: with one entry as today; with several, a node rule is refused and edge and edge-count rules are allowed.
 - Validation rejects an edge entry (`edges[]`) whose type allows no pair among the entries' node types (`edgeTypeAllowsAnyPair`), as for a connect task and a census prompt.
-- Migration step N7 builds the first entry from the schema 8 stage's `subject.type`, `quickAdd` and `nodeForm` and removes the stage `subject`. N8 then finds no stage subject on a Composer and has nothing to rewrite there; the entry's `subject` stays singular.
-- Deleting a node type that a node entry names is handled like deleting an edge type that an edge entry names: the reference sweep in studio-sync (`section-references.ts`) and in the in-memory host (`testing/host/protocolStore.ts`) drops the entry, since `nodes[i].subject.type` sits inside a list, and the entry's quick add and form go with it. Dropping a Composer's only entry would leave `nodes` empty, which the shape check refuses, so that deletion answers `ReferencesRemain`, as deleting a stage's only node type does. Architect's `deleteTypeAsync` refuses on any type hit, so it needs no new branch.
+- Migration step N7 builds the first entry from the schema 8 stage's `subject.type`, `quickAdd` and `nodeForm` and removes the stage `subject`. It runs immediately before N8, after every other new step, so every other step still finds the singular stage subject. N8 then finds no stage subject on a Composer and has nothing to rewrite there; the entry's `subject` stays singular.
+- Deleting a node type that a node entry names is handled like deleting an edge type that an edge entry names, which differs by host today. In studio-sync (`section-references.ts`) and the in-memory host (`testing/host/protocolStore.ts`) the reference sweep drops the entry, since `nodes[i].subject.type` sits inside a list, and the entry's quick add and form go with it. Dropping a Composer's only entry would leave `nodes` empty, which the shape check refuses, so that deletion answers `ReferencesRemain`, as deleting a stage's only node type does. The sweep checks one section alone (`section-validation.ts` `sectionShapeIssues`) and cannot see the pair rule, so dropping a node entry may leave an edge entry whose type allows no pair among the remaining entries; protocol validation reports it, as it does when a sweep removes a type from another several-type stage. Architect's `deleteTypeAsync` refuses on any type hit (`typeInUse`), as it does for an edge type an edge entry names, so it needs no new branch.
 - The interface text `composerAddNode` is retired: each toolbar button's name and tooltip are its entry `label`.
 - Until slice 9 the Composer keeps the interim shape slice 2 gave it: `subject: { entity: 'node', types: [t] }` with stage-level `quickAdd` and `nodeForm`.
 
@@ -505,7 +514,7 @@ type NetworkComposerStage = { …base; nodes: [ComposerNodeEntry, ...ComposerNod
 
 - Census pair steps: `packages/interview/src/selectors/dyad-census.ts` `getCensusSteps(codebook, prompt, nodes): Array<{ source: NcNode; target: NcNode }>` replaces `getNodePairs`; for a directed type each unordered pair yields its two directions back to back (skipping one the rules forbid); for an undirected type one step per eligible pair.
 - Metadata tuples keep the shape `[promptIndex, a, b, boolean]` (`packages/shared-consts/src/stage-metadata.ts`); for directed prompts `a` is the source and `b` the target and `matchEntry` matches in order; for undirected prompts it matches either order. Synthetic generation writes the same.
-- Census roles on a stage with several node types: piped text about `dyadSource`, `dyadTarget` or `focal` offers the label only and validation rejects an attribute (the design). Conditions about those roles (`CONDITION_ROLES`) may hold edge rules and edge-count rules but no node rule, which validation rejects with its own message ("A condition about a node of a census pair cannot test its attributes when the stage has several node types."). `validateConditions` (`schemas/9/schema.ts`) receives the role's node type set instead of a single subject; a one-element set behaves as today. The builder's `ConditionDialog` offers no node rule for those roles on such a stage.
+- Census roles on a stage with several node types: piped text about `dyadSource`, `dyadTarget` or `focal` offers the label only and validation rejects an attribute (the design). Conditions about those roles (`CONDITION_ROLES`) may hold edge rules and edge-count rules but no node rule, which validation rejects with its own message ("A condition about a node of a census pair cannot test its attributes when the stage has several node types."). `validateConditions` (`schemas/9/schema.ts`) receives the role's node type set instead of a single subject; a one-element set behaves as today. The builder's `ConditionDialog` offers no node rule for those roles on such a stage. This is one of the two rule exceptions in B, recorded in the design beside the label-only piped text; slice 9 reuses the type-set path for a Composer's `node` conditions (C11).
 - Direction arrow: `Pair` (`packages/interview/src/components/Pair.tsx`) gains `direction?: 'forward'`, which draws an arrowhead pointing at `toNode`; its accessible text is an English screen-reader-only string.
 
 ### C13. Canvas
@@ -535,7 +544,7 @@ owns, under the names given.
 3. Exporting a session whose nodes hold positions (slice 3a). GraphML throws on an attribute with no key, and CSV writes a raw `{x,y}` object column; the Interviewer schema 8 path loses `_x`/`_y` columns with no type error. Test names: `GraphML declares layout keys for a type that holds a position but has no setting stage`, `schema 8 export through Interviewer keeps layout columns`.
 4. Migrated layout names that collide (slice 3a). Two node types each with a layout variable named `layout`, or a layout named like another type's variable or its derived `_x` column, migrate into a protocol validation refuses. Test name: `migration renames layouts whose names would collide`.
 5. Narrative showing nodes of other types (slice 3a, extended in slice 7). Narrative shows any node carrying the layout key; once layouts are shared, a node type set by another stage appears on a Narrative that does not include it. Test name: `Narrative shows only nodes of its subject types that hold the preset layout`.
-6. Rules about layouts after the layout variable type goes (slices 3a and 3b, parity only, C5). Validation, the builder and the summary all looked a rule's attribute up among the node type's variables, so once layouts leave the variables a migrated rule naming a layout is refused, described as an unknown attribute, or silently stops selecting. Test names: `accepts a node rule naming a layout on any node type` (3a), `a stage filter rule naming a layout keeps nodes that hold a position under it` (3a), `describes a rule naming a layout by the layout's name` (3b).
+6. Rules about layouts after the layout variable type goes (slice 3a, parity only, C5). Validation, the builder and the summary all looked a rule's attribute up among the node type's variables, so once layouts leave the variables a migrated rule naming a layout is refused, described as an unknown attribute, or silently stops selecting. Test names: `accepts a node rule naming a layout on any node type` (3a), `a stage filter rule naming a layout keeps nodes that hold a position under it` (3a), `describes a rule naming a layout by the layout's name` (3a).
 7. One-to-Many direction (slice 8). Today's lookup passes `(target, focal)` reversed; with `focalRole: 'target'` the selected state and deselection must address the edge from list node to focal node, and only that direction. Test names: `focal-as-target selects and deselects the edge from the listed node to the focal node`, `deselecting removes only the asked direction of a reciprocal pair`.
 8. Directed census answers and back navigation (slice 8). Order-blind `matchEntry` and `edgeExists` make answering the B to A step pre-fill or overwrite the A to B answer, and back navigation shows the wrong step's answer. Test names: `answering No to the second direction leaves the first direction's edge`, `going back from the second direction shows the first direction's own answer`.
 
@@ -543,7 +552,7 @@ owns, under the names given.
 
 ### Changes to the proposed slicing
 
-- Slice 3 is split into three. 2b (layouts codebook) is additive: the `codebook.layouts` record, its name checks, id rewriting, and every host and Studio path that creates, renames and round-trips it, while no stage can reference a layout yet. 3a (layouts core) flips storage: stage fields, removal of the `layout` variable type, migration, runtime, exporters, synthetic data and the picker. Removing the `layout` variable type breaks the builder pickers, the exporters, the roster loader and synthetic data at compile time, so those stay together in 3a; Studio must know `codebook.layouts` no later than the first protocol that carries one, which 2b provides before 3a. 3b (layouts in the Architect codebook screens, rule authoring and the advisory) follows.
+- Slice 3 is split into three. 2b (layouts codebook) is additive: the `codebook.layouts` record, its name checks, id rewriting, and every host and Studio path that creates, renames and round-trips it, while no stage can reference a layout yet. 3a (layouts core) flips storage: stage fields, removal of the `layout` variable type, migration, runtime, exporters, synthetic data and the picker. Removing the `layout` variable type breaks the builder pickers, the exporters, the roster loader and synthetic data at compile time, so those stay together in 3a; Studio must know `codebook.layouts` no later than the first protocol that carries one, which 2b provides before 3a. 3b (layouts in the Architect codebook screens and the advisory) follows. The rule editor's layout parity is in 3a, because removing the `layout` variable type breaks the rule editor's tests in the slice that removes it.
 - Slice 12 is split into 12a (canonical protocol authoring, translations, compat copies, zips and the canonical and conformance tests) and 12b (cross-browser smoke, pixel baselines, Architect and Interviewer e2e, interface images and the story sweep). Each interface slice runs its own chromium matrix suite (section B), so 12b is not the first run of any scenario.
 - The unreachable-layout advisory moves from slice 7 to slice 3b, since it applies to reading Sociograms as much as to Narrative presets; slice 7 extends its tests to several types.
 - Locale catalog translations cannot wait for slice 13: every catalog guard requires every locale to be complete at all times. Each slice translates the strings it adds. Slice 13 keeps documentation, the worker reference, changesets, a final cross-catalog terminology pass and the pull request.
@@ -622,7 +631,8 @@ Migration step N8 `nodeSubjectsToTypeLists` in `src/schemas/9/migration.ts`
 rewrites only `stages[i].subject` (a Composer node entry's subject, created by
 N7, stays singular). It runs after step 12 (the repair steps) and after every new step that later
 slices insert (N1 to N7), and before step 13 `joinSingleLineText`. All later
-slices insert their steps before it, so every new step reads schema 8's
+slices insert their steps before it, and N7 (slice 9) runs immediately before
+it, after every other new step, so every new step except N7 reads schema 8's
 singular `subject.type`.
 
 Tests:
@@ -731,8 +741,8 @@ Order inside the slice:
 4. Interview: `selectors/canvas.ts` `getStageLayout` replaces `getPromptLayoutVariable`; Sociogram, Narrative, NetworkComposer and `useComposerActions` use the layout id; Narrative filters by subject types (Review focus 5); store key check (C5, Review focus 2); `utils/createSorter.ts` drops the `'layout'` case; roster: `getParentKeyByNameValue` resolves `name_x`/`name_y` against `codebook.layouts` only, `externalData.ts` reads layout prefixes from `codebook.layouts`, drops the `VariableTypes.layout` case and keeps `{x,y}` merging keyed by layout id.
 5. network-exporters: `ProtocolExportInput.layoutNodeTypes`; CSV `planCsvColumns`/`planTypedColumns` add layout claims for a type that has the layout or that any row of the type holds a position for; a layout cell path without a `Variable`; GraphML `keyIds.ts` gains `layout: Map<string, string[]>`, `generateKeyElements.ts` emits layout keys per owning type, `processAttributes.ts` resolves layouts before the external fallback; remove the `'layout'` variable branches. Hosts: `apps/fresco/lib/export/ProtocolRepository.ts`, `apps/interviewer/src/lib/export/exportSessions.ts` with `schema8ExportInput`, every test harness (`__tests__/exportHarness.ts`, `pipeline.test.ts`).
 6. protocol-utilities: Sociogram handler writes the stage layout on nodes of every subject type when the stage sets it; Composer positions written by the handler (drop the `stageWrites.ts` layout listing and the `ValueGenerator`, `solver.ts`, `valueSpace.ts` layout cases); `inProgress.ts` clears the stage layout only on setting stages; SyntheticInterview `addLayout`, `buildCodebook` emits `layouts`, `getNetwork` writes positions (C5).
-7. protocol-builder and hosts: remove `LAYOUT_TYPE` and every layout variable-type label; new field `fields/LayoutPickerField.tsx` (select an existing layout or create one by name inline through the 2b staged create, name validated by the 2b layout name rules) used by the Sociogram stage section (new `editors/sociogram/sections/SociogramLayoutSection.tsx`, registered in `sections/sectionKeys.ts` as `sociogram-layout`; `NodeLayoutSection` keeps automatic layout), Narrative presets and Composer; `protocol-context.ts` reads `codebook.layouts`.
-8. Studio: `studio-sync` `section-references.ts` (route `codebook.layouts.<id>` and add `layoutReferences` that block deleting a layout a `layoutReference` field names; a filter rule naming the layout is swept away with the deletion, as a rule naming a deleted variable is, C5); the same in the in-memory host (`testing/host/protocolStore.ts`); `apps/studio/api/src/protocol-builder/host.ts`.
+7. protocol-builder and hosts: remove `LAYOUT_TYPE` and every layout variable-type label; new field `fields/LayoutPickerField.tsx` (select an existing layout or create one by name inline through the 2b staged create, name validated by the 2b layout name rules) used by the Sociogram stage section (new `editors/sociogram/sections/SociogramLayoutSection.tsx`, registered in `sections/sectionKeys.ts` as `sociogram-layout`; `NodeLayoutSection` keeps automatic layout), Narrative presets and Composer; `protocol-context.ts` reads `codebook.layouts`. Rule editor parity (C5, showing and editing): `rules/operators.ts` (`ANSWER_SHAPES.layout` and the `'layout'` operand rows go; a layout's answer shape is a point, read through a layout lookup rather than a variable type), `rules/ruleCodebook.ts` (a node type's attribute list appends its layouts from `codebook.layouts` with the existing `unavailableReason`, `unavailableForType: true` and no type of `VariableType`; a stored rule's attribute resolves against the type's variables, then `codebook.layouts`), `rules/ruleDescription.ts`, `rules/ruleCodebookSource.ts` (gains the stages), and the tests and fixtures that assume a `type: 'layout'` variable, rewritten so the same assertions hold for a layout from `codebook.layouts`: `rules/__tests__/fixtures.ts` (`HOME` becomes a key of `codebook.layouts`), `operandMatchability.test.ts` (the `layout` rows of `STORED_CELLS_PER_TYPE` and `OFFERED_PAIRS_PER_TYPE` leave the per-type tables, which follow `VariableTypesKeys`, and a separate assertion pins that a layout is offered no pair), `operandTable.test.tsx:546` (the layout case asserts on the layout lookup instead of `operatorsForSubject('layout')`), `ruleCodebook.test.ts:573-596` and `RuleEditorDialog.test.tsx:916` (unchanged sentences, layout from `codebook.layouts`). Architect `lib/ProtocolSummary/components/Rule.tsx` prints the layout's name through `describeRule`.
+8. Deletion (C5, Deletion): `layoutReference` hits are collected first; any hit refuses the deletion with nothing written, and only filter-rule hits go to the sweep. Studio: `studio-sync` `section-references.ts` (route `codebook.layouts.<id>` and add `layoutReferences`; the refusal runs before `removeOneReference`, so a Narrative preset is never dropped; a filter rule naming the layout is swept away with the deletion, as a rule naming a deleted variable is); the same in the in-memory host (`testing/host/protocolStore.ts`); `apps/studio/api/src/protocol-builder/host.ts`. Architect: `apps/architect/src/protocolBuilder/sectionWrites.ts` `deleteLayoutSection` answers `ReferencesRemain` when a `layoutReference` field or a rule (`findRulesNamingLayout`) names the layout, and its comment is rewritten.
 9. Sketch: `apps/sketch/src/server/design/compile.ts` emits `codebook.layouts` with one layout per node type that a Sociogram, Narrative or Composer places, named `layout_<nodeTypeName>` normalised to the variable-name rules (today every type's layout variable is named `layout`, which the uniqueness rule refuses), the stage-level Sociogram and Composer `layout` and the preset `layout`, and no `type: 'layout'` variable; `analyse.ts`, `rules.ts` and `burden.ts` stop treating `'layout'` as a built-in attribute id where they read it; goldens regenerated from the compiler. `build-custom-node-shapes-example.mjs` emits `layouts` and the stage `layout` and is re-run.
 10. Architect: printable summary `Prompt.tsx` drops the `layout.layoutVariable` row; `Stage.tsx` prints a stage-level Layout row for Sociogram and Network Composer resolving `codebook.layouts`; `Presets.tsx` prints `preset.layout`; the loose `StageConfiguration`, `PresetsProps` and `PromptProps` shapes for these fields are replaced by the schema types so a later rename is a type error; `Stage.test.tsx` fixtures move to the new shape. Walkthrough: `content/Sociogram.md` prompts paragraph rewritten for a stage-level layout and a step for the `sociogram-layout` section; `content/NetworkComposer.md` and `content/Narrative.md` layout steps retargeted to the new field names; `walkthroughSections.test.tsx` gains a field-marker check (each step's `field` resolves to a `data-field-name` in the mounted editor), so a renamed field fails instead of falling back to the section box.
 11. Fresco release-test `apps/fresco/release-test/scripts/make-fixtures.mjs` picks the Sociogram by id. `apps/networkcanvas.com/lib/__tests__/protocolPreview.test.ts` expects split stages.
@@ -748,11 +758,12 @@ Migration steps, inserted after step 12 and before N8, in this order:
 Tests:
 
 - protocol-validation: `codebook-layouts.test.ts`: `rejects a variable of type layout on node, ego and edge types`. `layout-usage.test.ts`: `getNodeTypesWithLayout counts setting stages only`; `a layout no stage references is unused`; `layoutReference hits match getStageLayoutUses on the complete fixture`. `filter.test.ts`: `accepts a node rule naming a layout on any node type` (Review focus 6); `rejects a node rule naming an unknown layout`; `rejects a layout rule with an operator outside LAYOUT_RULE_OPERATORS`. `migration.test.ts`: `splits a Sociogram at each change of layout variable`; `retargets skip logic to the first split stage`; `moves layout variables into codebook.layouts with the same id`; `migration renames layouts whose names would collide` (Review focus 4); `merges layout variables that share a key across node types into one layout`; `a layout keeps its id when another entity's variable has the same key`; `a rule naming a layout variable stays valid when only a Narrative preset used it`; `drops ego and edge layout variables and rules naming them`. `codebook-ids.test.ts`: `rewrites every layout reference`. Both coverage guards updated.
-- interview: `session.test.ts`: `updateNode accepts a layout id that is not a variable of the node type` (Review focus 2); `updateNode still rejects an unknown key`. `Narrative` units: `Narrative shows only nodes of its subject types that hold the preset layout` (Review focus 5). `getParentKeyByNameValue.test.ts`: `matches name_x to a layout, never to a variable`. `canvas.test.ts` placed/unplaced by stage layout. `selectors/__tests__/session.test.ts`: `a stage filter rule naming a layout keeps nodes that hold a position under it` (Review focus 6; the running half of the C5 parity, with network-query unchanged).
+- interview: `skip-logic.test.ts`: `a skip logic rule naming a layout still counts nodes by stored position`. `session.test.ts`: `updateNode accepts a layout id that is not a variable of the node type` (Review focus 2); `updateNode still rejects an unknown key`. `Narrative` units: `Narrative shows only nodes of its subject types that hold the preset layout` (Review focus 5). `getParentKeyByNameValue.test.ts`: `matches name_x to a layout, never to a variable`. `canvas.test.ts` placed/unplaced by stage layout. `selectors/__tests__/session.test.ts`: `a stage filter rule naming a layout keeps nodes that hold a position under it` (Review focus 6; the running half of the C5 parity, with network-query unchanged).
 - network-exporters: `columns.test.ts`: `adds layout columns for a type that has the layout`; `adds layout columns for a type that holds a position without a setting stage`; `exportColumns.test.ts` guard extended to layouts; `keys.test.ts`: `GraphML declares layout keys for a type that holds a position but has no setting stage` (Review focus 3). Interviewer `exportSessions.test.ts`: `schema 8 export through Interviewer keeps layout columns` (Review focus 3).
 - protocol-utilities: `generateNetwork.test.ts`: `writes positions for every subject type of a setting Sociogram`; `Composer writes positions on created nodes`. `SyntheticInterview.test.ts`: `getNetwork writes positions for layouts`.
-- protocol-builder: `LayoutPickerField` story and `fieldStories.test.ts`; `layoutPicker.test.tsx`: `creates a layout whose name clashes with no node variable across types`; `hostResponsibilities` contract case for `codebookLayout` delete refused while referenced.
-- studio-sync: `property.test.ts`: `refuses deleting a layout a stage references`. `section-references.test.ts`: `deleting a layout removes a filter rule that names it`.
+- protocol-builder: `LayoutPickerField` story and `fieldStories.test.ts`; `layoutPicker.test.tsx`: `creates a layout whose name clashes with no node variable across types`; `hostResponsibilities` contract cases for `codebookLayout` delete: `refuses deleting a layout a stage names` (every host) and `deleting a layout a filter rule names` (the case says which hosts refuse, Architect, and which remove the rule, in-memory and Studio). Rule editor: `ruleCodebook.test.ts`: `lists a layout as unavailable only for node types that have it`; `resolves a stored rule's layout by name from a codebook given without stages`; `RuleEditorDialog.test.tsx`: `opens a stored layout rule by the layout's name`; `opens and saves a stored rule naming a layout its node type does not have`; `ruleDescription.test.ts`: `describes a rule naming a layout by the layout's name` (Review focus 6); the rewritten `operandMatchability`, `operandTable`, `ruleCodebook` and `RuleEditorDialog` layout cases; `RuleSetField` story with a stored layout rule. Architect `lib/ProtocolSummary/components/__tests__/Rule.test.tsx`: `prints a rule naming a layout by the layout's name`.
+- studio-sync: `property.test.ts`: `refuses deleting a layout a stage references`. `section-references.test.ts`: `deleting a layout removes a filter rule that names it`; `refuses deleting a layout a Narrative preset names and keeps the preset`; `a layout named by a stage and by a filter rule is refused and the rule is kept`. In-memory host (`testing/host/__tests__/inMemoryHost.test.ts`): the same two refusals.
+- Architect host (`apps/architect/src/protocolBuilder/__tests__/architectRouter.test.ts`): `refuses deleting a layout a stage names`; `refuses deleting a layout a filter rule names`.
 - Architect: `Stage.test.tsx`: `prints the stage layout by name`; `prints each preset's layout`. `walkthroughSections.test.tsx`: `every step's field names a field the editor renders`, proven red by renaming one field.
 
 Stories and e2e: `LayoutPickerField.stories.tsx`; update Sociogram, Narrative
@@ -764,10 +775,10 @@ Skills: `developing-network-canvas-ui` (before the picker),
 `finishing-a-refactor`, `verifying-an-interface-change`.
 
 Other stages meanwhile: every Sociogram sets its layout; the Sociogram's
-prompts keep the schema 8 prompt model minus `layout`. Until slice 3b the
-builder's rule editor and Architect's printable summary describe a rule naming
-a layout as naming an unknown attribute; validation and the interview already
-accept and run it.
+prompts keep the schema 8 prompt model minus `layout`. Rules naming a layout
+validate, run, open, are described and print by the layout's name from this
+slice. Until slice 3b Architect's Codebook screen has no Layouts section, so a
+layout is not listed or deleted there.
 
 Done when:
 `pnpm --filter @codaco/protocol-validation exec vitest run src`,
@@ -777,10 +788,10 @@ Done when:
 `pnpm --filter @codaco/interview exec vitest run --project storybook src/interfaces/Sociogram src/interfaces/Narrative src/interfaces/NetworkComposer`,
 `pnpm --filter @codaco/protocol-utilities exec vitest run src`,
 `pnpm --filter @codaco/protocol-builder exec vitest run --project=unit src`,
-`pnpm --filter @codaco/protocol-builder exec vitest run --project=storybook src/fields/LayoutPickerField.stories.tsx`,
+`pnpm --filter @codaco/protocol-builder exec vitest run --project=storybook src/fields/LayoutPickerField.stories.tsx src/fields/RuleSetField.stories.tsx`,
 `pnpm --filter @codaco/studio-sync exec vitest run`,
 `pnpm --filter @codaco/studio-api exec vitest run src/protocol/__tests__/sectionize.test.ts src/protocol/__tests__/assemble.test.ts`,
-`pnpm --filter @codaco/architect exec vitest run --project=unit src/components/StageEditor src/lib/ProtocolSummary`,
+`pnpm --filter @codaco/architect exec vitest run --project=unit src/components/StageEditor src/lib/ProtocolSummary src/protocolBuilder`,
 `pnpm --filter @codaco/interviewer exec vitest run --project=unit src/lib/export`,
 `pnpm --filter fresco exec vitest run --project=units lib/export`,
 `pnpm --filter @codaco/sketch exec vitest run src/server/design`,
@@ -790,28 +801,25 @@ from `packages/interview` the chromium matrix suites `e2e/specs/matrix/sociogram
 
 ### Slice 3b. layouts-architect
 
-Goal: researchers see and delete layouts in Architect, keep reading and
-editing rules about layouts as they did before, and are told when a reading
-stage can never show positions.
+Goal: researchers see and delete layouts in Architect and are told when a
+reading stage can never show positions. Rules about layouts already work from
+3a.
 
-In scope: Architect codebook "Layouts" section (`apps/architect/src/components/Codebook/Codebook.tsx`, new `components/Codebook/Layouts.tsx`) listing each layout with the stages that set it, the stages that read it and the node types that have it, using `getLayoutUsage`; each node type's entry (`EntityType.tsx`) lists its layouts read-only with links; unused layouts listed with a delete action, referenced ones not deletable; `getUsageAsStageMeta` handles layout hits; printable codebook (`apps/architect/src/lib/ProtocolSummary/components/Codebook.tsx`, `Contents.tsx`); the unreachable-layout advisory as an in-section `<Alert variant="warning">` in the Sociogram layout section and the Narrative preset fields, computed from `protocolContext.orderedStages` with `findUnreachableLayoutReads`, and as a protocol-wide issue in `apps/architect/src/selectors/issues.ts`; the showing and editing half of the rule parity in C5, and nothing beyond it: the rule editor treats a layout as it treated a layout attribute, offering it in the node rule attribute picker for the node types that have it, with the operators the editor already derives for a position, and opening, describing and editing a stored rule that names a layout (`rules/ruleCodebook.ts`, `rules/operators.ts`, `rules/ruleDescription.ts`, `ruleCodebookSource.ts` gains stages); Architect's printable summary `lib/ProtocolSummary/components/Rule.tsx` prints the layout's name; Studio `apps/studio/api/src/protocol/diff.ts` and `draft-structure.ts` layout kinds.
+In scope: Architect codebook "Layouts" section (`apps/architect/src/components/Codebook/Codebook.tsx`, new `components/Codebook/Layouts.tsx`) listing each layout with the stages that set it, the stages that read it and the node types that have it, using `getLayoutUsage`; each node type's entry (`EntityType.tsx`) lists its layouts read-only with links; unused layouts listed with a delete action; a layout that a stage names or that a rule names (`findRulesNamingLayout`, C5) is not deletable, and its entry lists the stages whose rules name it, matching the refusal `deleteLayoutSection` gives from 3a; `getUsageAsStageMeta` handles layout hits and rule uses; printable codebook (`apps/architect/src/lib/ProtocolSummary/components/Codebook.tsx`, `Contents.tsx`); the unreachable-layout advisory as an in-section `<Alert variant="warning">` in the Sociogram layout section and the Narrative preset fields, computed from `protocolContext.orderedStages` with `findUnreachableLayoutReads`, and as a protocol-wide issue in `apps/architect/src/selectors/issues.ts`; Studio `apps/studio/api/src/protocol/diff.ts` and `draft-structure.ts` layout kinds.
 
-Out of scope: Sociogram task alert (slice 4).
+Out of scope: Sociogram task alert (slice 4); the rule editor and `Rule.tsx` (3a).
 
-Tests: Architect `Codebook` tests: `lists each layout with setting stages, reading stages and node types`; `offers delete only for an unused layout`; `a node type entry lists its layouts`. Builder: `ruleCodebook.test.ts`: `offers a layout only for node types that have it` (the authoring rule; validation accepts any layout on any node type, C5); `offers a layout the operators a layout attribute was offered`; `opens a stored rule naming a layout without reporting an unknown attribute`. `ruleDescription.test.ts`: `describes a rule naming a layout by the layout's name` (Review focus 6). Architect `lib/ProtocolSummary/components/__tests__/Rule.test.tsx`: `prints a rule naming a layout by the layout's name`. `unreachableLayout.test.tsx`: `warns when a reading stage includes a type no stage sets the layout for`; `does not warn once another stage sets it`. Printable codebook snapshot test updated. Studio `diff.test.ts`: `reports an added layout`.
+Tests: Architect `Codebook` tests: `lists each layout with setting stages, reading stages and node types`; `offers delete only for an unused layout`; `does not offer delete for a layout that only a filter rule names`; `a node type entry lists its layouts`. `unreachableLayout.test.tsx`: `warns when a reading stage includes a type no stage sets the layout for`; `does not warn once another stage sets it`. Printable codebook snapshot test updated. Studio `diff.test.ts`: `reports an added layout`.
 
 Stories: `Layouts.stories.tsx` beside `apps/architect/src/components/Codebook/Variables.stories.tsx`
-(used, unused and read-only layouts); builder RuleSetField story with a layout
-rule.
+(used, unused, named only by a rule, and read-only layouts).
 
 Skills: `developing-network-canvas-ui`, `verifying-translations`.
 
 Done when:
 `pnpm --filter @codaco/architect exec vitest run --project=unit src/components/Codebook src/lib/ProtocolSummary src/selectors`,
-`pnpm --filter @codaco/protocol-builder exec vitest run --project=unit src/rules src/locales`,
 `pnpm --filter @codaco/architect exec vitest run --project=unit src/locales`,
 `pnpm --filter @codaco/architect exec vitest run --project=storybook src/components/Codebook`,
-`pnpm --filter @codaco/protocol-builder exec vitest run --project=storybook src/rules`,
 `pnpm --filter @codaco/studio-api exec vitest run src/protocol/__tests__/diff.test.ts`,
 then `pnpm agent:test` and `pnpm agent:check`.
 
@@ -1032,7 +1040,7 @@ ordered pairs for directed types and keys pair sets by stage type set;
 Tests:
 
 - protocol-validation: `rejects an unknown variable on every per-type row of a two-type Sociogram` (Review focus 1); `rejects a connect task whose edge type allows no pair among the stage types`; `accepts a directed edge type on a Sociogram`. `migration.test.ts`: `Sociogram sort rules gain the stage's node type and no nodeTypeOrder`.
-- interview: `Sociogram.directed.test.tsx`: `second tap in the same order removes the edge`; `reverse order adds the opposite edge`; `a node that cannot be a source is disabled before the first tap`; `an invalid target is disabled after the first tap`; `a node of a type with no highlight entry is disabled in a highlight task`. `EdgeLayer.test.tsx`: `draws one line with two arrowheads for a reciprocal pair`; `removing one direction leaves one arrowhead`; `undirected lines still end at node centres`. `useNodeTypeSortedList.test.ts`: `groups by nodeTypeOrder then sorts each group by its own rules`; `falls back to subject order`; `a typed rule on a number variable sorts numerically` (proven red by passing the rule to the sorter whole, C8).
+- interview: `Sociogram.directed.test.tsx`: `second tap in the same order removes the edge`; `reverse order adds the opposite edge`; `a node that cannot be a source is disabled before the first tap`; `an invalid target is disabled after the first tap`; `a node of a type with no highlight entry is disabled in a highlight task`. `EdgeLayer.test.tsx`: `draws one line with two arrowheads for a reciprocal pair`; `removing one direction leaves one arrowhead`; `undirected lines still end at node centres`. `useNodeTypeSortedList.test.ts`: `groups by nodeTypeOrder then sorts each group by its own rules`; `falls back to subject order`; `a typed rule on a number variable sorts numerically` (proven red by passing the rule to the sorter whole, C8). `selectors/__tests__/session.test.ts`: `a match-all stage filter on a two-type stage keeps only the type its rules name`; `an edge rule keeps both ends of a directed edge` (the two limits slice 13 documents, pinned as schema 8 behaviour).
 - protocol-builder: `SubjectSection.test.tsx`: `adding a type keeps the prompts`; `removing a type prunes only its rows`.
 - protocol-utilities: `generated Sociogram edges satisfy endpoint rules` using `validateNetworkAgainstEndpointRules`; `a reciprocal pair counts as two edges`.
 
@@ -1244,8 +1252,8 @@ node types moves to the entries.
 
 Schema: C11 (entry `subject` is `NodeEntitySubjectSchema` from C4); the
 Composer schema stops using `nodeStageSubjectFor` and has no `subject`;
-`STAGE_NODE_TYPE_CAPABILITY.NetworkComposer = 'several'`, which now governs
-the node entry list and sets no cap (C4); edge support true; new object-id
+`STAGE_NODE_TYPE_CAPABILITY.NetworkComposer = 'several'`, which no schema
+reads for the Composer (kept for `nodeTypeCapabilityOf` and the guard, C4); edge support true; new object-id
 kind `'composerNode'`; validation rejects two node entries naming one node
 type and an edge entry whose type allows no pair among the entries' types;
 `convexHullVariable` resolves through the new `soleListEntry` declared
@@ -1258,6 +1266,22 @@ forms and `hasGroups` requires one entry; retire `composerAddNode` from
 `interface-text-entries.ts` and the interview wording catalogs; new interface
 text `composerReverseDirection` ("Reverse direction") and
 `composerEdgeDirection` ("{source} to {target}") for the reciprocal sections.
+In `schema.ts`: the "type exists in the codebook" check, keyed today on
+`'subject' in stage`, gains a rule for node entries that reports an unknown
+node type at `['stages', i, 'nodes', j, 'subject', 'type']` (today it is caught
+only through `quickAdd`, with a misleading message); the form and quick-add
+checks run per entry, with issue paths under `['stages', i, 'nodes', j, …]`;
+`collectComposerFieldOverrides` reads each entry's `form` instead of
+`stage.nodeForm`; the block `if (stage.type === 'NetworkComposer' &&
+stageSubject)` is split so that the edge-entry form checks no longer depend on
+a stage subject. Piped text and conditions (C11): `dynamic-values.ts` and
+`dynamic-value-validation.ts` (`formOf`, `dynamicValueRolesAt`,
+`stageSubjectOf`, `variablesFor('node')`) give a site inside a node entry the
+`node` role against the entry's type; `validateConditions` receives the
+Composer's entry type set for stage-level `conditions`, through the path C12
+adds in slice 8; protocol-builder `localization/useDynamicValueSite.ts`
+mirrors it; the interview's piped-text scope for the Composer node form reads
+the entry's type.
 Coverage guards: the type count rises by one (`NodeEntitySubjectSchema.type`)
 and falls by none, because the Composer's stage subject used the shared
 `NODE_TYPE_ELEMENT` instance (C4); the attribute tags of `quickAdd` and the
@@ -1269,11 +1293,15 @@ Guard tests: `multi-type-stage-references.test.ts` reads node types through
 "cut to its first type" step cuts its entries (C4); `convexHullVariable` is
 listed in `SINGLE_TYPE_ONLY_FIELDS` with a two-entry fixture.
 `node-stage-subject.test.ts` checks the Composer through its entry list
-instead of `nodeStageSubjectFor`. `stage-subject-resolution.test.ts` covers
+instead of `nodeStageSubjectFor`, with these cases: the stage types checked
+through `nodeStageSubjectFor` and the Composer together equal the keys of
+`STAGE_NODE_TYPE_CAPABILITY`; `rejects an empty node entry list`; `rejects two
+node entries naming one node type`; `rejects an unknown node type in a node
+entry`. `stage-subject-resolution.test.ts` covers
 `soleListEntry`.
 
-Migration step N7 `composerNodeEntries` (after `addComposerCaptions`, before
-N8): `subject.type`, `quickAdd` and `nodeForm` become
+Migration step N7 `composerNodeEntries` (after `addComposerCaptions` and
+every other new step, immediately before N8): `subject.type`, `quickAdd` and `nodeForm` become
 `nodes: [{ id: createProtocolObjectId(), subject: { entity: 'node', type },
 label: nameOrKey(<node type>, type), quickAdd, form: nodeForm }]`, and the
 stage `subject` is removed. The label is written as a plain string, as
@@ -1281,7 +1309,9 @@ stage `subject` is removed. The label is written as a plain string, as
 and escapes it. The stage `layout` was set in 3a. N8 finds no stage subject on
 a Composer and has nothing to rewrite there; the entry's subject stays
 singular. Inverse in `schema-8-protocol.ts`: the first entry back to the stage
-`subject: { entity: 'node', type }`, `quickAdd` and `nodeForm`. Re-save every
+`subject: { entity: 'node', type }`, `quickAdd` and `nodeForm`. The inverses
+run in reverse step order, so N7's inverse runs right after N8's and before
+every other inverse that reads a Composer's node type. Re-save every
 store; re-saved stores need the new labels translated for every language the
 protocol carries.
 
@@ -1292,18 +1322,26 @@ Readers of a stage's node types: the interview's `selectors/session.ts`
 (C4). Skip logic (`selectors/skip-logic.ts`), stage filter plumbing
 (`getNetworkNodesForType`), form and dynamic value scopes, roster data and
 layout usage already ask those accessors and need no other change. Before
-finishing, grep every package for raw reads of a stage `subject` that a
-Composer reaches (the slice 2 traps: `Reflect.get(subject, 'type')`,
-`value.type`, `PromptsSection.hasSubject`, `useDynamicValueSite` `subjectOf`,
-Architect `TranslationCell.tsx`, studio-api `helpers.ts` and
-`protocol-builder-suite.ts`) and convert each.
+finishing, grep every package for raw reads of a stage `subject`, `nodeForm`
+or `quickAdd` that a Composer reaches and convert each. Known sites: the
+slice 2 traps (`Reflect.get(subject, 'type')`, `value.type`,
+`PromptsSection.hasSubject`, `useDynamicValueSite` `subjectOf`, Architect
+`TranslationCell.tsx`, studio-api `helpers.ts` and
+`protocol-builder-suite.ts`); protocol-validation
+`migration/refusedContent.ts` `describePlace` (its `nodeForm` branch, asserted
+at `localization-migration.test.ts:806`, becomes a node entry's form);
+protocol-builder `localization/localizedTextNames.ts`,
+`sections/form-fields/ComposerFormFields.tsx`, `composerMessages.ts`;
+interview `e2e/matrix/option-inventory.ts` and `network-composer.scenarios.ts`;
+protocol-utilities `stageWrites.ts`; `apps/sketch/src/server/design/burden.ts`.
 
 Hosts: deleting a node type that a node entry names follows C11. studio-sync
 `section-references.ts` and the in-memory host `testing/host/protocolStore.ts`
 need no new branch (the sweep drops an entry inside `nodes`, and the shape
-check refuses an empty list); the slice adds the tests below and the
-`RefactorDeleteEntityType` sentence in `testing/hostResponsibilities.ts`
-names the Composer case.
+check refuses an empty list); Architect's `deleteTypeAsync` refuses any type
+in use, as for an edge type an edge entry names. The slice adds the tests
+below and the `RefactorDeleteEntityType` sentence in
+`testing/hostResponsibilities.ts` names the Composer case for each host.
 
 Runtime: `ToolPalette.tsx` one button per entry labelled by `label`, in entry
 order; `useComposerStore` add-node tool carries the entry id; `createNodeAt`
@@ -1321,12 +1359,19 @@ the opposite edge exists; groups only with one entry.
 
 Builder: the Composer editor has no subject section; its node types are chosen
 in the node entries section (`ComposerNodesSection.tsx`, section key
-`composer-nodes`), modelled on `ComposerConnectionsSection.tsx`. Each entry
+`composer-nodes`), modelled on `ComposerConnectionsSection.tsx`. The
+stage-level fields that section holds today (the layout picker from 3a,
+`convexHullVariable` and `behaviours.automaticLayout`) move to a new section,
+`editors/network-composer/sections/ComposerLayoutSection.tsx`, key
+`composer-layout` in `sections/sectionKeys.ts`, placed before
+`composer-nodes`, with its own story. Each entry
 picks its node type (a type another entry uses is not offered), and has a
 label, a quick add and a form. Adding an entry labels it with the type's name
 and leaves the quick add empty for the researcher to choose (the save is
 refused until it is set); removing an entry removes only it; reordering
-changes only the entry order. `convexHullVariable` is removed when a second
+changes only the entry order. Removing a node entry, or changing its node
+type, is refused with the list of connections when an edge entry's type would
+be left with no eligible pair, as slice 8 refuses a census subject change. `convexHullVariable` is removed when a second
 entry is added, and the group field shows that groups need one node type. The
 connections picker offers only edge types for which `edgeTypeAllowsAnyPair`
 holds over the entries' types. The section key `composer-node-form` is retired
@@ -1378,16 +1423,26 @@ satisfy endpoint rules` (with `validateNetworkAgainstEndpointRules`); `a
 reciprocal Composer pair counts as two edges`. Builder
 `composerSections.test.tsx`: `adding a node entry keeps the others`; `does not
 offer a node type another entry uses`; `removing a node entry removes only
-it`; `reordering node entries keeps each entry`; `hides edge types with no
-eligible pair`. studio-sync `__tests__/section-references.test.ts`: `deleting
+it`; `refuses removing a node entry that leaves a connection without an
+eligible pair`; `reordering node entries keeps each entry`; `hides edge types
+with no eligible pair`. `ComposerLayoutSection` story and test: `keeps the
+layout, group and automatic layout fields at stage level`. Dynamic values:
+`dynamic-values.test.ts:558` and `:673` move from `nodeForm` to
+`['nodes', 0, 'form', 'fields', 0, 'label']` with the same expected roles;
+`a node entry's form offers its own type's attributes on a stage with two
+entries`; `rejects a node rule in a Composer condition about the node with
+two entries`; `accepts a node rule in a Composer condition about the node with
+one entry`; `localization-migration.test.ts:806` describes a node entry's form. studio-sync `__tests__/section-references.test.ts`: `deleting
 a node type that one of two Composer node entries names removes that entry`;
 `refuses deleting the node type of a Composer's only node entry`.
 `testing/host/__tests__/inMemoryHost.test.ts`: the same two cases. Architect
-`Stage.test.tsx`: `prints each Composer node entry`.
+`ducks/modules/protocol/__tests__/codebook.test.ts`: `deleteTypeAsync refuses
+a node type that a Composer node entry names`. Architect `Stage.test.tsx`:
+`prints each Composer node entry`.
 
 Stories: NetworkComposer `SeveralNodeTypes`, `DirectedEdges`,
 `ReciprocalInspector` with plays; capture stories; builder Composer node
-entries story. Matrix: add `several-node-entries`, `directed-reverse`,
+entries story and `ComposerLayoutSection` story. Matrix: add `several-node-entries`, `directed-reverse`,
 `reciprocal-inspector`; inventory keys `nodes[]`, and the Composer's
 `subject.types` key removed.
 
@@ -1404,7 +1459,7 @@ Done when:
 `pnpm --filter @codaco/protocol-utilities exec vitest run src`,
 `pnpm --filter @codaco/studio-sync exec vitest run`,
 `pnpm --filter @codaco/studio-api exec vitest run src/protocol`,
-`pnpm --filter @codaco/architect exec vitest run --project=unit src/components/StageEditor src/components/Localization src/lib/ProtocolSummary`,
+`pnpm --filter @codaco/architect exec vitest run --project=unit src/components/StageEditor src/components/Localization src/lib/ProtocolSummary src/ducks`,
 `pnpm --filter @codaco/sketch exec vitest run src/server/design`,
 from `packages/interview` the chromium matrix suite `e2e/specs/matrix/network-composer.spec.ts`,
 `pnpm check:compat-protocols`, then `pnpm agent:test` and `pnpm agent:check`.
@@ -1424,7 +1479,10 @@ Pedigree: `schema.ts` rejects a FamilyPedigree bound to a directed edge type
 and one whose endpoint rules do not allow its node type to itself
 (`edgeTypeAllowsEndpoints(codebook, t, personType, personType)`). Delete
 `STAGE_EDGE_TYPE_SUPPORT`, `stageEdgeTypeSupportIssues` and its test; replace
-it with `pedigree-edge-type.test.ts`.
+it with `pedigree-edge-type.test.ts`. `stage-capabilities.ts` then reads
+neither field, so remove it from the readers guard's `ALLOWED_FILES` and
+update the guard's header comment in the same slice; the guard's stale-entry
+assertion fails otherwise.
 
 Tests: interview `AlterEdgeForm` units: `orders a reciprocal pair back to
 back`; `draws an arrowhead at the target for a directed type`.
@@ -1443,6 +1501,7 @@ Done when:
 `pnpm --filter @codaco/protocol-validation exec vitest run src/schemas/9`,
 `pnpm --filter @codaco/interview exec vitest run --project units src/interfaces/AlterEdgeForm src/interfaces/SlidesForm src/interfaces/FamilyPedigree src/interfaces/NarrativePedigree e2e/matrix/coverage-manifest.test.ts`,
 `pnpm --filter @codaco/interview exec vitest run --project storybook src/interfaces/AlterEdgeForm`,
+`pnpm exec vitest run --config scripts/invariants/vitest.config.mts scripts/invariants/edge-type-field-readers.test.mjs`,
 from `packages/interview` the chromium matrix suites `e2e/specs/matrix/alter-edge-form.spec.ts`, `family-pedigree.spec.ts` and `narrative-pedigree.spec.ts`,
 then `pnpm agent:test` and `pnpm agent:check`.
 
@@ -1474,9 +1533,12 @@ Architect, in-memory and Studio hosts as one multi-section write; covered by
 `testing/hostResponsibilities.ts`. New refusals in `codebook/writes.ts`
 `CodebookWriteOutcome` and `state/codebookRefusal.ts`:
 `edgeTypeBoundToPedigree`, `endpointRulesLeaveStageWithoutWork`,
-`nodeTypeNamedByEndpointRule`. Add the builder and Architect writer files that
-write the codebook fields themselves to the guard's `ALLOWED_FILES`, each by
-its full repo path; the guard itself is not relaxed.
+`nodeTypeNamedByEndpointRule`. Run the readers guard and add to
+`ALLOWED_FILES`, each by its full repo path, only the writer files it reports
+in the builder, the in-memory host, the Architect host and the Studio host (a
+file that only sets a field as an object-literal key is not a read and does
+not go on the list, which would make a stale entry); the guard itself is not
+relaxed.
 
 Architect: deleting a node type that an endpoint rule names is blocked with its
 own copy (`ducks/modules/protocol/codebook.ts`, `deleteTypeAsync`,
@@ -1524,6 +1586,7 @@ Done when:
 `pnpm --filter @codaco/architect exec vitest run --project=unit src/components/Codebook src/lib/ProtocolSummary src/utils/protocols src/ducks src/locales`,
 `pnpm --filter @codaco/architect exec vitest run --project=storybook src/components/Codebook`,
 `pnpm --filter @codaco/studio-api exec vitest run src/__tests__/rpc-protocol-builder.test.ts`,
+`pnpm exec vitest run --config scripts/invariants/vitest.config.mts scripts/invariants/edge-type-field-readers.test.mjs`,
 then `pnpm agent:test` and `pnpm agent:check`.
 
 ### Slice 12a. canonical-protocols
@@ -1599,10 +1662,14 @@ generators, bins, Alter Form, Geospatial and both pedigrees;
 schema 8; stated plainly: a "match all" filter on a stage with several node
 types keeps only the node type its rules are about, and filters cannot yet
 choose the source or the target end of a directed edge, so an edge rule keeps
-both ends of a matching edge; a rule may name a layout as it named a layout
-variable before), `skip-logic` (skip logic ignores direction), `piped-text`
+both ends of a matching edge; a stored rule may name a layout as it named a
+layout variable before, and the rule editor lists a layout but cannot build a
+rule on it), `skip-logic` (skip logic ignores direction), `piped-text`
 (census roles with several node types give the label only, and conditions
-about census roles on such a stage hold no node rule);
+about census roles, or about a Network Composer node with several node
+entries, hold no node rule); the Network Composer page says that deleting a
+node type a node entry names is refused in Architect while the stage uses it
+and removes the entry in Studio;
 `analyze-data/data-export`, `data-dictionary`;
 `get-started/protocol-schema-information` ("What's new in schema 9" and the
 migration list); tutorials `building-a-protocol` and `implementing-cegrm`. Run
@@ -1627,8 +1694,9 @@ entry to remove. A self-test asserts that the message for a sample offending
 file contains each of those instructions and both constant names, proven red
 by removing one. Contributor note: a short section in
 `packages/protocol-validation/README.md` on reading edge types through the
-helpers and on the guard, and one line in the root `CLAUDE.md` Code Standards
-pointing at it.
+helpers and on the guard (there is no root CONTRIBUTING.md). A line in the
+root `CLAUDE.md` Code Standards pointing at it is added only with the
+product owner's explicit agreement, asked for in the slice's final report.
 
 Final terminology pass across all catalogs with the glossary.
 
@@ -1658,74 +1726,74 @@ Done when: `pnpm --filter @codaco/documentation exec vitest run lib/__tests__/tr
 
 ## F. Coverage
 
-| Design bullet                                                               | Slice                                                                                                                             |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Edge `directed` stored only when true                                       | 1                                                                                                                                 |
-| `endpointRules` absent, non-empty, types exist, no duplicate pair           | 1                                                                                                                                 |
-| Same-type rule, no self-loops                                               | 1 (helpers), 6, 8, 9 (runtime refusal)                                                                                            |
-| Unordered rules for undirected types                                        | 1                                                                                                                                 |
-| Migration leaves edge types undirected                                      | 1 (`removeEdgeDirection` strips both keys)                                                                                        |
-| Shared edge helpers, no package reads the fields                            | 1, guard extended in 5 (`PERMITTED_LITERALS`) and 11 (writers), failure message and contributor note in 13; never relaxed         |
-| Edge identity in shared-consts subpath                                      | 1                                                                                                                                 |
-| Node subjects as `types` lists, capability table                            | 2, raised in 6, 7, 8, 9 (the Composer reads its node entries)                                                                     |
-| `codebook.layouts`, positions under layout id, nodes only                   | 2b (record), 3a (references, positions)                                                                                           |
-| Layout name rules including derived columns                                 | 2b (codebook and node-variable scope)                                                                                             |
-| Sets and reads table                                                        | 3a (all Sociograms set), 4 (task-based)                                                                                           |
-| "Has layout" helper                                                         | 3a                                                                                                                                |
-| Unused layouts listed and deletable, referenced ones blocked                | 2b (delete), 3a (Studio block), 3b (Architect)                                                                                    |
-| Advisory for unreachable reads                                              | 3b, extended in 7                                                                                                                 |
-| Migration of layout variables, removal of ego and edge layouts              | 3a                                                                                                                                |
-| Subject change keeps the stage, prunes per-type rows                        | 6, 7, 8, 9                                                                                                                        |
-| Sociogram stage names one layout                                            | 3a                                                                                                                                |
-| Prompt tasks layout, highlight, connect                                     | 4                                                                                                                                 |
-| Per-type highlight entries                                                  | 4 (one type), 6 (several)                                                                                                         |
-| Highlights only during highlight tasks                                      | 4                                                                                                                                 |
-| Automatic layout sets the layout                                            | 4                                                                                                                                 |
-| First-use alert                                                             | 4                                                                                                                                 |
-| Disabled nodes and custom-shape proof                                       | 4 (unplaced, highlight), 6 (connect endpoint rules)                                                                               |
-| Per-type sort rules and sort by node type                                   | 6 (Sociogram), 8 (One-to-Many); sorter strips `type` (C8)                                                                         |
-| Sociogram directed creation, removal, arrowheads, reciprocal line           | 6                                                                                                                                 |
-| Narrative several types, preset layout, highlight entries, groups, directed | 3a (layout), 7                                                                                                                    |
-| Narrative free-draw and repositioning unchanged                             | 4 (regression tests with the Canvas change)                                                                                       |
-| Name generators one type, no directed change                                | 2                                                                                                                                 |
-| Dyad Census                                                                 | 8                                                                                                                                 |
-| One-to-Many Dyad Census                                                     | 8                                                                                                                                 |
-| Tie Strength Census                                                         | 8                                                                                                                                 |
-| Network Composer                                                            | 3a (layout), 9 (node types only in node entries, no stage subject, unique entry types, edge entry pair check, node type deletion) |
-| Bins one type, sort unchanged                                               | 2, 6 (SortOrderRows keeps untyped mode)                                                                                           |
-| Ego Form, Alter Form                                                        | 2                                                                                                                                 |
-| Alter Edge Form                                                             | 10                                                                                                                                |
-| Family Pedigree and Narrative Pedigree                                      | 2 (subject), 10 (rules)                                                                                                           |
-| Geospatial, Anonymisation, Information, Language Chooser, Finish Session    | 2                                                                                                                                 |
-| Piped text on census stages                                                 | 8 (piped text and conditions); attributes there are #2727, commented on in 13                                                     |
-| Node rules naming a layout                                                  | 3a (validation, reference resolution, running), 3b (showing and editing); parity only                                             |
-| Filter and skip logic rules as in schema 8 (#2725)                          | 13 (documentation states the limits); no slice changes a rule                                                                     |
-| Checking a network against endpoint rules                                   | 1 (helper), 11 (Architect assets), 6, 8, 9, 12a (synthetic assertions)                                                            |
-| Edge list unchanged                                                         | 5 (`edgeList.test.ts`)                                                                                                            |
-| Adjacency matrix directed                                                   | 5                                                                                                                                 |
-| GraphML directed attribute                                                  | 5                                                                                                                                 |
-| Layout columns in attribute lists                                           | 3a                                                                                                                                |
-| Endpoint rules not in exports                                               | 5 (`pipeline.test.ts`)                                                                                                            |
-| Architect Layouts section and node type layout list                         | 3b (tests and story)                                                                                                              |
-| Edge type entry shows direction and rules                                   | 11 (`Codebook` test)                                                                                                              |
-| Directed switch, Allowed connections, inline creation                       | 11                                                                                                                                |
-| Confirmation, undirected cleanup, pedigree refusal                          | 11 (including merged rules; filter rules untouched)                                                                               |
-| Refusal of rules that leave a stage without work                            | 11 (census, connect, Composer)                                                                                                    |
-| Node type deletion blocked by rules                                         | 11                                                                                                                                |
-| Stage editors                                                               | 3a, 4, 6, 7, 8, 9, 10 (with walkthrough and printable summary)                                                                    |
-| Stories, capture stories, interface images                                  | each stage slice (storybook runs in Done when), images in 12b                                                                     |
-| Synthetic positions per type                                                | 3a                                                                                                                                |
-| Synthetic directed identity                                                 | 1 (identity), 6, 8, 9 (`generateNetwork.test.ts`)                                                                                 |
-| Synthetic endpoint rules                                                    | 6, 8, 9 (`generateNetwork.test.ts`), 12a                                                                                          |
-| Synthetic directed census and focal setting                                 | 8 (including `focalRole` target)                                                                                                  |
-| Migration step 1                                                            | 2 (N8), 9 (N7 removes the Composer subject)                                                                                       |
-| Migration step 2                                                            | 3a (N2, including shared keys and id precedence)                                                                                  |
-| Migration step 3                                                            | 4 (N4)                                                                                                                            |
-| Migration step 4                                                            | 3a (N1)                                                                                                                           |
-| Migration step 5                                                            | 4 (Sociogram), 7 (Narrative, N5b, non-boolean dropped)                                                                            |
-| Migration step 6                                                            | 6 (N6a, tested), 8 (N6b, tested)                                                                                                  |
-| Migration step 7                                                            | 9 (N7, plain-string label, stage subject removed), layout in 3a                                                                   |
-| Migration step 8                                                            | 1, 3a (N3)                                                                                                                        |
-| Canonical protocols re-saved                                                | 2, 3a, 4, 6, 7, 8, 9 (scripts, `check:compat-protocols`), final content in 12a                                                    |
-| Documentation in every language                                             | 13                                                                                                                                |
-| GitHub issues                                                               | 13 (comment on #1532, #1669 to #1674, #2725, #2727), registry issues closed after the work reaches `main`                         |
+| Design bullet                                                               | Slice                                                                                                                                          |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Edge `directed` stored only when true                                       | 1                                                                                                                                              |
+| `endpointRules` absent, non-empty, types exist, no duplicate pair           | 1                                                                                                                                              |
+| Same-type rule, no self-loops                                               | 1 (helpers), 6, 8, 9 (runtime refusal)                                                                                                         |
+| Unordered rules for undirected types                                        | 1                                                                                                                                              |
+| Migration leaves edge types undirected                                      | 1 (`removeEdgeDirection` strips both keys)                                                                                                     |
+| Shared edge helpers, no package reads the fields                            | 1, 5 (`PERMITTED_LITERALS`), 10 (stale entry removed), 11 (writers), 13 (failure message, contributor note); run by every slice; never relaxed |
+| Edge identity in shared-consts subpath                                      | 1                                                                                                                                              |
+| Node subjects as `types` lists, capability table                            | 2, raised in 6, 7, 8, 9 (the Composer reads its node entries)                                                                                  |
+| `codebook.layouts`, positions under layout id, nodes only                   | 2b (record), 3a (references, positions)                                                                                                        |
+| Layout name rules including derived columns                                 | 2b (codebook and node-variable scope)                                                                                                          |
+| Sets and reads table                                                        | 3a (all Sociograms set), 4 (task-based)                                                                                                        |
+| "Has layout" helper                                                         | 3a                                                                                                                                             |
+| Unused layouts listed and deletable, referenced ones blocked                | 2b (delete), 3a (refusal in every host; rules swept in Studio, refusing in Architect), 3b (Architect Codebook)                                 |
+| Advisory for unreachable reads                                              | 3b, extended in 7                                                                                                                              |
+| Migration of layout variables, removal of ego and edge layouts              | 3a                                                                                                                                             |
+| Subject change keeps the stage, prunes per-type rows                        | 6, 7, 8; 9 (node entries: add, remove, reorder)                                                                                                |
+| Sociogram stage names one layout                                            | 3a                                                                                                                                             |
+| Prompt tasks layout, highlight, connect                                     | 4                                                                                                                                              |
+| Per-type highlight entries                                                  | 4 (one type), 6 (several)                                                                                                                      |
+| Highlights only during highlight tasks                                      | 4                                                                                                                                              |
+| Automatic layout sets the layout                                            | 4                                                                                                                                              |
+| First-use alert                                                             | 4                                                                                                                                              |
+| Disabled nodes and custom-shape proof                                       | 4 (unplaced, highlight), 6 (connect endpoint rules)                                                                                            |
+| Per-type sort rules and sort by node type                                   | 6 (Sociogram), 8 (One-to-Many); sorter strips `type` (C8)                                                                                      |
+| Sociogram directed creation, removal, arrowheads, reciprocal line           | 6                                                                                                                                              |
+| Narrative several types, preset layout, highlight entries, groups, directed | 3a (layout), 7                                                                                                                                 |
+| Narrative free-draw and repositioning unchanged                             | 4 (regression tests with the Canvas change)                                                                                                    |
+| Name generators one type, no directed change                                | 2                                                                                                                                              |
+| Dyad Census                                                                 | 8                                                                                                                                              |
+| One-to-Many Dyad Census                                                     | 8                                                                                                                                              |
+| Tie Strength Census                                                         | 8                                                                                                                                              |
+| Network Composer                                                            | 3a (layout), 9 (node types only in node entries, no stage subject, unique entry types, edge entry pair check, node type deletion)              |
+| Bins one type, sort unchanged                                               | 2, 6 (SortOrderRows keeps untyped mode)                                                                                                        |
+| Ego Form, Alter Form                                                        | 2                                                                                                                                              |
+| Alter Edge Form                                                             | 10                                                                                                                                             |
+| Family Pedigree and Narrative Pedigree                                      | 2 (subject), 10 (rules)                                                                                                                        |
+| Geospatial, Anonymisation, Information, Language Chooser, Finish Session    | 2                                                                                                                                              |
+| Piped text on census stages                                                 | 8 (piped text and conditions, a B exception); 9 (Composer node entry roles and conditions); attributes there are #2727, commented on in 13     |
+| Node rules naming a layout                                                  | 3a (validation, reference resolution, deletion, running, showing and editing), 3b (Architect Codebook lists rule uses); parity only            |
+| Filter and skip logic rules as in schema 8 (#2725)                          | 6 (limits pinned by tests), 13 (documentation states the limits); no slice changes a rule beyond the two exceptions in B                       |
+| Checking a network against endpoint rules                                   | 1 (helper), 11 (Architect assets), 6, 8, 9, 12a (synthetic assertions)                                                                         |
+| Edge list unchanged                                                         | 5 (`edgeList.test.ts`)                                                                                                                         |
+| Adjacency matrix directed                                                   | 5                                                                                                                                              |
+| GraphML directed attribute                                                  | 5                                                                                                                                              |
+| Layout columns in attribute lists                                           | 3a                                                                                                                                             |
+| Endpoint rules not in exports                                               | 5 (`pipeline.test.ts`)                                                                                                                         |
+| Architect Layouts section and node type layout list                         | 3b (tests and story)                                                                                                                           |
+| Edge type entry shows direction and rules                                   | 11 (`Codebook` test)                                                                                                                           |
+| Directed switch, Allowed connections, inline creation                       | 11                                                                                                                                             |
+| Confirmation, undirected cleanup, pedigree refusal                          | 11 (including merged rules; filter rules untouched)                                                                                            |
+| Refusal of rules that leave a stage without work                            | 11 (census, connect, Composer)                                                                                                                 |
+| Node type deletion blocked by rules                                         | 11                                                                                                                                             |
+| Stage editors                                                               | 3a, 4, 6, 7, 8, 9, 10 (with walkthrough and printable summary)                                                                                 |
+| Stories, capture stories, interface images                                  | each stage slice (storybook runs in Done when), images in 12b                                                                                  |
+| Synthetic positions per type                                                | 3a                                                                                                                                             |
+| Synthetic directed identity                                                 | 1 (identity), 6, 8, 9 (`generateNetwork.test.ts`)                                                                                              |
+| Synthetic endpoint rules                                                    | 6, 8, 9 (`generateNetwork.test.ts`), 12a                                                                                                       |
+| Synthetic directed census and focal setting                                 | 8 (including `focalRole` target)                                                                                                               |
+| Migration step 1                                                            | 2 (N8), 9 (N7 removes the Composer subject)                                                                                                    |
+| Migration step 2                                                            | 3a (N2, including shared keys and id precedence)                                                                                               |
+| Migration step 3                                                            | 4 (N4)                                                                                                                                         |
+| Migration step 4                                                            | 3a (N1)                                                                                                                                        |
+| Migration step 5                                                            | 4 (Sociogram), 7 (Narrative, N5b, non-boolean dropped)                                                                                         |
+| Migration step 6                                                            | 6 (N6a, tested), 8 (N6b, tested)                                                                                                               |
+| Migration step 7                                                            | 9 (N7, plain-string label, stage subject removed), layout in 3a                                                                                |
+| Migration step 8                                                            | 1, 3a (N3)                                                                                                                                     |
+| Canonical protocols re-saved                                                | 2, 3a, 4, 6, 7, 8, 9 (scripts, `check:compat-protocols`), final content in 12a                                                                 |
+| Documentation in every language                                             | 13                                                                                                                                             |
+| GitHub issues                                                               | 13 (comment on #1532, #1669 to #1674, #2725, #2727), registry issues closed after the work reaches `main`                                      |
