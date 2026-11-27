@@ -158,6 +158,46 @@ describe('the tasks a sociogram sets', () => {
     expect(second?.edges).toEqual({ display: [KNOWS] });
   });
 
+  it.each([
+    [
+      'a connect task without a kind of connection',
+      1,
+      /Connect nodes/,
+      sociogramPromptMessages.promptCreateEdgeRequired,
+    ],
+    [
+      'a highlight task without an attribute',
+      0,
+      /Highlight nodes/,
+      sociogramPromptMessages.promptHighlightRequired,
+    ],
+  ] as const)(
+    'refuses %s and keeps the prompt it had',
+    async (_name, index, task, refusal) => {
+      const harness = renderStageEditor(openEditor());
+
+      const prompt = await openPrompt(harness, index);
+      await chooseTask(harness, prompt, task);
+      await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+      expect(
+        await prompt.findByText(enIntl.formatMessage(refusal)),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+      await harness.user.click(prompt.getByRole('button', { name: 'Cancel' }));
+      await harness.user.click(
+        await screen.findByRole('button', { name: /Discard/ }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      );
+
+      const saved = promptsOf((await harness.submit())?.stageDocument ?? {});
+      expect(saved[index]).toEqual(fixturePrompts()[index]);
+    },
+  );
+
   it('keeps the id of a highlight entry it saves again', async () => {
     const harness = renderStageEditor(openEditor());
 
