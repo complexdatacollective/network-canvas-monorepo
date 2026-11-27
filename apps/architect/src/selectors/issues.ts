@@ -7,6 +7,7 @@ import {
   type CurrentProtocol,
   type DynamicValueSite,
   findLabelCollisions,
+  findUnreachableLayoutReads,
   findVariableRoleConflicts,
   type LocaleTag,
   type LocalizedString,
@@ -48,6 +49,8 @@ import {
  *  - Two labels participants choose between that read the same in some
  *    language, which also stops it being downloaded
  *  - Several languages but no stage where participants choose one
+ *  - A stage that shows positions from a layout in which no stage places
+ *    nodes of some of its types
  */
 
 export type UnusedSummary = {
@@ -163,6 +166,16 @@ export const getVariableRoleConflicts = createSelector(
 export const getHasVariableRoleConflicts = createSelector(
   [getVariableRoleConflicts],
   (conflicts) => conflicts.length > 0,
+);
+
+/**
+ * Each stage (or Narrative preset) that shows positions from a layout in
+ * which no stage places nodes of some of its types, with those types. Nodes
+ * of those types are never shown there. The protocol is still valid.
+ */
+export const getUnreachableLayoutReads = createSelector(
+  [getProtocol],
+  (protocol) => (protocol ? findUnreachableLayoutReads(protocol) : []),
 );
 
 export const getDefaultLanguageTextProblem = createSelector(

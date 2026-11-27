@@ -6,6 +6,7 @@ import {
 } from '@codaco/protocol-builder/testing/testId';
 import type { RootState } from '~/ducks/modules/root';
 import { buildMapboxToken } from '~/templates/__tests__/buildMapboxToken';
+import { developmentProtocol } from '~/templates/development-protocol';
 import {
   RETIRED_MAPBOX_TOKEN_IDS,
   TESTING_MAPBOX_TOKEN,
@@ -14,6 +15,7 @@ import {
 import {
   getHasUnusedAssets,
   getHasUnusedVariables,
+  getUnreachableLayoutReads,
   getUnusedAssets,
   getUnusedVariables,
   getUsesRetiredMapboxToken,
@@ -239,6 +241,26 @@ describe('issues selectors', () => {
       expect(getUsesRetiredMapboxToken(buildState({ assetManifest: {} }))).toBe(
         false,
       );
+    });
+  });
+
+  describe('getUnreachableLayoutReads()', () => {
+    it('reports a stage that shows a layout no stage places its node types in', () => {
+      const state = buildState({ ...developmentProtocol });
+      const narrative = developmentProtocol.stages.find(
+        (stage) => stage.type === 'Narrative',
+      );
+
+      expect(getUnreachableLayoutReads(state)).toEqual([
+        expect.objectContaining({
+          stageId: narrative?.id,
+          nodeTypes: [expect.any(String)],
+        }),
+      ]);
+    });
+
+    it('reports nothing for a protocol without layouts', () => {
+      expect(getUnreachableLayoutReads(buildState())).toEqual([]);
     });
   });
 });

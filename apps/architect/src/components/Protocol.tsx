@@ -8,6 +8,7 @@ import ProtocolInfoCard from './ProtocolInfoCard';
 import { routeFocusTargetProps } from './RouteFocus';
 import TestingMapboxTokenAlert from './TestingMapboxTokenAlert';
 import Timeline from './Timeline';
+import UnreachableLayoutsAlert from './UnreachableLayoutsAlert';
 import VariableRoleConflictsAlert from './VariableRoleConflictsAlert';
 
 const Protocol = () => {
@@ -41,6 +42,7 @@ const Protocol = () => {
         <LabelCollisionsAlert />
         <TestingMapboxTokenAlert />
         <VariableRoleConflictsAlert />
+        <UnreachableLayoutsAlert />
         <LocalizationAlert />
         <LanguageChooserAlert />
       </div>
