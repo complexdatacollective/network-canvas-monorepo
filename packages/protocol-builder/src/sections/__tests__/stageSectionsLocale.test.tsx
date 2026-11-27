@@ -367,6 +367,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
         prompts: [
           {
             id: 'sociogram-prompt-1',
+            task: 'layout',
             text: inProtocolLanguage(
               'Coloca juntas a las personas que se conocen',
             ),

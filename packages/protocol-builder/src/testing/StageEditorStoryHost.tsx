@@ -53,6 +53,8 @@ export type StageEditorStoryHostProps = Readonly<{
   stage?: Readonly<{ type: StageType; fields: SectionDoc }>;
   /** The languages the protocol declares, in place of the fixture's own. */
   localization?: ProtocolLocalization;
+  /** Layouts to add to the codebook, keyed by layout id. */
+  layouts?: Readonly<Record<string, SectionDoc>>;
   /**
    * The editor under test, given the host's own chrome.
    *
@@ -128,6 +130,7 @@ export function StageEditorStoryHost({
   stageId: named,
   stage: addedStage,
   localization,
+  layouts,
   renderEditor,
   readOnly = false,
   assets,
@@ -145,7 +148,7 @@ export function StageEditorStoryHost({
     const assetManifest = { ...fixtureAssetManifest(), ...assets };
     const built = createInMemoryHost({
       sections: {
-        ...storySections(stageId, addedStage, localization),
+        ...storySections(stageId, addedStage, localization, layouts),
         [sectionId({ kind: 'assets' })]: assetManifest,
       },
       // Both places a resource has to exist to be referenced, as
@@ -251,13 +254,20 @@ const hostChrome: StageEditorActions = ({ formId, readOnly }) => (
   </>
 );
 
-/** The fixture's sections, with the story's own stage and languages in them. */
+/**
+ * The fixture's sections, with the story's own stage, languages and layouts in
+ * them.
+ */
 function storySections(
   stageId: string,
   stage: StageEditorStoryHostProps['stage'],
   localization: ProtocolLocalization | undefined,
+  layouts: StageEditorStoryHostProps['layouts'],
 ): Record<string, SectionDoc> {
   const sections: Record<string, SectionDoc> = { ...fixtureProtocolSections() };
+  for (const [layoutId, definition] of Object.entries(layouts ?? {})) {
+    sections[sectionId({ kind: 'codebookLayout', layoutId })] = definition;
+  }
   if (localization !== undefined) {
     const settings = sectionId({ kind: 'settings' });
     sections[settings] = { ...sections[settings], localization };

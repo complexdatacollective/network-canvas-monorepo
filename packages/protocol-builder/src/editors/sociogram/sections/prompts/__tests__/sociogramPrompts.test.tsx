@@ -350,6 +350,26 @@ describe('the warning about a first prompt that places no nodes', () => {
     expect(screen.queryByText(WARNING_TITLE)).not.toBeInTheDocument();
   });
 
+  it('warns as soon as a saved stage is given a layout no earlier stage uses', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(CONNECT_PROMPT, {
+        layout: fixtureLayoutId('layout'),
+        behaviours: {},
+      }),
+    );
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    expect(screen.queryByText(WARNING_TITLE)).not.toBeInTheDocument();
+
+    await inventAttribute(
+      harness.user,
+      await waitFor(() => attributeField('Layout')),
+      'unused_canvas',
+    );
+
+    // Judged on the unsaved layout, not on the one the stage was saved with.
+    expect(await screen.findByText(WARNING_TITLE)).toBeInTheDocument();
+  });
+
   it('judges a new stage at the position it is being created at', async () => {
     renderStageEditor({
       create: {

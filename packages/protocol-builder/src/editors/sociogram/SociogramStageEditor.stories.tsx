@@ -110,6 +110,8 @@ export const ChoosingATask: Story = {
 export const FirstPromptIsNotAPositioningTask: Story = {
   args: {
     stageId: testId('first-use-sociogram'),
+    // A layout of its own, which no earlier stage of the fixture uses.
+    layouts: { [testId('who-knows-whom')]: { name: 'who_knows_whom' } },
     stage: {
       type: 'Sociogram',
       fields: {
@@ -117,7 +119,7 @@ export const FirstPromptIsNotAPositioningTask: Story = {
         subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: {},
-        layout: testId('fresh-layout'),
+        layout: testId('who-knows-whom'),
         prompts: [
           {
             id: testId('first-use-prompt'),
@@ -139,6 +141,12 @@ export const FirstPromptIsNotAPositioningTask: Story = {
     await expect(
       await canvas.findByText('Nodes are not placed before this task'),
     ).toBeVisible();
+    // The stage names a layout the codebook has, so the warning is the only
+    // thing wrong with it.
+    await expect(canvas.getAllByText(/who_knows_whom/u).length).toBeGreaterThan(
+      0,
+    );
+    await expect(canvas.queryByText(/not in the codebook/u)).toBeNull();
 
     await userEvent.click(
       canvas.getByRole('option', { name: /^Automatic mode/u }),
