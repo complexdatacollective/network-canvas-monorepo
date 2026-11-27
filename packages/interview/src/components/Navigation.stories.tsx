@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { MotionConfig, MotionGlobalConfig } from 'motion/react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
@@ -902,6 +903,26 @@ export const ExitWithoutTextSize: Story = {
   },
 };
 
+/**
+ * Automated hosts turn Motion off (`AnimationProvider`), which would let these
+ * stories pass whether or not anything moved. They turn it on again while they
+ * are shown, so the play functions below measure the animation itself. The
+ * flag is global: it is set while rendering, after the provider has set it,
+ * and put back when the story unmounts.
+ */
+const WithMotion = ({ children }: { children: ReactNode }) => {
+  const [skipping] = useState(() => MotionGlobalConfig.skipAnimations);
+  // oxlint-disable-next-line react/immutability -- must be set while rendering, after AnimationProvider has set it and before the bar mounts
+  MotionGlobalConfig.skipAnimations = false;
+  useEffect(
+    () => () => {
+      MotionGlobalConfig.skipAnimations = skipping;
+    },
+    [skipping],
+  );
+  return <MotionConfig skipAnimations={false}>{children}</MotionConfig>;
+};
+
 const ToggledControls = ({
   orientation,
 }: {
@@ -910,51 +931,109 @@ const ToggledControls = ({
   const [showExit, setShowExit] = useState(true);
   const [showTextSize, setShowTextSize] = useState(true);
   return (
-    <div className="relative flex h-dvh w-full">
-      {/* oxlint-disable formatjs/no-literal-string-in-jsx -- story controls, not interview copy */}
-      <div className="absolute inset-e-2 top-2 z-10 flex gap-2">
-        <button type="button" onClick={() => setShowExit((show) => !show)}>
-          Toggle exit button
-        </button>
-        <button type="button" onClick={() => setShowTextSize((show) => !show)}>
-          Toggle text size
-        </button>
+    <WithMotion>
+      <div className="relative flex h-dvh w-full">
+        {/* oxlint-disable formatjs/no-literal-string-in-jsx -- story controls, not interview copy */}
+        <div className="absolute inset-e-2 top-2 z-10 flex gap-2">
+          <button type="button" onClick={() => setShowExit((show) => !show)}>
+            Toggle exit button
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowTextSize((show) => !show)}
+          >
+            Toggle text size
+          </button>
+        </div>
+        {/* oxlint-enable formatjs/no-literal-string-in-jsx */}
+        <StoryInterviewShell
+          rawPayload={getRawPayload(5)}
+          navigationOrientation={orientation}
+          allowUserScaling={showTextSize}
+          onExit={showExit ? () => {} : undefined}
+        />
       </div>
-      {/* oxlint-enable formatjs/no-literal-string-in-jsx */}
-      <StoryInterviewShell
-        rawPayload={getRawPayload(5)}
-        navigationOrientation={orientation}
-        allowUserScaling={showTextSize}
-        onExit={showExit ? () => {} : undefined}
-      />
-    </div>
+    </WithMotion>
+  );
+};
+
+// The bar's direct child that contains the control with this name.
+const barSlot = (nav: HTMLElement, name: string) =>
+  [...nav.children].find((child) =>
+    child.querySelector(`[aria-label="${name}"]`),
+  );
+
+const transformOf = (element: Element | undefined) => {
+  const transform = element ? getComputedStyle(element).transform : 'none';
+  return new DOMMatrixReadOnly(transform === 'none' ? undefined : transform);
+};
+
+// Reads the bar over the frames that follow a change. Whether the change
+// animates or not, Motion can hold Text size at its old place for the first
+// frame, so a glide is told apart from a jump by a frame on which Text size is
+// part of the way between the two places (`glided`). Eight frames leave room
+// for that even when the frames are slow.
+const sampleFrames = async (nav: HTMLElement, frames = 8) => {
+  const offsets: number[] = [];
+  let smallestExitScale = Number.POSITIVE_INFINITY;
+  for (let frame = 0; frame < frames; frame++) {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const offset = transformOf(barSlot(nav, 'Text size'));
+    offsets.push(Math.hypot(offset.e, offset.f));
+    const exit = barSlot(nav, 'Exit interview');
+    if (exit) {
+      smallestExitScale = Math.min(smallestExitScale, transformOf(exit).a);
+    }
+  }
+  const distance = Math.max(...offsets);
+  const glided = offsets.some(
+    (offset) => offset > 0.5 && offset < distance - 0.5,
+  );
+  return { glided, smallestExitScale };
+};
+
+const toggleExit = (canvasElement: HTMLElement) =>
+  within(canvasElement)
+    .getByRole('button', { name: /toggle exit/i })
+    .click();
+
+const settled = async (nav: HTMLElement, exitShown: boolean) => {
+  await waitFor(
+    () => {
+      expect(Boolean(barSlot(nav, 'Exit interview'))).toBe(exitShown);
+      const offset = transformOf(barSlot(nav, 'Text size'));
+      expect(Math.hypot(offset.e, offset.f)).toBeLessThan(0.5);
+    },
+    { timeout: 5_000 },
   );
 };
 
 const expectControlsComeAndGo = async (canvasElement: HTMLElement) => {
-  const canvas = within(canvasElement);
-  const nav = within(await canvas.findByRole('navigation'));
-  await nav.findByRole('button', { name: 'Exit interview' });
+  const nav = await within(canvasElement).findByRole('navigation');
+  await within(nav).findByRole('button', { name: 'Exit interview' });
+  await settled(nav, true);
 
-  // A removed control stays in place only while it animates away.
-  await userEvent.click(canvas.getByRole('button', { name: /toggle exit/i }));
-  await waitFor(
-    () =>
-      expect(
-        nav.queryByRole('button', { name: 'Exit interview' }),
-      ).not.toBeInTheDocument(),
-    { timeout: 5_000 },
-  );
+  // A removed button stays on the bar while it shrinks away, and Text size
+  // glides into the space it leaves rather than jumping there.
+  toggleExit(canvasElement);
+  await expect(barSlot(nav, 'Exit interview')).toBeDefined();
+  const removal = await sampleFrames(nav);
+  await expect(removal.smallestExitScale).toBeLessThan(0.99);
+  await expect(removal.glided).toBe(true);
+  await settled(nav, false);
 
-  await userEvent.click(canvas.getByRole('button', { name: /toggle exit/i }));
-  const exit = await nav.findByRole('button', { name: 'Exit interview' });
-  await waitFor(() => expect(exit).toBeVisible());
+  // An added button grows in, and Text size glides aside to make room.
+  toggleExit(canvasElement);
+  const addition = await sampleFrames(nav);
+  await expect(addition.smallestExitScale).toBeLessThan(0.99);
+  await expect(addition.glided).toBe(true);
+  await settled(nav, true);
 };
 
 /**
  * The bar's optional controls animate in and out as the segmented toolbar's
  * segments do, and the controls that stay glide to their new places. Use the
- * buttons above the interview to add and remove them.
+ * buttons in the corner to add and remove them.
  */
 export const ControlsComeAndGo: Story = {
   name: 'Controls come and go (vertical rail)',
@@ -971,6 +1050,33 @@ export const HorizontalControlsComeAndGo: Story = {
   render: () => <ToggledControls orientation="horizontal" />,
   play: async ({ canvasElement }) => {
     await expectControlsComeAndGo(canvasElement);
+  },
+};
+
+/**
+ * With reduced motion a button that comes or goes only fades, and the
+ * other controls move straight to their new places.
+ */
+export const ReducedMotionControlsComeAndGo: Story = {
+  name: 'Controls come and go (reduced motion)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  globals: { reducedMotion: 'always' },
+  render: () => <ToggledControls orientation="vertical" />,
+  play: async ({ canvasElement }) => {
+    const nav = await within(canvasElement).findByRole('navigation');
+    await within(nav).findByRole('button', { name: 'Exit interview' });
+    await settled(nav, true);
+
+    toggleExit(canvasElement);
+    const removal = await sampleFrames(nav);
+    await expect(removal.glided).toBe(false);
+    await settled(nav, false);
+
+    toggleExit(canvasElement);
+    const addition = await sampleFrames(nav);
+    await expect(addition.glided).toBe(false);
+    await expect(addition.smallestExitScale).toBeGreaterThan(0.99);
+    await settled(nav, true);
   },
 };
 
