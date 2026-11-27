@@ -160,7 +160,6 @@
   "architect.config.variables.config.boolean": "布尔值",
   "architect.config.variables.config.categorical": "分类",
   "architect.config.variables.config.date": "日期",
-  "architect.config.variables.config.layout": "布局",
   "architect.config.variables.config.location": "位置",
   "architect.config.variables.config.number": "数字",
   "architect.config.variables.config.ordinal": "有序",

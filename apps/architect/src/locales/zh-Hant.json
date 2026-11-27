@@ -160,7 +160,6 @@
   "architect.config.variables.config.boolean": "布林值",
   "architect.config.variables.config.categorical": "類別",
   "architect.config.variables.config.date": "日期",
-  "architect.config.variables.config.layout": "版面配置",
   "architect.config.variables.config.location": "位置",
   "architect.config.variables.config.number": "數字",
   "architect.config.variables.config.ordinal": "順序",

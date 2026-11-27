@@ -160,7 +160,6 @@
   "architect.config.variables.config.boolean": "Boolesch",
   "architect.config.variables.config.categorical": "Kategorial",
   "architect.config.variables.config.date": "Datum",
-  "architect.config.variables.config.layout": "Layout",
   "architect.config.variables.config.location": "Standort",
   "architect.config.variables.config.number": "Zahl",
   "architect.config.variables.config.ordinal": "Ordinal",

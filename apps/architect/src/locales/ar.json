@@ -160,7 +160,6 @@
   "architect.config.variables.config.boolean": "منطقي",
   "architect.config.variables.config.categorical": "فئوي",
   "architect.config.variables.config.date": "تاريخ",
-  "architect.config.variables.config.layout": "تخطيط",
   "architect.config.variables.config.location": "موقع",
   "architect.config.variables.config.number": "رقم",
   "architect.config.variables.config.ordinal": "ترتيبي",
