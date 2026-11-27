@@ -274,7 +274,10 @@ export type PresetEntry = {
     display: { type: string; label: TextInput }[];
   };
   groupVariable?: string;
-  highlight?: { variable: string; label: TextInput }[];
+  highlight?: {
+    label: TextInput;
+    attributes: { type: string; variable: string }[];
+  }[];
   filter?: FilterInput;
 };
 
@@ -785,7 +788,19 @@ export type AddPresetInput = {
     display?: string[];
   };
   groupVariable?: string | boolean;
-  highlight?: string[] | boolean;
+  /**
+   * `true` gives one entry. An entry without `attributes` has one attribute
+   * for each of the stage's node types; an attribute without `type` is about
+   * the stage's node type in the same position, and one without `variable`
+   * gets a new boolean variable. An entry's label defaults to the name of its
+   * first attribute.
+   */
+  highlight?:
+    | boolean
+    | {
+        label?: TextInput;
+        attributes?: { type?: string; variable?: string }[];
+      }[];
   /** Which part of the network this preset shows; all of it when omitted. */
   filter?: FilterInput;
 };

@@ -1834,7 +1834,7 @@ export class SyntheticInterview {
     entry: StageEntry,
   ): PresetEntry {
     const presetId = this.nextObjectId('preset');
-    const nodeTypeId = subjectTypeOf(entry.subject);
+    const nodeTypes = nodeTypesOf(entry.subject);
 
     // A preset shows positions a Sociogram set, so it reads the first layout
     // the interview has before adding one of its own.
@@ -1846,7 +1846,7 @@ export class SyntheticInterview {
     // Resolve group variable
     let groupVariable: string | undefined;
     if (opts?.groupVariable === true) {
-      const ref = this.addVariableToNodeType(nodeTypeId, {
+      const ref = this.addVariableToNodeType(subjectTypeOf(entry.subject), {
         type: 'categorical',
         name: 'Group',
       });
@@ -1855,22 +1855,36 @@ export class SyntheticInterview {
       groupVariable = opts.groupVariable;
     }
 
-    // Resolve highlight
-    let highlightIds: string[] | undefined;
-    if (opts?.highlight === true) {
-      const ref = this.addVariableToNodeType(nodeTypeId, {
-        type: 'boolean',
-        name: 'Highlighted',
-      });
-      highlightIds = [ref.id];
-    } else if (Array.isArray(opts?.highlight)) {
-      highlightIds = opts.highlight;
-    }
-    const variables = this.nodeTypes.get(nodeTypeId)?.variables;
-    const highlight = highlightIds?.map((variable) => ({
-      variable,
-      label: variables?.get(variable)?.name ?? variable,
-    }));
+    const highlightInput = opts?.highlight === true ? [{}] : opts?.highlight;
+    const highlight = Array.isArray(highlightInput)
+      ? highlightInput.map((highlightEntry) => {
+          const attributes = (
+            highlightEntry.attributes ?? nodeTypes.map((type) => ({ type }))
+          ).map((attribute, index) => {
+            const type = attribute.type ?? nodeTypes[index];
+            if (type === undefined) {
+              throw new Error(
+                'A highlight attribute needs a node type of the stage',
+              );
+            }
+            const variable =
+              attribute.variable ??
+              this.addVariableToNodeType(type, {
+                type: 'boolean',
+                name: 'Highlighted',
+              }).id;
+            return { type, variable };
+          });
+          const [first] = attributes;
+          const firstName =
+            first &&
+            this.nodeTypes.get(first.type)?.variables.get(first.variable)?.name;
+          return {
+            label: highlightEntry.label ?? firstName ?? 'Highlighted',
+            attributes,
+          };
+        })
+      : undefined;
 
     // Resolve edges
     let edges: PresetEntry['edges'];
@@ -3231,6 +3245,10 @@ export class SyntheticInterview {
             (highlight) => ({
               ...highlight,
               label: this.localized(highlight.label),
+              attributes: withRowIds(
+                highlight.attributes,
+                `${highlight.id}/attributes`,
+              ),
             }),
           ),
       }));

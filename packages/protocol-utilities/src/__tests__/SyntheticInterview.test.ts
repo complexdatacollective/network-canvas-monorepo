@@ -617,7 +617,10 @@ describe('SyntheticInterview', () => {
         label: LocalizedString;
         layout: string;
         groupVariable: string;
-        highlight: { variable: string; label: LocalizedString }[];
+        highlight: {
+          label: LocalizedString;
+          attributes: { type: string; variable: string }[];
+        }[];
       }[];
       expect(presets).toHaveLength(1);
 
@@ -632,11 +635,19 @@ describe('SyntheticInterview', () => {
       expect(preset.highlight).toEqual([
         {
           id: anObjectId,
-          variable: expect.any(String),
           label: { 'en-US': 'Highlighted' },
+          attributes: [
+            {
+              id: anObjectId,
+              type: expect.any(String),
+              variable: expect.any(String),
+            },
+          ],
         },
       ]);
-      expect(nodeVariableType(preset.highlight[0]!.variable)).toBe('boolean');
+      expect(
+        nodeVariableType(preset.highlight[0]!.attributes[0]!.variable),
+      ).toBe('boolean');
     });
 
     it("labels each highlight with its attribute's name, as copy in the default language", () => {
@@ -649,7 +660,9 @@ describe('SyntheticInterview', () => {
       const stage = si.addStage('Narrative', {
         subject: { entity: 'node', types: [person.id] },
       });
-      stage.addPreset({ highlight: [close.id] });
+      stage.addPreset({
+        highlight: [{ attributes: [{ variable: close.id }] }],
+      });
 
       const { stages } = expectValid(si);
       const narrative = stages[0];
@@ -658,12 +671,40 @@ describe('SyntheticInterview', () => {
           highlight: [
             {
               id: anObjectId,
-              variable: close.id,
               label: { 'en-US': escapeMessageText("Friend's {nickname}") },
+              attributes: [
+                { id: anObjectId, type: person.id, variable: close.id },
+              ],
             },
           ],
         }),
       );
+    });
+
+    it('a Narrative preset highlight holds one attribute per stage type', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const place = si.addNodeType({ name: 'Place' });
+      const stage = si.addStage('Narrative', {
+        subject: { entity: 'node', types: [person.id, place.id] },
+      });
+      stage.addPreset({ highlight: [{ label: 'Important' }] });
+
+      const { codebook, stages } = expectValid(si);
+      const narrative = stages[0];
+      const [entry] =
+        (narrative?.type === 'Narrative' && narrative.presets[0]?.highlight) ||
+        [];
+      expect(entry?.label).toEqual({ 'en-US': 'Important' });
+      expect(entry?.attributes.map(({ type }) => type)).toEqual([
+        person.id,
+        place.id,
+      ]);
+      for (const { type, variable } of entry?.attributes ?? []) {
+        expect(codebook.node?.[type]?.variables?.[variable]?.type).toBe(
+          'boolean',
+        );
+      }
     });
 
     it('creates presets with explicit edge display', () => {
@@ -4079,7 +4120,7 @@ describe('protocol object ids', () => {
     si.addStage('Narrative', {
       subject: { entity: 'node', types: [person.id] },
     }).addPreset({
-      highlight: [close.id],
+      highlight: [{ attributes: [{ variable: close.id }] }],
       edges: { display: [friendship.id] },
       filter: sharedFilter,
     });
