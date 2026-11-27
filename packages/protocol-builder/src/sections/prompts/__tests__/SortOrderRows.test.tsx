@@ -17,6 +17,7 @@ import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   loadFixtureStage,
   fixtureTypeId,
@@ -35,10 +36,7 @@ const PERSON = fixtureTypeId('node', 'person');
 const KNOWS = fixtureTypeId('edge', 'knows');
 const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
 const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
-const LAYOUT = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'layout',
-);
+const LAYOUT = fixtureLayoutId('layout');
 
 const SUBJECT = { entity: 'node', type: PERSON } as const;
 
@@ -260,11 +258,11 @@ const seededWith = (
       subject: { entity: 'node', types: [PERSON] },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
+      layout: LAYOUT,
       prompts: [
         {
           id: testId('sociogram-prompt-1'),
           text: en('Place the people who know each other close together'),
-          layout: { layoutVariable: LAYOUT },
           sortOrder: rules,
         },
       ],

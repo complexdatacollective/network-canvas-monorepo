@@ -125,34 +125,22 @@ export const narrativePresetMessages = defineMessages({
   },
   presetLayoutLabel: {
     id: 'protocolBuilder.networkCanvas.presetLayoutLabel',
-    defaultMessage: 'Layout attribute',
+    defaultMessage: 'Layout',
     description:
-      'Label of the picker naming the codebook attribute a preset reads each node’s position from. A layout attribute holds a pair of coordinates.',
+      'Label of the control choosing the layout that a preset shows nodes in. A layout is a named set of node positions in the codebook, set on a sociogram or network composer stage.',
   },
   presetLayoutHint: {
     id: 'protocolBuilder.networkCanvas.presetLayoutHint',
     defaultMessage:
-      'Select an attribute to use to position the nodes for this preset.',
-    description: 'Guidance under the preset position-attribute picker.',
-  },
-  presetLayoutEmpty: {
-    id: 'protocolBuilder.networkCanvas.presetLayoutEmpty',
-    defaultMessage:
-      'This type has no position attributes yet. Create one to lay this preset out.',
+      'Select the layout this preset shows. Nodes appear where they were placed on an earlier stage that uses this layout.',
     description:
-      'Shown in place of the preset position-attribute picker when the node type this stage is about has no layout attribute in the codebook. "This type" is that node type.',
+      'Guidance under the preset layout control. A stage is one step of an interview; a sociogram or network composer stage is where nodes are placed in a layout.',
   },
   presetLayoutRequired: {
     id: 'protocolBuilder.networkCanvas.presetLayoutRequired',
-    defaultMessage: 'Choose the attribute this preset positions nodes with.',
+    defaultMessage: 'Choose the layout this preset shows.',
     description:
-      'Refusal shown under the preset position-attribute picker when the researcher saves a preset without choosing one.',
-  },
-  presetCreateLayoutLabel: {
-    id: 'protocolBuilder.networkCanvas.presetCreateLayoutLabel',
-    defaultMessage: 'Create a new position attribute',
-    description:
-      'Button beside the preset position-attribute picker that adds a layout attribute to the codebook without leaving the stage. Also the title of the dialog it opens.',
+      'Refusal shown under the preset layout control when the researcher saves a preset without choosing a layout.',
   },
   presetFilterTitle: {
     id: 'protocolBuilder.networkCanvas.presetFilterTitle',

@@ -111,7 +111,9 @@ function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
     >
       <AttributePill
         name={attribute.label}
-        {...(attribute.type === undefined ? {} : { type: attribute.type })}
+        {...(attribute.type === undefined || attribute.type === 'layout'
+          ? {}
+          : { type: attribute.type })}
         missing={attribute.missing}
       />
     </span>

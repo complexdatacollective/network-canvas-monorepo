@@ -70,28 +70,15 @@ export const composerMessages = defineMessages({
   nodePositionsSectionDescription: {
     id: 'protocolBuilder.networkCanvas.nodePositionsSectionDescription',
     defaultMessage:
-      "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
+      "Stores each node's position on the canvas in a layout. Choosing the same layout in other stages keeps positions as the participant moves between tasks.",
     description:
-      'Description of the node-positions sub-section of a network composer. A stage is one step of an interview, so reusing one attribute carries the participant’s placements from one step to the next.',
+      'Description of the node-positions sub-section of a network composer. A layout is a named set of positions in the codebook. A stage is one step of an interview, so choosing one layout in several stages carries the participant’s placements from one step to the next.',
   },
   layoutLabel: {
     id: 'protocolBuilder.networkCanvas.composerLayoutLabel',
-    defaultMessage: 'Create or select an attribute to store node coordinates',
+    defaultMessage: 'Layout',
     description:
-      'Label of the control choosing which codebook attribute stores where each node sits on a composer canvas.',
-  },
-  layoutEmpty: {
-    id: 'protocolBuilder.networkCanvas.composerLayoutEmpty',
-    defaultMessage:
-      'This type has no position attributes yet. Create one to store where the participant puts each node.',
-    description:
-      'Shown in place of the position-attribute list when the node type this stage builds has no attribute that can hold a position.',
-  },
-  layoutCreateLabel: {
-    id: 'protocolBuilder.networkCanvas.composerCreateLayoutLabel',
-    defaultMessage: 'Create a new position attribute',
-    description:
-      'Button that creates an attribute holding a position in the codebook and uses it for this stage.',
+      'Label of the control choosing the layout of the codebook that stores where each node sits on a composer canvas. A layout is a named set of positions.',
   },
   automaticLayoutSectionTitle: {
     id: 'protocolBuilder.networkCanvas.automaticLayoutSectionTitle',

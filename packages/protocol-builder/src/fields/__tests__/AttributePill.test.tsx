@@ -25,7 +25,6 @@ const EXPECTED: ReadonlyArray<
   ['boolean', 'boolean-variable.svg', '--neon-carrot'],
   ['categorical', 'categorical-variable.svg', '--mustard'],
   ['datetime', 'date-variable.svg', '--tomato'],
-  ['layout', 'layout-variable.svg', '--purple-pizazz'],
   ['location', 'location-variable.svg', '--slate-blue--dark'],
   ['number', 'number-variable.svg', '--paradise-pink'],
   ['ordinal', 'ordinal-variable.svg', '--sea-green'],

@@ -62,12 +62,6 @@ const VARIABLE_TYPE_LABELS = defineMessages({
     description:
       'Choice offered for what an attribute records: a date. The schema calls this type datetime; researchers call it a date.',
   },
-  layout: {
-    id: 'protocolBuilder.codebookVariable.typeLayout',
-    defaultMessage: 'Layout',
-    description:
-      'Choice offered for what an attribute records: where a network member sits on a canvas the participant arranges.',
-  },
   location: {
     id: 'protocolBuilder.codebookVariable.typeLocation',
     defaultMessage: 'Location',
@@ -109,7 +103,6 @@ export const VARIABLE_TYPE_BADGE_COLORS = {
   categorical: 'mustard',
   scalar: 'kiwi',
   datetime: 'tomato',
-  layout: 'purple-pizazz',
   location: 'slate-blue-dark',
 } as const satisfies Record<VariableType, BadgeColor>;
 
@@ -140,7 +133,6 @@ export const VARIABLE_TYPE_OPTIONS = [
   { label: VARIABLE_TYPE_LABELS.categorical, value: VariableTypes.categorical },
   { label: VARIABLE_TYPE_LABELS.scalar, value: VariableTypes.scalar },
   { label: VARIABLE_TYPE_LABELS.datetime, value: VariableTypes.datetime },
-  { label: VARIABLE_TYPE_LABELS.layout, value: VariableTypes.layout },
   { label: VARIABLE_TYPE_LABELS.location, value: VariableTypes.location },
 ] as const satisfies readonly Readonly<{
   label: MessageDescriptor;

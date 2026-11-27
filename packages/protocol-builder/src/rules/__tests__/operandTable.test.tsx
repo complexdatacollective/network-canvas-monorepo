@@ -24,7 +24,6 @@ import {
 } from '../../testing/attributePicker.ts';
 import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
 import {
-  canAuthorRuleForType,
   type OperandControl,
   operandRequirement,
   operatorsForSubject,
@@ -45,7 +44,6 @@ const CLOSENESS = testVariableId('closeness');
 const MOOD = testVariableId('mood');
 const NOTE = testVariableId('note');
 const FLAG = testVariableId('flag');
-const SPOT = testVariableId('spot');
 
 /**
  * One attribute of every type the schema has, so the sweep below covers the
@@ -62,7 +60,6 @@ const ATTRIBUTES: Readonly<Record<VariableType, string>> = Object.freeze({
   ordinal: BAND,
   categorical: MOOD,
   location: PLACE,
-  layout: SPOT,
 });
 
 const personVariables: SectionDoc['variables'] = {
@@ -113,10 +110,9 @@ const personVariables: SectionDoc['variables'] = {
       { id: testId('option/Mood/sad'), label: { en: 'Sad' }, value: 'sad' },
     ],
   },
-  // The two the schema calls non-renderable: they are recorded by the stage
-  // that captures them rather than by a form control, so they carry none.
+  // The schema calls it non-renderable: it is recorded by the stage that
+  // captures it rather than by a form control, so it carries none.
   [PLACE]: { name: 'Place', type: 'location' },
-  [SPOT]: { name: 'Spot', type: 'layout' },
 };
 
 const personDefinition = {
@@ -543,15 +539,16 @@ describe('an ordinal rule already comparing against a set of options', () => {
 });
 
 describe('an attribute the protocol can hold no operand for', () => {
-  it('offers a layout attribute no operator, and so does not offer it at all', () => {
-    // Every operator the schema allows a layout attribute compares the operand
-    // against the ANSWER, and a layout answer is a point. `filterValueSchema`
+  it('offers a layout no operator, and so offers it in no rule', () => {
+    // Every operator the schema allows a rule naming a layout compares the
+    // operand against the ANSWER, and a layout's answer is a point. A layout
+    // is no variable type: its operators are read through the layout lookup. `filterValueSchema`
     // holds numbers, strings, booleans and lists — never an object — so there
     // is no value a rule could carry, and a text box beside one commits a
     // string that can never equal `{ x, y }`.
     expect([...operatorsForSubject('layout')]).toEqual([]);
-    expect(ruleVariableTypes).not.toContain('layout');
-    expect(canAuthorRuleForType('layout')).toBe(false);
+    expect(operandRequirement('layout', 'EXACTLY')).toBeUndefined();
+    expect(operandRequirement('layout', 'EXISTS')?.kind).toBe('none');
     // And a rule a protocol already holds against one is REPORTED rather than
     // passed as text: the string a free-text operand commits validates against
     // the schema perfectly well, and can never equal `{ x, y }`, so the

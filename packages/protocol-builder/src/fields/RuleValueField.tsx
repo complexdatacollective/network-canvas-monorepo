@@ -9,13 +9,13 @@ import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import type { VariableType } from '@codaco/protocol-validation';
 
 import {
   operandNumberRange,
   type OperandRequirement,
   operandRequirement,
   type OperandValue,
+  type RuleAttributeType,
 } from '../rules/operators.ts';
 import {
   DEFAULT_DATE_PARAMETERS,
@@ -81,7 +81,7 @@ type ValueRequirement = Extract<OperandRequirement, { kind: 'value' }>;
  * is what `EXACTLY` asks for, the operator that compares an answer as it is.
  */
 export const emptyRuleValue = (
-  variableType: VariableType | undefined,
+  variableType: RuleAttributeType | undefined,
   operator?: unknown,
 ): OperandValue => {
   const requirement =
@@ -376,7 +376,7 @@ const asOptionValue = (value: OperandValue): string | number | undefined =>
   typeof value === 'string' || typeof value === 'number' ? value : undefined;
 
 export type RuleOperandFieldProps = Readonly<{
-  variableType: VariableType | undefined;
+  variableType: RuleAttributeType | undefined;
   operator: unknown;
   options?: readonly RuleChoiceOption[];
   dateParameters?: RuleDateParameters;

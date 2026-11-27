@@ -6,6 +6,7 @@ import {
   FilterOperandKinds,
   type FilterOperator,
   filterValueSchema,
+  LAYOUT_RULE_OPERATORS,
   OperatorsByVariableType,
   TypeLevelOperators,
   type VariableType,
@@ -274,8 +275,10 @@ const MEMBERSHIP_OPERATORS: ReadonlySet<FilterOperator> =
  * operator the schema leaves to the attribute compares the operand against the
  * stored answer, by deep equality or by membership.
  *
- * `point` is a layout answer — `{ x, y }` — and is named here so that the fact
- * a rule cannot be authored against one is DERIVED below rather than asserted.
+ * `point` is a layout's answer — `{ x, y }` — and is named here so that the
+ * fact a rule cannot be authored against one is DERIVED below rather than
+ * asserted. A layout is not a variable, so its shape is read through
+ * `answerShape` rather than kept in the table of variable types.
  */
 type AnswerShape =
   | 'boolean'
@@ -300,8 +303,17 @@ const ANSWER_SHAPES: Readonly<Record<VariableType, AnswerShape>> =
     categorical: 'optionList',
     // A place the participant named, recorded as text.
     location: 'text',
-    layout: 'point',
   });
+
+/**
+ * What a rule may name as its attribute: a variable of one of the schema's
+ * types, or a layout of `codebook.layouts`, which a node rule may name as the
+ * node's position in it.
+ */
+export type RuleAttributeType = VariableType | 'layout';
+
+const answerShape = (type: RuleAttributeType): AnswerShape =>
+  type === 'layout' ? 'point' : ANSWER_SHAPES[type];
 
 /** Whether the protocol schema can hold this as a rule's comparison value. */
 const isStorableOperand = (value: unknown): boolean =>
@@ -332,7 +344,7 @@ export type OperandControl =
  *
  * A point has no candidate at all: no control enters `{ x, y }` as a rule
  * operand, and the schema could not hold what one produced. That is why a
- * layout attribute ends up with no comparison to offer.
+ * layout ends up with no comparison to offer.
  */
 type OperandCandidate = Readonly<{
   control: OperandControl;
@@ -531,12 +543,12 @@ const valueRequirement = (
  * `undefined` is not a gap: it is the answer for a comparison the schema has
  * no value for, and it is what keeps such an operator off the editor's list
  * rather than giving the researcher a control whose every entry the validator
- * refuses. Two cases exist today — a layout attribute, whose answer is a point
+ * refuses. Two cases exist today — a layout, whose answer is a point
  * and whose comparison therefore has no storable operand, and a relational
  * comparison against anything the interview does not record as a number.
  */
 export const operandRequirement = (
-  variableType: VariableType | undefined,
+  variableType: RuleAttributeType | undefined,
   operator: unknown,
 ): OperandRequirement | undefined => {
   if (!isFilterOperator(operator)) return undefined;
@@ -551,8 +563,7 @@ export const operandRequirement = (
     return valueRequirement('pattern', operandKind, operator);
   }
 
-  const shape =
-    variableType === undefined ? 'text' : ANSWER_SHAPES[variableType];
+  const shape = variableType === undefined ? 'text' : answerShape(variableType);
 
   // The schema requires a number for a relational comparison, so it can only
   // be offered where the ANSWER is a number too: a date answer compared
@@ -606,7 +617,7 @@ const operandShape = (
  * about one; `operandOptionProblems` in `ruleCodebook.ts` asks it.
  */
 export const operandDrawsOnOptions = (
-  variableType: VariableType | undefined,
+  variableType: RuleAttributeType | undefined,
   operator: unknown,
 ): boolean => {
   const requirement = operandRequirement(variableType, operator);
@@ -632,7 +643,7 @@ export const operandDrawsOnOptions = (
  * about one; `operandDateProblems` in `ruleCodebook.ts` asks it.
  */
 export const operandIsDate = (
-  variableType: VariableType | undefined,
+  variableType: RuleAttributeType | undefined,
   operator: unknown,
 ): boolean => {
   const requirement = operandRequirement(variableType, operator);
@@ -680,7 +691,7 @@ export type OperandNumberRange = Readonly<{
 }>;
 
 export const operandNumberRange = (
-  variableType: VariableType | undefined,
+  variableType: RuleAttributeType | undefined,
   operator: unknown,
   /** How many options the attribute authors, where it authors any. */
   optionCount: number | undefined,
@@ -763,16 +774,22 @@ export const rangeSatisfiesComparison = (
  *    attribute a participant has not answered is already covered by the
  *    presence rule above it, and a protocol authored before may still hold one;
  * 3. minus every operator the protocol has no operand for, which is what keeps
- *    a layout attribute from being offered a comparison no entry could satisfy
+ *    a layout from being offered a comparison no entry could satisfy
  *    and a date from being offered one the validator refuses.
  *
  * `exists` is not a variable type. It is the set offered when no attribute has
  * been chosen — a presence rule about the entity itself.
  */
+/** The operators the schema accepts in a rule naming an attribute of this type. */
+export const schemaOperatorsFor = (
+  type: RuleAttributeType,
+): readonly string[] | undefined =>
+  type === 'layout' ? LAYOUT_RULE_OPERATORS : OperatorsByVariableType[type];
+
 const offeredOperators = (
-  variableType: VariableType,
+  variableType: RuleAttributeType,
 ): ReadonlySet<FilterOperator> => {
-  const allowed = OperatorsByVariableType[variableType];
+  const allowed = schemaOperatorsFor(variableType);
   if (allowed === undefined) return new Set<FilterOperator>();
   return new Set(
     AllOperators.options.filter(
@@ -794,13 +811,14 @@ const offeredOperators = (
  * all is the one thing they can still read, and the presence operators are the
  * whole list.
  */
-export type RuleOperatorSubject = VariableType | 'exists' | 'encrypted';
+export type RuleOperatorSubject = RuleAttributeType | 'exists' | 'encrypted';
 
 const OFFERED_OPERATORS: ReadonlyMap<
   RuleOperatorSubject,
   ReadonlySet<FilterOperator>
 > = new Map<RuleOperatorSubject, ReadonlySet<FilterOperator>>([
   ...VariableTypesKeys.map((type) => [type, offeredOperators(type)] as const),
+  ['layout', offeredOperators('layout')],
   ['exists', PRESENCE_OPERATORS],
   ['encrypted', PRESENCE_OPERATORS],
 ]);
@@ -848,8 +866,8 @@ const VARIABLE_TYPE_NAMES: ReadonlySet<string> = new Set(VariableTypesKeys);
  * schema's own catalogue IS what makes a string a variable type.
  *
  * Deliberately wider than `canAuthorRuleForType`. A rule the editor would not
- * build today may still be IN a protocol — one against a layout attribute, for
- * instance — and reading its attribute's type as unknown would report it as a
+ * build today may still be IN a protocol — one against an attribute whose
+ * every operator was taken away, for instance — and reading its attribute's type as unknown would report it as a
  * deleted attribute rather than as the operand problem it is.
  */
 export const isVariableType = (value: unknown): value is VariableType =>

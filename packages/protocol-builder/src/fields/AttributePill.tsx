@@ -73,7 +73,6 @@ const ICON_URLS = {
   categorical: new URL('./icons/categorical-variable.svg', import.meta.url)
     .href,
   datetime: new URL('./icons/date-variable.svg', import.meta.url).href,
-  layout: new URL('./icons/layout-variable.svg', import.meta.url).href,
   location: new URL('./icons/location-variable.svg', import.meta.url).href,
   number: new URL('./icons/number-variable.svg', import.meta.url).href,
   ordinal: new URL('./icons/ordinal-variable.svg', import.meta.url).href,
@@ -98,7 +97,6 @@ const ACCENT_TOKENS = {
   boolean: '--neon-carrot',
   categorical: '--mustard',
   datetime: '--tomato',
-  layout: '--purple-pizazz',
   location: '--slate-blue--dark',
   number: '--paradise-pink',
   ordinal: '--sea-green',

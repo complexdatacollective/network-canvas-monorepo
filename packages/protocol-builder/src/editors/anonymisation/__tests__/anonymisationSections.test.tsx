@@ -14,6 +14,7 @@ import {
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   fixtureTypeId,
   fixtureVariableId,
@@ -765,10 +766,7 @@ describe('the attributes a passphrase protects', () => {
               {
                 id: testId('narrative-preset-1'),
                 label: { 'en-US': 'Default layout' },
-                layoutVariable: fixtureVariableId(
-                  { entity: 'node', typeName: 'person' },
-                  'layout',
-                ),
+                layout: fixtureLayoutId('layout'),
                 filter: {
                   rules: [personRule(testId('preset-a'), NAME)],
                 },

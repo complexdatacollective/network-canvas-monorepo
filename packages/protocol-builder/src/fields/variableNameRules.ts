@@ -8,6 +8,7 @@ import type { Variable } from '@codaco/protocol-validation';
 import {
   CodebookNameSchema,
   findExportColumnConflicts,
+  findLayoutExportColumnConflicts,
   normalizeCodebookName,
   normalizeForComparison,
   type ExportColumnConflict,
@@ -15,6 +16,29 @@ import {
   type ExportColumnOrigin,
   type ExportColumnVariable,
 } from '@codaco/shared-consts';
+
+const layoutMessages = defineMessages({
+  layoutNameTaken: {
+    id: 'protocolBuilder.layoutPicker.nameTaken',
+    defaultMessage: 'the codebook already has a layout called that',
+    description:
+      'Reason given on the switched-off create row of the layout list, on the line under “A layout cannot be named “positions””, when another layout has the name typed. A layout is a named set of positions that a researcher places nodes in on a canvas. Written as a clause rather than a sentence.',
+  },
+  layoutNameTakenByAttribute: {
+    id: 'protocolBuilder.layoutPicker.nameTakenByAttribute',
+    defaultMessage:
+      'the node type “{nodeType}” already has an attribute called that',
+    description:
+      'Reason given on the switched-off create row of the layout list when an attribute of a node type has the name typed. nodeType is the name of that node type and is the researcher’s own text, not translated. Written as a clause rather than a sentence.',
+  },
+  layoutColumnTaken: {
+    id: 'protocolBuilder.layoutPicker.columnTaken',
+    defaultMessage:
+      'the export would write its positions to the column “{column}”, which is already used',
+    description:
+      'Reason given on the switched-off create row of the layout list when one of the position columns that the export writes for a layout, named after it, is already a column of the export. column is that column name and is not translated. The export is the file a researcher analyses after the interviews. Written as a clause rather than a sentence.',
+  },
+});
 
 const messages = defineMessages({
   nameTaken: {
@@ -475,4 +499,69 @@ export const variableNameRefusal = (
   return refusal === undefined
     ? undefined
     : (formatMessageError(refusal.message, intl) ?? refusal.message);
+};
+
+/**
+ * Why a name typed for a new layout cannot be used, or `undefined` while it
+ * can: the codebook's rules for a layout's name, which no other layout and no
+ * attribute of any node type may have, and whose position columns no other
+ * column of the export may have.
+ */
+export const layoutNameRefusal = (
+  typed: string,
+  {
+    layouts,
+    nodeTypes,
+    intl,
+  }: Readonly<{
+    layouts: Readonly<Record<string, ScopedLayout>>;
+    nodeTypes: Readonly<
+      Record<
+        string,
+        Readonly<{
+          name: string;
+          variables?: Readonly<Record<string, Variable>>;
+        }>
+      >
+    >;
+    intl: IntlShape;
+  }>,
+): string | undefined => {
+  const name = normalizeCodebookName(typed);
+  const comparable = normalizeForComparison(name);
+  if (
+    Object.values(layouts).some(
+      (layout) => normalizeForComparison(layout.name) === comparable,
+    )
+  ) {
+    return intl.formatMessage(layoutMessages.layoutNameTaken);
+  }
+  const owner = Object.values(nodeTypes).find(({ variables }) =>
+    Object.values(variables ?? {}).some(
+      (variable) => normalizeForComparison(variable.name) === comparable,
+    ),
+  );
+  if (owner !== undefined) {
+    return intl.formatMessage(layoutMessages.layoutNameTakenByAttribute, {
+      nodeType: owner.name,
+    });
+  }
+  if (!CodebookNameSchema.safeParse(name).success) {
+    return intl.formatMessage(messages.nameInvalid);
+  }
+  const candidate = '\u0000candidate';
+  const conflict = findLayoutExportColumnConflicts(
+    { ...layouts, [candidate]: { name } },
+    Object.fromEntries(
+      Object.entries(nodeTypes).map(([type, { variables }]) => [
+        type,
+        variables ?? {},
+      ]),
+    ),
+  ).find(({ layoutId }) => layoutId === candidate);
+  return conflict === undefined
+    ? undefined
+    : intl.formatMessage(layoutMessages.layoutColumnTaken, {
+        column: conflict.conflict.column,
+      });
 };

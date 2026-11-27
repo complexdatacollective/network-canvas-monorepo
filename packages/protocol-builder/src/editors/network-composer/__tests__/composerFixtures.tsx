@@ -6,6 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { sharedWording } from '../../../sections/supplied-wording/sharedWording.tsx';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   fixtureTypeId,
   fixtureVariableId,
@@ -101,7 +102,7 @@ export const composerHolding = (fields: SectionDoc) => ({
       label: { 'en-US': 'Network Composer' },
       subject: { entity: 'node', types: [PERSON] },
       quickAdd: personVariable('composerName'),
-      layoutVariable: personVariable('layout'),
+      layout: fixtureLayoutId('layout'),
       background: { concentricCircles: 4 },
       ...fields,
     },

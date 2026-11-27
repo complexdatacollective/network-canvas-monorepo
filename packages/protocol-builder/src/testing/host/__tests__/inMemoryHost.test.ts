@@ -12,6 +12,7 @@ import { attempt } from '../../../state/attempt.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import type { ResourcePromotion } from '../../../state/hooks.ts';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   fixtureTypeId,
   fixtureVariableId,
@@ -1225,7 +1226,10 @@ describe('the in-memory host', () => {
     expect(subject.store.has(created.sectionId)).toBe(false);
     expect(
       assembleProtocolSections(sectionsOf(subject)).codebook,
-    ).not.toHaveProperty('layouts');
+    ).not.toHaveProperty([
+      'layouts',
+      created.sectionId.slice('codebook:layout:'.length),
+    ]);
   });
 
   it('refuses to delete a layout an editor holds, and names them', async () => {
@@ -1267,6 +1271,126 @@ describe('the in-memory host', () => {
     expect(refusal?._tag).toBe('SectionNotFound');
   });
 
+  const FIXTURE_LAYOUT = sectionId({
+    kind: 'codebookLayout',
+    layoutId: fixtureLayoutId('layout'),
+  });
+  const NARRATIVE = sectionId({
+    kind: 'stage',
+    stageId: fixtureStageId('narrative-1'),
+  });
+  const COMPOSER = sectionId({
+    kind: 'stage',
+    stageId: fixtureStageId('network-composer-1'),
+  });
+
+  /** A skip logic rule on the Information stage asking about one layout. */
+  const skipIfPlacedIn = (subject: InMemoryHost, layoutId: string) => {
+    subject.store.applyAsCollaborator(INFORMATION, {
+      ...subject.store.read(INFORMATION).document,
+      skipLogic: {
+        action: 'SKIP',
+        filter: {
+          join: 'OR',
+          rules: [
+            {
+              id: testId('rule-placed'),
+              type: 'node',
+              options: {
+                type: PERSON_TYPE,
+                attribute: layoutId,
+                operator: 'EXISTS',
+              },
+            },
+            {
+              id: testId('rule-named'),
+              type: 'node',
+              options: {
+                type: PERSON_TYPE,
+                attribute: NAME,
+                operator: 'EXISTS',
+              },
+            },
+          ],
+        },
+      },
+    });
+  };
+
+  const skipRuleIds = (subject: InMemoryHost): unknown[] => {
+    const { skipLogic } = subject.store.read(INFORMATION).document;
+    const filter =
+      typeof skipLogic === 'object' && skipLogic !== null
+        ? Reflect.get(skipLogic, 'filter')
+        : undefined;
+    const rules: unknown =
+      typeof filter === 'object' && filter !== null
+        ? Reflect.get(filter, 'rules')
+        : undefined;
+    return Array.isArray(rules)
+      ? rules.map((rule: unknown) =>
+          typeof rule === 'object' && rule !== null
+            ? Reflect.get(rule, 'id')
+            : undefined,
+        )
+      : [];
+  };
+
+  it('refuses deleting a layout a stage names', async () => {
+    const subject = host();
+
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Delete', {
+      protocolId: subject.protocolId,
+      sectionId: FIXTURE_LAYOUT,
+    });
+
+    // A Sociogram, a Network Composer and a Narrative preset without a layout
+    // are not stages the researcher would recognise, so none is dropped.
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      remaining: expect.arrayContaining([
+        { sectionId: SOCIOGRAM, path: ['layout'] },
+        { sectionId: COMPOSER, path: ['layout'] },
+        { sectionId: NARRATIVE, path: ['presets', 0, 'layout'] },
+      ]),
+    });
+    expect(subject.store.has(FIXTURE_LAYOUT)).toBe(true);
+    expect(subject.store.read(NARRATIVE).document.presets).toHaveLength(1);
+  });
+
+  it('deleting a layout a filter rule names removes the rule', async () => {
+    const subject = host();
+    const created = await createLayout(subject);
+    const layoutId = created.sectionId.slice('codebook:layout:'.length);
+    skipIfPlacedIn(subject, layoutId);
+
+    await subject.adapter.rpcCall('Delete', {
+      protocolId: subject.protocolId,
+      sectionId: created.sectionId,
+    });
+
+    expect(subject.store.has(created.sectionId)).toBe(false);
+    expect(skipRuleIds(subject)).toEqual([testId('rule-named')]);
+  });
+
+  it('refuses a layout named by a stage and by a filter rule, and keeps the rule', async () => {
+    const subject = host();
+    skipIfPlacedIn(subject, fixtureLayoutId('layout'));
+
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Delete', {
+      protocolId: subject.protocolId,
+      sectionId: FIXTURE_LAYOUT,
+    });
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(skipRuleIds(subject)).toEqual([
+      testId('rule-placed'),
+      testId('rule-named'),
+    ]);
+  });
+
   it('refuses to create a layout whose document is not shaped like one', async () => {
     const subject = host();
 
@@ -1281,7 +1405,9 @@ describe('the in-memory host', () => {
     expect(refusal?._tag).toBe('InvalidShape');
     expect(
       assembleProtocolSections(sectionsOf(subject)).codebook,
-    ).not.toHaveProperty('layouts');
+    ).toHaveProperty('layouts', {
+      [fixtureLayoutId('layout')]: { name: 'layout' },
+    });
   });
 
   it('refuses a refactor that would rewrite a section this session is editing', async () => {

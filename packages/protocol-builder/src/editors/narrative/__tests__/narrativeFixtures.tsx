@@ -1,8 +1,5 @@
 import { screen, within } from '@testing-library/react';
 
-import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
-
 import { fixtureTypeId } from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { suppliedWordingFor } from '../../../testing/suppliedWording.ts';
@@ -36,7 +33,6 @@ export const narrativeSections = (
 );
 
 const PERSON = fixtureTypeId('node', 'person');
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 /** The presets of a saved stage, read as tolerantly as the editor reads them. */
 export const presetsOf = (
@@ -99,23 +95,4 @@ export const addPreset = async (
 ): Promise<ReturnType<typeof within>> => {
   await harness.user.click(screen.getByRole('button', { name: addLabel }));
   return within(await screen.findByRole('dialog'));
-};
-
-/**
- * The `person` node type with one more attribute, as a collaborator's own
- * revision of it.
- */
-export const personWithVariable = (
-  harness: StageEditorHarness,
-  variableId: string,
-  variable: Record<string, unknown>,
-): SectionDoc => {
-  const document = harness.protocolSections()[PERSON_SECTION];
-  if (document === undefined) throw new Error('the fixture has no person type');
-  const held = document.variables;
-  const variables =
-    typeof held === 'object' && held !== null && !Array.isArray(held)
-      ? (held as Record<string, unknown>)
-      : {};
-  return { ...document, variables: { ...variables, [variableId]: variable } };
 };

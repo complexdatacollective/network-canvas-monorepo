@@ -18,7 +18,6 @@ import {
   createProtocolObjectId,
   EdgeCountComparisons,
   edgeCountNeedsValue,
-  type VariableType,
 } from '@codaco/protocol-validation';
 
 import EntityTypePickerField from '../fields/EntityTypePickerField.tsx';
@@ -38,7 +37,11 @@ import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useHasProtocolBuilderHost } from '../state/context.ts';
 import { useLatest } from '../state/useLatest.ts';
-import type { RuleOperatorOption, RuleOperatorSubject } from './operators.ts';
+import type {
+  RuleAttributeType,
+  RuleOperatorOption,
+  RuleOperatorSubject,
+} from './operators.ts';
 import {
   incompleteRulePart,
   isEdgeCountComparison,
@@ -63,17 +66,19 @@ import {
   type RuleVariableOption,
   ruleOperatorOptions,
   ruleOperatorSubject,
+  ruleAttributeType,
   ruleEntityTypeOptions,
   ruleVariableChoices,
   ruleVariableDateParameters,
+  ruleLayoutOptions,
   ruleVariableOptions,
   ruleVariables,
-  ruleVariableType,
 } from './ruleCodebook.ts';
 import {
   useHasGivenRuleCodebook,
   useOffersEdgeCountRules,
   useRuleCodebook,
+  useRuleStages,
 } from './ruleCodebookSource.ts';
 import {
   describeRule,
@@ -1181,7 +1186,7 @@ type BranchProps = Readonly<{
   variableOptions: readonly RuleVariableOption[];
   operatorOptions: readonly RuleOperatorOption[];
   operatorSubject: RuleOperatorSubject;
-  variableType: VariableType | undefined;
+  variableType: RuleAttributeType | undefined;
   variableChoices: readonly RuleChoiceOption[] | undefined;
   dateParameters: RuleDateParameters;
 }>;
@@ -1413,6 +1418,7 @@ function RuleEditorFields({
   description: ReactNode;
 }>) {
   const codebook = useRuleCodebook();
+  const stages = useRuleStages();
   // A codebook given for these rules holds the only types they may be
   // about, so the type is chosen from it and not from the protocol's.
   const givenCodebook = useHasGivenRuleCodebook();
@@ -1436,12 +1442,25 @@ function RuleEditorFields({
   const derived = useMemo(() => {
     const variables =
       target === undefined ? {} : ruleVariables(codebook, target, entityTypeId);
-    const variableType = ruleVariableType(variables, attributeId);
+    const variableType = ruleAttributeType(
+      codebook,
+      target,
+      entityTypeId,
+      attributeId,
+    );
     return {
-      variableOptions: ruleVariableOptions(variables, intl),
-      operatorSubject: ruleOperatorSubject(variables, attributeId, {
-        allowEncryptedAttributes,
-      }),
+      variableOptions: [
+        ...ruleVariableOptions(variables, intl),
+        ...(target === 'node'
+          ? ruleLayoutOptions(codebook, stages, entityTypeId, attributeId, intl)
+          : []),
+      ],
+      operatorSubject:
+        variableType === 'layout'
+          ? variableType
+          : ruleOperatorSubject(variables, attributeId, {
+              allowEncryptedAttributes,
+            }),
       variableType,
       variableChoices: ruleVariableChoices(
         variables,
@@ -1457,6 +1476,7 @@ function RuleEditorFields({
     entityTypeId,
     intl,
     localize,
+    stages,
     target,
   ]);
 

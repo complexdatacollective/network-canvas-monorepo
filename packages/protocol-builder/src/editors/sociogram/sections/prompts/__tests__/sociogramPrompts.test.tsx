@@ -35,7 +35,6 @@ const KNOWS = fixtureTypeId('edge', 'knows');
 const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
 const personVariable = (name: string) =>
   fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
-const LAYOUT = personVariable('layout');
 const HIGHLIGHTED = personVariable('highlighted');
 
 /**
@@ -97,8 +96,9 @@ describe('the tasks a sociogram sets', () => {
   it('lists what the stage already holds', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
     expect(harness.outline().map((section) => section.title)).toEqual([
+      'Layout',
       'Prompt collection',
       'Node layout',
       'Background',
@@ -127,7 +127,6 @@ describe('the tasks a sociogram sets', () => {
     expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual({
       id: fixturePromptId(),
       text: { 'en-US': 'Place the people who know each other close together' },
-      layout: { layoutVariable: LAYOUT },
       edges: { display: [KNOWS] },
       highlight: { allowHighlighting: false },
     });
@@ -166,7 +165,6 @@ describe('the tasks a sociogram sets', () => {
     const SILENT_PROMPT = {
       id: testId('sociogram-prompt-1'),
       text: { 'en-US': 'Place the people who know each other close together' },
-      layout: { layoutVariable: LAYOUT },
     };
     const harness = renderStageEditor(sociogramHolding(SILENT_PROMPT));
 
@@ -198,7 +196,6 @@ describe('the tasks a sociogram sets', () => {
         text: {
           'en-US': 'Place the people who know each other close together',
         },
-        layout: { layoutVariable: LAYOUT },
       }),
     );
 
@@ -354,7 +351,6 @@ describe('a connection type this protocol does not define', () => {
   const DISPLAYING_A_LOST_TYPE = {
     id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: LAYOUT },
     edges: { display: [KNOWS, LOST_EDGE] },
   };
 
@@ -476,7 +472,6 @@ describe('a prompt that only highlights its nodes', () => {
   const DISPLAY_ONLY_PROMPT = {
     id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: LAYOUT },
     highlight: { variable: HIGHLIGHTED, allowHighlighting: false },
   };
 
@@ -559,7 +554,6 @@ describe('a prompt that draws a connection it does not show', () => {
   const COLLECTS_WITHOUT_SHOWING = {
     id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: LAYOUT },
     edges: { create: KNOWS, display: [] },
   };
 
@@ -647,7 +641,6 @@ describe('what tapping a node does, against what the prompt already said', () =>
   ): Record<string, unknown> => ({
     id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: LAYOUT },
     ...(highlight === undefined ? {} : { highlight }),
   });
 
@@ -843,7 +836,6 @@ describe('a prompt opened and cancelled untouched', () => {
   ): Record<string, unknown> => ({
     id: testId('sociogram-prompt-1'),
     text: 'Place the people who know each other close together',
-    layout: { layoutVariable: LAYOUT },
     ...tap,
   });
 
@@ -899,53 +891,46 @@ describe('a prompt opened and cancelled untouched', () => {
  * are one act, in one control.
  */
 describe('creating an attribute a prompt needs without leaving the stage', () => {
-  it('binds the prompt to the attribute the stage now holds', async () => {
+  it('stores positions in a layout created from the stage’s own picker', async () => {
     const harness = renderStageEditor(openEditor());
 
-    const prompt = await openPrompt(harness);
     await inventAttribute(
       harness.user,
-      await promptAttributeField('Layout attribute'),
+      await waitFor(() => attributeField('Layout')),
       'second_canvas',
     );
 
-    // Created and BOUND: the picker holds the new attribute, so the prompt the
-    // researcher was writing is the one the attribute was created for. The
-    // picker shows the researcher's NAME for it, and the prompt stores the id,
-    // so both are read — the field for what is on screen, and the saved stage
-    // for the reference that survives the dialog.
     await waitFor(() =>
       expect(
-        within(attributeField('Layout attribute')).getByText('second_canvas'),
+        within(attributeField('Layout')).getByText('second_canvas'),
       ).toBeInTheDocument(),
     );
 
-    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    // Saving the prompt made the attribute the stage's: the editor has it, and
-    // the protocol does not until the stage is saved.
-    const created = Object.entries(
-      harness.editorCodebook().node?.[PERSON]?.variables ?? {},
-    ).find(([, variable]) => variable.name === 'second_canvas')?.[0];
+    // The editor has the layout, and the protocol does not until the stage
+    // is saved.
+    const created = Object.entries(harness.editorCodebook().layouts ?? {}).find(
+      ([, layout]) => layout.name === 'second_canvas',
+    )?.[0];
     expect(created).toBeDefined();
+    expect(
+      Object.values(harness.hostCodebook().layouts ?? {}).some(
+        (layout) => layout.name === 'second_canvas',
+      ),
+    ).toBe(false);
+
+    const saved = await harness.submit();
+    expect(
+      Object.values(harness.hostCodebook().layouts ?? {}).some(
+        (layout) => layout.name === 'second_canvas',
+      ),
+    ).toBe(true);
+    expect(saved?.stageDocument.layout).toBe(created);
+    // A layout belongs to the codebook, not to a node type.
     expect(
       Object.values(
         harness.hostCodebook().node?.[PERSON]?.variables ?? {},
       ).some((variable) => variable.name === 'second_canvas'),
     ).toBe(false);
-
-    const saved = await harness.submit();
-    expect(
-      Object.values(
-        harness.hostCodebook().node?.[PERSON]?.variables ?? {},
-      ).some((variable) => variable.name === 'second_canvas'),
-    ).toBe(true);
-    expect(promptsOf(saved?.stageDocument ?? {})[0]?.layout).toEqual({
-      layoutVariable: created,
-    });
   });
 
   /**
@@ -1022,7 +1007,6 @@ describe('a connections list with nothing in it', () => {
         text: {
           'en-US': 'Place the people who know each other close together',
         },
-        layout: { layoutVariable: LAYOUT },
       }),
     );
 
@@ -1060,7 +1044,6 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   const SORTED_PROMPT = {
     id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: LAYOUT },
     sortOrder: [
       {
         id: testId('sort-name'),

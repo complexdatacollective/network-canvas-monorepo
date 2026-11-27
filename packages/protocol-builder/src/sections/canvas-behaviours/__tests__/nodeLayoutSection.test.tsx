@@ -2,18 +2,15 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  fixtureLayoutId,
   fixtureTypeId,
-  fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
 import { nodeLayout } from '../nodeLayout.tsx';
 
 const PERSON = fixtureTypeId('node', 'person');
-const LAYOUT = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'layout',
-);
+const LAYOUT = fixtureLayoutId('layout');
 
 const NodeLayout = nodeLayout();
 
@@ -32,7 +29,7 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
     // Everything else about a sociogram belongs to sections this mount does
     // not include.
     await harness.roundTrip({
-      unowned: ['subject', 'prompts', 'background', 'tooltips'],
+      unowned: ['subject', 'layout', 'prompts', 'background', 'tooltips'],
     });
   });
 
@@ -65,12 +62,12 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
           label: en('Sociogram'),
           subject: { entity: 'node', types: [PERSON] },
           background: { concentricCircles: 4 },
+          layout: LAYOUT,
           behaviours: { automaticLayout: true, freeDraw: true },
           prompts: [
             {
               id: testId('sociogram-prompt-1'),
               text: en('Place the people you know'),
-              layout: { layoutVariable: LAYOUT },
             },
           ],
         },

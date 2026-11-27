@@ -6,7 +6,6 @@ import {
   type EdgeCountComparison,
   type FilterOperator,
   type LocaleTag,
-  type VariableType,
   resolveNodeShapeReference,
   type ResolvedNodeShape,
 } from '@codaco/protocol-validation';
@@ -22,6 +21,7 @@ import {
   operatorsWithOptionCount,
   operatorsWithRegExp,
   type PresenceOperator,
+  type RuleAttributeType,
 } from './operators.ts';
 import {
   isCompleteRule,
@@ -47,6 +47,7 @@ import {
   type RuleTargetType,
   ruleVariable,
   ruleVariableChoices,
+  ruleLayout,
   ruleVariables,
   ruleVariableType,
 } from './ruleCodebook.ts';
@@ -92,8 +93,11 @@ export type RuleDescriptionAttribute = Readonly<{
   id: string;
   /** The researcher's name for it, or its id when the codebook has neither. */
   label: string;
-  /** Absent when the codebook does not describe this attribute. */
-  type: VariableType | undefined;
+  /**
+   * Absent when the codebook does not describe this attribute; `'layout'`
+   * when it is a layout of the codebook rather than a variable.
+   */
+  type: RuleAttributeType | undefined;
   missing: boolean;
 }>;
 
@@ -881,16 +885,20 @@ export function describeRule({
   const variables =
     target === undefined ? {} : ruleVariables(codebook, target, entityTypeId);
   const definition = ruleVariable(variables, attributeId);
-  const attributeType = ruleVariableType(variables, attributeId);
+  // A node rule may name a layout of the codebook, which every node type
+  // shares, in place of a variable of its node type.
+  const layout = ruleLayout(codebook, target, entityTypeId, attributeId);
+  const attributeType =
+    layout === undefined ? ruleVariableType(variables, attributeId) : 'layout';
 
   const attribute: RuleDescriptionAttribute | undefined =
     attributeId === undefined
       ? undefined
       : Object.freeze({
           id: attributeId,
-          label: codebookLabel(definition?.name, attributeId),
+          label: codebookLabel(definition?.name ?? layout?.name, attributeId),
           type: attributeType,
-          missing: definition === undefined,
+          missing: definition === undefined && layout === undefined,
         });
 
   if (attribute?.missing === true) {

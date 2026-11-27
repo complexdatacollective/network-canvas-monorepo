@@ -37,8 +37,6 @@ import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
   BOOLEAN_TYPE,
   BOOLEAN_TYPES,
-  LAYOUT_TYPE,
-  LAYOUT_TYPES,
   useEdgeTypeChoices,
   useVariableChoices,
 } from '../../../../sections/canvas/codebookChoices.ts';
@@ -64,7 +62,6 @@ const PROMPT_TEXT_SHAPE = markdownTextShapeAt(sociogramStage, [
 ]);
 
 const TEXT_FIELD = 'text';
-const LAYOUT_VARIABLE_FIELD = 'layout.layoutVariable';
 const SORT_ORDER_FIELD = 'sortOrder';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const CREATE_EDGE_FIELD = 'edges.create';
@@ -139,12 +136,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   // Writes reach THIS dialog's form, not the stage's: the prompt is the
   // researcher's unsaved row until they save it.
   const setRowValue = useFormStore((store) => store.setFieldValue);
-  const layoutCreate = useCreateAttributeForSlot({
-    subject,
-    variableType: LAYOUT_TYPE,
-    title: intl.formatMessage(messages.promptCreateLayoutLabel),
-    onCreated: (variableId) => setRowValue(LAYOUT_VARIABLE_FIELD, variableId),
-  });
   const highlightCreate = useCreateAttributeForSlot({
     subject,
     variableType: BOOLEAN_TYPE,
@@ -179,7 +170,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
     [protocolContext, subject],
   );
 
-  const committedLayout = asNestedText(item.layout, 'layoutVariable');
   // Held as the same array while its contents do not change: a field's
   // starting value is part of its registration, and a new array every render
   // re-registers the field — which supersedes the validation a submit is
@@ -201,15 +191,8 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
     () => tapBehaviourOf(item),
   );
 
-  // Both name an attribute the interview writes around the codebook's rules —
-  // a position the participant drags a node to, a mark a tap toggles — so
-  // neither may take one a form field collects.
-  const layoutOptions = useVariableChoices({
-    subject,
-    types: LAYOUT_TYPES,
-    writerClass: 'unvalidated',
-    ...(committedLayout === undefined ? {} : { currentValue: committedLayout }),
-  });
+  // The interview writes a mark around the codebook's rules as a tap toggles
+  // it, so the attribute may not be one a form field collects.
   const highlightOptions = useVariableChoices({
     subject,
     types: BOOLEAN_TYPES,
@@ -451,18 +434,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
         title={intl.formatMessage(messages.promptPositionsTitle)}
         description={intl.formatMessage(messages.promptPositionsDescription)}
       >
-        <Field<typeof VariablePicker>
-          name={LAYOUT_VARIABLE_FIELD}
-          label={intl.formatMessage(messages.promptLayoutLabel)}
-          hint={intl.formatMessage(messages.promptLayoutHint)}
-          component={VariablePicker}
-          options={layoutOptions}
-          emptyMessage={intl.formatMessage(messages.promptLayoutEmpty)}
-          initialValue={committedLayout}
-          required={intl.formatMessage(messages.promptLayoutRequired)}
-          {...layoutCreate.createProps}
-        />
-        {layoutCreate.editor}
         {/*
           The package's shared sort-order group, told which key this prompt
           keeps its rules at. What a sort order IS — an ordered list of

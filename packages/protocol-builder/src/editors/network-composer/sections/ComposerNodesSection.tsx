@@ -20,6 +20,7 @@ import {
   crossClassConflictMessage,
   variableDisplayName,
 } from '../../../codebook/variableValidation.ts';
+import LayoutPickerField from '../../../fields/LayoutPickerField.tsx';
 import VariablePickerField, {
   type VariablePickerOption,
 } from '../../../fields/VariablePickerField.tsx';
@@ -31,8 +32,6 @@ import BuilderSection from '../../../sections/BuilderSection.tsx';
 import {
   CATEGORICAL_TYPE,
   CATEGORICAL_TYPES,
-  LAYOUT_TYPE,
-  LAYOUT_TYPES,
   TEXT_TYPE,
   TEXT_TYPES,
   useVariableChoices,
@@ -48,7 +47,7 @@ import { composerMessages as messages } from './composerMessages.ts';
 import { useSetStageValue } from './useSetStageValue.ts';
 
 const QUICK_ADD_FIELD = 'quickAdd';
-const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
+const LAYOUT_FIELD = 'layout';
 const CONVEX_HULL_FIELD = 'convexHullVariable';
 const NODE_FORM_FIELD = 'nodeForm.fields';
 /**
@@ -169,14 +168,13 @@ export default function ComposerNodesSection() {
   );
 
   const quickAdd = asText(useStageValue(QUICK_ADD_FIELD));
-  const layout = asText(useStageValue(LAYOUT_VARIABLE_FIELD));
   const hull = asText(useStageValue(CONVEX_HULL_FIELD));
   const nodeFormRows = useStageValue(NODE_FORM_FIELD);
 
   /** Written straight onto the node, around the codebook's rules. */
   const draftUnvalidated = useMemo(
-    () => [layout, hull].filter((id): id is string => id !== undefined),
-    [hull, layout],
+    () => (hull === undefined ? [] : [hull]),
+    [hull],
   );
   /** Collected through them. */
   const draftValidated = useMemo(
@@ -193,12 +191,6 @@ export default function ComposerNodesSection() {
     writerClass: 'validated',
     ...(quickAdd === undefined ? {} : { currentValue: quickAdd }),
   });
-  const layoutOptions = useVariableChoices({
-    subject,
-    types: LAYOUT_TYPES,
-    writerClass: 'unvalidated',
-    ...(layout === undefined ? {} : { currentValue: layout }),
-  });
   const hullOffered = useVariableChoices({
     subject,
     types: CATEGORICAL_TYPES,
@@ -206,10 +198,9 @@ export default function ComposerNodesSection() {
     ...(hull === undefined ? {} : { currentValue: hull }),
   });
 
-  // A position attribute has no input control at all, so no form can collect
-  // one and nothing this stage validates can ever reach that list. The other
-  // two can meet each other, and do: a categorical attribute is both something
-  // a form asks for and something the grouping tool writes.
+  // The quick-add and grouping attributes can meet each other, and do: a
+  // categorical attribute is both something a form asks for and something the
+  // grouping tool writes.
   const quickAddOptions = useKeptOptions(
     quickAddOffered,
     quickAdd,
@@ -263,10 +254,6 @@ export default function ComposerNodesSection() {
     (variableId: string) => setStageValue(QUICK_ADD_FIELD, variableId),
     [setStageValue],
   );
-  const bindLayout = useCallback(
-    (variableId: string) => setStageValue(LAYOUT_VARIABLE_FIELD, variableId),
-    [setStageValue],
-  );
   const bindHull = useCallback(
     (variableId: string) => setStageValue(CONVEX_HULL_FIELD, variableId),
     [setStageValue],
@@ -278,12 +265,6 @@ export default function ComposerNodesSection() {
     title: intl.formatMessage(messages.quickAddCreateLabel),
     seedValidation: QUICK_ADD_VALIDATION,
     onCreated: bindQuickAdd,
-  });
-  const layoutCreate = useCreateAttributeForSlot({
-    subject,
-    variableType: LAYOUT_TYPE,
-    title: intl.formatMessage(messages.layoutCreateLabel),
-    onCreated: bindLayout,
   });
   const hullCreate = useCreateAttributeForSlot({
     subject,
@@ -328,16 +309,12 @@ export default function ComposerNodesSection() {
           messages.nodePositionsSectionDescription,
         )}
       >
-        <Field<typeof VariablePickerField>
-          name={LAYOUT_VARIABLE_FIELD}
-          component={VariablePickerField}
+        <Field<typeof LayoutPickerField>
+          name={LAYOUT_FIELD}
+          component={LayoutPickerField}
           label={intl.formatMessage(messages.layoutLabel)}
-          options={layoutOptions}
-          emptyMessage={intl.formatMessage(messages.layoutEmpty)}
           required={REQUIRED}
-          {...layoutCreate.createProps}
         />
-        {layoutCreate.editor}
       </Section>
 
       <Section

@@ -134,7 +134,7 @@ describe('what a quick-add name generator records', () => {
     expect(offered).toContain(NAME);
     expect(offered).not.toContain(personVariable('age'));
     expect(offered).not.toContain(personVariable('contactType'));
-    expect(offered).not.toContain(personVariable('layout'));
+    expect(offered).not.toContain(personVariable('location'));
   });
 
   /**

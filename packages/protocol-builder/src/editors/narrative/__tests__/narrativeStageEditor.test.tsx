@@ -8,7 +8,7 @@ import {
 } from '../../../testing/attributePicker.ts';
 import {
   fixtureTypeId,
-  fixtureVariableId,
+  fixtureLayoutId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
@@ -19,10 +19,7 @@ import {
 import { addPreset, narrativeEditor, presetsOf } from './narrativeFixtures.tsx';
 
 const PERSON = fixtureTypeId('node', 'person');
-const LAYOUT = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'layout',
-);
+const LAYOUT = fixtureLayoutId('layout');
 
 const openFixture = () =>
   renderStageEditor({ stageId: 'narrative-1', editor: narrativeEditor });
@@ -93,11 +90,7 @@ describe('the narrative stage editor', () => {
       preset.getByRole('textbox', { name: 'Preset label' }),
       'All',
     );
-    await chooseAttributeById(
-      harness.user,
-      attributeField('Layout attribute'),
-      LAYOUT,
-    );
+    await chooseAttributeById(harness.user, attributeField('Layout'), LAYOUT);
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -195,7 +188,7 @@ describe('the narrative stage editor', () => {
             {
               id: testId('preset-1'),
               label: { 'en-US': 'Default' },
-              layoutVariable: LAYOUT,
+              layout: LAYOUT,
             },
           ],
         },

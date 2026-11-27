@@ -24,7 +24,7 @@ const KNOWS = testTypeId('knows');
 const LIKES = testTypeId('likes');
 const NAME = testVariableId('name');
 const SECRET = testVariableId('secret');
-const LAYOUT = testVariableId('layout');
+const PLACE = testVariableId('place');
 const CHILDREN = testVariableId('children');
 const SMOKES = testVariableId('smokes');
 const VAPES = testVariableId('vapes');
@@ -45,7 +45,7 @@ const labelOf = (role: LabelledDynamicValueRole) =>
 const EGO = {
   [NAME]: { name: 'Name', type: 'text' },
   [SECRET]: { name: 'Secret', type: 'text', encrypted: true },
-  [LAYOUT]: { name: 'Position', type: 'layout' },
+  [PLACE]: { name: 'Place', type: 'location' },
   [CHILDREN]: { name: 'Number of children', type: 'number' },
   [SMOKES]: { name: 'Smokes', type: 'boolean' },
   [VAPES]: { name: 'Vapes', type: 'boolean', component: 'Toggle' },

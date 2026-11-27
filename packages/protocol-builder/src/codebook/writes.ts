@@ -5,7 +5,10 @@ import { v4 as uuid } from 'uuid';
 
 import type { ProtocolBuilderTag } from '@codaco/protocol-builder-core/contract';
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
-import { createEntityTypeId } from '@codaco/protocol-validation';
+import {
+  createEntityTypeId,
+  createVariableId,
+} from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
@@ -406,7 +409,7 @@ async function createEgoCodebook(
 }
 
 /**
- * Creates a new node or edge type.
+ * Creates a new node or edge type, or a layout.
  *
  * The host mints the section and the type id inside it and serialises the
  * call, so there is no lock to take and nothing for the caller to reserve.
@@ -416,7 +419,7 @@ async function createEgoCodebook(
  * is kept with the stage's draft, and the stage's save creates it.
  */
 export function useCreateCodebookEntity(): (
-  entity: 'node' | 'edge',
+  entity: 'node' | 'edge' | 'layout',
   document: SectionDoc,
   /** Files imported while editing, committed with the new section. */
   promote?: ResourcePromotion,
@@ -428,11 +431,18 @@ export function useCreateCodebookEntity(): (
 
   return useCallback(
     async (entity, document, promote) => {
-      const kind = entity === 'node' ? 'codebookNode' : 'codebookEdge';
+      const kind =
+        entity === 'node'
+          ? 'codebookNode'
+          : entity === 'edge'
+            ? 'codebookEdge'
+            : 'codebookLayout';
       if (stagedCodebook !== undefined) {
         return stageCodebookChange(
           stagedCodebook,
-          sectionId({ kind, typeId: createEntityTypeId() }),
+          kind === 'codebookLayout'
+            ? sectionId({ kind, layoutId: createVariableId() })
+            : sectionId({ kind, typeId: createEntityTypeId() }),
           () => document,
           {},
         );

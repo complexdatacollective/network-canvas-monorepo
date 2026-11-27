@@ -92,7 +92,7 @@ const INVENT_PHRASE = /^Create a new\b.*\battribute\b/;
  *
  * Written out because these are what the sweep has to be able to see: a slot
  * whose title was reworded out of the phrase would leave that slot unguarded,
- * and nothing else would say so. Eighteen titles for the fourteen picker
+ * and nothing else would say so. Seventeen titles for the picker
  * mounts the eight converted sections hold, because three of the labels are
  * shared by two mounts each.
  */
@@ -101,12 +101,9 @@ const SLOT_INVENT_LABEL_IDS = [
   'protocolBuilder.censusPrompts.categoricalBinOtherAttributeCreateLabel',
   'protocolBuilder.censusPrompts.tieStrengthScaleCreateLabel',
   'protocolBuilder.geospatial.createAttributeLabel',
-  'protocolBuilder.networkCanvas.composerCreateLayoutLabel',
   'protocolBuilder.networkCanvas.createHullLabel',
   'protocolBuilder.networkCanvas.createQuickAddLabel',
-  'protocolBuilder.networkCanvas.presetCreateLayoutLabel',
   'protocolBuilder.networkCanvas.promptCreateHighlightLabel',
-  'protocolBuilder.networkCanvas.promptCreateLayoutLabel',
   'protocolBuilder.pedigree.currentPartnerCreateLabel',
   'protocolBuilder.pedigree.egoCreateLabel',
   'protocolBuilder.pedigree.genderIdentityCreateLabel',
@@ -120,7 +117,7 @@ const SLOT_INVENT_LABEL_IDS = [
 ] as const;
 
 /**
- * Messages phrased the same way that are not one of the nineteen titles above,
+ * Messages phrased the same way that are not one of the titles above,
  * each one read and accounted for.
  *
  * The sweep covers their words like any others — `inventLabels` reads the
@@ -134,8 +131,8 @@ const SLOT_INVENT_LABEL_IDS = [
  *   than by being named here, and it is going with the sentinel.
  * - `networkCanvas.formFieldVariableCreateTitle` titles the codebook editor a
  *   network composer form field's create row opens. That row is landing on
- *   this branch (spec §3.1's remaining work), and its slot is not one of the
- *   nineteen until it does.
+ *   this branch (spec §3.1's remaining work), and its slot is not one of
+ *   them until it does.
  *
  * An entry may be absent — one of these two is being removed and the other
  * added while this is written — so the check below is a subset rather than an
@@ -253,7 +250,7 @@ const PICKERS_REACHED: Readonly<Record<string, number>> = {
   [fixtureStageId('network-composer-1')]: 3,
   [fixtureStageId('one-to-many-dyad-census-1')]: 0,
   [fixtureStageId('ordinal-bin-1')]: 1,
-  [fixtureStageId('sociogram-1')]: 3,
+  [fixtureStageId('sociogram-1')]: 2,
   [fixtureStageId('tie-strength-census-1')]: 1,
 };
 
@@ -577,11 +574,8 @@ describe('the sites Architect refused creation at stay creation-free', () => {
     );
 
     expect(
-      await offersCreation(
-        harness.user,
-        attributeField('Layout attribute', dialog),
-      ),
-      'The narrative preset’s position attribute stopped offering creation, so the grouping attribute’s reading below proves nothing.',
+      await offersCreation(harness.user, attributeField('Layout', dialog)),
+      'The narrative preset’s layout stopped offering creation, so the grouping attribute’s reading below proves nothing.',
     ).toBe(true);
 
     await expectCreationFree(

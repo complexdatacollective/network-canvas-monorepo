@@ -90,7 +90,7 @@ export const attributeAvailabilityMessages = defineMessages({
     id: 'protocolBuilder.attributeUnavailable.formCannotCollect',
     defaultMessage: 'A form cannot collect {typeName} attributes.',
     description:
-      'Shown under an attribute in the list of a form field’s attribute control, when the attribute is a kind that no form control can ask for, such as one that records a position on a canvas or a map. typeName is the translated name of that kind, such as Layout or Location, as the codebook editor names it.',
+      'Shown under an attribute in the list of a form field’s attribute control, when the attribute is a kind that no form control can ask for, such as one that records a position on a map. typeName is the translated name of that kind, such as Location, as the codebook editor names it.',
   },
 });
 
@@ -102,7 +102,7 @@ export const typeNameOf = (intl: Formatter, type: VariableType): string => {
 
 /**
  * The reason an attribute of the wrong kind gets in a picker that needs ONE
- * kind: "Only Layout attributes can be used here."
+ * kind: "Only Boolean attributes can be used here."
  */
 export const onlyTypeReason =
   (intl: Formatter, needed: VariableType) => (): string =>

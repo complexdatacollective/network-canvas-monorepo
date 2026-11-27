@@ -25,6 +25,8 @@ import { EventQueue } from './eventQueue.ts';
 import {
   entityTypeReferences,
   inRemovalOrder,
+  layoutRuleReferences,
+  layoutStageReferences,
   stageReferences,
   variableReferences,
   withoutReference,
@@ -414,14 +416,24 @@ export class InMemoryProtocolStore {
   }
 
   /**
-   * Removes a codebook layout. No stage can name a layout yet, so nothing
-   * refuses it but a section held elsewhere.
+   * Removes a codebook layout, and the filter rules that name it.
+   *
+   * A stage that stores or shows positions in the layout refuses it: a
+   * Sociogram, a Network Composer or a Narrative preset without a layout is
+   * not one the researcher would recognise. The refusal is asked first, so a
+   * preset is never dropped as a reference the sweep could remove.
    */
   deleteLayout(layoutId: string, principal: HostPrincipal): RefactorOutcome {
     const target = sectionId({ kind: 'codebookLayout', layoutId });
     if (!this.has(target)) return { status: 'notFound', sectionId: target };
-    return this.#applyRefactor(
-      [[target, undefined]],
+    const seed: SectionWrite[] = [[target, undefined]];
+    const stages = layoutStageReferences(this.#documentsWith(seed), layoutId);
+    if (stages.length > 0) return { status: 'referenced', remaining: stages };
+    // A layout is never open in a dialog the way a codebook type is, so even
+    // the caller's own lock on it refuses the deletion.
+    return this.#refactor(
+      seed,
+      (documents) => layoutRuleReferences(documents, layoutId),
       principal,
       new Set<ProtocolSectionId>(),
     );
@@ -571,6 +583,7 @@ export class InMemoryProtocolStore {
       documents: Readonly<Record<string, SectionDoc>>,
     ) => SectionReference[],
     principal: HostPrincipal,
+    owned: ReadonlySet<ProtocolSectionId> = new Set(seed.map(([id]) => id)),
   ): RefactorOutcome {
     const documents = this.#documentsWith(seed);
     const rewritten = new Map<ProtocolSectionId, SectionDoc>();
@@ -580,11 +593,7 @@ export class InMemoryProtocolStore {
       remaining = referencesTo(documents);
     }
     if (remaining.length > 0) return { status: 'referenced', remaining };
-    return this.#applyRefactor(
-      [...seed, ...rewritten],
-      principal,
-      new Set(seed.map(([id]) => id)),
-    );
+    return this.#applyRefactor([...seed, ...rewritten], principal, owned);
   }
 
   /** Every section document, with a refactor's own writes folded in. */

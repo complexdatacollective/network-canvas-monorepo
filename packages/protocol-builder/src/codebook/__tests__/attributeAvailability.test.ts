@@ -14,13 +14,13 @@ import {
   onlyTypeReason,
 } from '../attributeAvailability.ts';
 
-const POSITION = testVariableId('position');
+const PLACE = testVariableId('place');
 const MARKED = testVariableId('marked');
 const NAME = testVariableId('name');
 const FUTURE = testVariableId('future');
 
 const VARIABLES: Variables = {
-  [POSITION]: { name: 'position', type: 'layout' },
+  [PLACE]: { name: 'place', type: 'location' },
   [MARKED]: { name: 'marked', type: 'boolean' },
   [NAME]: { name: 'name', type: 'text' },
 };
@@ -43,9 +43,9 @@ describe('attributeChoices', () => {
         unavailableForType: true,
       },
       {
-        value: POSITION,
-        label: 'position',
-        type: 'layout',
+        value: PLACE,
+        label: 'place',
+        type: 'location',
         unavailableReason: 'Only Boolean attributes can be used here.',
         unavailableForType: true,
       },
@@ -53,13 +53,13 @@ describe('attributeChoices', () => {
   });
 
   it('names the type a form cannot collect', () => {
-    const [position] = attributeChoices(
-      { [POSITION]: { name: 'position', type: 'layout' } },
-      (type) => type !== 'layout',
+    const [place] = attributeChoices(
+      { [PLACE]: { name: 'place', type: 'location' } },
+      (type) => type !== 'location',
       formCannotCollectReason(enIntl),
     );
-    expect(position?.unavailableReason).toBe(
-      'A form cannot collect Layout attributes.',
+    expect(place?.unavailableReason).toBe(
+      'A form cannot collect Location attributes.',
     );
   });
 

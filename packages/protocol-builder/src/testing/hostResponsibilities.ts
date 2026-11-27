@@ -53,7 +53,7 @@ const RESPONSIBILITIES: Readonly<Record<string, string>> = {
   Create:
     'Add a section the protocol does not hold yet — a stage, an entity type, a layout — and place it where the editor asked.',
   Delete:
-    'Remove a stage or a layout, and refuse while any section the removal would touch is held elsewhere.',
+    'Remove a stage or a layout, and refuse while any section the removal would touch is held elsewhere. Every host refuses deleting a layout that a stage names (a Sociogram, a Network Composer or a Narrative preset). When only a filter rule names the layout, Architect refuses, and the in-memory host and Studio remove the rule with the layout.',
   RefactorDeleteVariable:
     'Remove a variable from the codebook and every stage that referenced it, as one change, so no stage is left pointing at an attribute the codebook no longer has.',
   RefactorDeleteEntityType:

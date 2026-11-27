@@ -74,9 +74,9 @@ const EDGE_NOTES = fixtureVariableId(
 );
 const EGO_NAME = fixtureVariableId('ego', 'ego_name');
 const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
-const LAYOUT = fixtureVariableId(
+const LOCATION = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
-  'layout',
+  'location',
 );
 
 /** The ids of the objects an array in a fixture stage holds, in order. */
@@ -253,8 +253,8 @@ const fieldsOf = (
 };
 
 /**
- * A saved form collecting an attribute that holds a position rather than an
- * answer. Nothing in the editor can author this — the picker filters those
+ * A saved form collecting an attribute that is answered on a map rather than
+ * in a form. Nothing in the editor can author this — the picker filters those
  * attributes out — so it stands for the protocol that arrives already holding
  * one.
  */
@@ -268,7 +268,7 @@ const COLLECTS_A_POSITION = {
       fields: [
         {
           id: testId('field-1'),
-          variable: LAYOUT,
+          variable: LOCATION,
           prompt: en('Where do they sit?'),
         },
       ],
@@ -862,8 +862,8 @@ describe('the fields a form collects', () => {
   });
 
   /**
-   * A field bound to an attribute no control can collect — `layout` records
-   * where a node was dropped rather than an answer. The picker never offers
+   * A field bound to an attribute no form control can collect — `location`
+   * is answered on a map rather than in a form. The picker never offers
    * one, so this is the protocol that arrives already holding one: an import,
    * a hand-edited file, an attribute a collaborator retyped.
    *
@@ -3356,7 +3356,8 @@ describe('an attribute that stops being collectable under an open row', () => {
     const dialog = await openField(harness, 'Edit field');
     await dialog.findByRole('combobox', { name: 'Input control' });
 
-    // A position rather than an answer, so no control can collect it.
+    // Answered on a map rather than in a form, so no form control can
+    // collect it.
     harness.receiveCodebookUpdate({
       node: {
         [PERSON]: {
@@ -3365,7 +3366,7 @@ describe('an attribute that stops being collectable under an open row', () => {
             ...protocolPersonVariables(harness),
             [RELATIONSHIP_TO_EGO]: {
               name: 'relationship_to_ego',
-              type: 'layout',
+              type: 'location',
             },
           },
         },

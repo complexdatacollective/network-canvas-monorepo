@@ -62,46 +62,15 @@ export const sociogramPromptMessages = defineMessages({
   },
   promptPositionsTitle: {
     id: 'protocolBuilder.networkCanvas.promptPositionsTitle',
-    defaultMessage: 'Node layout',
+    defaultMessage: 'Unplaced nodes',
     description:
-      'Heading of the group inside the sociogram prompt dialog deciding where the participant’s placements are kept.',
+      'Heading of the group inside the sociogram prompt dialog deciding the order of the nodes the participant has not placed yet.',
   },
   promptPositionsDescription: {
     id: 'protocolBuilder.networkCanvas.promptPositionsDescription',
-    defaultMessage:
-      'Store node positions and configure the initial order of unplaced nodes.',
-    description: 'Description of the prompt node-positions group.',
-  },
-  promptLayoutLabel: {
-    id: 'protocolBuilder.networkCanvas.promptLayoutLabel',
-    defaultMessage: 'Layout attribute',
+    defaultMessage: 'Configure the initial order of unplaced nodes.',
     description:
-      'Label of the picker naming the codebook attribute one sociogram prompt stores each node’s position in. A layout attribute holds a pair of coordinates.',
-  },
-  promptLayoutHint: {
-    id: 'protocolBuilder.networkCanvas.promptLayoutHint',
-    defaultMessage:
-      'Create or select an attribute that stores node coordinates.',
-    description: 'Guidance under the prompt position-attribute picker.',
-  },
-  promptLayoutEmpty: {
-    id: 'protocolBuilder.networkCanvas.promptLayoutEmpty',
-    defaultMessage:
-      'This type has no position attributes yet. Create one to store what the participant places.',
-    description:
-      'Shown in place of the prompt position-attribute picker when the node type this stage is about has no layout attribute in the codebook. "This type" is that node type.',
-  },
-  promptLayoutRequired: {
-    id: 'protocolBuilder.networkCanvas.promptLayoutRequired',
-    defaultMessage: 'Choose the attribute this prompt stores positions in.',
-    description:
-      'Refusal shown under the prompt position-attribute picker when the researcher saves a prompt without choosing one.',
-  },
-  promptCreateLayoutLabel: {
-    id: 'protocolBuilder.networkCanvas.promptCreateLayoutLabel',
-    defaultMessage: 'Create a new position attribute',
-    description:
-      'Button beside the prompt position-attribute picker that adds a layout attribute to the codebook without leaving the stage. Also the title of the dialog it opens.',
+      'Description of the group inside the sociogram prompt dialog deciding the order of the nodes the participant has not placed yet.',
   },
   promptSortTitle: {
     id: 'protocolBuilder.networkCanvas.promptSortTitle',

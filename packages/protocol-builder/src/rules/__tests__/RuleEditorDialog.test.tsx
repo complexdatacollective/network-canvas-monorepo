@@ -913,14 +913,14 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
     ).toBeInTheDocument();
   });
 
-  it('says a stored attribute cannot carry a rule, rather than that it is gone', async () => {
+  it('opens a stored layout rule by the layout’s name', async () => {
     const user = userEvent.setup();
     renderRuleList([
       {
         id: testId('rule-a'),
         type: 'node',
-        // `home` is a layout attribute: still in the codebook, and answered
-        // with a point no rule can compare against. The picker is given the
+        // `home` is a layout of the codebook: still there, and answered with
+        // a point no rule can compare against. The picker is given the
         // attributes a rule CAN be built on, so leaving this one out of that
         // list made it indistinguishable from one that had been deleted — and
         // the researcher was sent to the codebook to look for something that
@@ -948,6 +948,40 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/no longer in the codebook/)).toBeNull();
+  });
+
+  it('opens and saves a stored rule naming a layout its node type does not have', async () => {
+    // No stage of this protocol places people in `home`, so the layout is
+    // not among the person type's attributes. A rule naming it is still a
+    // valid schema 8 rule carried forward, and it opens showing the layout's
+    // name and saves back as it was.
+    const user = userEvent.setup();
+    renderRuleList([
+      {
+        id: testId('rule-a'),
+        type: 'node',
+        options: { type: PERSON, attribute: HOME, operator: 'EXISTS' },
+      },
+    ]);
+
+    await openExistingRule(user);
+
+    const attribute = await waitFor(() => attributeField('Node attribute'));
+    expect(attributeTrigger(attribute)).toHaveAccessibleName(
+      /^Node attribute Home/u,
+    );
+    const operator = await screen.findByRole('combobox', { name: /Operator/ });
+    expect(operator).toHaveValue('EXISTS');
+    expect(screen.queryByText(/no longer in the codebook/)).toBeNull();
+
+    await finishAndClose(user);
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: RULE_EDITOR })).toBeNull(),
+    );
+    expect(probedRuleSet()?.rules?.[0]).toMatchObject({
+      type: 'node',
+      options: { type: PERSON, attribute: HOME, operator: 'EXISTS' },
+    });
   });
 
   it('shows an operator the attribute’s type does not allow, and refuses to offer it again', async () => {

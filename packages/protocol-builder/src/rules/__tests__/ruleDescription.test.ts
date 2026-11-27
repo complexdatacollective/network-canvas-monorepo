@@ -16,6 +16,7 @@ const CONSENT = testVariableId('consent');
 const EGO_NAME = testVariableId('egoName');
 const FAVOURITE_COLOUR = testVariableId('favouriteColour');
 const GONE = testVariableId('gone');
+const HOME = testVariableId('home');
 const MET = testVariableId('met');
 const MOOD = testVariableId('mood');
 const NOTE = testVariableId('note');
@@ -47,6 +48,27 @@ describe('describeRule', () => {
     expect(description.operator.text).toBe('exists');
     expect(description.columns).toBe(false);
     expect(description.text).toBe('Person exists');
+    expect(description.problems).toEqual([]);
+  });
+
+  it('describes a rule naming a layout by the layout’s name', () => {
+    // `home` is a layout of the codebook, not an attribute of the person
+    // type, and a rule naming it asks whether a person has a position there.
+    const description = describeRule({
+      rule: {
+        id: 'rule-layout',
+        type: 'node',
+        options: { type: PERSON, attribute: HOME, operator: 'EXISTS' },
+      },
+      codebook,
+    });
+
+    expect(description.attribute).toMatchObject({
+      label: 'Home',
+      type: 'layout',
+      missing: false,
+    });
+    expect(description.text).toBe('Person where Home');
     expect(description.problems).toEqual([]);
   });
 

@@ -7,13 +7,16 @@ import { background } from '../../../../../sections/background/background.tsx';
 import { nodeLayout } from '../../../../../sections/canvas-behaviours/nodeLayout.tsx';
 import { attributeField } from '../../../../../testing/attributePicker.ts';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   fixtureTypeId,
 } from '../../../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../../../testing/testId.ts';
+import { sociogramLayout } from '../../SociogramLayoutSection.tsx';
 import { sociogramPrompts } from '../sociogramPrompts.tsx';
 
+const Layout = sociogramLayout();
 const Prompts = sociogramPrompts();
 const NodeLayout = nodeLayout();
 const Background = background();
@@ -21,6 +24,7 @@ const Background = background();
 /** Every section a sociogram composes that is not one of the shared five. */
 export const sociogramSections = (
   <>
+    <Layout />
     <Prompts />
     <NodeLayout />
     <Background />
@@ -48,6 +52,7 @@ export const sociogramHolding = (prompt: Record<string, unknown>) => ({
       subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
+      layout: fixtureLayoutId('layout'),
       prompts: [prompt],
     },
   },

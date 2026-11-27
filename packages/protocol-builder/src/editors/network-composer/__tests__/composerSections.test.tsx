@@ -50,7 +50,7 @@ const COMPOSER_NAME = personVariable('composerName');
 const RELATIONSHIP_TO_EGO = personVariable('relationship_to_ego');
 const FLAGGED = personVariable('flagged');
 const HIGHLIGHTED = personVariable('highlighted');
-const LAYOUT = personVariable('layout');
+const LOCATION = personVariable('location');
 const EDGE_NOTES = fixtureVariableId(
   { entity: 'edge', typeName: 'knows' },
   'edgeNotes',
@@ -1438,9 +1438,9 @@ describe('what a network composer lets the participant build', () => {
     await switchOnNodeForm(harness);
     await addRow(harness, 'Create new node attribute');
 
-    // A position attribute: named on this type, and never choosable here,
-    // because no control can ask a participant for one. It is listed with
-    // that reason, so the name finds it: no create row, not even the one
+    // A location attribute: named on this type, and never choosable here,
+    // because no form control can ask a participant for one. It is listed
+    // with that reason, so the name finds it: no create row, not even the one
     // that refuses the name.
     expect(
       await createRowIn(
@@ -1448,35 +1448,33 @@ describe('what a network composer lets the participant build', () => {
         picker('Attribute'),
         'Find or create an attribute',
         (term) => `An attribute cannot be named “${term}”`,
-        'layout',
+        'location',
       ),
     ).toBeNull();
     expect(
-      await unavailableReason(harness.user, picker('Attribute'), LAYOUT),
-    ).toBe('A form cannot collect Layout attributes.');
+      await unavailableReason(harness.user, picker('Attribute'), LOCATION),
+    ).toBe('A form cannot collect Location attributes.');
   });
 
   /** The attribute is created and bound without the researcher leaving. */
-  it('creates a position attribute without leaving the stage', async () => {
-    const harness = renderStageEditor(composerHolding({ layoutVariable: '' }));
+  it('creates a layout without leaving the stage', async () => {
+    const harness = renderStageEditor(composerHolding({ layout: '' }));
 
     await harness.opened();
-    await inventAttribute(
-      harness.user,
-      picker('Create or select an attribute to store node coordinates'),
-      'placedAt',
-    );
+    await inventAttribute(harness.user, picker('Layout'), 'placedAt');
 
     // Bound here, not merely created: the researcher asked for it from this
     // control, so finding it in a list that has just grown is not the answer.
-    // Read off the field itself: what it SHOWS is the attribute it holds.
+    // Read off the field itself: what it SHOWS is the layout it holds.
     await waitFor(() =>
-      expect(
-        within(
-          picker('Create or select an attribute to store node coordinates'),
-        ).getByText('placedAt'),
-      ).toBeVisible(),
+      expect(within(picker('Layout')).getByText('placedAt')).toBeVisible(),
     );
+    const created = Object.entries(harness.editorCodebook().layouts ?? {}).find(
+      ([, layout]) => layout.name === 'placedAt',
+    )?.[0];
+    expect(created).toBeDefined();
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.layout).toBe(created);
   });
 
   /**
@@ -2987,7 +2985,7 @@ describe('the groups a network composer divides its decisions into', () => {
     expect(
       screen.getByRole('region', { name: 'Node positions' }),
     ).toHaveAccessibleDescription(
-      "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
+      "Stores each node's position on the canvas in a layout. Choosing the same layout in other stages keeps positions as the participant moves between tasks.",
     );
     expect(
       screen.getByRole('region', { name: 'Automatic layout' }),
@@ -3034,10 +3032,7 @@ describe('the groups a network composer divides its decisions into', () => {
       within(screen.getByRole('region', { name: 'Node positions' })).getByRole(
         'combobox',
         {
-          name: new RegExp(
-            `^Create or select an attribute to store node coordinates`,
-            'u',
-          ),
+          name: new RegExp(`^Layout`, 'u'),
         },
       ),
     ).toBeInTheDocument();

@@ -10,7 +10,6 @@ const VARIABLE_TYPES = [
   'boolean',
   'categorical',
   'datetime',
-  'layout',
   'location',
   'number',
   'ordinal',

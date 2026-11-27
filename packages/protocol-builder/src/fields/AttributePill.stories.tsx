@@ -9,7 +9,6 @@ const EVERY_TYPE: readonly VariableType[] = [
   'boolean',
   'categorical',
   'datetime',
-  'layout',
   'location',
   'number',
   'ordinal',

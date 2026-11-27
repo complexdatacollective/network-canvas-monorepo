@@ -1,12 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import {
-  attributeField,
-  attributeTrigger,
-  createRowIn,
-} from '../../../testing/attributePicker.ts';
-import { fixtureVariableId } from '../../../testing/protocolFixture.ts';
+import { fixtureLayoutId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testVariableId } from '../../../testing/testId.ts';
 import {
@@ -65,26 +60,6 @@ describe('the narrative sections, read in Spanish', () => {
     });
 
     const preset = await openPreset(harness, 0, 'Edit vista predefinida');
-    // The picker is a labelled field holding a trigger, so the label and the
-    // words on the button are two separate translations and both are asserted.
-    // This preset already positions by an attribute, which is the state the
-    // trigger says "change" rather than "select" in.
-    expect(
-      attributeTrigger(
-        attributeField('Atributo de disposición', screen.getByRole('dialog')),
-      ),
-    ).toBeInTheDocument();
-    // Inventing one is offered from inside that window, on the term the
-    // researcher typed, and in their language: the sections no longer carry a
-    // create control of their own.
-    expect(
-      await createRowIn(
-        harness.user,
-        attributeField('Atributo de disposición', screen.getByRole('dialog')),
-        'Find or create an attribute',
-        (term) => `Crear «${term}»`,
-      ),
-    ).not.toBeNull();
     expect(preset.getByText('Resaltado de nodos')).toBeInTheDocument();
   });
 
@@ -120,10 +95,7 @@ describe('the narrative sections, read in Spanish', () => {
       ...narrativeHolding({
         id: 'narrative-preset-1',
         label: { 'en-US': 'Vista por defecto' },
-        layoutVariable: fixtureVariableId(
-          { entity: 'node', typeName: 'person' },
-          'layout',
-        ),
+        layout: fixtureLayoutId('layout'),
         highlight: [
           { variable: LOST_HIGHLIGHT, label: { 'en-US': 'Antes marcado' } },
         ],

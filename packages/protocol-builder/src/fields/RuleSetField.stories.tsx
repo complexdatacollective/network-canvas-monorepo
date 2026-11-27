@@ -11,6 +11,7 @@ import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   fixtureTypeId,
   fixtureVariableId,
@@ -104,6 +105,17 @@ const KNOWS_SOMEBODY: RuleDraft = {
   id: testId('rule-knows'),
   type: 'edge',
   options: { type: KNOWS, operator: 'EXISTS' },
+};
+
+/** Everyone the participant has placed on the canvas. */
+const PLACED: RuleDraft = {
+  id: testId('rule-placed'),
+  type: 'node',
+  options: {
+    type: PERSON,
+    attribute: fixtureLayoutId('layout'),
+    operator: 'EXISTS',
+  },
 };
 
 const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: PERSON });
@@ -205,6 +217,25 @@ export const TheRulesAStageHolds: Story = {
     await expect(
       canvas.getByRole('radio', { name: 'All rules must match' }),
     ).toBeChecked();
+  },
+};
+
+/**
+ * A stored rule that names a layout rather than an attribute. A layout is a
+ * codebook entry of its own, so the rule is read back by the layout's name,
+ * and no new rule can be written about one.
+ */
+export const ARuleNamingALayout: Story = {
+  args: { seedEdit: holdingSkipLogic([PLACED]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByRole('button', {
+        name: /^Edit rule: person where layout/u,
+      }),
+    ).toBeInTheDocument();
   },
 };
 

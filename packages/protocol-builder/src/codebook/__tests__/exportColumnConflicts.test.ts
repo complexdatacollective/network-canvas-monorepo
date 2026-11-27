@@ -57,8 +57,6 @@ const categorical = (name: string, values: readonly string[]) => ({
 
 const text = (name: string) => ({ name, type: 'text', component: 'Text' });
 
-const layout = (name: string) => ({ name, type: 'layout' });
-
 /**
  * A section as the codebook stores it. Its variables are written here by a
  * readable label and stored under that label's test id.
@@ -158,19 +156,6 @@ describe('creating an attribute', () => {
     });
   });
 
-  it('refuses a layout attribute whose position is written where another attribute is', () => {
-    expect(
-      conflictOf(() =>
-        create(sectionOf({ pos_x: text('pos_x') }), layout('pos')),
-      )?.path,
-    ).toEqual(['name']);
-    expect(
-      conflictOf(() =>
-        create(sectionOf({ a: categorical('a', ['b_x', 'c']) }), layout('a_b')),
-      )?.path,
-    ).toEqual(['name']);
-  });
-
   it('judges a built-in column against the kind of thing it belongs to', () => {
     // `COMMIT_HASH` is a column of the participant's own row only.
     const draft = categorical('COMMIT', ['HASH', 'other']);
@@ -215,16 +200,6 @@ describe('changing an attribute that is already in the codebook', () => {
         text: 'Option “bar” of “other” would be exported to a column called “other_bar”, but the attribute “other_bar” already has a column called “other_bar”. Change the option value or the attribute name.',
       },
     );
-  });
-
-  it('refuses renaming a layout attribute so that a position lands on a column', () => {
-    const section = sectionOf({
-      pos: layout('pos'),
-      other: text('other_y'),
-    });
-    expect(
-      conflictOf(() => update(section, 'pos', { name: 'other' }))?.path,
-    ).toEqual(['name']);
   });
 
   it('refuses an option added where another attribute already is', () => {
@@ -320,16 +295,6 @@ describe('changing an attribute that is already in the codebook', () => {
         ),
       )?.path,
     ).toEqual(['options']);
-    expect(
-      conflictOf(() =>
-        update(
-          sectionOf({ pos: text('pos'), other: text('pos_x') }),
-          'pos',
-          { type: 'layout' },
-          ['type', 'component'],
-        ),
-      )?.path,
-    ).toEqual(['name']);
   });
 
   it('accepts a change of type that makes a name expand into free columns', () => {

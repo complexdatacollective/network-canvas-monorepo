@@ -216,6 +216,15 @@ export function fixtureVariableId(owner: VariableOwner, name: string): string {
   return key;
 }
 
+/** The id the fixture keeps its layout called `name` under. */
+export function fixtureLayoutId(name: string): string {
+  const key = keyNamed(fixtureCodebook().layouts, name);
+  if (key === undefined) {
+    throw new Error(`The all-interfaces protocol has no layout "${name}".`);
+  }
+  return key;
+}
+
 /**
  * The id of the option whose value is `value` on the fixture's variable
  * called `name`, owned as `fixtureVariableId` takes it.

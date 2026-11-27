@@ -2,7 +2,6 @@ import { type ComponentType, useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { formatObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import Section from '@codaco/fresco-ui/Section';
@@ -13,6 +12,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { availableOnly } from '../../../../codebook/attributeAvailability.ts';
+import LayoutPickerField from '../../../../fields/LayoutPickerField.tsx';
 import { LocalizedInputField } from '../../../../fields/LocalizedStringField.tsx';
 import { FilterRuleSetField } from '../../../../fields/RuleSetField.tsx';
 import VariablePickerField from '../../../../fields/VariablePickerField.tsx';
@@ -39,8 +39,6 @@ import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
   BOOLEAN_TYPES,
   CATEGORICAL_TYPES,
-  LAYOUT_TYPE,
-  LAYOUT_TYPES,
   useEdgeTypeChoices,
   useVariableChoices,
 } from '../../../../sections/canvas/codebookChoices.ts';
@@ -52,12 +50,11 @@ import {
   useStableIdList,
 } from '../../../../sections/canvas/rowValues.ts';
 import { useLostReferences } from '../../../../sections/canvas/useLostReferences.ts';
-import { useCreateAttributeForSlot } from '../../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useStageSubject } from '../../../../sections/useStageSubject.ts';
 import { narrativePresetMessages as messages } from './narrativePresetMessages.ts';
 
 const LABEL_FIELD = 'label';
-const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
+const LAYOUT_FIELD = 'layout';
 const GROUP_VARIABLE_FIELD = 'groupVariable';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const HIGHLIGHT_FIELD = 'highlight';
@@ -290,15 +287,6 @@ function LegendLabelField({
 export function NarrativePresetFields({ item }: RowEditorProps) {
   const intl = useAppIntl();
   const subject = useStageSubject('node');
-  // Writes reach THIS dialog's form, not the stage's: a preset is the
-  // researcher's unsaved row until they save it.
-  const setRowValue = useFormStore((store) => store.setFieldValue);
-  const { createProps, editor } = useCreateAttributeForSlot({
-    subject,
-    variableType: LAYOUT_TYPE,
-    title: intl.formatMessage(messages.presetCreateLayoutLabel),
-    onCreated: (variableId) => setRowValue(LAYOUT_VARIABLE_FIELD, variableId),
-  });
   const edgeChoicesOffered = useEdgeTypeChoices();
   // The same rules a stage's own filter may hold, judged the same way: a
   // preset's filter narrows the nodes and edges it shows.
@@ -308,7 +296,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     PRESET_FILTER_CLEAR_WORDS,
   );
 
-  const committedLayout = asText(item[LAYOUT_VARIABLE_FIELD]);
+  const committedLayout = asText(item[LAYOUT_FIELD]);
   const committedGroup = asText(item[GROUP_VARIABLE_FIELD]);
   // Held as the same arrays while their contents do not change: a field's
   // starting value is part of its registration, and a new array every render
@@ -319,11 +307,6 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   );
   const committedHighlight = useStableIdList(asIdList(item[HIGHLIGHT_FIELD]));
 
-  const layoutOptions = useVariableChoices({
-    subject,
-    types: LAYOUT_TYPES,
-    ...(committedLayout === undefined ? {} : { currentValue: committedLayout }),
-  });
   const groupOptions = useVariableChoices({
     subject,
     types: CATEGORICAL_TYPES,
@@ -440,18 +423,14 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
       </Section>
 
       <Section title={intl.formatMessage(messages.presetPositionsTitle)}>
-        <Field<typeof VariablePicker>
-          name={LAYOUT_VARIABLE_FIELD}
+        <Field<typeof LayoutPickerField>
+          name={LAYOUT_FIELD}
           label={intl.formatMessage(messages.presetLayoutLabel)}
           hint={intl.formatMessage(messages.presetLayoutHint)}
-          component={VariablePicker}
-          options={layoutOptions}
-          emptyMessage={intl.formatMessage(messages.presetLayoutEmpty)}
+          component={LayoutPickerField}
           initialValue={committedLayout}
           required={intl.formatMessage(messages.presetLayoutRequired)}
-          {...createProps}
         />
-        {editor}
       </Section>
 
       <Section

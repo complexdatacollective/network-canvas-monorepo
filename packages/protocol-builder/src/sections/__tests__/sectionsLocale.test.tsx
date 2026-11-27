@@ -35,9 +35,9 @@ import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
 
 const PERSON = fixtureTypeId('node', 'person');
-const LAYOUT = fixtureVariableId(
+const LOCATION = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
-  'layout',
+  'location',
 );
 const CONTACT_TYPE = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
@@ -737,8 +737,8 @@ describe('the form-fields row dialog, read in Spanish', () => {
   });
 
   /**
-   * The dialog with no input control to offer. `layout` records where a node
-   * was dropped rather than an answer, so no control collects it — a form
+   * The dialog with no input control to offer. `location` is answered on a
+   * map rather than in a form, so no form control collects it — a form
    * cannot ask for one, and a protocol that already does opens here.
    */
   it('says a field whose attribute cannot be answered is unsaveable', async () => {
@@ -753,7 +753,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
             fields: [
               {
                 id: 'field-1',
-                variable: LAYOUT,
+                variable: LOCATION,
                 prompt: en('¿Dónde se sitúa?'),
               },
             ],
@@ -847,16 +847,16 @@ describe('a codebook write a Spanish form field needs, refused', () => {
       'Crear nuevo campo de formulario',
     );
 
-    // The person type's layout attribute `layout` exports its position to
-    // `layout_x`, so no attribute may take that name — and no attribute does,
-    // so the list has nothing to find and the create row says why.
+    // The codebook's layout `layout` exports positions to `layout_x`, so no
+    // attribute may take that name — and no attribute does, so the list has
+    // nothing to find and the create row says why.
     const window = await searchForAnAttribute(harness, dialog, 'layout_x');
 
     // Both the row's title and the reason under it are in Spanish.
     const refused = within(window).getByRole('option', {
       name: 'Un atributo no puede llamarse «layout_x»',
       description:
-        'La exportación ya tiene una columna llamada «layout_x» para la posición del atributo de disposición «layout». Elige otro nombre.',
+        'La exportación ya tiene una columna llamada «layout_x» para las posiciones de la disposición «layout». Elige otro nombre.',
     });
     expect(refused).toHaveAttribute('data-create-name', 'layout_x');
     expect(refused).toHaveAttribute('data-create-state', 'invalid');

@@ -16,8 +16,8 @@ import { VARIABLE_TYPE_OPTIONS } from '../codebook/variableTypeLabels.ts';
 /**
  * The attribute types a form can ask for, and what each is called.
  *
- * `layout` and `location` are left out: they hold a position rather than an
- * answer, have no input control at all, and a form cannot ask for one.
+ * `location` is left out: it holds a position rather than an answer, has no
+ * input control at all, and a form cannot ask for one.
  * Answered from `VARIABLE_TYPE_COMPONENTS` rather than written out, so a type
  * the schema teaches a control to render cannot go unoffered here.
  *

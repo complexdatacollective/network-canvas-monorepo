@@ -1114,14 +1114,14 @@ describe('the attribute picker, read in Spanish', () => {
     const harness = renderInSpanish();
     const popup = await openInSpanish(harness);
 
-    // The person type's layout attribute `layout` exports its position to
-    // `layout_x`. An attribute the type already has by a name is listed
-    // instead, so the export column is what still turns a name away here.
+    // The codebook's layout `layout` exports positions to `layout_x`. An
+    // attribute the type already has by a name is listed instead, so the
+    // export column is what still turns a name away here.
     await harness.user.type(attributeSearchBox(popup), 'layout_x');
 
     expect(createRowOf(popup)).toHaveAttribute('aria-disabled', 'true');
     expect(createRowOf(popup)).toHaveAccessibleDescription(
-      'La exportación ya tiene una columna llamada «layout_x» para la posición del atributo de disposición «layout». Elige otro nombre.',
+      'La exportación ya tiene una columna llamada «layout_x» para las posiciones de la disposición «layout». Elige otro nombre.',
     );
   });
 

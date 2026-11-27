@@ -23,7 +23,10 @@ import {
   useState,
 } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -146,8 +149,32 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
      * the researcher binds it, and left alone when the stage is merely opened.
      */
     onSelectExisting?: (variableId: string) => void;
+    /**
+     * Why a name typed in the search box cannot be created, in place of the
+     * rule for an attribute's name: for a picker whose create row adds
+     * something other than an attribute.
+     */
+    nameRefusal?: (typedName: string) => string | undefined;
+    /**
+     * The sentences this control says, where the thing it chooses is not an
+     * attribute. Module-level, so the control is not re-rendered for a new
+     * object every time its caller is.
+     */
+    wording?: PickerWording;
+    /**
+     * What a screen reader calls the search box, which stays English in every
+     * language, for a picker of something other than attributes.
+     */
+    searchNames?: SearchNames;
   }
 >;
+
+type SearchNames = Readonly<{ create: string; only: string }>;
+
+const ATTRIBUTE_SEARCH_NAMES: SearchNames = {
+  create: 'Find or create an attribute',
+  only: 'Find an attribute',
+};
 
 const messages = defineMessages({
   placeholder: {
@@ -280,6 +307,14 @@ const messages = defineMessages({
 });
 
 /**
+ * Replacement sentences for a picker of something other than attributes, each
+ * taking the same values as the sentence it replaces.
+ */
+export type PickerWording = Partial<
+  Record<keyof typeof messages, MessageDescriptor>
+>;
+
+/**
  * The package's one sentence for "the codebook has it, and nothing here took
  * it".
  *
@@ -398,7 +433,6 @@ const ENGLISH_TYPE_NAMES: Record<VariableType, string> = {
   categorical: 'Categorical',
   scalar: 'Scalar',
   datetime: 'Date',
-  layout: 'Layout',
   location: 'Location',
 };
 
@@ -553,6 +587,9 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     newVariableType,
     onCreateOption,
     onSelectExisting,
+    nameRefusal,
+    wording,
+    searchNames = ATTRIBUTE_SEARCH_NAMES,
     disabled = false,
     readOnly = false,
     className,
@@ -561,6 +598,10 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     'aria-labelledby': ariaLabelledBy,
   } = props;
   const intl = useAppIntl();
+  const words = useMemo(
+    () => (wording === undefined ? messages : { ...messages, ...wording }),
+    [wording],
+  );
   const portalContainer = usePortalContainer();
   const scopeId = useId();
   const valueId = `${scopeId}-value`;
@@ -700,13 +741,17 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
   const invalidName = useMemo(
     () =>
       offersCreate
-        ? variableNameRefusal(typedName, {
-            intl,
-            ...(nameScope === undefined ? {} : { scope: nameScope }),
-            ...(newVariableType === undefined ? {} : { type: newVariableType }),
-          })
+        ? nameRefusal === undefined
+          ? variableNameRefusal(typedName, {
+              intl,
+              ...(nameScope === undefined ? {} : { scope: nameScope }),
+              ...(newVariableType === undefined
+                ? {}
+                : { type: newVariableType }),
+            })
+          : nameRefusal(typedName)
         : undefined,
-    [intl, nameScope, newVariableType, offersCreate, typedName],
+    [intl, nameRefusal, nameScope, newVariableType, offersCreate, typedName],
   );
 
   const close = useCallback(() => {
@@ -747,7 +792,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     setAwaitingChoice(true);
     setCreate({ kind: 'busy', name: variableName });
     setAnnouncement(
-      intl.formatMessage(messages.createRowBusy, {
+      intl.formatMessage(words.createRowBusy, {
         attributeName: variableName,
       }),
     );
@@ -785,7 +830,15 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
       setAnnouncement('');
       close();
     }
-  }, [busy, close, intl, invalidName, onCreateOption, typedName]);
+  }, [
+    busy,
+    close,
+    intl,
+    invalidName,
+    onCreateOption,
+    typedName,
+    words.createRowBusy,
+  ]);
 
   const handleValueChange = (
     next: string | null,
@@ -858,7 +911,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
         <AttributePill
           missing
           className="h-9"
-          name={intl.formatMessage(messages.missingOptionLabel, {
+          name={intl.formatMessage(words.missingOptionLabel, {
             attributeId: value,
           })}
         />
@@ -957,7 +1010,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
           />
           <span className="flex min-w-0 flex-col gap-1">
             <span id={createTitleId} className="font-semibold break-words">
-              {intl.formatMessage(messages.createRowInvalidName, {
+              {intl.formatMessage(words.createRowInvalidName, {
                 attributeName: typedName,
               })}
             </span>
@@ -998,10 +1051,9 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
         </span>
         <span className="flex min-w-0 flex-col gap-1">
           <span id={createTitleId} className="font-semibold break-words">
-            {intl.formatMessage(
-              busy ? messages.createRowBusy : messages.createRow,
-              { attributeName: typedName },
-            )}
+            {intl.formatMessage(busy ? words.createRowBusy : words.createRow, {
+              attributeName: typedName,
+            })}
           </span>
           {refusal === undefined ? (
             <span
@@ -1013,8 +1065,8 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
                   <AttributeTypeMark type={newVariableType} />
                 )}
               {typeName === undefined
-                ? intl.formatMessage(messages.createRowUntyped)
-                : intl.formatMessage(messages.createRowType, {
+                ? intl.formatMessage(words.createRowUntyped)
+                : intl.formatMessage(words.createRowType, {
                     typeName: intl.formatMessage(typeName),
                   })}
             </span>
@@ -1043,17 +1095,17 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
       if (options.length > 0) {
         return intl.formatMessage(
           onCreateOption === undefined
-            ? messages.noneAvailable
-            : messages.noneAvailableCreate,
+            ? words.noneAvailable
+            : words.noneAvailableCreate,
         );
       }
       if (onCreateOption !== undefined) {
-        return intl.formatMessage(messages.firstAttribute, firstAttributeTags);
+        return intl.formatMessage(words.firstAttribute, firstAttributeTags);
       }
-      return emptyMessage ?? intl.formatMessage(messages.emptyState);
+      return emptyMessage ?? intl.formatMessage(words.emptyState);
     }
     if (available.length === 0 && unavailable.length === 0 && !offersCreate) {
-      return intl.formatMessage(messages.noMatches, { query: query.trim() });
+      return intl.formatMessage(words.noMatches, { query: query.trim() });
     }
     return undefined;
   })();
@@ -1077,7 +1129,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
           aria-describedby={ariaDescribedBy}
           className="w-full py-6 text-center text-sm text-current/70 italic"
         >
-          {emptyMessage ?? intl.formatMessage(messages.emptyState)}
+          {emptyMessage ?? intl.formatMessage(words.emptyState)}
         </p>
       ) : (
         <>
@@ -1148,7 +1200,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
                       arrives={false}
                     >
                       <span className="text-input-contrast/70 truncate italic">
-                        {intl.formatMessage(messages.placeholder)}
+                        {intl.formatMessage(words.placeholder)}
                       </span>
                     </TriggerValue>
                   ) : (
@@ -1217,13 +1269,13 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
                       // list can create an attribute.
                       aria-label={
                         onCreateOption === undefined
-                          ? 'Find an attribute'
-                          : 'Find or create an attribute'
+                          ? searchNames.only
+                          : searchNames.create
                       }
                       placeholder={intl.formatMessage(
                         onCreateOption === undefined
-                          ? messages.searchOnlyPlaceholder
-                          : messages.searchPlaceholder,
+                          ? words.searchOnlyPlaceholder
+                          : words.searchPlaceholder,
                       )}
                       readOnly={busy}
                       render={({
@@ -1275,7 +1327,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
                             )}
                           >
                             <Combobox.GroupLabel className="px-4 py-1.5 text-sm font-semibold text-current/70">
-                              {intl.formatMessage(messages.unavailableHeading)}
+                              {intl.formatMessage(words.unavailableHeading)}
                             </Combobox.GroupLabel>
                             {unavailable.map(attributeRow)}
                           </Combobox.Group>
@@ -1296,7 +1348,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
             (options.length > 0 || emptyMessage !== undefined) && (
               <p className="text-sm text-current/70">
                 {options.length > 0
-                  ? intl.formatMessage(messages.noneAvailableField)
+                  ? intl.formatMessage(words.noneAvailableField)
                   : emptyMessage}
               </p>
             )}
@@ -1307,7 +1359,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
           )}
           {isMissing && (
             <p id={reasonId} className="text-destructive-ink text-sm">
-              {intl.formatMessage(messages.missingAttribute)}
+              {intl.formatMessage(words.missingAttribute)}
             </p>
           )}
           {heldReason !== undefined && (
@@ -1335,7 +1387,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
             {notice?.kind === 'unassigned' && (
               <Alert variant="info" role="presentation">
                 <AlertDescription>
-                  {intl.formatMessage(messages.createdUnassigned, {
+                  {intl.formatMessage(words.createdUnassigned, {
                     variableName: notice.variableName,
                   })}
                 </AlertDescription>

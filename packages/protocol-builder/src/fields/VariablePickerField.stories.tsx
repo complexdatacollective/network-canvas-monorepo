@@ -44,13 +44,6 @@ const PERSON_ATTRIBUTES: readonly VariablePickerOption[] = [
     type: 'ordinal',
     unavailableReason: `This is an Ordinal attribute. ${NEEDS_BOOLEAN}`,
   },
-  {
-    value: 'layout',
-    label: 'layout',
-    type: 'layout',
-    unavailableReason:
-      'This is a Layout attribute. It records where nodes are placed on the canvas, so it cannot be used to highlight them.',
-  },
 ];
 
 const FIELD_LABEL = 'Attribute to highlight';
@@ -89,7 +82,7 @@ function Harness({
         name: option.label,
         type: option.type ?? 'text',
       })),
-      layouts: [],
+      layouts: [{ name: 'layout' }],
     }),
     [options],
   );
@@ -288,7 +281,7 @@ export const CreateRowWithoutType: Story = {
 
 /**
  * A name that the export cannot use: "layout_x" is already a column that the
- * layout attribute "layout" writes.
+ * layout "layout" writes.
  */
 export const InvalidName: Story = {
   args: { create: 'created' },

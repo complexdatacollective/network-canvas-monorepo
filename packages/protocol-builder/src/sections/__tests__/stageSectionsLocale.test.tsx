@@ -11,6 +11,7 @@ import {
   protocolStrings,
 } from '../../testing/localeSweep.ts';
 import {
+  fixtureLayoutId,
   fixtureTypeId,
   fixtureVariableId,
 } from '../../testing/protocolFixture.ts';
@@ -30,10 +31,7 @@ import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 const NICKNAME = testVariableId('nickname');
 const PERSON = fixtureTypeId('node', 'person');
 const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
-const LAYOUT = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'layout',
-);
+const LAYOUT = fixtureLayoutId('layout');
 
 /**
  * Copy in the fixture protocol's only language, as schema 9 holds it. The
@@ -365,13 +363,13 @@ describe('a prompt’s sort rules, read in Spanish', () => {
         subject: { entity: 'node', types: [PERSON] },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { automaticLayout: true },
+        layout: LAYOUT,
         prompts: [
           {
             id: 'sociogram-prompt-1',
             text: inProtocolLanguage(
               'Coloca juntas a las personas que se conocen',
             ),
-            layout: { layoutVariable: LAYOUT },
             sortOrder: [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
           },
         ],

@@ -247,11 +247,6 @@
     "es": "Configuración de vínculos",
     "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.edgeConfiguration"
   },
-  "protocolBuilder.networkCanvas.composerLayoutLabel": {
-    "en": "Create or select an attribute to store node coordinates",
-    "es": "Crear o seleccionar un atributo para guardar las coordenadas de los nodos",
-    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.createOrSelectAnAttributeTo"
-  },
   "protocolBuilder.networkCanvas.composerNodeDescription": {
     "en": "Configure attribute mappings, layout behavior, group hulls, and editable node attributes.",
     "es": "Configura las asignaciones de atributos, el comportamiento de la disposición, las envolventes de grupos y los atributos editables de nodos.",
@@ -371,12 +366,6 @@
     "es": "Atributos editables",
     "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.editableAttributes"
   },
-  "protocolBuilder.networkCanvas.nodePositionsSectionDescription": {
-    "en": "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
-    "es": "Guarda la posición de cada nodo en el lienzo. Reutilizar el mismo atributo en varias etapas conserva las posiciones cuando la persona participante pasa de una tarea a otra.",
-    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.storesEachNodeSPositionOnThe",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
   "protocolBuilder.networkCanvas.nodePositionsSectionTitle": {
     "en": "Node positions",
     "es": "Posiciones de nodos",
@@ -436,16 +425,6 @@
     "en": "Preset identity",
     "es": "Identidad de la vista predefinida",
     "from": "74a07e626 architect.sections.narrativePresets.presetFields.presetIdentity"
-  },
-  "protocolBuilder.networkCanvas.presetLayoutHint": {
-    "en": "Select an attribute to use to position the nodes for this preset.",
-    "es": "Selecciona un atributo para colocar los nodos en esta vista predefinida.",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.selectAnAttributeToUseTo"
-  },
-  "protocolBuilder.networkCanvas.presetLayoutLabel": {
-    "en": "Layout attribute",
-    "es": "Atributo de disposición",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.layoutAttribute"
   },
   "protocolBuilder.networkCanvas.presetNameHint": {
     "en": "The preset label will used to quickly identify the preset from within the narrative interface. It will be visible to the participant.",
@@ -534,26 +513,6 @@
     "en": "Boolean attribute",
     "es": "Atributo booleano",
     "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.booleanAttribute"
-  },
-  "protocolBuilder.networkCanvas.promptLayoutHint": {
-    "en": "Create or select an attribute that stores node coordinates.",
-    "es": "Crea o selecciona un atributo que guarde las coordenadas de los nodos.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.createOrSelectAnAttributeThat"
-  },
-  "protocolBuilder.networkCanvas.promptLayoutLabel": {
-    "en": "Layout attribute",
-    "es": "Atributo de disposición",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.layoutAttribute"
-  },
-  "protocolBuilder.networkCanvas.promptPositionsDescription": {
-    "en": "Store node positions and configure the initial order of unplaced nodes.",
-    "es": "Guarda las posiciones de los nodos y configura el orden inicial de los que todavía no se han colocado.",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.storeNodePositionsAndConfigureThe"
-  },
-  "protocolBuilder.networkCanvas.promptPositionsTitle": {
-    "en": "Node layout",
-    "es": "Disposición de nodos",
-    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.nodeLayout"
   },
   "protocolBuilder.networkCanvas.promptSortAddLabel": {
     "en": "Add new sort rule",

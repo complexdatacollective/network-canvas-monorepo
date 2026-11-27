@@ -5,6 +5,7 @@ import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectEntityTypeReferencesFromSchema,
+  collectLayoutReferences,
   collectStageReferences,
   declaredStageReferenceSites,
 } from './utils/collectEntityAttributeReferences.ts';
@@ -497,7 +498,10 @@ export {
   freshenProtocolFragmentIds,
 } from './utils/freshenProtocolFragmentIds.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';
-export { getLayoutNodeTypes } from './utils/layoutUsage.ts';
+export {
+  findRulesNamingLayout,
+  getLayoutNodeTypes,
+} from './utils/layoutUsage.ts';
 export { isDirectedEdgeType } from './utils/edgeTypeRules.ts';
 export {
   getSingleStageNodeType,
@@ -528,6 +532,7 @@ export {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectEntityTypeReferencesFromSchema,
+  collectLayoutReferences,
   collectStageReferences,
   createNetcanvasReader,
   declaredStageReferenceSites,

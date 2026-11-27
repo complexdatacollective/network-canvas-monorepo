@@ -5,7 +5,9 @@ import type {
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectLayoutReferences,
   collectStageReferences,
+  findRulesNamingLayout,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
@@ -139,6 +141,35 @@ export function stageReferences(
       // A stage naming itself goes with the stage: the schema refuses such a
       // protocol, and a reference the deletion removes cannot be one it leaves.
       .filter((reference) => reference.sectionId !== own)
+  );
+}
+
+/**
+ * Every stage field naming one codebook layout: a Sociogram's or Network
+ * Composer's `layout` and a Narrative preset's. None of them can be removed
+ * with the layout, so each one refuses its deletion.
+ */
+export function layoutStageReferences(
+  sections: Readonly<Record<string, SectionDoc>>,
+  layoutId: string,
+): SectionReference[] {
+  const { protocol, stageIds } = protocolOf(sections);
+  return collectLayoutReferences(protocol)
+    .filter((hit) => hit.layoutId === layoutId)
+    .map((hit) => referenceAt(hit.path, stageIds));
+}
+
+/**
+ * Every node rule naming one codebook layout. A rule is an entry of its rule
+ * list, so it goes with the layout as a rule naming a deleted variable does.
+ */
+export function layoutRuleReferences(
+  sections: Readonly<Record<string, SectionDoc>>,
+  layoutId: string,
+): SectionReference[] {
+  const { protocol, stageIds } = protocolOf(sections);
+  return findRulesNamingLayout(protocol, layoutId).map((hit) =>
+    referenceAt(hit.path, stageIds),
   );
 }
 

@@ -63,10 +63,6 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
           component: 'DatePicker',
           parameters: { type: 'year', min: '1800', max: '1810' },
         },
-        // Answered with a point on the sociogram, which no rule can compare
-        // against: an attribute the codebook still describes and no rule can
-        // be built on.
-        [HOME]: { name: 'Home', type: 'layout' },
         // Encrypted: answered in the interview with ciphertext only the
         // participant's passphrase opens, so a rule over interview answers
         // cannot read it.
@@ -100,12 +96,18 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
       [EGO_NAME]: { name: 'EgoName', type: 'text' },
     },
   },
+  // A position on a sociogram, which no rule can compare against: a layout
+  // the codebook still describes and no rule can be built on.
+  layouts: {
+    [HOME]: { name: 'Home' },
+  },
 });
 
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: PERSON });
 const friendSection = sectionId({ kind: 'codebookEdge', typeId: FRIEND });
 const egoSection = sectionId({ kind: 'codebookEgo' });
+const homeSection = sectionId({ kind: 'codebookLayout', layoutId: HOME });
 const settingsSection = sectionId({ kind: 'settings' });
 const stageOrderSection = sectionId({ kind: 'stageOrder' });
 
@@ -116,7 +118,7 @@ const stageOrderSection = sectionId({ kind: 'stageOrder' });
  * while a test that drives the EDITOR needs attributes that make the editor's
  * own behaviour observable — a second attribute of the same type so a cleared
  * operator is evidence of the cascade, option values that are numbers so `1`
- * and `"1"` can be told apart, and one attribute no rule can be built on.
+ * and `"1"` can be told apart, and one layout no rule can be built on.
  */
 const baseSections: Record<string, SectionDoc> = {
   [settingsSection]: {
@@ -159,9 +161,6 @@ const baseSections: Record<string, SectionDoc> = {
       },
       // Text, so an operator a NUMBER accepts can be stored against it.
       [NOTE]: { name: 'Note', type: 'text' },
-      // Answered with a point on the sociogram: an attribute the codebook
-      // still describes, and that no rule can be built against.
-      [HOME]: { name: 'Home', type: 'layout' },
       // A date attribute whose picker is bounded, and coarse enough that the
       // bounds are readable off the control the researcher meets.
       [BORN]: {
@@ -214,6 +213,9 @@ const baseSections: Record<string, SectionDoc> = {
       [EGO_NAME]: { name: 'EgoName', type: 'text' },
     },
   },
+  // A position on a sociogram: a layout the codebook still describes, and
+  // that no rule can be built against.
+  [homeSection]: { name: 'Home' },
 };
 
 export const nodeRule = (id: string): RuleDraft => ({

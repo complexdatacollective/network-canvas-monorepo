@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import type { Codebook, Stage } from '@codaco/protocol-validation';
 
 import { useProtocolContext } from '../state/protocolContext.ts';
 
@@ -18,19 +18,38 @@ const RuleCodebookContext = createContext<Readonly<Codebook> | undefined>(
  */
 export const RuleCodebookProvider = RuleCodebookContext.Provider;
 
-/**
- * The codebook a rule editor builds its rules against: the one a
- * `RuleCodebookProvider` above it gives, or else the open protocol's.
- */
-export function useRuleCodebook(): Readonly<Codebook> {
+type RuleProtocol = Readonly<{
+  codebook: Readonly<Codebook>;
+  /** Absent for a codebook given outside a stage editor. */
+  stages?: readonly Readonly<Stage>[];
+}>;
+
+function useRuleProtocol(): RuleProtocol {
   const given = useContext(RuleCodebookContext);
   // Which of the two a rule editor reads is decided by where it is mounted,
   // and stays so for as long as it is: a provider is above it or it is not.
   // The protocol's read model throws outside a `ProtocolBuilder`, so it is
   // asked only where there is no codebook given.
-  if (given !== undefined) return given;
+  if (given !== undefined) return { codebook: given };
   // oxlint-disable-next-line react-hooks/rules-of-hooks -- see above: the branch never changes between renders of one mounted editor
-  return useProtocolContext().codebook;
+  const { codebook, orderedStages } = useProtocolContext();
+  return { codebook, stages: orderedStages };
+}
+
+/**
+ * The codebook a rule editor builds its rules against: the one a
+ * `RuleCodebookProvider` above it gives, or else the open protocol's.
+ */
+export function useRuleCodebook(): Readonly<Codebook> {
+  return useRuleProtocol().codebook;
+}
+
+/**
+ * The stages of the open protocol, which say which node types have each
+ * layout, or `undefined` beneath a `RuleCodebookProvider`.
+ */
+export function useRuleStages(): readonly Readonly<Stage>[] | undefined {
+  return useRuleProtocol().stages;
 }
 
 /**

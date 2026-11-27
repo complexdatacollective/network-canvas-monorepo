@@ -85,15 +85,27 @@ function schema8ExportInput(
   const layoutNodeTypes: Record<string, string[]> = {};
   const nodeTypes = protocol.codebook.node;
   const node =
-    nodeTypes === undefined
+    nodeTypes === undefined || nodeTypes === null
       ? undefined
       : Object.fromEntries(
           Object.entries(nodeTypes).map(([type, definition]) => {
             if (definition.variables === undefined) return [type, definition];
             const variables = Object.fromEntries(
               Object.entries(definition.variables).filter(([id, variable]) => {
-                if (variable.type !== 'layout') return true;
-                layouts[id] ??= { name: variable.name };
+                if (
+                  typeof variable !== 'object' ||
+                  variable === null ||
+                  !('type' in variable) ||
+                  variable.type !== 'layout'
+                ) {
+                  return true;
+                }
+                layouts[id] ??= {
+                  name:
+                    'name' in variable && typeof variable.name === 'string'
+                      ? variable.name
+                      : id,
+                };
                 (layoutNodeTypes[id] ??= []).push(type);
                 return false;
               }),

@@ -7,6 +7,7 @@ import {
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
 import {
+  fixtureLayoutId,
   fixtureTypeId,
   fixtureVariableId,
   loadFixtureStage,
@@ -147,8 +148,8 @@ describe('the network composer stage editor', () => {
     );
     await chooseAttributeById(
       harness.user,
-      attributeField('Create or select an attribute to store node coordinates'),
-      personVariable('layout'),
+      attributeField('Layout'),
+      fixtureLayoutId('layout'),
     );
     expect(
       screen.getByRole('spinbutton', { name: 'Number of concentric circles' }),
@@ -159,7 +160,7 @@ describe('the network composer stage editor', () => {
       label: { 'en-US': 'Build' },
       subject: { entity: 'node', types: [PERSON] },
       quickAdd: personVariable('composerName'),
-      layoutVariable: personVariable('layout'),
+      layout: fixtureLayoutId('layout'),
       background: { concentricCircles: 4 },
       behaviours: { automaticLayout: true },
     });
@@ -176,8 +177,7 @@ describe('the network composer stage editor', () => {
     // in the window — so a stage with nowhere to remember positions is one
     // that arrived that way, which a half-written draft or an import does.
     const composer = loadFixtureStage('network-composer-1');
-    const { layoutVariable: _layoutVariable, ...withoutPositions } =
-      composer.fields;
+    const { layout: _layout, ...withoutPositions } = composer.fields;
     const harness = renderStageEditor({
       stage: {
         id: composer.id,

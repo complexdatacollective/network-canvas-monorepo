@@ -53,9 +53,15 @@ export function attributeField(
   return field;
 }
 
-/** The two names that the popup's search box goes by. */
-const isSearchBox = (name: string) =>
-  name === 'Find or create an attribute' || name === 'Find an attribute';
+/** The names that the popup's search box goes by, for attributes and layouts. */
+const SEARCH_BOX_NAMES = new Set([
+  'Find or create an attribute',
+  'Find an attribute',
+  'Find or create a layout',
+  'Find a layout',
+]);
+
+const isSearchBox = (name: string) => SEARCH_BOX_NAMES.has(name);
 
 const OPEN_POPUP = '[data-attribute-picker-popup][data-open]';
 

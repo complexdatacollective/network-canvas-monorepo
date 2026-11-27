@@ -8,13 +8,14 @@ import {
   DATE_RESOLUTION,
   type DateFormat,
   DEFAULT_TYPE as DEFAULT_DATE_FORMAT,
+  getLayoutNodeTypes,
   isValidDateAtResolution,
-  OperatorsByVariableType,
   type Variable,
   type Variables,
   type VariableType,
   resolveNodeShapeReference,
   type ResolvedNodeShape,
+  type Stage,
 } from '@codaco/protocol-validation';
 import {
   datePickerWindows,
@@ -34,6 +35,8 @@ import {
   operatorsAsOptions,
   operatorsForSubject,
   rangeSatisfiesComparison,
+  schemaOperatorsFor,
+  type RuleAttributeType,
   type RuleOperatorOption,
   type RuleOperatorSubject,
 } from './operators.ts';
@@ -54,19 +57,19 @@ export const isRuleTargetType = (value: unknown): value is RuleTargetType =>
 export type RuleVariableOption = Readonly<{
   value: string;
   label: string;
-  type: VariableType;
+  /** Absent for a layout, which is not a variable and has no variable type. */
+  type?: VariableType;
   /**
    * Why a rule cannot be built against this attribute, or absent when it
    * can. The sentence the attribute picker shows for it.
    *
-   * Present for a layout attribute, whose answer is a point and which the
-   * operand table therefore has no comparison to offer. Said here rather than
-   * settled by leaving the attribute out, because "not something a rule can
-   * ask about" and "not in the codebook" are different things to tell a
-   * researcher — and a picker handed only the usable ones cannot tell them
-   * apart. It read a stored layout reference, still described by the codebook
-   * and still on screen in the codebook editor, as an attribute that had been
-   * deleted.
+   * Present for a layout, whose answer is a point and which the operand table
+   * therefore has no comparison to offer. Said here rather than settled by
+   * leaving the layout out, because "not something a rule can ask about" and
+   * "not in the codebook" are different things to tell a researcher — and a
+   * picker handed only the usable ones cannot tell them apart. It read a
+   * stored layout reference, still in the codebook, as an attribute that had
+   * been deleted.
    *
    * An encrypted attribute is usable everywhere. Where a rule set reads
    * interview answers it is offered only the presence operators — see
@@ -83,7 +86,7 @@ const ruleVariableMessages = defineMessages({
     defaultMessage:
       'This attribute cannot be used in a rule. Choose another one.',
     description:
-      'Shown beside an attribute that is still in the protocol’s codebook but cannot carry a rule, such as one answered with a map position: in the list of attributes a rule can be about, and under the control when a stored rule names it.',
+      'Shown beside an attribute that is still in the protocol’s codebook but cannot carry a rule, such as a layout, which stores node positions on a canvas: in the list of attributes a rule can be about, and under the control when a stored rule names it.',
   },
 });
 
@@ -202,6 +205,86 @@ export const ruleVariableOptions = (
     },
   );
 
+/**
+ * The layout a node rule's attribute names, when it names a layout of the
+ * codebook rather than a variable of the node type. A layout is shared by
+ * every node type, so a stored rule resolves it whether or not a stage gives
+ * its node type a position there.
+ */
+export const ruleLayout = (
+  codebook: Readonly<Codebook>,
+  target: RuleTargetType | undefined,
+  entityTypeId: string | undefined,
+  attributeId: string | undefined,
+): Readonly<{ name: string }> | undefined => {
+  if (target !== 'node' || attributeId === undefined || attributeId === '') {
+    return undefined;
+  }
+  if (
+    ruleVariables(codebook, target, entityTypeId)[attributeId] !== undefined
+  ) {
+    return undefined;
+  }
+  return codebook.layouts?.[attributeId];
+};
+
+/**
+ * The layouts a node rule's attribute picker lists after the node type's
+ * variables: the ones a stage gives the type positions in, and the one the
+ * rule already holds, which is resolved from `codebook.layouts` even where no
+ * stages are known. Each is listed as unavailable, because a position has no
+ * value a rule can compare against.
+ */
+export const ruleLayoutOptions = (
+  codebook: Readonly<Codebook>,
+  stages: readonly Readonly<Stage>[] | undefined,
+  nodeTypeId: string | undefined,
+  heldId: string | undefined,
+  intl: IntlShape = englishIntl,
+): RuleVariableOption[] => {
+  const layouts = codebook.layouts ?? {};
+  const nodeVariables = ruleVariables(codebook, 'node', nodeTypeId);
+  const typeLayouts =
+    stages === undefined || nodeTypeId === undefined
+      ? []
+      : Object.entries(getLayoutNodeTypes({ codebook, stages })).flatMap(
+          ([layoutId, nodeTypes]) =>
+            nodeTypes.includes(nodeTypeId) ? [layoutId] : [],
+        );
+  const listed = Object.keys(layouts).filter(
+    (layoutId) =>
+      nodeVariables[layoutId] === undefined &&
+      (typeLayouts.includes(layoutId) || layoutId === heldId),
+  );
+  return listed.map((layoutId) => ({
+    value: layoutId,
+    label: codebookLabel(layouts[layoutId]?.name, layoutId),
+    unavailableReason: intl.formatMessage(ruleVariableMessages.notForRules),
+    unavailableForType: true,
+  }));
+};
+
+/**
+ * What kind of attribute a rule names: `'layout'` for a layout of the
+ * codebook, otherwise the type of the node, edge or ego variable.
+ */
+export const ruleAttributeType = (
+  codebook: Readonly<Codebook>,
+  target: RuleTargetType | undefined,
+  entityTypeId: string | undefined,
+  attributeId: string | undefined,
+): RuleAttributeType | undefined => {
+  if (ruleLayout(codebook, target, entityTypeId, attributeId) !== undefined) {
+    return 'layout';
+  }
+  return target === undefined
+    ? undefined
+    : ruleVariableType(
+        ruleVariables(codebook, target, entityTypeId),
+        attributeId,
+      );
+};
+
 export const ruleVariable = (
   variables: Readonly<Variables>,
   variableId: string | undefined,
@@ -215,7 +298,7 @@ export const ruleVariable = (
  * BUILT against one.
  *
  * Every type the schema has answers here, including one the editor offers no
- * operator for: a protocol may already hold a rule against a layout attribute,
+ * operator for: a protocol may already hold a rule against such an attribute,
  * and reading its type as unknown would report it as an attribute the codebook
  * has lost rather than as the operand problem it is.
  */
@@ -508,10 +591,10 @@ const keptOperatorMessages = defineMessages({
  */
 export const isOperatorValidForAttributeType = (
   operator: string,
-  variableType: VariableType | undefined,
+  variableType: RuleAttributeType | undefined,
 ): boolean => {
   if (variableType === undefined) return true;
-  const allowed = OperatorsByVariableType[variableType];
+  const allowed = schemaOperatorsFor(variableType);
   return allowed === undefined || allowed.includes(operator);
 };
 
@@ -530,8 +613,8 @@ export const isOperatorValidForAttributeType = (
  *
  * Read off the same operand table the editor's controls are, so a value this
  * accepts is exactly a value the editor could have committed — and a rule the
- * schema has no operand for at all (a comparison against a layout attribute,
- * whose answer is a point) is reported rather than passed as text.
+ * schema has no operand for at all (a comparison against a layout, whose
+ * answer is a point) is reported rather than passed as text.
  *
  * Answers `true` wherever nothing is known or nothing is compared: an
  * attribute the codebook has lost, an operator outside the schema's set, an
@@ -540,7 +623,7 @@ export const isOperatorValidForAttributeType = (
  */
 export const isOperandValidForAttributeType = (
   operator: string,
-  variableType: VariableType | undefined,
+  variableType: RuleAttributeType | undefined,
   value: unknown,
 ): boolean => {
   if (variableType === undefined) return true;

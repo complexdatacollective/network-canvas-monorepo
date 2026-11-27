@@ -12,6 +12,7 @@ import {
   openAttributePicker,
 } from '../../../../../testing/attributePicker.ts';
 import {
+  fixtureLayoutId,
   fixtureTypeId,
   fixtureVariableId,
   loadFixtureStage,
@@ -28,7 +29,6 @@ import {
   narrativeHolding,
   narrativeSections,
   openPreset,
-  personWithVariable,
   presetsOf,
 } from '../../../__tests__/narrativeFixtures.tsx';
 
@@ -38,7 +38,7 @@ const KNOWS = fixtureTypeId('edge', 'knows');
 const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
 const personVariable = (name: string) =>
   fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
-const LAYOUT = personVariable('layout');
+const LAYOUT = fixtureLayoutId('layout');
 const CONTACT_TYPE = personVariable('contactType');
 const FLAGGED = personVariable('flagged');
 const HIGHLIGHTED = personVariable('highlighted');
@@ -116,7 +116,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
       {
         id: fixturePreset.id,
         label: { 'en-US': 'Ties' },
-        layoutVariable: LAYOUT,
+        layout: LAYOUT,
         groupVariable: CONTACT_TYPE,
         edges: {
           display: [
@@ -146,11 +146,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
       preset.getByRole('textbox', { name: 'Preset label' }),
       'All',
     );
-    await chooseAttributeById(
-      harness.user,
-      attributeField('Layout attribute'),
-      LAYOUT,
-    );
+    await chooseAttributeById(harness.user, attributeField('Layout'), LAYOUT);
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -162,7 +158,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(rows[1]).toEqual({
       id: rows[1]?.id,
       label: { 'en-US': 'All' },
-      layoutVariable: LAYOUT,
+      layout: LAYOUT,
     });
     expect(isProtocolObjectId(rows[1]?.id)).toBe(true);
     expect(rows[1]?.id).not.toBe(fixturePresetIds().id);
@@ -182,9 +178,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
       await preset.findByText('Give this preset a name.'),
     ).toBeInTheDocument();
     expect(
-      preset.getByText(
-        'Choose the attribute this preset positions nodes with.',
-      ),
+      preset.getByText('Choose the layout this preset shows.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
@@ -224,11 +218,7 @@ describe('the label of a highlighted attribute', () => {
       preset.getByRole('textbox', { name: 'Preset label' }),
       'Standing out',
     );
-    await chooseAttributeById(
-      harness.user,
-      attributeField('Layout attribute'),
-      LAYOUT,
-    );
+    await chooseAttributeById(harness.user, attributeField('Layout'), LAYOUT);
     await harness.user.click(
       preset.getByRole('checkbox', { name: 'highlighted' }),
     );
@@ -433,7 +423,7 @@ describe('a preset naming what the codebook no longer has', () => {
       narrativeHolding({
         id: testId('narrative-preset-1'),
         label: { 'en-US': 'Default layout' },
-        layoutVariable: LAYOUT,
+        layout: LAYOUT,
         edges: {
           display: [
             {
@@ -499,7 +489,7 @@ describe('a preset naming what the codebook no longer has', () => {
     expect(presetsOf(saved?.stageDocument ?? {})[0]).toEqual({
       id: testId('narrative-preset-1'),
       label: { 'en-US': 'Default layout' },
-      layoutVariable: LAYOUT,
+      layout: LAYOUT,
       edges: {
         display: [
           {
@@ -569,19 +559,14 @@ describe('a codebook change made while a preset dialog is open', () => {
     // not the snapshot it was opened on.
     const picker = await openAttributePicker(
       harness.user,
-      attributeField('Layout attribute'),
+      attributeField('Layout'),
     );
     expect(
       within(picker).queryByRole('option', { name: 'seating' }),
     ).not.toBeInTheDocument();
 
     harness.receiveCodebookUpdate({
-      node: {
-        [PERSON]: personWithVariable(harness, testVariableId('seating'), {
-          name: 'seating',
-          type: 'layout',
-        }),
-      },
+      layouts: { [testId('seating')]: { name: 'seating' } },
     });
 
     expect(
@@ -606,7 +591,7 @@ const presetFilter = {
 const presetHolding = (settings: Record<string, unknown> = {}) => ({
   id: testId('narrative-preset-1'),
   label: { 'en-US': 'Default layout' },
-  layoutVariable: LAYOUT,
+  layout: LAYOUT,
   ...settings,
 });
 

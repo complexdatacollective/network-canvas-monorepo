@@ -30,10 +30,6 @@ const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
 const KNOWS = fixtureTypeId('edge', 'knows');
 const EGO_NAME = fixtureVariableId('ego', 'ego_name');
 const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
-const LAYOUT = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'layout',
-);
 
 /** An `AlterForm` is the least-configured stage the schema gives a filter. */
 const ALTER_FORM = loadFixtureStage('alter-form-1');
@@ -407,7 +403,6 @@ describe('rules that contradict the rest of the stage', () => {
         {
           id: testId('sociogram-prompt-1'),
           text: 'Who do you know?',
-          layout: { layoutVariable: LAYOUT },
           // Displayed rather than created, and still hidden by rules that
           // require a different edge type to exist.
           edges: { display: [OTHER_EDGE] },

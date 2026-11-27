@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   type Codebook,
   type LocalizedString,
+  type Stage,
   type Variables,
   VariableTypesKeys,
 } from '@codaco/protocol-validation';
@@ -15,11 +16,13 @@ import type { OperandOptionProblem } from '../ruleCodebook.ts';
 import {
   operandDateProblems,
   operandOptionProblems,
+  ruleAttributeType,
   ruleEntityTypeExists,
   ruleEntityTypeOptions,
   ruleOperatorOptions,
   ruleOperatorSubject,
   ruleVariableChoices,
+  ruleLayoutOptions,
   ruleVariableDateParameters,
   ruleVariableOptions,
   ruleVariables,
@@ -59,12 +62,10 @@ describe('the rule variable-type catalogue', () => {
   it('is the schema’s own catalogue, less the types no operand can be entered for', () => {
     // Read from the schema rather than from a host display configuration, and
     // narrowed by one thing only: whether the protocol can hold a value to
-    // compare an attribute of that type against. A layout attribute is
-    // answered with a point, and `filterValueSchema` holds numbers, strings,
-    // booleans and lists — so no rule can be built against one, and offering
-    // it would put an attribute in the picker with an empty operator list.
+    // compare an attribute of that type against. Every variable type has
+    // one; a layout, which is answered with a point, is not a variable type.
     expect([...ruleVariableTypes].toSorted()).toEqual(
-      [...VariableTypesKeys].filter((type) => type !== 'layout').toSorted(),
+      [...VariableTypesKeys].toSorted(),
     );
   });
 
@@ -571,11 +572,6 @@ describe('reading the codebook for a rule', () => {
   });
 
   it('offers the variables of the entity type a rule names', () => {
-    // Every attribute the entity type has, with the ones no rule can be built
-    // against MARKED rather than left out. Dropping them made "not offered"
-    // and "not in the codebook" the same thing to a picker reading this list,
-    // and a stored layout attribute — still in the codebook, still on screen
-    // in the codebook editor — was reported as one the researcher had deleted.
     expect(
       ruleVariableOptions(ruleVariables(codebook, 'node', PERSON)),
     ).toEqual([
@@ -583,17 +579,60 @@ describe('reading the codebook for a rule', () => {
       { value: MOOD, label: 'Mood', type: 'categorical' },
       { value: NOTE, label: 'Note', type: 'text' },
       { value: BORN, label: 'Born', type: 'datetime' },
+      // Whether it was answered can still be asked of an encrypted attribute.
+      { value: SECRET, label: 'Secret', type: 'text' },
+    ]);
+  });
+
+  it('lists a layout as unavailable only for node types that have it', () => {
+    // A layout no rule can be built against is MARKED rather than left out.
+    // Dropping it made "not offered" and "not in the codebook" the same thing
+    // to a picker reading this list, and a stored layout — still in the
+    // codebook — was reported as one the researcher had deleted. It is
+    // listed for the node types a stage places in it, and no others.
+    const stages: Stage[] = [
+      {
+        id: testId('sociogram'),
+        type: 'Sociogram',
+        label: { en: 'Sociogram' },
+        subject: { entity: 'node', types: [PERSON] },
+        layout: HOME,
+        background: { concentricCircles: 3 },
+        prompts: [{ id: testId('prompt'), text: { en: 'Place people' } }],
+      },
+    ];
+    expect(ruleLayoutOptions(codebook, stages, PERSON, undefined)).toEqual([
       {
         value: HOME,
         label: 'Home',
-        type: 'layout',
         unavailableReason:
           'This attribute cannot be used in a rule. Choose another one.',
         unavailableForType: true,
       },
-      // Whether it was answered can still be asked of an encrypted attribute.
-      { value: SECRET, label: 'Secret', type: 'text' },
     ]);
+    expect(ruleLayoutOptions(codebook, stages, PLACE, undefined)).toEqual([]);
+    expect(ruleAttributeType(codebook, 'node', PERSON, HOME)).toBe('layout');
+  });
+
+  it('resolves a stored rule’s layout by name from a codebook given without stages', () => {
+    // A codebook given to a rule editor outside a stage editor carries no
+    // stages to say which node types have the layout. The layout a stored
+    // rule names is still listed by its name, and read as a layout rather
+    // than as an attribute the codebook has lost.
+    expect(ruleLayoutOptions(codebook, undefined, PLACE, HOME)).toEqual([
+      {
+        value: HOME,
+        label: 'Home',
+        unavailableReason:
+          'This attribute cannot be used in a rule. Choose another one.',
+        unavailableForType: true,
+      },
+    ]);
+    expect(ruleLayoutOptions(codebook, undefined, PLACE, undefined)).toEqual(
+      [],
+    );
+    expect(ruleAttributeType(codebook, 'node', PLACE, HOME)).toBe('layout');
+    expect(ruleAttributeType(codebook, 'edge', FRIEND, HOME)).toBeUndefined();
   });
 
   it('reads an ego rule against the ego codebook', () => {

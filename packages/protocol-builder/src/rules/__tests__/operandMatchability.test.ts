@@ -87,7 +87,6 @@ const answersFor = (type: VariableType, operand: unknown): unknown[] => {
     ordinal: ['low', 'high', null],
     categorical: [[], ['low'], ['high'], ['low', 'high'], null],
     location: ['somewhere', 'Low', 'abc', null],
-    layout: [{ x: 0.5, y: 0.5 }, null],
   } as unknown as Record<VariableType, unknown[]>;
   const answers = [...base[type]];
   if (type === 'number') {
@@ -258,7 +257,9 @@ const OFFERED_CONTROL_PAIRS = VariableTypesKeys.flatMap((type) =>
 /**
  * The two sets above are built from the tables under test, so they shrink when
  * those tables do. These literal sizes, per attribute type, are what holds them
- * still: 784 stored cells and 34 offered pairs in all.
+ * still: 716 stored cells and 34 offered pairs in all. A layout is no variable
+ * type, so it has no row here; the separate assertion below pins that it is
+ * offered no pair.
  */
 const STORED_CELLS_PER_TYPE = {
   boolean: 68,
@@ -268,7 +269,6 @@ const STORED_CELLS_PER_TYPE = {
   ordinal: 102,
   scalar: 92,
   categorical: 122,
-  layout: 68,
   location: 68,
 };
 const OFFERED_PAIRS_PER_TYPE = {
@@ -279,7 +279,6 @@ const OFFERED_PAIRS_PER_TYPE = {
   ordinal: 4,
   scalar: 6,
   categorical: 8,
-  layout: 0,
   location: 2,
 };
 
@@ -396,6 +395,10 @@ describe('the editor’s verdict against the interview’s predicate', () => {
     expect(offeredButUnmatchable).toEqual([]);
     expect(countPerType(OFFERED_CONTROL_PAIRS)).toEqual(OFFERED_PAIRS_PER_TYPE);
     expect([...offeredPairs].toSorted(byText)).toEqual(OFFERED_CONTROL_PAIRS);
+  });
+
+  it('offers a layout no pair', () => {
+    expect([...operatorsForSubject('layout')]).toEqual([]);
   });
 });
 

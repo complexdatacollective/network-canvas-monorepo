@@ -700,10 +700,9 @@ const exportColumnRefusalsFor = (
 
 /**
  * Refuses a write that would make the export put two things in one column: an
- * attribute named like a column a categorical attribute's option, a layout
- * attribute's position, a codebook layout's position or the export itself
- * already writes, or an option or layout position that would land on another
- * attribute's column. Judged on the
+ * attribute named like a column a categorical attribute's option, a codebook
+ * layout's position or the export itself already writes, or an option that
+ * would land on another attribute's column. Judged on the
  * attribute as it will be stored, beside the others of the same type, so a
  * rename, a new option and a change of type are all asked the same question.
  *

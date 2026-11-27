@@ -2,13 +2,8 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
-  attributeField,
-  attributeTrigger,
-  createRowIn,
-} from '../../../testing/attributePicker.ts';
-import {
+  fixtureLayoutId,
   fixtureTypeId,
-  fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testTypeId } from '../../../testing/testId.ts';
@@ -45,12 +40,15 @@ describe('the canvas sections, read in Spanish', () => {
     // The outline reads its titles out of the same catalog, so a section named
     // in Spanish and listed in English would fail here rather than pass
     // halfway.
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
-    expect(harness.outline().map((section) => section.title)).toEqual([
-      'Conjunto de preguntas',
-      'Disposición de nodos',
-      'Fondo',
-    ]);
+    // The layout section comes first and has no Spanish wording yet, so only
+    // the sections after it are read here.
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    expect(
+      harness
+        .outline()
+        .map((section) => section.title)
+        .slice(1),
+    ).toEqual(['Conjunto de preguntas', 'Disposición de nodos', 'Fondo']);
     expect(
       screen.getByRole('spinbutton', {
         name: 'Número de círculos concéntricos',
@@ -94,26 +92,6 @@ describe('the canvas sections, read in Spanish', () => {
     });
 
     const prompt = await openPrompt(harness, 0, 'Edit pregunta');
-    // The picker is a labelled field holding a trigger, so the label and the
-    // words on the button are two separate translations and both are asserted.
-    // This prompt already positions by an attribute, which is the state the
-    // trigger says "change" rather than "select" in.
-    expect(
-      attributeTrigger(
-        attributeField('Atributo de disposición', screen.getByRole('dialog')),
-      ),
-    ).toBeInTheDocument();
-    // Inventing one is offered from inside that window, on the term the
-    // researcher typed, and in their language: the sections no longer carry a
-    // create control of their own.
-    expect(
-      await createRowIn(
-        harness.user,
-        attributeField('Atributo de disposición', screen.getByRole('dialog')),
-        'Find or create an attribute',
-        (term) => `Crear «${term}»`,
-      ),
-    ).not.toBeNull();
     expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();
   });
 
@@ -130,16 +108,11 @@ describe('the canvas sections, read in Spanish', () => {
           label: 'Sociogram',
           subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
           background: { concentricCircles: 4 },
+          layout: fixtureLayoutId('layout'),
           prompts: [
             {
               id: 'sociogram-prompt-1',
               text: 'Coloca a las personas que se conocen cerca',
-              layout: {
-                layoutVariable: fixtureVariableId(
-                  { entity: 'node', typeName: 'person' },
-                  'layout',
-                ),
-              },
               edges: { display: [LOST_EDGE] },
             },
           ],

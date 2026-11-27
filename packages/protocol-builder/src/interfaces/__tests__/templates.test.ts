@@ -153,10 +153,10 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   NameGeneratorRoster: ['dataSource', 'prompts', 'subject'],
   Narrative: ['presets', 'subject'],
   NarrativePedigree: ['diseases'],
-  NetworkComposer: ['layoutVariable', 'quickAdd', 'subject'],
+  NetworkComposer: ['layout', 'quickAdd', 'subject'],
   OneToManyDyadCensus: ['prompts', 'subject'],
   OrdinalBin: ['prompts', 'subject'],
-  Sociogram: ['prompts', 'subject'],
+  Sociogram: ['layout', 'prompts', 'subject'],
   TieStrengthCensus: ['prompts', 'subject'],
 };
 

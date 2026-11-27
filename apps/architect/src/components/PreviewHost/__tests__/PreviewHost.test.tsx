@@ -301,14 +301,12 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         type: 'Sociogram',
         label: { en: 'Exchanges of support' },
         subject: { entity: 'node', types: ['person'] },
+        layout: 'layout',
         background: { concentricCircles: 3 },
         prompts: [
           {
             id: createProtocolObjectId(),
             text: { en: 'Place people' },
-            layout: {
-              layoutVariable: asEntityAttributeReference('layout'),
-            },
           },
         ],
       },
@@ -327,13 +325,10 @@ function makeConsentRouteProtocol(): CurrentProtocol {
           shape: { default: 'circle' },
           variables: {
             name: { name: 'Name', type: 'text' },
-            layout: {
-              name: 'Layout',
-              type: 'layout',
-            },
           },
         },
       },
+      layouts: { layout: { name: 'Layout' } },
       edge: {},
       ego: {
         variables: {
