@@ -12,7 +12,10 @@ import {
 } from '@codaco/fresco-ui/RenderMarkdown';
 import type { ColorReference } from '@codaco/protocol-validation';
 
-import AttributePill from '../fields/AttributePill.tsx';
+import {
+  VariablePill,
+  variablePillDescription,
+} from '../fields/VariablePill.tsx';
 import { protocolColor } from '../protocolColor.ts';
 import type {
   RuleDescription,
@@ -76,44 +79,35 @@ function RuleEntity({ entity }: { entity: RuleDescriptionEntity }) {
 }
 
 /**
- * The attribute a rule compares, drawn as the builder's own attribute pill.
- *
- * Architect's rule sentence used its filled, type-coloured variable pill, and
- * this is the same pill: `AttributePill` is that control ported, and the
- * `.variable-pill` cascades this sentence and the printable summary already
- * carry (the zoom below, the summary's scale) are the ones Architect wrote for
- * it. An outline chip here made the one place a researcher reads a rule back
- * the one place an attribute did not look like an attribute.
+ * The attribute a rule compares, drawn as the builder's one attribute pill, in
+ * the small size that rule summaries use.
  *
  * The pill conveys the attribute's kind visually; the wrapper says it in
- * words, so assistive technology reads "Age (attribute type: categorical)"
- * rather than a bare name. An attribute the codebook no longer has says so
- * instead of naming a type it cannot know, and wears the destructive accent.
+ * words, so assistive technology reads "Age (attribute type: Number)" rather
+ * than a bare name. An attribute the codebook no longer has says so instead of
+ * naming a type it cannot know, and wears the destructive accent.
  *
  * `data-rule-part` names the part of the SENTENCE, so it sits on the wrapper
  * that carries the words for it; the pill keeps what it says about the
  * attribute itself.
  */
 function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
-  // A name followed by a labelled value, rather than a sentence assembled
-  // around the type: nothing here has to agree grammatically with a type name.
-  const description = attribute.missing
-    ? `${attribute.label} (attribute is no longer in the codebook)`
-    : `${attribute.label} (attribute type: ${attribute.type ?? 'text'})`;
+  const pill = {
+    name: attribute.label,
+    ...(attribute.type === undefined ? {} : { kind: attribute.type }),
+    missing: attribute.missing,
+    size: 'sm',
+  } as const;
 
   return (
     <span
-      // The arrow Architect's pill has always shown: the pill is not text to
-      // select, and here nothing about it takes a click.
+      // The pill is not text to select, and here nothing about it takes a
+      // click.
       className="inline-flex max-w-full cursor-default align-middle"
-      aria-label={description}
+      aria-label={variablePillDescription(pill)}
       data-rule-part="attribute"
     >
-      <AttributePill
-        name={attribute.label}
-        {...(attribute.type === undefined ? {} : { type: attribute.type })}
-        missing={attribute.missing}
-      />
+      <VariablePill {...pill} />
     </span>
   );
 }

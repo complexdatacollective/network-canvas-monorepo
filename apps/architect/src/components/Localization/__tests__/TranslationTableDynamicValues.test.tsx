@@ -1,10 +1,6 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
   testId,
   testVariableId,
@@ -12,37 +8,23 @@ import {
 import {
   type CurrentProtocol,
   dynamicValueNameFor,
-  optionCaseKey,
 } from '@codaco/protocol-validation';
-import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 
-import TranslationTable from '../TranslationTable';
 import { dynamicValuesProtocol, FIRST_NAME } from './dynamicValuesProtocol';
+import {
+  type RenderedTable,
+  renderTranslationTable,
+} from './renderTranslationTable';
 
-const WELCOME = `Welcome back{${FIRST_NAME}, select, missing {} other {, {${FIRST_NAME}}}}`;
+const WELCOME = `Welcome back, {${FIRST_NAME}}`;
 
 const protocol = dynamicValuesProtocol({ en: WELCOME });
 
-const renderTable = (initial: CurrentProtocol = protocol) => {
-  const store = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  store.dispatch(setActiveProtocol(structuredClone(initial)));
-  render(
-    <Provider store={store}>
-      <FormStoreProvider>
-        <TranslationTable onSaved={vi.fn()} onCancel={vi.fn()} />
-      </FormStoreProvider>
-    </Provider>,
-  );
-  return { store, user: userEvent.setup() };
-};
+const renderTable = (initial: CurrentProtocol = protocol) =>
+  renderTranslationTable(initial);
 
-const title = (store: ReturnType<typeof renderTable>['store']): unknown => {
+const title = (store: RenderedTable['store']): unknown => {
   const stage = getProtocol(store.getState())?.stages[0];
   return stage && 'content' in stage ? stage.content : undefined;
 };
@@ -53,7 +35,7 @@ const titleCell = (language: string) =>
   screen.getByRole('button', { name: cellName(language) });
 
 /** Leaves the cell for the stage name's English cell. */
-const leaveCell = async (user: ReturnType<typeof renderTable>['user']) => {
+const leaveCell = async (user: RenderedTable['user']) => {
   await user.click(
     screen.getByRole('textbox', { name: /Stage name English$/ }),
   );
@@ -64,7 +46,10 @@ describe('TranslationTable: text that shows values', () => {
     renderTable();
 
     const cell = titleCell('English').closest('td');
-    expect(cell?.querySelector(`[data-token="${FIRST_NAME}"]`)).not.toBeNull();
+    // The pill names the attribute; the text's own name for it is not shown.
+    expect(
+      cell?.querySelector('data[data-attribute-type="text"]'),
+    ).toHaveTextContent('first_name');
     expect(cell).toHaveTextContent('first_name');
     expect(cell).not.toHaveTextContent(FIRST_NAME);
   });
@@ -117,18 +102,14 @@ describe('TranslationTable: text that shows values', () => {
       name: cellName('English'),
     });
     await waitFor(() => expect(editor).toHaveFocus());
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Inject piped text from interview metadata or a network attribute',
-      }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
     const [option] = await screen.findAllByRole('option', {
       name: /Today’s date/,
     });
     if (option === undefined) throw new Error('No value offered');
     await user.click(option);
     await waitFor(() =>
-      expect(editor.querySelector('[data-token="now"]')).not.toBeNull(),
+      expect(editor.querySelector('[data-inline-value="now"]')).not.toBeNull(),
     );
     await leaveCell(user);
 
@@ -176,9 +157,7 @@ describe('TranslationTable: text that shows values', () => {
       stages: [
         {
           ...stage,
-          content: {
-            en: `{${moodName}, select, ${optionCaseKey(happy)} {Glad} other {Hello}}`,
-          },
+          content: { en: `Hello, {${moodName}}` },
         },
       ],
     } as unknown as CurrentProtocol);
@@ -188,11 +167,7 @@ describe('TranslationTable: text that shows values', () => {
       name: cellName('French'),
     });
     await waitFor(() => expect(editor).toHaveFocus());
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Inject piped text from interview metadata or a network attribute',
-      }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
     const offered = (await screen.findAllByRole('option')).map(
       (option) => option.textContent ?? '',
     );
@@ -227,9 +202,9 @@ describe.each([
     renderTable(dynamicValuesProtocol(ghostTitle));
 
     const cell = titleCell('English').closest('td');
-    expect(cell?.querySelector(`[data-token="${ghost}"]`)).toHaveTextContent(
-      shown,
-    );
+    expect(
+      cell?.querySelector('data[data-attribute-missing]'),
+    ).toHaveTextContent(shown);
     expect(cell).toHaveTextContent(`${shown} welcome`);
   });
 
@@ -241,9 +216,11 @@ describe.each([
       name: cellName('English'),
     });
     await waitFor(() =>
-      expect(editor.querySelector(`[data-token="${ghost}"]`)).not.toBeNull(),
+      expect(
+        editor.querySelector(`[data-inline-value="${ghost}"]`),
+      ).toHaveTextContent(shown),
     );
-    expect(editor).toHaveTextContent(`${shown} welcome`);
+    expect(editor).toHaveTextContent(/welcome$/);
   });
 
   it('refuses the text at its cell once the cell is left', async () => {
@@ -260,5 +237,70 @@ describe.each([
     await waitFor(() =>
       expect(titleCell('English')).toHaveAttribute('aria-invalid', 'true'),
     );
+  });
+});
+
+const AGE_ID = testVariableId('age');
+const YEARS = testId('years-wording');
+
+/**
+ * The stage above with a dynamic attribute that words the participant's age
+ * as a number of years, in English only.
+ */
+const protocolWithNumberWording = (() => {
+  const years = `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: YEARS })}}`;
+  const base = dynamicValuesProtocol({
+    en: `You are ${years} old`,
+    fr: `Vous avez ${years}`,
+  });
+  const [stage] = base.stages;
+  return {
+    ...base,
+    codebook: {
+      ...base.codebook,
+      ego: {
+        variables: {
+          ...base.codebook.ego?.variables,
+          [AGE_ID]: { name: 'age', type: 'number' },
+        },
+      },
+    },
+    stages: [
+      {
+        ...stage,
+        dynamicAttributes: {
+          [YEARS]: {
+            logic: 'number',
+            value: dynamicValueNameFor({
+              kind: 'attribute',
+              role: 'ego',
+              variableId: AGE_ID,
+            }),
+            missing: { en: 'of an age we do not know' },
+            wording: { en: '{count, plural, one {# year} other {# years}}' },
+          },
+        },
+      },
+    ],
+  } as unknown as CurrentProtocol;
+})();
+
+describe('TranslationTable: the number wording of a dynamic attribute', () => {
+  it('opens a language without wording with a version for each of its plural forms, and offers nothing to put in', async () => {
+    const { user } = renderTable(protocolWithNumberWording);
+
+    const name = /Wording for singular or plural numbers French$/;
+    await user.click(screen.getByRole('button', { name }));
+    const editor = await screen.findByRole('textbox', { name });
+    await waitFor(() => expect(editor).toHaveFocus());
+
+    expect(
+      [...document.querySelectorAll('[data-version]')].map((version) =>
+        version.getAttribute('data-version'),
+      ),
+    ).toEqual(['one', 'many', 'other']);
+    expect(
+      screen.queryByRole('button', { name: 'Attribute' }),
+    ).not.toBeInTheDocument();
   });
 });

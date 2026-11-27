@@ -8,6 +8,7 @@ import {
   createDefaultFinishSessionStage,
   type CurrentProtocolSchema,
   defaultFinishSessionText,
+  fieldBlockMarkdown,
   headingMarkdown,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KINDS,
@@ -211,15 +212,38 @@ const pick = (...xs: (string | undefined)[]) =>
 
 /**
  * The one text an Information screen shows: its title as the heading that
- * opens the page, then its words, which are markdown already. Either may be
- * empty.
+ * opens the page, then its words, which are markdown already, then any
+ * `blocks` (each a markdown block of its own). Any part may be empty.
  */
-const pageContent = (title: string, text: string) =>
+const pageContent = (
+  title: string,
+  text: string,
+  blocks: readonly string[] = [],
+) =>
   localized(
-    [title.trim() && headingMarkdown(title), text.trim()]
+    [title.trim() && headingMarkdown(title), text.trim(), ...blocks]
       .filter(Boolean)
       .join('\n\n'),
   );
+
+/**
+ * A form as schema 9 writes it: one document that places a block for each
+ * of its fields, in order, below the heading and words that open it, when
+ * it has them (only an Ego Form does). Each block names its field by the id
+ * the compiler gave it; `assignNestedObjectIds` points it at the field's
+ * final id.
+ */
+const formDocument = <F extends { id: string }>(
+  fields: readonly F[],
+  intro?: { title: string; text: string },
+) => ({
+  content: pageContent(
+    intro?.title ?? '',
+    intro?.text ?? '',
+    fields.map((f) => fieldBlockMarkdown(f.id)),
+  ),
+  fields,
+});
 
 const qKey = (scope: string, id: string) =>
   scope === 'ego' ? `ego/${id}` : `${scope}/${id}`;
@@ -708,10 +732,10 @@ export const compile = (
   const declinedStageId = d.includeConsent ? sid('consent_declined') : '';
   const label = (designId: string, fallback: string) =>
     graphemes(pick(W.stage.get(designId)?.label, fallback) || 'Stage', 50);
-  // Only an Ego Form has an introduction panel in schema 9.
+  // Only an Ego Form opens its form with a heading and words.
   const intro = (designId: string, title: string, text: string) => ({
-    title: localized(pick(W.stage.get(designId)?.title, title)),
-    text: localized(pick(W.stage.get(designId)?.text, text)),
+    title: pick(W.stage.get(designId)?.title, title),
+    text: pick(W.stage.get(designId)?.text, text),
   });
   const field = (scope: string, attrId: string) => {
     const a = attrIn(scope, attrId)!;
@@ -826,13 +850,15 @@ export const compile = (
         id: sid('consent'),
         type: 'EgoForm',
         label: localized(label('consent', 'Consent')),
-        introductionPanel: intro(
-          'consent',
-          'Taking part',
-          d.consentText ||
-            'Please read the information about this study before deciding whether to take part.',
+        form: formDocument(
+          [field('ego', 'consent')],
+          intro(
+            'consent',
+            'Taking part',
+            d.consentText ||
+              'Please read the information about this study before deciding whether to take part.',
+          ),
         ),
-        form: { fields: [field('ego', 'consent')] },
       },
       { added: 'consent' },
     );
@@ -897,12 +923,14 @@ export const compile = (
         push(
           {
             ...base(s.id, 'EgoForm', label(s.id, humanise(s.id))),
-            introductionPanel: intro(
-              s.id,
-              'About you',
-              'Please answer the following questions about yourself.',
+            form: formDocument(
+              s.attributeIds.map((a) => field('ego', a)),
+              intro(
+                s.id,
+                'About you',
+                'Please answer the following questions about yourself.',
+              ),
             ),
-            form: { fields: s.attributeIds.map((a) => field('ego', a)) },
           },
           src,
         );
@@ -912,7 +940,7 @@ export const compile = (
           withFilter({
             ...base(s.id, 'AlterForm', label(s.id, humanise(s.id))),
             subject: nodeSubject(s.nodeTypeId),
-            form: { fields: s.attributeIds.map((a) => field(scope, a)) },
+            form: formDocument(s.attributeIds.map((a) => field(scope, a))),
           }),
           src,
         );
@@ -923,9 +951,9 @@ export const compile = (
           {
             ...base(s.id, 'AlterEdgeForm', label(s.id, humanise(s.id))),
             subject: { entity: 'edge', type: relKey.get(r.id) },
-            form: {
-              fields: s.attributeIds.map((a) => field(`rel:${r.id}`, a)),
-            },
+            form: formDocument(
+              s.attributeIds.map((a) => field(`rel:${r.id}`, a)),
+            ),
           },
           src,
         );
@@ -997,7 +1025,7 @@ export const compile = (
                 title: localized(
                   pick(w?.title, `Add a ${n.singular.toLowerCase()}`),
                 ),
-                fields: [
+                ...formDocument([
                   {
                     id: `field-${nameKey}`,
                     variable: nameKey,
@@ -1006,7 +1034,7 @@ export const compile = (
                     ),
                   },
                   ...s.attributeIds.map((a) => field(scope, a)),
-                ],
+                ]),
               },
               ...panels,
             },
@@ -1371,7 +1399,11 @@ export const compile = (
                 }
               : {}),
             ...(s.attributeIds.length
-              ? { form: { fields: s.attributeIds.map((a) => field(scope, a)) } }
+              ? {
+                  form: formDocument(
+                    s.attributeIds.map((a) => field(scope, a)),
+                  ),
+                }
               : {}),
             ...(s.nominationPrompts.length
               ? {

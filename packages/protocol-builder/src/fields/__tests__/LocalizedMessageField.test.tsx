@@ -102,6 +102,22 @@ describe('LocalizedMessageField', () => {
     expect(group.querySelector(':scope > [aria-expanded]')).toBeNull();
   });
 
+  it('reads a placeholder’s name in the interface’s language', async () => {
+    renderItem({ en: 'Parents of {name}' });
+
+    const line = await findLine();
+    const name = await waitFor(() => {
+      const found = line.querySelector(
+        'data[data-attribute-type="placeholder"] [dir]',
+      );
+      if (found === null) throw new Error('No placeholder pill');
+      return found;
+    });
+    expect(name).toHaveTextContent('Name');
+    expect(name).toHaveAttribute('lang', 'en');
+    expect(name).toHaveAttribute('dir', 'ltr');
+  });
+
   it('lists the one version of a language that has one form of a number', async () => {
     renderItem(
       { zh: '{missing, plural, other {还需添加 # 位家长}}' },
@@ -211,36 +227,66 @@ describe('LocalizedMessageField', () => {
     });
   });
 
-  it('offers what the setting declares in the insert menu', async () => {
+  it('offers what the setting declares in the Attribute menu, a placeholder as a value and a choice or a number as wording', async () => {
     const user = userEvent.setup();
     renderItem({ en: 'Add parents' });
     await findLine();
 
-    await user.click(
-      screen.getByRole('button', { name: 'Inject piped text from this stage' }),
-    );
-    const options = await screen.findAllByRole('option');
-    expect(options.map((option) => option.textContent)).toEqual([
-      'Participant or someone elseDifferent wording for each case',
-      'Name',
-      'Parents missingWording that fits the number',
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
+    const menu = await screen.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
+    const groupOf = (heading: string) => {
+      const group = within(menu).getByRole('group', { name: heading });
+      return within(group)
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+    };
+    expect(groupOf('Interview attributes')).toEqual([
+      expect.stringContaining('Name'),
+    ]);
+    expect(groupOf('Dynamic attributes')).toEqual([
+      expect.stringContaining('Parents missing'),
+      expect.stringContaining('Participant or someone else'),
     ]);
   });
 
-  it('inserts wording for each case from the insert menu', async () => {
+  it('inserts a placeholder from the Attribute menu, and from a typed {', async () => {
+    const user = userEvent.setup();
+    renderItem({ en: 'Parents of ' });
+    const line = await findLine();
+
+    await user.click(line);
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
+    await user.click(await screen.findByRole('option', { name: /^Name/ }));
+    await waitFor(() =>
+      expect(line.querySelectorAll('[data-inline-value="name"]')).toHaveLength(
+        1,
+      ),
+    );
+
+    await user.type(line, ' and {{');
+    await user.click(await screen.findByRole('option', { name: /^Name/ }));
+    await waitFor(() =>
+      expect(line.querySelectorAll('[data-inline-value="name"]')).toHaveLength(
+        2,
+      ),
+    );
+    expect(line).not.toHaveTextContent('{');
+  });
+
+  it('inserts wording for each case from the Attribute menu', async () => {
     const user = userEvent.setup();
     renderItem({ en: 'Add parents' });
     const line = await findLine();
 
     await user.click(line);
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
     await user.click(
-      screen.getByRole('button', { name: 'Inject piped text from this stage' }),
+      await screen.findByRole('option', {
+        name: /^Participant or someone else/,
+      }),
     );
-    const [option] = await screen.findAllByRole('option', {
-      name: /Participant or someone else/,
-    });
-    if (option === undefined) throw new Error('Nothing offered');
-    await user.click(option);
 
     expect(
       await screen.findByRole('textbox', { name: 'About the participant' }),
@@ -250,7 +296,7 @@ describe('LocalizedMessageField', () => {
     ).toBeInTheDocument();
   });
 
-  describe('inserting a switch from the insert menu', () => {
+  describe('inserting a switch from the Attribute menu', () => {
     /** The keys of the versions the field shows, in order. */
     const versionKeys = () =>
       screen
@@ -269,14 +315,8 @@ describe('LocalizedMessageField', () => {
       );
       const line = await findLine();
       await user.click(line);
-      await user.click(
-        screen.getByRole('button', {
-          name: 'Inject piped text from this stage',
-        }),
-      );
-      const [choice] = await screen.findAllByRole('option', { name: option });
-      if (choice === undefined) throw new Error('Nothing offered');
-      await user.click(choice);
+      await user.click(screen.getByRole('button', { name: 'Attribute' }));
+      await user.click(await screen.findByRole('option', { name: option }));
       await waitFor(() => expect(versionKeys().length).toBeGreaterThan(0));
     };
 
@@ -298,17 +338,15 @@ describe('LocalizedMessageField', () => {
     });
   });
 
-  describe('marking a required placeholder the text leaves out', () => {
+  describe('marking a required placeholder that the text leaves out', () => {
+    const attributeButton = () =>
+      screen.getByRole('button', { name: 'Attribute' });
     const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-      await user.click(
-        screen.getByRole('button', {
-          name: /^Inject piped text from this stage/,
-        }),
-      );
+      await user.click(attributeButton());
       return screen.findByRole('listbox');
     };
 
-    it('marks it in the menu and on its button until it is inserted', async () => {
+    it('marks it in the menu and on its button until it is put in', async () => {
       const user = userEvent.setup();
       renderItem({ en: 'Add parents for ' }, ENGLISH, {
         name: { kind: 'text', required: [{}] },
@@ -316,32 +354,29 @@ describe('LocalizedMessageField', () => {
       const line = await findLine();
       await user.click(line);
 
-      const missing = screen.getByRole('button', {
-        name: 'Inject piped text from this stage',
-      });
-      expect(missing).toHaveAttribute('data-missing', 'true');
-      expect(missing).toHaveAccessibleDescription(
-        'Something this text requires is not in it yet',
+      expect(attributeButton()).toHaveAttribute('data-missing');
+      expect(attributeButton()).toHaveAccessibleDescription(
+        'This wording is missing something it requires',
       );
       const list = await openMenu(user);
       const option = within(list).getByRole('option', {
-        name: 'Name, Required in this text',
+        name: /^Name, ?Required in this wording$/,
       });
-      expect(option).toHaveTextContent('NameRequired in this text');
+      expect(option).toHaveAttribute('data-marked');
+      expect(option).toHaveTextContent('Required in this wording');
       await user.click(option);
 
       await waitFor(() =>
-        expect(line.querySelector('[data-token="name"]')).not.toBeNull(),
+        expect(line.querySelector('[data-inline-value]')).not.toBeNull(),
       );
-      const button = screen.getByRole('button', {
-        name: 'Inject piped text from this stage',
+      expect(attributeButton()).not.toHaveAttribute('data-missing');
+      expect(attributeButton()).not.toHaveAccessibleDescription();
+      const name = within(await openMenu(user)).getByRole('option', {
+        name: /^Name/,
       });
-      expect(button).not.toHaveAttribute('data-missing');
-      expect(button).not.toHaveAccessibleDescription();
-      await user.click(button);
-      const name = await screen.findByRole('option', { name: 'Name' });
-      expect(name).not.toHaveAttribute('data-required');
-      expect(name).toHaveTextContent(/^Name$/);
+      expect(name).not.toHaveAttribute('data-marked');
+      expect(name).not.toHaveAccessibleName(/Required in this wording/);
+      expect(name).not.toHaveTextContent('Required in this wording');
     });
 
     it('marks it only in a version that requires it', async () => {
@@ -358,19 +393,19 @@ describe('LocalizedMessageField', () => {
       await user.click(
         await screen.findByRole('textbox', { name: 'About the participant' }),
       );
+      expect(attributeButton()).not.toHaveAttribute('data-missing');
       expect(
-        within(await openMenu(user)).getByRole('option', { name: 'Name' }),
-      ).not.toHaveAttribute('data-required');
+        within(await openMenu(user)).getByRole('option', { name: /^Name/ }),
+      ).not.toHaveAttribute('data-marked');
       await user.keyboard('{Escape}');
 
       await user.click(
         screen.getByRole('textbox', { name: 'About someone else' }),
       );
+      expect(attributeButton()).toHaveAttribute('data-missing');
       expect(
-        within(await openMenu(user)).getByRole('option', {
-          name: 'Name, Required in this text',
-        }),
-      ).toHaveAttribute('data-required', 'true');
+        within(await openMenu(user)).getByRole('option', { name: /^Name/ }),
+      ).toHaveAttribute('data-marked');
     });
   });
 
@@ -384,7 +419,9 @@ describe('LocalizedMessageField', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findByText('Write something in every version of this text.'),
+      await screen.findByText(
+        'Write something in every version of this wording.',
+      ),
     ).toBeVisible();
     expect(saved.current).toBeUndefined();
   });
@@ -430,7 +467,7 @@ describe('LocalizedMessageField', () => {
 
       expect(
         await screen.findByText(
-          /^This text must include the attribute “Name” in the “About someone else · When “Parents missing” is .+” scenario\.$/,
+          /^This wording must include the attribute “Name” in the “About someone else · When “Parents missing” is .+” scenario\.$/,
         ),
       ).toBeVisible();
       expect(saved.current).toBeUndefined();
@@ -457,6 +494,9 @@ describe('LocalizedMessageField', () => {
 });
 
 describe('LocalizedMessageVersionsSummary', () => {
+  /** A value's pill, as `VariablePill` draws it. */
+  const PILL = 'data[data-variable-pill-size]';
+
   it('shows each placeholder and each piece with versions as a pill, among the words', () => {
     render(
       <p data-testid="summary">
@@ -472,12 +512,11 @@ describe('LocalizedMessageVersionsSummary', () => {
     );
 
     const summary = screen.getByTestId('summary');
-    const pills = summary.querySelectorAll('[data-token]');
+    const pills = summary.querySelectorAll(PILL);
     expect(pills).toHaveLength(2);
-    expect(pills[0]).toHaveAttribute('data-token', 'name');
-    expect(pills[0]).toHaveTextContent('Name');
-    expect(pills[1]).toHaveAttribute('data-token', 'isYou');
-    expect(pills[1]).toHaveTextContent('Participant or someone else');
+    expect(pills[0]).toHaveAttribute('value', 'Name');
+    expect(pills[0]).toHaveAttribute('data-attribute-type', 'placeholder');
+    expect(pills[1]).toHaveAttribute('value', 'Participant or someone else');
     expect(summary).toHaveTextContent(
       'Brothers and sisters of Name: Participant or someone else',
     );
@@ -508,7 +547,7 @@ describe('LocalizedMessageVersionsSummary', () => {
       'When it is 0, 2, 3, …Add Parents missing parents',
     ]);
     // Nothing is folded to a pill but the number inside the words.
-    expect(summary.querySelectorAll('[data-token]')).toHaveLength(1);
+    expect(summary.querySelectorAll(PILL)).toHaveLength(1);
   });
 
   it('writes out a set that is the whole of a version, under that version', () => {
@@ -529,9 +568,9 @@ describe('LocalizedMessageVersionsSummary', () => {
     // The choice is the whole message, so it is written out; the number is
     // among words in its version, so it stays a pill.
     expect(summary.querySelectorAll('[data-versions-summary]')).toHaveLength(1);
-    expect(summary.querySelector('[data-token="missing"]')).toHaveTextContent(
-      'Parents missing',
-    );
+    expect(
+      summary.querySelector(`${PILL}[value="Parents missing"]`),
+    ).not.toBeNull();
     expect(summary).not.toHaveTextContent('later');
   });
 });

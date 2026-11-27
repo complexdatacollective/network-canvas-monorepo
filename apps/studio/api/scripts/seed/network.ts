@@ -278,6 +278,12 @@ export const seedSessionsAndNetworks = Effect.fnUntraced(function* (
             seed: generatorSeed++,
             simulateDropOut: status === 'abandoned',
             inProgressStageIndex,
+            // A seeded session has no participant whose browser asks for a
+            // language, so its forms are answered in the language that the
+            // interview shows when the participant asks for none of the
+            // protocol's languages: the protocol's default language.
+            formLanguage: version.localization.defaultLocale,
+            localization: version.localization,
             config: { nodeCount: scale.nodeCount },
           }) as GeneratedInterview,
         );

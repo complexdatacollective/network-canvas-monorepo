@@ -7,8 +7,8 @@ import {
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { RichTextAssetBlockKind } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import { useInterfaceLanguage } from '@codaco/fresco-ui/interfaceLanguage';
 import type { MarkdownBlockImages } from '@codaco/fresco-ui/RenderMarkdown';
-import { useTokenPillLanguage } from '@codaco/fresco-ui/TokenPill';
 import {
   isAssetBlockUrl,
   readAssetBlockUrl,
@@ -56,7 +56,7 @@ export const createAssetBlockImages = (
     const intl = useAppIntl();
     // The interface's words, in a text in the language being translated or
     // summarized.
-    const interfaceLanguage = useTokenPillLanguage();
+    const interfaceLanguage = useInterfaceLanguage();
     const assetId = readAssetBlockUrl(url)?.block.assetId ?? '';
     const asset = useAsset(assetId);
     const description = assetBlockDescription(alt);

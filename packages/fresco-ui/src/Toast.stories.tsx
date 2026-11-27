@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { Button } from './Button';
+import Dialog from './dialogs/Dialog';
 import { awaitPassiveEffects } from './storybook-support/awaitPassiveEffects';
 import { withToastProvider } from './storybook-support/withToastProvider';
 import { type ToastVariant, useToast } from './Toast';
@@ -600,5 +601,75 @@ export const TallPersistentStackKeyboardDismiss: Story = {
       expect(lastHidden.inert).toBe(false);
       expect(lastHidden).toHaveFocus();
     });
+  },
+};
+
+function ToastOverDialogDemo() {
+  const { add } = useToast();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="p-8">
+      <Button onClick={() => setOpen(true)}>Open settings</Button>
+      <Dialog
+        open={open}
+        closeDialog={() => setOpen(false)}
+        title="Settings"
+        footer={
+          <Button
+            onClick={() =>
+              add({
+                title: 'The data could not be generated',
+                description: 'Close this message when you have read it.',
+                variant: 'destructive',
+                timeout: 0,
+              })
+            }
+          >
+            Generate data
+          </Button>
+        }
+      >
+        <Paragraph margin="none">
+          A toast raised from this dialog is shown over it.
+        </Paragraph>
+      </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Toasts are drawn over everything, dialogs included: one raised while a
+ * dialog is open can be read and closed without closing the dialog first.
+ */
+export const ToastOverDialog: Story = {
+  render: () => <ToastOverDialogDemo />,
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(page.getByRole('button', { name: 'Open settings' }));
+    const dialog = await page.findByRole('dialog', { name: 'Settings' });
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'Generate data' }),
+    );
+    const region = await page.findByRole('region', { name: 'Notifications' });
+    const toast = await within(region).findByRole('dialog', {
+      name: 'The data could not be generated',
+    });
+
+    // The toast is what the pointer reaches at its middle and at its close
+    // button, not the dialog's backdrop.
+    const close = within(toast).getByLabelText('Close');
+    const reaches = (element: Element) => {
+      const box = element.getBoundingClientRect();
+      const hit = element.ownerDocument.elementFromPoint(
+        box.left + box.width / 2,
+        box.top + box.height / 2,
+      );
+      return hit !== null && element.contains(hit);
+    };
+    await waitFor(() => {
+      expect(reaches(toast), 'the toast').toBe(true);
+      expect(reaches(close), 'its close button').toBe(true);
+    });
+    await expect(dialog).toBeVisible();
   },
 };

@@ -14,6 +14,8 @@ import {
 import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 import type { VariableOwner } from '../utils/codebookIdRewrite.ts';
 import {
+  formPathOfField,
+  rewriteFieldBlockReferences,
   rewriteStageReferences,
   setObjectIdAt,
   unshareObjects,
@@ -119,6 +121,12 @@ export const withTestIds = <T>(protocol: T): T => {
   unshareObjects(copy);
   const stageIds = new Map<string, string>();
   const firstContainer = new Map<string, string>();
+  // A form's text names its fields by id, so each renamed field's blocks are
+  // renamed with it.
+  const fieldRenames = new Map<
+    string,
+    { formPath: readonly (string | number)[]; renames: Map<string, string> }
+  >();
   for (const { id, path, objectKind } of findMarkedObjects(
     ProtocolStructureSchema,
     copy,
@@ -136,15 +144,23 @@ export const withTestIds = <T>(protocol: T): T => {
     const first = firstContainer.get(id) ?? container;
     firstContainer.set(id, first);
     const isStage = objectKind === 'stage' && objectPath.length === 2;
-    setObjectIdAt(
-      copy,
-      objectPath,
+    const newId =
       isStage || first === container
         ? testId(id)
-        : testId(`${stageIds.get(container) ?? container}/${id}`),
-    );
+        : testId(`${stageIds.get(container) ?? container}/${id}`);
+    setObjectIdAt(copy, objectPath, newId);
+    if (objectKind === 'formField') {
+      const formPath = formPathOfField(path);
+      const key = JSON.stringify(formPath);
+      const form = fieldRenames.get(key) ?? { formPath, renames: new Map() };
+      if (!form.renames.has(id)) form.renames.set(id, newId);
+      fieldRenames.set(key, form);
+    }
   }
   rewriteStageReferences(ProtocolStructureSchema, copy, asTestId);
+  for (const { formPath, renames } of fieldRenames.values()) {
+    rewriteFieldBlockReferences(copy, formPath, renames);
+  }
   return withTestCodebookIds(copy);
 };
 

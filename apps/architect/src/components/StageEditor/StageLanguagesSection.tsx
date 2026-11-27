@@ -13,6 +13,7 @@ import {
   collectLocalizedStrings,
   type LanguageChange,
   type LocalizedStringHit,
+  textPlaceOf,
 } from '@codaco/protocol-validation';
 import { ProtocolLanguages } from '~/components/Localization/LanguageList';
 import type { OpenStageDraft } from '~/components/Localization/useLanguageActions';
@@ -96,10 +97,10 @@ export default function StageLanguagesSection() {
     () =>
       stage === undefined
         ? NO_TEXTS
-        : collectLocalizedStrings({ stages: [stage] }).map((hit) => ({
-            ...hit,
-            path: ['stages', stageIndex, ...hit.path.slice(2)],
-          })),
+        : collectLocalizedStrings({ stages: [stage] }).map((hit) => {
+            const path = ['stages', stageIndex, ...hit.path.slice(2)];
+            return { ...hit, path, place: textPlaceOf(path) };
+          }),
     [stage, stageIndex],
   );
 

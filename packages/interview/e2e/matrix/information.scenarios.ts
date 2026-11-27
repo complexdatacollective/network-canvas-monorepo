@@ -480,15 +480,11 @@ export const informationScenarios: InterfaceScenarios = {
           component: 'Text',
           name: 'name',
         });
-        synth
-          .addStage('EgoForm', {
-            introductionPanel: { title: 'About you' },
-          })
-          .addFormField({
-            variable: nameVar.id,
-            component: 'Text',
-            prompt: 'What is your name?',
-          });
+        synth.addStage('EgoForm').addFormField({
+          variable: nameVar.id,
+          component: 'Text',
+          prompt: 'What is your name?',
+        });
         const name = dynamicValueNameFor({
           kind: 'attribute',
           role: 'ego',
@@ -497,10 +493,10 @@ export const informationScenarios: InterfaceScenarios = {
         synth.addInformationStage({
           label: 'Welcome',
           title: {
-            'en-US': `{${name}, select, missing {Welcome} other {Welcome, {${name}}}}`,
+            'en-US': `Welcome, {${name}}`,
           },
           text: {
-            'en-US': `Thanks for **joining**{${name}, select, missing {.} other {, {${name}}.}}`,
+            'en-US': `Thanks for **joining**, {${name}}.`,
           },
         });
         return synth;

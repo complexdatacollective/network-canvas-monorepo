@@ -2,8 +2,8 @@ import { type ComponentProps, useContext } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { useInterfaceLanguage } from '@codaco/fresco-ui/interfaceLanguage';
 import type { MarkdownBlockImages } from '@codaco/fresco-ui/RenderMarkdown';
-import { useTokenPillLanguage } from '@codaco/fresco-ui/TokenPill';
 import { assetBlockDescription } from '@codaco/protocol-builder/fields/assetBlocks/assetBlockDescription';
 import {
   assetBlockAlignmentShows,
@@ -129,7 +129,7 @@ const PageContentFile = ({
   // The file is described in the summary's own words, inside a translation
   // in its own language; the description the block gives the file is that
   // translation's text.
-  const interfaceLanguage = useTokenPillLanguage();
+  const interfaceLanguage = useInterfaceLanguage();
   const translationLanguage = useTranslationLanguage();
   const { protocol } = useContext(SummaryContext);
   const block = readAssetBlockUrl(url)?.block;

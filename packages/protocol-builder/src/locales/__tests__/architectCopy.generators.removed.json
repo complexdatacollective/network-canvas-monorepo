@@ -37,5 +37,9 @@
   "protocolBuilder.promptsSection.waitingDescription",
   "protocolBuilder.removeAfterConsideration.fieldHint",
   "protocolBuilder.sortOptions.orderEmptyState",
-  "protocolBuilder.sortOptions.sortableEmptyState"
+  "protocolBuilder.sortOptions.sortableEmptyState",
+  "protocolBuilder.introduction.description",
+  "protocolBuilder.introduction.headingLabel",
+  "protocolBuilder.introduction.textLabel",
+  "protocolBuilder.introduction.title"
 ]

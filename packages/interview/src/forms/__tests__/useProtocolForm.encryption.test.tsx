@@ -12,6 +12,7 @@ import {
   type Variable,
   VARIABLE_REFERENCE_VALIDATIONS,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -207,7 +208,7 @@ async function makeStore(
         type: 'NameGenerator',
         label: { en: 'Name the people you know' },
         subject: { entity: 'node', type: NODE_TYPE },
-        form: { title: { en: 'Add a person' }, fields: fieldFor(NOTES_VAR) },
+        form: { title: { en: 'Add a person' }, ...formOf(fieldFor(NOTES_VAR)) },
         prompts: [
           { id: testId('prompt-1'), text: { en: 'Name the people you know' } },
         ],
@@ -241,7 +242,8 @@ function renderForm(
     );
   }
   return renderHook(
-    () => useProtocolForm({ fields: fieldFor(variable), currentEntityId }),
+    () =>
+      useProtocolForm({ form: formOf(fieldFor(variable)), currentEntityId }),
     { wrapper: Wrapper },
   );
 }
@@ -266,10 +268,8 @@ function nodeIn(network: unknown, nodeId = NODE_ID) {
 }
 
 /** The stored person as the first field's validators see them. */
-function validatedNode(fieldComponents: ReactNode) {
-  const element = Array.isArray(fieldComponents)
-    ? fieldComponents[0]
-    : fieldComponents;
+function validatedNode(formContent: ReactNode) {
+  const element = Array.isArray(formContent) ? formContent[0] : formContent;
   if (!isValidElement(element) || !isRecord(element.props)) return undefined;
   const { validationContext } = element.props;
   if (!isRecord(validationContext)) return undefined;
@@ -277,10 +277,8 @@ function validatedNode(fieldComponents: ReactNode) {
 }
 
 /** Waits for the network the first field's validators would compare with. */
-async function resolveValidatedNetwork(fieldComponents: ReactNode) {
-  const element = Array.isArray(fieldComponents)
-    ? fieldComponents[0]
-    : fieldComponents;
+async function resolveValidatedNetwork(formContent: ReactNode) {
+  const element = Array.isArray(formContent) ? formContent[0] : formContent;
   if (!isValidElement(element) || !isRecord(element.props)) {
     throw new Error('Expected a field');
   }
@@ -295,8 +293,8 @@ async function resolveValidatedNetwork(fieldComponents: ReactNode) {
 }
 
 /** The value the first field's validators see for the stored person. */
-function validatedValue(fieldComponents: ReactNode, variable: string) {
-  return validatedNode(fieldComponents)?.[entityAttributesProperty][variable];
+function validatedValue(formContent: ReactNode, variable: string) {
+  return validatedNode(formContent)?.[entityAttributesProperty][variable];
 }
 
 const comparisons: [string, string, string | undefined][] = [
@@ -316,7 +314,7 @@ describe('useProtocolForm validating against encrypted values', () => {
       const { result } = renderForm(store, variable, currentEntityId);
 
       await waitFor(() => {
-        expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+        expect(validatedValue(result.current.formContent, NAME_VAR)).toBe(
           'Alice',
         );
       });
@@ -328,7 +326,7 @@ describe('useProtocolForm validating against encrypted values', () => {
     const bob = await encryptedNode('node-2', { id: 'node-2', name: 'Bob' });
     const { result } = renderForm(store, NAME_VAR);
 
-    const resolving = resolveValidatedNetwork(result.current.fieldComponents);
+    const resolving = resolveValidatedNetwork(result.current.formContent);
     act(() => {
       store.dispatch(restoreNode(bob));
     });
@@ -345,9 +343,7 @@ describe('useProtocolForm validating against encrypted values', () => {
 
     await waitFor(() => {
       expect(
-        validatedNode(result.current.fieldComponents)?.[
-          entityAttributesProperty
-        ],
+        validatedNode(result.current.formContent)?.[entityAttributesProperty],
       ).toEqual({});
     });
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
@@ -360,12 +356,10 @@ describe('useProtocolForm validating against encrypted values', () => {
       const { result } = renderForm(store, variable, currentEntityId);
 
       expect(
-        validatedNode(result.current.fieldComponents)?.[
-          entityAttributesProperty
-        ],
+        validatedNode(result.current.formContent)?.[entityAttributesProperty],
       ).toEqual({});
       await expect(
-        resolveValidatedNetwork(result.current.fieldComponents),
+        resolveValidatedNetwork(result.current.formContent),
       ).rejects.toThrow(
         createMessageError(runtimeMessages.protectedAnswersNotSaved),
       );
@@ -415,11 +409,11 @@ describe('useProtocolForm validating against encrypted values', () => {
       const { result } = renderForm(store, variable, currentEntityId);
 
       expect(result.current.passphraseNeeded).toBe(false);
-      expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+      expect(validatedValue(result.current.formContent, NAME_VAR)).toBe(
         node[entityAttributesProperty][NAME_VAR],
       );
       await expect(
-        resolveValidatedNetwork(result.current.fieldComponents),
+        resolveValidatedNetwork(result.current.formContent),
       ).rejects.toThrow('Expected the validation to resolve its network');
       expect(store.getState().ui.showPassphrasePrompter).toBe(false);
     },
@@ -436,7 +430,7 @@ describe('useProtocolForm validating against encrypted values', () => {
       const { result } = renderForm(store, variable, currentEntityId);
 
       await waitFor(() => {
-        expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+        expect(validatedValue(result.current.formContent, NAME_VAR)).toBe(
           'Alice',
         );
       });
@@ -454,12 +448,10 @@ describe('useProtocolForm validating against encrypted values', () => {
       const { result } = renderForm(store, variable, currentEntityId);
 
       expect(
-        validatedNode(result.current.fieldComponents)?.[
-          entityAttributesProperty
-        ],
+        validatedNode(result.current.formContent)?.[entityAttributesProperty],
       ).toEqual({});
       await expect(
-        resolveValidatedNetwork(result.current.fieldComponents),
+        resolveValidatedNetwork(result.current.formContent),
       ).rejects.toThrow(
         createMessageError(runtimeMessages.protectedAnswersNotSaved),
       );
@@ -472,7 +464,7 @@ describe('useProtocolForm validating against encrypted values', () => {
     const store = await makeStore([node], false);
     const { result } = renderForm(store, NOTES_VAR, NODE_ID);
 
-    expect(validatedValue(result.current.fieldComponents, NAME_VAR)).toBe(
+    expect(validatedValue(result.current.formContent, NAME_VAR)).toBe(
       node[entityAttributesProperty][NAME_VAR],
     );
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);

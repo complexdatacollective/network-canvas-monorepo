@@ -42,7 +42,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Participant-facing text that reads differently depending on what it is about, edited as piped text is: one line, its placeholders (such as a person’s name) as pills, and a piece of text with a version for each case (about the participant, about someone else) or wording that fits a number only where the text has one, folded to a pill until it is opened. The insert menu (the syringe button, or typing `{`) offers what the setting declares; the names come from `useMessageArgumentLabels`.\n\n```tsx\n<Field\n  name="completeness.itemText.parents.listItem"\n  component={LocalizedMessageField}\n  label="Missing parents item"\n  arguments={PARENTS_ARGUMENTS}\n/>\n```',
+          'Participant-facing text that reads differently depending on what it is about, edited as other text is: one line, its placeholders (such as a person’s name) as pills, and a piece of text with a version for each case (about the participant, about someone else) or wording that fits a number only where the text has one, folded to a pill until it is opened. The Attribute menu (its toolbar button, or typing `{`) offers what the setting declares: each placeholder under “Interview attributes”, and each case or number that the text can change with under “Dynamic attributes”; the names come from `useMessageArgumentLabels`.\n\n```tsx\n<Field\n  name="completeness.itemText.parents.listItem"\n  component={LocalizedMessageField}\n  label="Missing parents item"\n  arguments={PARENTS_ARGUMENTS}\n/>\n```',
       },
     },
   },

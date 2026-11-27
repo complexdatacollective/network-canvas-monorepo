@@ -9,14 +9,12 @@ import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getTranslationGroups } from '~/selectors/issues';
 
-import {
-  translationFieldName,
-  useTranslationDraft,
-} from '../translationDrafts';
+import { translationFieldName } from '../cellNames';
+import { useTranslationDraft } from '../translationDrafts';
 import { dynamicValuesProtocol, FIRST_NAME } from './dynamicValuesProtocol';
 
 const protocol = dynamicValuesProtocol({
-  en: `Welcome{${FIRST_NAME}, select, missing {} other {, {${FIRST_NAME}}}}`,
+  en: `Welcome, {${FIRST_NAME}}`,
   fr: 'Bienvenue',
 });
 
@@ -61,11 +59,7 @@ describe('a translation that shows a value its place cannot show', () => {
   it('is accepted once it shows only what its place can show', async () => {
     const { result } = openDraft();
 
-    act(() =>
-      result.current.change(
-        `Bonjour {${FIRST_NAME}, select, missing {} other {{${FIRST_NAME}}}}`,
-      ),
-    );
+    act(() => result.current.change(`Bonjour {${FIRST_NAME}}`));
     act(() => result.current.leave());
 
     await waitFor(() => expect(result.current.changed).toBe(true));

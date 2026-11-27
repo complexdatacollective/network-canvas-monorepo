@@ -26,9 +26,9 @@ const messages = defineMessages({
   guidance: {
     id: 'protocolBuilder.censusPrompts.dyadGuidance',
     defaultMessage:
-      'The participant sees two nodes side by side and answers yes or no, so write the question about that pair and phrase it so that yes and no are both sensible answers. To show the two nodes’ labels in the question, insert “First node: label” and “Second node: label” with the syringe button in the toolbar.',
+      'The participant sees two nodes side by side and answers yes or no, so write the question about that pair and phrase it so that yes and no are both sensible answers. To show the two nodes’ labels in the question, choose “First node: label” and “Second node: label” from the Attribute menu in the toolbar.',
     description:
-      'Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The two quoted names are entries in the menu that the toolbar’s syringe button opens (its tooltip is “Inject piped text from interview metadata or a network attribute”), and must match those entries’ own translations.',
+      'Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. A node is one entity in the network, which may not be a person. The two quoted names are entries in the list that the Attribute button in the toolbar opens, and must match those entries’ own translations. “Attribute” is that button’s label, and must match its own translation.',
   },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.dyadPlaceholder',

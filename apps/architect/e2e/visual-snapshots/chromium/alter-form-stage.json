@@ -1,5 +1,8 @@
 {
   "form": {
+    "content": {
+      "en": "![](field:id-1)"
+    },
     "fields": [
       {
         "id": "id-1",

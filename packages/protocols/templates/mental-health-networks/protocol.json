@@ -727,15 +727,10 @@
       "label": {
         "en": "Welcome and consent"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About this interview"
-        },
-        "text": {
-          "en": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If reading or talking about these topics brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate local support whether or not you choose to participate.**"
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About this interview\n\n## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If reading or talking about these topics brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate local support whether or not you choose to participate.**\n\n![](field:4b9b4531-79af-555a-9b1e-7f115f3cc7cf)"
+        },
         "fields": [
           {
             "id": "4b9b4531-79af-555a-9b1e-7f115f3cc7cf",
@@ -773,15 +768,10 @@
           "stageId": "a748a677-3549-5316-a8db-c2276944ff1e"
         }
       },
-      "introductionPanel": {
-        "title": {
-          "en": "A few questions about you"
-        },
-        "text": {
-          "en": "Before we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# A few questions about you\n\nBefore we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer.\n\n![](field:4e78326f-da60-574c-9a98-0b4a1769dae3)\n\n![](field:f1a5e6f2-c49e-5b36-901d-1935431824ab)\n\n![](field:bab5b982-6f7a-5052-b39c-0ff8a0956e76)\n\n![](field:525423f2-0045-540f-8755-30b06e3a495e)\n\n![](field:16485a4c-c02d-5211-b7b4-114c006010a4)\n\n![](field:d73e8545-da12-59dc-9b25-55b0dfa50d6f)\n\n![](field:773668ac-b481-5a22-8351-ee27380fdbd6)\n\n![](field:5f9ef3b0-b644-5e7f-b911-551b492d1411)"
+        },
         "fields": [
           {
             "id": "4e78326f-da60-574c-9a98-0b4a1769dae3",
@@ -869,6 +859,9 @@
         "title": {
           "en": "Add Person"
         },
+        "content": {
+          "en": "![](field:8116c406-847a-5cc1-9dd6-61e8dd508952)"
+        },
         "fields": [
           {
             "id": "8116c406-847a-5cc1-9dd6-61e8dd508952",
@@ -948,6 +941,9 @@
         "title": {
           "en": "Add Person"
         },
+        "content": {
+          "en": "![](field:9a208e52-4482-553f-b76d-21417f4785c0)"
+        },
         "fields": [
           {
             "id": "9a208e52-4482-553f-b76d-21417f4785c0",
@@ -1011,6 +1007,9 @@
         "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
       },
       "form": {
+        "content": {
+          "en": "![](field:50271127-ce78-5c55-b985-686b22a47a38)\n\n![](field:1b7e7aa8-6700-5725-a96b-4f3aa57972e9)\n\n![](field:21597d2f-d398-5ad4-9bee-e8205450ee53)"
+        },
         "fields": [
           {
             "id": "50271127-ce78-5c55-b985-686b22a47a38",

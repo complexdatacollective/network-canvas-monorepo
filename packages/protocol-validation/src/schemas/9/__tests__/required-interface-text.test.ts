@@ -147,7 +147,7 @@ describe('the interface text a protocol may hold', () => {
       {
         path: 'interfaceText.navigation.back.en',
         code: 'custom',
-        message: 'Text cannot be blank.',
+        message: 'This wording cannot be blank.',
       },
     ]);
   });

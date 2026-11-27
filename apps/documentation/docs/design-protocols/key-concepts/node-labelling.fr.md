@@ -1,7 +1,7 @@
 ---
 title: Libellés des nœuds
 navOrder: 13
-translatedFrom: 44a0a050e6dfe7dcd627e657ba22133aae96cae4
+translatedFrom: 16f0a31bf39a92b6aec134b3022dba22baa9066b
 ---
 
 ## Comment le libellé d’un nœud est choisi {#how-a-nodes-label-is-chosen}
@@ -39,32 +39,31 @@ Si vous désactivez de nouveau **Libellé dynamique**, le libellé que vous avez
 
 ### Rédiger le libellé {#writing-the-label}
 
-Le libellé est une seule ligne de texte. Vous pouvez saisir du texte ordinaire et des emojis, et insérer deux sortes d’éléments depuis la barre d’outils du champ.
+Le libellé est une seule ligne de texte. Vous pouvez saisir du texte ordinaire et des emojis, et insérer deux sortes d’éléments avec le bouton **Attribut** de la barre d’outils du champ, ou en saisissant `{`.
 
-**Des valeurs, avec le bouton seringue.** Une valeur est un espace réservé : sur chaque nœud, le libellé affiche à sa place la valeur de ce nœud. Vous pouvez insérer n’importe quel attribut du type de nœud, ou le **Libellé par défaut**, c’est-à-dire le libellé que le nœud aurait eu sans libellé dynamique. Par exemple, un libellé composé du libellé par défaut suivi de l’âge du nœud affiche « Alice 34 » sur un nœud et « Bo 27 » sur un autre.
+**Attributs.** Un attribut s’affiche sous la forme d’une pastille : sur chaque nœud, le libellé affiche à sa place la valeur de ce nœud. Vous pouvez insérer n’importe quel attribut du type de nœud, ou le **Libellé par défaut**, c’est-à-dire le libellé que le nœud aurait eu sans libellé dynamique. Par exemple, un libellé composé du libellé par défaut suivi de l’âge du nœud affiche « Alice 34 » sur un nœud et « Bo 27 » sur un autre. Un attribut peut n’avoir aucune valeur pour certains nœuds, et une valeur manquante n’affiche rien. Voir [Lorsque l’information manque](/fr/design-protocols/key-concepts/piped-text#when-information-is-missing).
 
-Un attribut peut ne pas avoir de valeur pour certains nœuds. Lorsque vous en insérez un, sélectionnez-le dans le libellé pour rédiger deux versions du texte qui l’entoure : l’une pour le cas où la valeur est connue, l’autre pour le cas où elle ne l’est pas. Voir [Lorsque l’information manque](/fr/design-protocols/key-concepts/piped-text#when-information-is-missing).
+**Attributs dynamiques.** Un attribut dynamique est un mot ou une expression qui change d’un nœud à l’autre. Choisissez **Créer un attribut dynamique** sous **Attributs dynamiques** dans la liste, choisissez sa **Logique**, puis rédigez chaque version :
 
-**De la logique, avec le bouton de logique.** La logique insère un groupe de formulations possibles, dont chaque nœud affiche une seule :
+- **Si … sinon** affiche une version lorsque les règles que vous définissez sont satisfaites, et une autre sinon. **Sauf si … sinon** fait l’inverse.
+- **Formulation différente pour chaque réponse** affiche une version pour chaque réponse à un attribut catégoriel, ordinal ou booléen.
+- **Formulation pour les nombres au singulier ou au pluriel** affiche une version pour chaque forme du nombre, comme « 1 enfant » et « 3 enfants ».
 
-- **Si … sinon** affiche une formulation lorsque les règles que vous définissez sont satisfaites, et une autre sinon. **Sauf si … sinon** fait l’inverse.
-- **Formulation différente pour chaque réponse** affiche une formulation pour chaque réponse à un attribut catégoriel, ordinal ou booléen.
-
-Sélectionnez un groupe dans le libellé pour l’ouvrir et rédiger le texte de chacun de ses cas. Un cas peut rester vide, pour ne rien afficher, et il peut contenir des valeurs et d’autres éléments de logique.
+Un attribut dynamique appartient au libellé : il peut donc être utilisé plusieurs fois dans le libellé, et une modification apportée à cet attribut s’applique partout où il est utilisé dans le libellé. Sélectionnez sa pastille pour le modifier. Ses versions sont de simples mots. Une version peut être laissée vide : rien n’est alors affiché à la place de la pastille. Voir [Attributs dynamiques](/fr/design-protocols/key-concepts/piped-text#dynamic-attributes).
 
 ### Règles {#rules}
 
-Un **Si** vérifie des règles portant sur le nœud qui porte le libellé. Choisissez **Modifier les règles** sur sa ligne pour les définir. Une règle peut vérifier :
+Un **Si** teste des règles sur le nœud qui affiche le libellé. Définissez-les sous **Règles de « Si »**, dans les paramètres de l’attribut dynamique. Une règle peut tester :
 
 - un attribut du nœud, par exemple si son âge est d’au moins 18 ;
 - si le nœud a un lien d’un type donné, ou un attribut de l’un de ses liens ;
 - le nombre de liens du nœud, d’un type ou de tout type. Ce nombre peut être comparé à un nombre que vous indiquez (exactement, plus de, au plus, etc.) ou aux autres nœuds du même type : **Est le plus élevé parmi les nœuds de son type** et **Est le plus faible parmi les nœuds de son type**. Les nœuds à égalité pour le nombre le plus élevé, ou pour le plus faible, satisfont tous la règle. Aucun nœud ne la satisfait lorsque tous les nœuds du type ont le même nombre de liens.
 
-Lorsqu’un **Si** a plusieurs règles, vous choisissez si elles doivent toutes être satisfaites ou si une seule suffit.
+Lorsqu’un **Si** a plusieurs règles, vous choisissez sous **Correspondance** si elles doivent toutes être satisfaites ou si une seule suffit.
 
-**Ajouter « Sinon, si »** ajoute un cas supplémentaire avec ses propres règles, vérifié lorsque les cas précédents ne s’appliquent pas. Le dernier cas, **Sinon**, s’affiche lorsqu’aucun des autres ne s’applique.
+**Ajouter « Sinon, si »** ajoute une version supplémentaire avec ses propres règles, vérifiée lorsque les versions précédentes ne s’appliquent pas. La dernière version, **Sinon**, s’affiche lorsqu’aucune des autres ne s’applique.
 
-Par exemple, pour signaler la personne la mieux connectée sur un sociogramme, rédigez le libellé par défaut suivi d’un **Si** dont la règle est que le nombre de liens « connaît » est le plus élevé parmi les nœuds de son type, et placez un emoji étoile dans ce cas. À mesure que la personne participante trace des liens, l’étoile passe au nœud qui en a le plus.
+Par exemple, pour signaler la personne la mieux connectée sur un sociogramme, rédigez le libellé par défaut suivi d’un attribut dynamique avec **Si … sinon**, dont la règle est que le nombre de liens « connaît » est le plus élevé parmi les nœuds de son type. Faites de sa première version un emoji étoile, et laissez la version **Sinon** vide. À mesure que la personne participante trace des liens, l’étoile passe au nœud qui en a le plus.
 
 ### Comment les personnes participantes voient un libellé dynamique {#how-participants-see-a-dynamic-label}
 
@@ -74,7 +73,7 @@ Un libellé dynamique ne change que ce qui est affiché. Il n’est pas enregist
 
 ### Traduire un libellé dynamique {#translating-a-dynamic-label}
 
-Dans un protocole en plusieurs langues, un libellé dynamique se traduit comme tout autre texte qui affiche des valeurs, dans le [tableau des traductions](/fr/design-protocols/tutorials/translating-your-protocol#the-translation-table). Ses valeurs et sa logique sont conservées dans chaque traduction, et le texte de chaque cas est traduit.
+Dans un protocole en plusieurs langues, un libellé dynamique se traduit dans le [tableau des traductions](/fr/design-protocols/tutorials/translating-your-protocol#the-translation-table), comme toute autre chaîne traduisible qui affiche des valeurs. La logique de ses attributs dynamiques est la même dans toutes les langues, et seule la formulation de chaque version est traduite.
 
 ### Protocoles qui utilisaient un script de libellés de nœuds {#protocols-that-used-a-node-label-worker}
 

@@ -1,6 +1,8 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { fieldBlockMarkdown } from '@codaco/protocol-validation';
+
 import {
   fixtureStageId,
   loadFixtureStage,
@@ -165,6 +167,7 @@ describe('the prompt list a stage owns', () => {
           subject: { entity: 'node', type: PERSON },
           form: {
             title: en('Add a person'),
+            content: en(fieldBlockMarkdown(testId('field-1'))),
             fields: [
               {
                 id: testId('field-1'),
@@ -656,6 +659,7 @@ describe('what a family says about its own prompt', () => {
           subject: { entity: 'node', type: PERSON },
           form: {
             title: en('Add a person'),
+            content: en(fieldBlockMarkdown(testId('field-1'))),
             fields: [
               {
                 id: testId('field-1'),

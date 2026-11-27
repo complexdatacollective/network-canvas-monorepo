@@ -105,11 +105,11 @@ export const findMessageSyntaxProblem = (
     elements = parse(message, PARSE_OPTIONS);
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
-    return `Text is not valid message syntax (${error.message}).`;
+    return `This wording is not valid message syntax (${error.message}).`;
   }
 
   if (literalText(elements) === undefined) {
-    return 'Text cannot contain placeholders or formatting such as "{name}", plural or select.';
+    return 'This wording cannot contain placeholders or formatting such as "{name}", plural or select.';
   }
 
   return undefined;

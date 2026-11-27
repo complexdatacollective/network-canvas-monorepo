@@ -67,7 +67,6 @@ export const SCENES: Readonly<
   'stage-filter': scene(binScenes, 'StageFilterScene'),
   'alter-form-intro': scene(alterFormScenes, 'AlterFormIntroScene'),
   'ego-form-intro': scene(interpreterScenes, 'EgoFormIntroScene'),
-  'ego-form-introduction': scene(interpreterScenes, 'EgoFormIntroductionScene'),
   'edge-form-intro': scene(interpreterScenes, 'EdgeFormIntroScene'),
   'edge-form-source': scene(interpreterScenes, 'EdgeFormSourceScene'),
   'dyad-census-intro': scene(interpreterScenes, 'DyadCensusIntroScene'),

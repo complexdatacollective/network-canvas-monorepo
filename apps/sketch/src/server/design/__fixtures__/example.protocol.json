@@ -752,15 +752,10 @@
       "label": {
         "en": "Consent"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "Taking part"
-        },
-        "text": {
-          "en": "This study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Taking part\n\nThis study asks about the friends you have made since starting university, about drinking alcohol, and about how you have been feeling. It takes about 20 minutes. Your answers are confidential, and you can stop at any time.\n\n![](field:55495839-aa92-58cc-83e7-8b79017016d4)"
+        },
         "fields": [
           {
             "id": "55495839-aa92-58cc-83e7-8b79017016d4",
@@ -778,15 +773,10 @@
       "label": {
         "en": "About you"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "A little about you"
-        },
-        "text": {
-          "en": "First, a few questions about yourself."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# A little about you\n\nFirst, a few questions about yourself.\n\n![](field:9ccc09b2-6691-5cdc-ae8d-3f650253bad1)\n\n![](field:fd4113a4-a3b4-5fc8-bf7c-339e0d88d5f7)\n\n![](field:609c7acf-4dc0-5e00-85d8-02b5c3489929)"
+        },
         "fields": [
           {
             "id": "9ccc09b2-6691-5cdc-ae8d-3f650253bad1",
@@ -951,6 +941,9 @@
         "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "form": {
+        "content": {
+          "en": "![](field:928bb7b3-eefa-56fd-8f3b-379a35d6371d)\n\n![](field:4cd97e47-84c8-54d7-be59-e2df327e3078)"
+        },
         "fields": [
           {
             "id": "928bb7b3-eefa-56fd-8f3b-379a35d6371d",
@@ -1280,15 +1273,10 @@
       "label": {
         "en": "Your drinking"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "Your drinking"
-        },
-        "text": {
-          "en": "These questions are about your own drinking."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Your drinking\n\nThese questions are about your own drinking.\n\n![](field:8d330119-590d-5257-84b4-3ea68778d397)"
+        },
         "fields": [
           {
             "id": "8d330119-590d-5257-84b4-3ea68778d397",
@@ -1322,15 +1310,10 @@
           ]
         }
       },
-      "introductionPanel": {
-        "title": {
-          "en": "Your drinking"
-        },
-        "text": {
-          "en": "A little more about how much you drink."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Your drinking\n\nA little more about how much you drink.\n\n![](field:e7b0f0bb-a81c-557b-aa5f-3d9b9e3b5675)\n\n![](field:f68e658b-39f3-5c1e-af6b-6809a72c7f07)"
+        },
         "fields": [
           {
             "id": "e7b0f0bb-a81c-557b-aa5f-3d9b9e3b5675",
@@ -1355,15 +1338,10 @@
       "label": {
         "en": "Wellbeing (WHO-5)"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "How you have been feeling"
-        },
-        "text": {
-          "en": "Please think about the last two weeks."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# How you have been feeling\n\nPlease think about the last two weeks.\n\n![](field:bbccf91d-3cf6-5f4e-a5ab-2eac457c0b3c)\n\n![](field:fc6883e4-4ae6-5d91-8988-86bdc8b79346)\n\n![](field:5aa55a70-7e23-5bae-903f-65ce2471d011)\n\n![](field:ec571f49-fe2c-5020-9810-3e0ccb91906f)\n\n![](field:adfab90c-d65c-55dc-a040-db73c924e2d2)"
+        },
         "fields": [
           {
             "id": "bbccf91d-3cf6-5f4e-a5ab-2eac457c0b3c",

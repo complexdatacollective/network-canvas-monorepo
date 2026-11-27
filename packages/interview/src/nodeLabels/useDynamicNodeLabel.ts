@@ -4,6 +4,10 @@ import { createSelector } from '@reduxjs/toolkit';
 import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
+import {
+  type ConnectivityIndex,
+  EMPTY_CONNECTIVITY,
+} from '@codaco/network-query';
 import type {
   LocalizedString,
   NodeLabel,
@@ -16,11 +20,7 @@ import { useResolveLocalizedStringWhereLocalized } from '../localization/Protoco
 import { makeGetCodebookForNodeType } from '../selectors/protocol';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
-import {
-  type ConnectivityIndex,
-  EMPTY_CONNECTIVITY,
-  getConnectivityIndex,
-} from './connectivity';
+import { getConnectivityIndex } from './connectivity';
 import {
   nodeFactSignature,
   nodeFactsOf,
@@ -74,6 +74,7 @@ const resolveNodeLabel = ({
     attributes: { node: attributes },
     labels: { node: defaultLabel },
     conditionFacts: nodeFactsOf(plan, signature),
+    dynamicAttributes: label.dynamicAttributes,
     variablesFor: (role) => (role === 'node' ? variables : undefined),
   };
   let text: string;

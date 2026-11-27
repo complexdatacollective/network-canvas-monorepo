@@ -117,7 +117,7 @@ const { updateVariableByUUID } =
 const startEditing = async (uuid: string) => {
   const fixture = variableFixtures[uuid];
   if (!fixture) throw new Error(`No variable fixture ${uuid}`);
-  render(<ConnectedVariablePill animated editable uuid={uuid} />);
+  render(<ConnectedVariablePill editable uuid={uuid} />);
   const pill = screen.getByRole('button', {
     name: `Edit attribute name: ${fixture.name}`,
   });
@@ -133,11 +133,7 @@ describe('ConnectedVariablePill', () => {
 
   it('uses an accessible button to open the variable name editor directly', async () => {
     render(
-      <ConnectedVariablePill
-        animated
-        editable
-        uuid={testVariableId('node-subject')}
-      />,
+      <ConnectedVariablePill editable uuid={testVariableId('node-subject')} />,
     );
     const pill = screen.getByRole('button', {
       name: 'Edit attribute name: subject_var',
@@ -164,11 +160,7 @@ describe('ConnectedVariablePill', () => {
 
   it('describes the edit action in a tooltip on keyboard focus', async () => {
     render(
-      <ConnectedVariablePill
-        animated
-        editable
-        uuid={testVariableId('node-subject')}
-      />,
+      <ConnectedVariablePill editable uuid={testVariableId('node-subject')} />,
     );
     const pill = screen.getByRole('button', {
       name: 'Edit attribute name: subject_var',
@@ -440,6 +432,41 @@ describe('VariablePill', () => {
       );
       expect(editorWidth * 1.5 + 48).toBeLessThanOrEqual(frameWidth);
     });
+  });
+
+  it('draws protocol-builder’s pill, static or editable, saying the type it is drawn in', () => {
+    const { container, rerender } = render(
+      <VariablePill label="shade" type="categorical" />,
+    );
+    const statics = container.querySelector('data');
+    expect(statics).toHaveAttribute('data-attribute-type', 'categorical');
+    // The table lists the type in words; a screen reader hears it here too,
+    // after the name.
+    expect(statics?.querySelector('.sr-only')).toHaveTextContent(
+      '(attribute type: Categorical)',
+    );
+    expect(statics).toHaveTextContent('shade (attribute type: Categorical)');
+
+    rerender(<VariablePill editable label="shade" type="categorical" />);
+    const button = screen.getByRole('button', {
+      name: 'Edit attribute name: shade',
+    });
+    expect(button).toHaveAttribute('data-attribute-type', 'categorical');
+    expect(button.querySelector('img')).toHaveAttribute('alt', '');
+  });
+
+  it('claims no type for a type it does not know, static or editable', () => {
+    const { container, rerender } = render(
+      <VariablePill label="lost" type="" />,
+    );
+    const statics = container.querySelector('data');
+    expect(statics).toHaveTextContent('lost');
+    expect(statics).not.toHaveAttribute('data-attribute-type');
+
+    rerender(<VariablePill editable label="lost" type="" />);
+    expect(
+      screen.getByRole('button', { name: 'Edit attribute name: lost' }),
+    ).not.toHaveAttribute('data-attribute-type');
   });
 
   it('renders a non-interactive reference as a data element carrying the variable name', () => {

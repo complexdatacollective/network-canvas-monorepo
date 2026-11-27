@@ -61,9 +61,9 @@ Use this stage in situations where you want to follow up about named alters, and
 <!-- section: form-fields -->
 <!-- scene: alter-form-intro -->
 
-The form contains the questions asked about each alter. Each field records one attribute of the alter, and the fields appear in the order listed.
+The form contains the questions asked about each alter. Each field records one attribute of the alter.
 
-Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
+<!-- include: form-document -->
 
 <!-- include: skip-logic -->
 

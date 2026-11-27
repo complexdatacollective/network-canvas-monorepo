@@ -7,12 +7,18 @@ import {
 } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { formOf } from '@codaco/protocol-validation/testing';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
+  chooseIn,
+  newFieldPicker,
+  offeredIn,
+  reasonIn,
+} from '../../../sections/form-document/__tests__/formDocumentTesting.ts';
+import {
   attributeField,
   attributeTrigger,
-  unavailableReason,
 } from '../../../testing/attributePicker.ts';
 import {
   fixtureStageIds,
@@ -215,25 +221,15 @@ describe('the name generator editor', () => {
 
     await writeInto(
       harness,
-      await screen.findByRole('textbox', { name: 'Form title' }),
+      await screen.findByRole('textbox', { name: 'Dialog title' }),
       'Add a person',
     );
-    const field = await openDialog(harness, 'Create new form field');
-    await choosePickerOption(
+    const fieldId = await chooseIn(
       harness,
-      field,
-      'Attribute',
+      await newFieldPicker(harness),
       personVariable('name'),
     );
-    await writeInto(
-      harness,
-      field.getByRole('textbox', { name: 'Question text' }),
-      'What is their name?',
-    );
-    await harness.user.click(field.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
+    await harness.user.keyboard('What is their name?');
 
     const prompt = await openDialog(harness, 'Create new prompt');
     await writeInto(
@@ -252,13 +248,16 @@ describe('the name generator editor', () => {
       subject: { entity: 'node', type: PERSON },
       form: {
         title: { 'en-US': 'Add a person' },
-        fields: [
-          {
-            id: expect.any(String),
-            variable: personVariable('name'),
-            prompt: { 'en-US': 'What is their name?' },
-          },
-        ],
+        ...formOf(
+          [
+            {
+              id: fieldId,
+              variable: personVariable('name'),
+              prompt: { 'en-US': 'What is their name?' },
+            },
+          ],
+          { locale: 'en-US' },
+        ),
       },
       prompts: [
         { text: { 'en-US': 'Who are the people you are closest to?' } },
@@ -404,16 +403,14 @@ describe('the name generator editor', () => {
     const harness = mountFixture();
 
     await harness.user.clear(
-      await screen.findByRole('textbox', { name: 'Form title' }),
+      await screen.findByRole('textbox', { name: 'Dialog title' }),
     );
 
     expect(await harness.submit()).toBeNull();
-    expect(screen.getByText('Give this form a title.')).toBeInTheDocument();
+    expect(screen.getByText('Give this dialog a title.')).toBeInTheDocument();
     expect(
-      harness
-        .outline()
-        .find((section) => section.title === 'Form configuration'),
-    ).toEqual({ title: 'Form configuration', state: 'Has a problem' });
+      harness.outline().find((section) => section.title === 'Form'),
+    ).toEqual({ title: 'Form', state: 'Has a problem' });
   });
 
   /**
@@ -467,7 +464,7 @@ describe('the name generator editor', () => {
  * are on screen, and this is what says it does.
  *
  * Only the withdrawal is covered here. The save-time refusal behind it belongs
- * to `FormFieldsSection`, which owns it and can reach it: once a field is
+ * to the form section (`FormDocumentSection`), which owns it and can reach it: once a field is
  * bound the stamp picker stops offering the attribute, so no order of clicks
  * in THIS editor produces the contradiction — which is the point of the
  * withdrawal.
@@ -507,39 +504,17 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     });
   };
 
-  /**
-   * Which attributes a form-field dialog is offering, by the id choosing one
-   * would store. Leaves the window as it found it: closed.
-   */
-  const offeredAttributes = async (
-    harness: ReturnType<typeof renderStageEditor>,
-    dialog: OpenDialog,
-  ): Promise<string[]> => {
-    const window = await openPicker(harness, dialog, 'Attribute');
-    // The attributes that can be chosen; the others are listed below them,
-    // each with its reason.
-    const offered = [
-      ...window.querySelectorAll(
-        '[role="option"][data-attribute-id]:not([data-unavailable])',
-      ),
-    ].map((row) => row.getAttribute('data-attribute-id') ?? '');
-    await harness.user.keyboard('{Escape}');
-    await expectWindowClosed(window);
-    return offered;
-  };
-
   it('offers the form an attribute nothing writes yet', async () => {
     const harness = mountFixture();
-    await screen.findByRole('textbox', { name: 'Form title' });
+    await screen.findByRole('textbox', { name: 'Dialog title' });
     addFreeAttribute(harness);
 
-    const dialog = await openDialog(harness, 'Create new form field');
-    expect(await offeredAttributes(harness, dialog)).toContain(FREE_ATTRIBUTE);
+    expect(offeredIn(await newFieldPicker(harness))).toContain(FREE_ATTRIBUTE);
   });
 
   it('withdraws it from the form the moment a prompt stamps it', async () => {
     const harness = mountFixture();
-    await screen.findByRole('textbox', { name: 'Form title' });
+    await screen.findByRole('textbox', { name: 'Dialog title' });
     addFreeAttribute(harness);
 
     // The researcher stamps it on everyone this prompt names, rather than
@@ -565,20 +540,14 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     // role map, and this is the editor handing it to the form.
     expectStageUntouched(harness);
 
-    const after = await openDialog(harness, 'Create new form field');
-    const offered = await offeredAttributes(harness, after);
+    const after = await newFieldPicker(harness);
+    const offered = offeredIn(after);
     // Not the empty picker: everything else about this node type is still
     // offered, so the section is filtering rather than failing.
     expect(offered).toContain(personVariable('flagged'));
     expect(offered).not.toContain(FREE_ATTRIBUTE);
     // Listed, with the prompt that stamps it.
-    expect(
-      await unavailableReason(
-        harness.user,
-        attributeField('Attribute', after.element),
-        FREE_ATTRIBUTE,
-      ),
-    ).toBe(
+    expect(reasonIn(after, FREE_ATTRIBUTE)).toBe(
       'Prompt 1 on this stage assigns a value to this attribute, so it cannot also be collected here.',
     );
   });

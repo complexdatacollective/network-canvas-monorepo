@@ -1,6 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import {
+  expect,
+  fireEvent,
+  fn,
+  spyOn,
+  userEvent,
+  waitFor,
+  within,
+} from 'storybook/test';
 
 import { assetBlockFrameVariants } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
@@ -17,7 +25,7 @@ import {
 import { PageContentStoryHost } from '../../testing/PageContentStoryHost.tsx';
 import { messages } from './assetBlockMessages.ts';
 import { createAssetBlockView } from './AssetBlockView.tsx';
-import { SETTINGS_MARGIN } from './settingsPlacement.ts';
+import { SETTINGS_MARGIN, SETTINGS_OFFSET } from './settingsPlacement.ts';
 
 // What a block's view draws, from stand-ins for where its files come from.
 const View = createAssetBlockView({
@@ -308,6 +316,116 @@ export const KeptClearOfTheHostsBars: Story = {
   },
 };
 
+/**
+ * A medium picture high in a frame 560 pixels tall and `wide` wide, its block
+ * `blockWide` wide in the middle of it: its settings fit neither under the
+ * picture nor over it, and there is more room under it, so they are moved up
+ * over it, towards its bottom, where the corner that resizes it is.
+ */
+const coveredIn = (wide: number, blockWide: number): Story['render'] =>
+  function Covered(args) {
+    return (
+      <div
+        data-testid="frame"
+        dir="ltr"
+        className="h-[560px] overflow-y-auto"
+        style={{ width: wide }}
+      >
+        <div className="h-10" />
+        <div className="mx-auto" style={{ width: blockWide }}>
+          <Outlined>
+            <DrawnView
+              {...args}
+              attributes={{ ...args.attributes, size: 'medium' }}
+            />
+          </Outlined>
+        </div>
+        <div className="h-[800px]" />
+      </div>
+    );
+  };
+
+/**
+ * The settings leave the corner uncovered, as far from it as they stand from
+ * the picture (`placed` says where), and the corner is what a pointer pressed
+ * on its middle takes hold of: dragged up, it makes the picture smaller.
+ */
+const cornerStaysInReach =
+  (placed: (settings: DOMRect, corner: DOMRect) => void): Story['play'] =>
+  async ({ canvasElement, args }) => {
+    const settings = await within(canvasElement.ownerDocument.body).findByRole(
+      'dialog',
+      { name: 'Image settings' },
+    );
+    const corner = await waitFor(() => {
+      const found = canvasElement.querySelector('[data-asset-block-resize]');
+      if (!(found instanceof HTMLElement)) throw new Error('No corner yet');
+      return found;
+    });
+    await waitFor(() => {
+      const box = settings.getBoundingClientRect();
+      expect(box.height).toBeGreaterThan(0);
+      placed(box, corner.getBoundingClientRect());
+    });
+    const { left, top, width, height } = corner.getBoundingClientRect();
+    const middle = { clientX: left + width / 2, clientY: top + height / 2 };
+    // What a pointer pressed there would press: the corner, not the settings.
+    const pressed = canvasElement.ownerDocument.elementFromPoint(
+      middle.clientX,
+      middle.clientY,
+    );
+    await expect(pressed).toBe(corner);
+
+    // The browser gives pointer capture only to a real pointer (see the
+    // resize corner's own stories).
+    const setCapture = spyOn(
+      window.HTMLElement.prototype,
+      'setPointerCapture',
+    ).mockImplementation(() => {});
+    try {
+      const pointer = { pointerId: 1, pointerType: 'mouse', button: 0 };
+      const to = { ...middle, clientY: middle.clientY - 220 };
+      await fireEvent.pointerDown(pressed ?? corner, {
+        ...pointer,
+        buttons: 1,
+        ...middle,
+      });
+      await fireEvent.pointerMove(corner, { ...pointer, buttons: 1, ...to });
+      await fireEvent.pointerUp(corner, { ...pointer, ...to });
+    } finally {
+      setCapture.mockRestore();
+    }
+    await expect(args.update).toHaveBeenCalledWith({ size: 'small' });
+  };
+
+/**
+ * Where the page has room beside the block, the settings moved over the
+ * picture keep to the side of the corner the picture is on.
+ */
+export const SettingsBesideTheCorner: Story = {
+  tags: ONE_DIRECTION,
+  render: coveredIn(960, 700),
+  play: cornerStaysInReach((settings, corner) => {
+    expect(settings.right).toBeLessThanOrEqual(
+      corner.left - SETTINGS_OFFSET + 0.5,
+    );
+  }),
+};
+
+/**
+ * Where the page is hardly wider than the block, there is no room beside the
+ * corner for them, and the settings moved over the picture stop above it.
+ */
+export const SettingsAboveTheCorner: Story = {
+  tags: ONE_DIRECTION,
+  render: coveredIn(720, 680),
+  play: cornerStaysInReach((settings, corner) => {
+    expect(settings.bottom).toBeLessThanOrEqual(
+      corner.top - SETTINGS_OFFSET + 0.5,
+    );
+  }),
+};
+
 /** A second picture to choose in place of the first: square, where it is wide. */
 const SQUARE_RESOURCE: StoryResource = Object.freeze({
   kind: 'image',
@@ -471,6 +589,52 @@ export const ReplacingThePicture: Story = {
       expect(
         body.queryByRole('dialog', { name: 'Choose an image' }),
       ).toBeNull(),
+    );
+  },
+};
+
+/**
+ * The settings reached from the keyboard: Enter on the selected block goes
+ * to its first setting, Escape goes back to the block, and Enter goes to the
+ * first setting again. While focus is outside them, the settings take their
+ * controls out of the Tab order, and Enter still reaches them.
+ */
+export const SettingsReachedAgainAfterEscape: Story = {
+  tags: WHOLE_EDITOR,
+  render: () => (
+    <PageHost
+      block={`![The neighbourhood](asset:${IMAGE_RESOURCE.id}?size=small)`}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const { settings } = await selectBlock(canvasElement, 'Image settings');
+    const text = within(canvasElement).getByRole('textbox', {
+      name: /^Rich Text/,
+    });
+    await waitFor(() => expect(text).toHaveFocus());
+    // The first setting: the description, at the top of the settings.
+    const first = settings.getByRole('textbox', { name: 'Description' });
+
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(first).toHaveFocus());
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(text).toHaveFocus());
+    await expect(
+      await within(canvasElement.ownerDocument.body).findByRole('dialog', {
+        name: 'Image settings',
+      }),
+    ).toBeVisible();
+
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(first).toHaveFocus());
+    // Enter went to the settings: the page still has its block, and no new
+    // paragraph took its place.
+    await expect(canvasElement.querySelector('[data-asset-block]')).not.toBe(
+      null,
+    );
+    await expect(text).toHaveTextContent(
+      /^Welcome to the study\.Please read on\.$/,
     );
   },
 };

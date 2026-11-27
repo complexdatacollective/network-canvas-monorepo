@@ -50,16 +50,18 @@
  * ## Usage Example
  *
  * ```tsx
- * function NodeForm({ fields, onSubmit }) {
- *   const { fieldComponents } = useProtocolForm({
- *     fields,
+ * function NodeForm({ form, onSubmit }) {
+ *   // `form` is the protocol's: its text, which places its fields, and
+ *   // its fields.
+ *   const { formContent } = useProtocolForm({
+ *     form,
  *     autoFocus: true,
  *     initialValues: existingNode?.attributes,
  *   });
  *
  *   return (
  *     <Form onSubmit={onSubmit}>
- *       {fieldComponents}
+ *       {formContent}
  *       <SubmitButton>Save</SubmitButton>
  *     </Form>
  *   );
@@ -86,6 +88,7 @@ import {
   asEntityAttributeReference,
   type Form as TForm,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { testId, testTypeId, testVariableId } from '../__tests__/testIds';
@@ -384,8 +387,12 @@ const ProtocolFormDemo = ({
   autoFocus?: boolean;
   initialValues?: Record<string, FieldValue>;
 }) => {
-  const { fieldComponents } = useProtocolForm({
-    fields: fields.map((field) => ({ ...field, showValidationHints: true })), // Show validation hints for demo
+  const { formContent } = useProtocolForm({
+    // The form's text places each field in turn; each shows its validation
+    // hints, for the demo.
+    form: formOf(
+      fields.map((field) => ({ ...field, showValidationHints: true })),
+    ),
     autoFocus,
     initialValues,
   });
@@ -399,7 +406,7 @@ const ProtocolFormDemo = ({
       }}
       className="elevation-high bg-surface w-2xl rounded p-10"
     >
-      {fieldComponents}
+      {formContent}
       <SubmitButton>Submit</SubmitButton>
     </Form>
   );

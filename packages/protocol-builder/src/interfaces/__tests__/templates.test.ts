@@ -133,7 +133,7 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   Anonymisation: ['explanationText'],
   CategoricalBin: ['prompts', 'subject'],
   DyadCensus: ['prompts', 'subject'],
-  EgoForm: ['form', 'introductionPanel'],
+  EgoForm: ['form'],
   FamilyPedigree: [
     'edgeConfiguration',
     'nodeConfiguration',

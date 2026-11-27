@@ -57,7 +57,7 @@ describe('files shown as blocks in an Information page', () => {
       {
         path: ['stages', index, 'content', 'en'],
         message:
-          'This text shows the file "gone", which is not an asset in the manifest.',
+          'This document shows the file "gone", which is not an asset in the manifest.',
       },
     ]);
   });
@@ -71,7 +71,7 @@ describe('files shown as blocks in an Information page', () => {
       expect(issues).toEqual([
         {
           path: ['stages', index, 'content', 'en'],
-          message: `This text shows the file "${assetId}", which is not an asset in the manifest.`,
+          message: `This document shows the file "${assetId}", which is not an asset in the manifest.`,
         },
       ]);
     },
@@ -88,7 +88,7 @@ describe('files shown as blocks in an Information page', () => {
         {
           path: ['stages', index, 'content', 'en'],
           message:
-            'This text shows the file "gone", which is not an asset in the manifest.',
+            'This document shows the file "gone", which is not an asset in the manifest.',
         },
       ]);
     },
@@ -100,7 +100,7 @@ describe('files shown as blocks in an Information page', () => {
       {
         path: ['stages', index, 'content', 'en'],
         message:
-          "This text shows the file \"roster\", which must be an 'image', 'audio' or 'video' asset, but is of type \"network\".",
+          "This document shows the file \"roster\", which must be an 'image', 'audio' or 'video' asset, but is of type \"network\".",
       },
     ]);
   });
@@ -110,7 +110,7 @@ describe('files shown as blocks in an Information page', () => {
     expect(issues).toEqual([
       {
         path: ['stages', index, 'content', 'en'],
-        message: 'A file shown in this text does not name an asset.',
+        message: 'A file in this document does not name an asset.',
       },
     ]);
   });
@@ -121,7 +121,7 @@ describe('files shown as blocks in an Information page', () => {
       {
         path: ['stages', index, 'content', 'en'],
         message:
-          'A file shown in this text has a setting "zoom", which is not one a file can have.',
+          'A file in this document has a setting "zoom", which is not one a file can have.',
       },
     ]);
   });
@@ -138,7 +138,7 @@ describe('files shown as blocks in an Information page', () => {
     expect(issues).toEqual([
       {
         path: ['stages', index, 'content', 'en'],
-        message: `A file shown in this text has "${value}" for its setting "${setting}", which that setting cannot be.`,
+        message: `A file in this document has "${value}" for its setting "${setting}", which that setting cannot be.`,
       },
     ]);
   });
@@ -154,20 +154,18 @@ describe('files shown as blocks in an Information page', () => {
     ]);
   });
 
-  it('reports a block inside a version a message chooses between, and still checks its file', () => {
+  it('checks a block inside a version of a logic block as it checks any other', () => {
     const { index, issues } = issuesWith({
-      en: '{kind, select, a {![](asset:img)} other {![](asset:gone)}}',
+      en: '{kind, select, missing {![](asset:img)} other {![](asset:gone)}}',
     });
     const path = ['stages', index, 'content', 'en'];
     // The unbound `kind` is the dynamic values' to report, not the file's.
     const ofFiles = issues.filter(({ message }) => message.includes('file'));
     expect(ofFiles).toEqual([
-      { path, message: expect.stringContaining('inside one version') },
-      { path, message: expect.stringContaining('inside one version') },
       {
         path,
         message:
-          'This text shows the file "gone", which is not an asset in the manifest.',
+          'This document shows the file "gone", which is not an asset in the manifest.',
       },
     ]);
   });
@@ -264,13 +262,12 @@ describe('files shown as blocks in an Information page', () => {
   it('raises nothing for an asset image in text not declared to hold blocks', () => {
     const protocol = withManifest(completeProtocol());
     const stages = protocol.stages as Fields[];
-    const index = stages.findIndex((stage) => stage.id === testId('egoForm'));
+    const index = stages.findIndex(
+      (stage) => stage.id === testId('anonymisation'),
+    );
     stages[index] = {
       ...stages[index],
-      introductionPanel: {
-        title: { en: 'About you title' },
-        text: { en: '![](asset:gone)' },
-      },
+      explanationText: { en: '![](asset:gone)' },
     };
     expect(ProtocolSchemaV9.safeParse(protocol).success).toBe(true);
   });
@@ -301,7 +298,12 @@ describe('declaring text that holds blocks', () => {
       expect(() =>
         localizedString(nonBlankText(), { ...shape, assetBlocks: true }),
       ).toThrow(
-        'Only markdown text of several lines can hold files as blocks.',
+        'Only markdown text of several lines can contain blocks (files or fields).',
+      );
+      expect(() =>
+        localizedString(nonBlankText(), { ...shape, fieldBlocks: true }),
+      ).toThrow(
+        'Only markdown text of several lines can contain blocks (files or fields).',
       );
     },
   );

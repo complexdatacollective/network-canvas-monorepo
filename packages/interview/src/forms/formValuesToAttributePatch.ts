@@ -16,23 +16,40 @@ export type FormValuesToAttributePatchResult =
 
 type FormValuesToAttributePatchOptions = {
   /**
-   * Fields whose stored answer the form could not show. Left unanswered, such
-   * a field keeps that answer rather than clearing it: only a new answer
-   * replaces it.
+   * The variables of every field the form asks: in a form with text, every
+   * field that the text in the participant's language places, shown or not.
+   * Any other variable is left as it is stored, so a field that only another
+   * language's text places keeps its answer.
+   */
+  fields: readonly string[];
+  /**
+   * The variables of the fields on screen when the form is submitted. A field
+   * the form asks but does not show (logic hides it) is cleared, so that an
+   * answer the participant took back by changing an earlier one is not kept.
+   */
+  shown: ReadonlySet<string>;
+  /**
+   * Fields whose stored answer the form could not show. Left unanswered while
+   * shown, such a field keeps that answer rather than clearing it: only a new
+   * answer replaces it.
    */
   keepWhenUnanswered?: readonly string[];
 };
 
 export function formValuesToAttributePatch(
   values: Readonly<Record<string, FieldValue>>,
-  mountedFieldNames: readonly string[],
-  { keepWhenUnanswered = [] }: FormValuesToAttributePatchOptions = {},
+  { fields, shown, keepWhenUnanswered = [] }: FormValuesToAttributePatchOptions,
 ): FormValuesToAttributePatchResult {
   const set: Record<string, VariableValue> = {};
   const unset: string[] = [];
   const invalidFieldNames: string[] = [];
 
-  for (const fieldName of mountedFieldNames) {
+  for (const fieldName of fields) {
+    if (!shown.has(fieldName)) {
+      unset.push(fieldName);
+      continue;
+    }
+
     const value = values[fieldName];
 
     if (keepWhenUnanswered.includes(fieldName) && isUnanswered(value)) {

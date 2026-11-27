@@ -20,9 +20,8 @@ import {
   type NcEdge,
   type NcNode,
   type VariableValue,
+  readOwnProperty,
 } from '@codaco/shared-consts';
-
-import { readOwnProperty } from '../../utils/ownProperty';
 
 /**
  * The codebook bindings a FamilyPedigree stage writes through, flattened out of

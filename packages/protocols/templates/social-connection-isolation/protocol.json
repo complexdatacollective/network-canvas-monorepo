@@ -1029,15 +1029,10 @@
       "label": {
         "en": "About You"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About you and your household"
-        },
-        "text": {
-          "en": "To begin, we would like to ask a few questions about **you** and your current living situation. Your answers help us understand the context of your social connections."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About you and your household\n\nTo begin, we would like to ask a few questions about **you** and your current living situation. Your answers help us understand the context of your social connections.\n\n![](field:0a8d0024-ce5f-5847-bca0-4c3e6ed3a2ee)\n\n![](field:5a0dfc9c-2a96-5d4d-a200-10b1a550d78c)"
+        },
         "fields": [
           {
             "id": "0a8d0024-ce5f-5847-bca0-4c3e6ed3a2ee",
@@ -1070,6 +1065,9 @@
       "form": {
         "title": {
           "en": "Add Person"
+        },
+        "content": {
+          "en": "![](field:9770e7b6-ce55-5c6f-84b0-b8064e76d341)"
         },
         "fields": [
           {
@@ -1135,6 +1133,9 @@
         "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
       },
       "form": {
+        "content": {
+          "en": "![](field:c925e462-eefb-5676-bbf3-d560fff51054)\n\n![](field:74530d6a-8b2d-57e2-9d47-bbe2b80ae362)\n\n![](field:b60cfc0e-0172-5c00-8be8-3f96a699d7e2)\n\n![](field:c6d1f5b6-bbfd-5f19-ac25-9fa9c70e03a3)\n\n![](field:657599fe-a1b0-5657-914f-ecb7a1629b09)\n\n![](field:08fe5f14-c7f8-56ea-bdab-0b3b5d50d9b3)\n\n![](field:e754b3b4-a18c-56a7-a4e6-cd5e37df3801)"
+        },
         "fields": [
           {
             "id": "c925e462-eefb-5676-bbf3-d560fff51054",
@@ -1227,15 +1228,10 @@
       "label": {
         "en": "Your Feelings About Connection"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "Your feelings about social connection"
-        },
-        "text": {
-          "en": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Your feelings about social connection\n\nFinally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers.\n\n![](field:7c666129-db86-533c-9173-fb7560671fa9)\n\n![](field:195ebb04-487c-58e4-a6b5-d72d4bca4ec3)\n\n![](field:d391946b-f0c6-5b7f-9a39-38917cfcfe35)\n\n![](field:48ad402c-46e9-5e55-81f8-d537d419e807)\n\n![](field:3578e9ab-5f3e-517e-b391-849ed23621fd)\n\n![](field:eda179ea-ad0f-5040-ad26-62b6627bfb76)\n\n![](field:0b3d95ec-4f80-5a4e-ae6e-e84cc199dd15)\n\n![](field:6a213ca0-b424-5707-bd93-5da25a038d0d)\n\n![](field:c2c2e7ee-2eac-5def-a608-1a03f7058e42)\n\n![](field:eda49843-928a-559b-b2ec-0dbbca6424f4)\n\n![](field:9e1608ca-a402-5f74-8ce9-d508a5e345c6)\n\n![](field:1e8551c6-e745-5a38-b97c-c0f103d6ce73)\n\n![](field:6cdbf93d-2b60-54b3-9980-0d1d7040d0bf)\n\n![](field:342d515a-b4a0-5fe6-8e1b-e16a943b0d0d)\n\n![](field:02f857c1-1d15-54bd-bc64-7174c6bcb589)"
+        },
         "fields": [
           {
             "id": "7c666129-db86-533c-9173-fb7560671fa9",

@@ -8,15 +8,14 @@ import {
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { isProtocolObjectId } from '@codaco/protocol-validation';
+import {
+  fieldBlockMarkdown,
+  isProtocolObjectId,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { RowValues } from '../../form/rowDialog.tsx';
 import { translationText } from '../../localization/localizedText.ts';
-import {
-  attributeField,
-  attributeTrigger,
-} from '../../testing/attributePicker.ts';
 import {
   fixtureTypeId,
   fixtureVariableId,
@@ -27,21 +26,11 @@ import {
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
 import { testId } from '../../testing/testId.ts';
-import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import NodePanelsSection from '../panels/NodePanelsSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 const PERSON = fixtureTypeId('node', 'person');
-const RELATIONSHIP_TO_EGO = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'relationship_to_ego',
-);
-const FLAGGED = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'flagged',
-);
-const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
 const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const en = (text: string) => ({ 'en-US': text });
@@ -68,45 +57,6 @@ const englishOf = (value: unknown) => translationText(value, 'en-US');
  * the window is the one that is not this element.
  */
 type OpenDialog = BoundFunctions<typeof queries> & { element: HTMLElement };
-
-/**
- * Points a row's attribute picker at the attribute stored under this id, the
- * way a researcher does: open the window, take the row that names it.
- */
-const choosePickerOption = async (
-  harness: StageEditorHarness,
-  dialog: OpenDialog,
-  attributeId: string,
-) => {
-  await harness.user.click(
-    attributeTrigger(attributeField('Attribute', dialog.element)),
-  );
-  const window = await waitFor(() => {
-    const found = screen
-      .getAllByRole('dialog')
-      .find((element) => element !== dialog.element);
-    if (found === undefined) {
-      throw new Error('the attribute window did not open');
-    }
-    return found;
-  });
-  const row = window.querySelector<HTMLElement>(
-    `[role="option"][data-attribute-id="${attributeId}"]:not([aria-disabled="true"])`,
-  );
-  if (row === null) {
-    throw new Error(`The window is not offering "${attributeId}".`);
-  }
-  await harness.user.click(row);
-  // The pick is written as the window closes, so nothing may carry on while it
-  // is still covering the row.
-  await waitFor(() => {
-    // Closed rather than gone: Base UI keeps a combobox's popup mounted, and
-    // hidden, once its trigger has been used.
-    if (window.hasAttribute('data-open')) {
-      throw new Error('the attribute window is open');
-    }
-  });
-};
 
 type ListCase = Readonly<{
   list: string;
@@ -166,6 +116,7 @@ const nameGeneratorWith = (
       subject: { entity: 'node', type: PERSON },
       form: {
         title: en('Add a person'),
+        content: en(fieldBlockMarkdown(testId('field-1'))),
         fields: [
           {
             id: testId('field-1'),
@@ -209,39 +160,6 @@ const lists: readonly ListCase[] = [
     label: (row) => englishOf(row.title),
     write: typeInto('Panel title'),
     open: (rows) => nameGeneratorWith({ panels: rows }, <NodePanelsSection />),
-  },
-  {
-    list: 'the fields a form collects',
-    noun: 'field',
-    addLabel: 'Create new form field',
-    read: rowsAt('form.fields'),
-    // A field is one codebook attribute and the question asked for it, so the
-    // attributes are real ones of the fixture's person type and the question
-    // is what names a row here.
-    row: (id, text, index) => ({
-      id,
-      variable: index === 0 ? RELATIONSHIP_TO_EGO : FLAGGED,
-      prompt: en(text),
-    }),
-    label: (row) => englishOf(row.prompt),
-    write: typeInto('Question text'),
-    // The attribute is picked rather than typed, and a field that names none
-    // cannot be saved at all.
-    complete: async (harness, dialog) => {
-      await choosePickerOption(harness, dialog, AGE);
-    },
-    open: (rows) => ({
-      stage: {
-        id: testId('alter-form-with-fields'),
-        type: 'AlterForm',
-        fields: {
-          label: en('Alter form'),
-          subject: { entity: 'node', type: PERSON },
-          form: { fields: rows },
-        },
-      },
-      sections: <FormFieldsSection subject="node" />,
-    }),
   },
 ];
 

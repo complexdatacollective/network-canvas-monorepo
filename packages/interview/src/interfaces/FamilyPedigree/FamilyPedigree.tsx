@@ -33,6 +33,7 @@ import {
   ToolbarSeparator,
   ToolbarToggleGroup,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+import { formDocumentReading, formShownFields } from '@codaco/network-query';
 import type {
   FramingId,
   PedigreeRelationshipKind,
@@ -45,12 +46,19 @@ import {
   type NcNode,
   type VariableValue,
   VariableValueSchema,
+  readOwnProperty,
+  writeOwnProperty,
 } from '@codaco/shared-consts';
 
 import PassphraseOverlay from '../../components/PassphraseOverlay';
 import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
+import { NO_SOURCES } from '../../content/shownBlocks';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import {
+  useDynamicValueSources,
+  withDynamicValueEntities,
+} from '../../dynamicValues/DynamicValueScope';
 import type { LabelNode } from '../../dynamicValues/FormDynamicValues';
 import type { DynamicText } from '../../dynamicValues/resolveDynamicText';
 import {
@@ -63,7 +71,10 @@ import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import {
+  useResolveLocalizedSource,
+  useResolveLocalizedString,
+} from '../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../localization/useContentFormat';
 import { useStageWording } from '../../localization/useStageWording';
 import {
@@ -90,7 +101,6 @@ import {
 import { type RootState, useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { Direction, StageProps } from '../../types';
-import { readOwnProperty, writeOwnProperty } from '../../utils/ownProperty';
 import { getDecryptionScope } from '../Anonymisation/decryptionScope';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useReportUnreadable } from '../Anonymisation/useReportUnreadable';
@@ -717,19 +727,53 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     [codebook, config, resolve],
   );
 
-  const requiredFormVariables = useMemo(() => {
-    const variables = codebook.node?.[config.personType]?.variables ?? {};
-    return formFields
-      .map((field) => field.variable)
-      .filter((variable) => {
-        const definition = variables[variable];
-        return (
-          definition !== undefined &&
-          'validation' in definition &&
-          definition.validation?.required === true
-        );
-      });
-  }, [codebook, config.personType, formFields]);
+  // The researcher's fields a person must answer: those whose attribute the
+  // codebook marks required, among the fields that the person's form shows
+  // in the participant's language. A field that logic hides for this person
+  // (by their answers, or by whether they are the participant) is not
+  // missing, and is shown as the person form shows it: an answer to a
+  // hidden field never shows another (`formShownFields`).
+  const resolveSource = useResolveLocalizedSource();
+  const dynamicValueSources = useDynamicValueSources();
+  const formDocument = useMemo(() => {
+    if (stage.form === undefined) return undefined;
+    return formDocumentReading(stage.form, resolveSource(stage.form.content));
+  }, [stage.form, resolveSource]);
+  const requiredFormVariables = useCallback(
+    (person: Person): readonly string[] => {
+      if (formDocument === undefined || stage.form === undefined) return [];
+      const variables = codebook.node?.[config.personType]?.variables ?? {};
+      const shownIds = new Set(
+        formShownFields(
+          formDocument,
+          withDynamicValueEntities(dynamicValueSources ?? NO_SOURCES, {
+            attributes: { node: person.attributes },
+            ids: { node: person.id },
+            participants: { node: person.isEgo },
+          }),
+          'node',
+        ).shown,
+      );
+      return stage.form.fields
+        .filter((field) => shownIds.has(field.id))
+        .map((field) => field.variable)
+        .filter((variable) => {
+          const definition = variables[variable];
+          return (
+            definition !== undefined &&
+            'validation' in definition &&
+            definition.validation?.required === true
+          );
+        });
+    },
+    [
+      formDocument,
+      stage.form,
+      codebook,
+      config.personType,
+      dynamicValueSources,
+    ],
+  );
 
   // The participant is always on the canvas: create them on first visit.
   const creatingEgo = useRef(false);
@@ -1377,7 +1421,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             (person) =>
               missingDetailsFor(
                 person,
-                requiredFormVariables,
+                requiredFormVariables(person),
                 config.genderIdentity !== undefined,
               ).length > 0,
           )
@@ -2969,7 +3013,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       family.byId.has(personId) &&
                       missingDetailsFor(
                         person,
-                        requiredFormVariables,
+                        requiredFormVariables(person),
                         config.genderIdentity !== undefined,
                       ).length > 0
                     }
@@ -3303,7 +3347,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               framing={framing}
               genderIdentityOptions={genderIdentityOptions}
               optionLabels={optionLabels}
-              formFields={formFields}
+              form={stage.form}
               generatedLabels={generatedLabels}
               decryptedNames={decryptedNames}
               displayName={displayName}

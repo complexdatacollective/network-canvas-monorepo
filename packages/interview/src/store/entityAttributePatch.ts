@@ -3,9 +3,8 @@ import {
   type entitySecureAttributesMeta,
   type NcEntity,
   type VariableValue,
+  writeOwnProperty,
 } from '@codaco/shared-consts';
-
-import { writeOwnProperty } from '../utils/ownProperty';
 
 export type AttributePatch = Readonly<{
   set: Readonly<Record<string, VariableValue>>;

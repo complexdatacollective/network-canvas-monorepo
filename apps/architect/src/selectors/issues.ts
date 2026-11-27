@@ -4,6 +4,7 @@ import { suppliedWordingIn } from '@codaco/interview/supplied-wording';
 import {
   analyzeProtocolLocalization,
   collectLocalizedStringFields,
+  expectedLocalesOf,
   type CurrentProtocol,
   type DynamicValueSite,
   findLabelCollisions,
@@ -15,6 +16,7 @@ import {
   type LocalizedTextLines,
   type MessageArguments,
   type ProtocolLocalizationWarning,
+  type TextPlace,
 } from '@codaco/protocol-validation';
 import {
   getMapboxTokenId,
@@ -211,6 +213,12 @@ export const getLacksLanguageChooser = createSelector(
 export type LocaleCoverage = {
   locale: LocaleTag;
   isDefault: boolean;
+  /**
+   * The participant-facing strings used in this language: a form field
+   * that the form in this language does not include, or a version of a
+   * dynamic attribute that no text in this language shows, is not counted.
+   */
+  total: number;
   translated: number;
   missing: number;
 };
@@ -250,9 +258,16 @@ export const getLocalizationCoverage = createSelector(
   (protocol, strings): LocalizationCoverage => {
     if (!protocol) return EMPTY_COVERAGE;
     const { locales, defaultLocale } = protocol.localization;
-    const total = strings.filter((hit) =>
+    const counted = strings.filter((hit) =>
       locales.some((locale) => Object.hasOwn(hit.value, locale)),
-    ).length;
+    );
+    const total = counted.length;
+    const totalByLocale = new Map<LocaleTag, number>();
+    for (const hit of counted) {
+      for (const locale of expectedLocalesOf(hit.path, protocol)) {
+        totalByLocale.set(locale, (totalByLocale.get(locale) ?? 0) + 1);
+      }
+    }
     const warnings = analyzeProtocolLocalization(protocol);
     const missingByLocale = new Map<LocaleTag, number>();
     for (const warning of warnings) {
@@ -265,10 +280,12 @@ export const getLocalizationCoverage = createSelector(
       total,
       locales: locales.map((locale) => {
         const missing = missingByLocale.get(locale) ?? 0;
+        const used = totalByLocale.get(locale) ?? 0;
         return {
           locale,
           isDefault: locale === defaultLocale,
-          translated: total - missing,
+          total: used,
+          translated: used - missing,
           missing,
         };
       }),
@@ -340,6 +357,12 @@ export type TranslationRow = {
   path: readonly (string | number)[];
   /** The string's path below its place, e.g. `['prompts', 0, 'text']`. */
   field: readonly (string | number)[];
+  /**
+   * What the string is, by where it sits (see `textPlaceOf`): a form's text,
+   * a form field's question or hint, a version of a dynamic attribute, or
+   * any other text.
+   */
+  place: TextPlace;
   /** Whether participants see the string rendered as markdown. */
   format: LocalizedStringFormat;
   /** Whether the string is one line or several, as its field declares. */
@@ -367,6 +390,12 @@ export type TranslationRow = {
    * with it is held to every rule the field declares.
    */
   schema: LocalizedStringField['schema'];
+  /**
+   * The languages that the string is used in (see `expectedLocalesOf`): a
+   * form field's question in the languages whose form includes the field, a
+   * dynamic attribute's wording in the languages whose text shows it.
+   */
+  expectedLocales: readonly LocaleTag[];
 };
 
 export type TranslationGroup = {
@@ -405,12 +434,14 @@ export const getTranslationGroups = createSelector(
       group.rows.push({
         path: hit.path,
         field,
+        place: hit.place,
         format: hit.format,
         lines: hit.lines,
         ...(hit.assetBlocks === true && { assetBlocks: true as const }),
         value: hit.value,
         ...(supplied === undefined ? {} : { supplied }),
         schema: hit.schema,
+        expectedLocales: expectedLocalesOf(hit.path, protocol),
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
         // Every text that can show values offers them in the table, as its
         // editor on the stage does, whether or not it shows any yet.

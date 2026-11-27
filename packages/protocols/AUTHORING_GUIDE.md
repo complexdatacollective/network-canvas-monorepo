@@ -110,26 +110,64 @@ Every participant-facing field holds an object keyed by those tags, one entry pe
   `Pick one {or more}`. An apostrophe directly before `{`, `}`, `<`, `>` or another apostrophe
   must be doubled (`''`). Any other apostrophe is literal, so `"Don't"` needs no change.
   `escapeMessageText` from `@codaco/protocol-validation` converts plain text for you.
-- **Text on a stage can show values.** A prompt, a form field's `prompt` or `hint`, Information
-  `content` and similar text may show an answer, or choose between versions of its wording by
-  one, but only with these argument names. Each id in a name is written with its hyphens as
-  underscores (`3377af3f_3c79_41da_9b0b_6570fb519b93`).
+- **Text on a stage can show values.** A prompt, a form field's `prompt` or `hint`, the text of a
+  form, Information `content` and similar text may show a value, but only with these argument
+  names. Each id in a name is written with its hyphens as underscores
+  (`3377af3f_3c79_41da_9b0b_6570fb519b93`).
   - `<role>_<variable id>`: an attribute of `ego`, or of the `node`, `edge`, `dyadSource`,
     `dyadTarget` or `focal` entity that the stage asks about, where the stage has one.
   - `<role>_label`: the label of one of those nodes, such as `node_label`.
   - `node_isParticipant`: whether the node is the participant (Family Pedigree forms only).
-  - `condition_<condition id>`: whether one of the stage's `conditions` (rules keyed by UUID)
-    is met.
+  - `condition_<condition id>`: whether one of the stage's `conditions` is met.
+  - `dynamic_<dynamic attribute id>`: one of the stage's `dynamicAttributes` (below).
   - `now`: today's date.
 
-  An attribute can be missing, so it may be shown only inside a version for when it has a value:
-  `{ego_<id>, select, missing {Hello!} other {Hello, {ego_<id>}!}}`. A version for one option of
-  a categorical or ordinal attribute is named by the option's `id`, with its hyphens as
-  underscores. A version for a yes/no attribute, a condition or `node_isParticipant` is named
-  `true` or `false`. The validator refuses a name or a version that the stage cannot use.
+  A value that is missing shows nothing, so write the sentence so that it still reads well
+  without the value.
 
-Localized fields include: stage `label`; prompt `text`; form `title`; form field `prompt` and `hint`;
-`introductionPanel.title` and `.text` (Ego Form only); panel `title`; Information `content`; Narrative preset `label`, each `highlight[].label` and each `edges.display[].label`; variable
+  A translatable string never chooses between versions of its wording inside a sentence: the
+  validator refuses a `select` or `plural` there. Use one of these instead.
+  - **A dynamic attribute** chooses a short wording for one place in a sentence. Declare it in
+    the stage's `dynamicAttributes`, keyed by a UUID, and show it with `{dynamic_<id>}`. Its
+    `logic` is one of:
+    - `answers`: a wording for each answer of a categorical, ordinal or Boolean attribute, named
+      by `value`, with a wording for a missing answer and one for any other answer:
+      `{"logic": "answers", "value": "ego_<id>", "missing": {…}, "answers": [{"answer": "<option id, hyphens as underscores>", "wording": {…}}], "other": {…}}`.
+      An answer is named by the option's `id`, with its hyphens as underscores; an answer of a
+      Boolean attribute is `true` or `false`.
+    - `conditions`: `cases`, each `{"condition": "<condition id>", "when": "met" | "notMet", "wording": {…}}`,
+      and an `otherwise` wording. The first case that applies is shown.
+    - `number`: a `missing` wording and a `wording` with a plural `count` for a number or scalar
+      attribute named by `value`, such as `{count, plural, one {# child} other {# children}}`.
+    - `participant`: a `participant` wording and an `otherwise` wording (Family Pedigree forms
+      only).
+
+    Each wording is a localized string of plain words on one line, and it cannot show a value.
+
+  - **A logic block** chooses whole paragraphs of multi-line text, such as Information `content`
+    or the text of a form. It is a `select` that stands alone, separated from the text around it
+    by blank lines, in one of these shapes:
+    - `{condition_<id>, select, true {…} other {…}}`, or `false {…}` for a condition that is not
+      met;
+    - `{<role>_<variable id>, select, missing {…} <answer> {…} other {…}}`;
+    - `{<role>_<variable id>, select, missing {…} other {{<role>_<variable id>, plural, one {…} other {…}}}}`;
+    - `{node_isParticipant, select, true {…} other {…}}`.
+
+    Each version is written in Markdown and may be empty. In the text of a form, a version may
+    contain fields. A logic block cannot depend on a field inside it: neither the attribute that
+    it chooses by nor the rules of its condition can read the attribute of a field in one of its
+    versions, because that field is shown only when the logic block shows it. Nor can they read
+    the attribute of a field in another version of a logic block that contains it: the participant
+    sees only one version of each logic block, so that field is never shown together with it.
+
+  A condition is a set of rules in the stage's `conditions`, keyed by a UUID:
+  `{"<uuid>": {"rules": [{"id": "<uuid>", "type": "ego", "options": {"attribute": "<variable id>", "operator": "EXISTS"}}]}}`.
+  A condition with a node or edge rule also needs `about` (for example `"about": "node"`), and a
+  condition with more than one rule needs `join` (`"AND"` or `"OR"`). The validator refuses a
+  name, an answer or a shape that the stage cannot use.
+
+Localized fields include: stage `label`; prompt `text`; form `title` and `content`; form field
+`prompt` and `hint`; each wording of a dynamic attribute; panel `title`; Information `content`; Narrative preset `label`, each `highlight[].label` and each `edges.display[].label`; variable
 `options[].label` and scalar `minLabel` / `maxLabel`; TieStrengthCensus `negativeLabel`;
 CategoricalBin `otherVariablePrompt` and `otherOptionLabel`; Anonymisation
 `explanationText`; and FamilyPedigree `censusPrompt`. The validator reports any participant-facing field left as a
@@ -278,11 +316,24 @@ key); TieStrength `edgeVariable` (must be an **ordinal edge** variable); sociogr
 Required keys per stage type used by these templates:
 
 - **Information**: `content`, the whole page as one Markdown text. A `# Heading` that opens it is the page's heading.
-- **EgoForm**: `introductionPanel:{title,text?}` (REQUIRED; shown above the questions, and `text` may be left out for a title-only panel) + `form:{fields:[{id,variable(ego key), prompt}]}` (no `title`). No other stage has an `introductionPanel` in schema 9: to explain another stage to the participant, put an **Information** stage just before it (give it the same `skipLogic` so the two are skipped together).
-- **NameGenerator**: `subject`(node) + `form:{fields:[{id,variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?:[{id,variable,value}]}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
+- **Forms.** The form of an EgoForm, AlterForm, AlterEdgeForm, NameGenerator or FamilyPedigree
+  stage is `{"content": {…}, "fields": [{id, variable, prompt, hint?}]}` (≥1 field). `content` is
+  the text of the form in each language, written in Markdown. It places each field as a block of
+  its own, `![](field:<field id>)`, alone in its paragraph and separated from the text around it by blank
+  lines, in the order in which the participant sees the fields. Text, headings and logic blocks may
+  come between the fields. Each language's `content` must contain at least one field, and each
+  field must be in the `content` of at least one language. Languages may contain different
+  fields.
+- **EgoForm**: `form` with ego-variable fields (no `title`). Put any introduction for the
+  participant at the top of `content`, as a `# Heading` and paragraphs. No stage has an
+  `introductionPanel` in schema 9: to explain another stage to the participant, put an
+  **Information** stage just before it (give it the same `skipLogic` so the two are skipped
+  together).
+- **NameGenerator**: `subject`(node) + `form:{title, content, fields}` (`title` is the heading of
+  the dialog that shows the form; include a name field) + `prompts:[{id,text, additionalAttributes?:[{id,variable,value}]}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
 - **NameGeneratorQuickAdd**: `subject`(node) + `quickAdd:"<a text node-variable key>"` + `prompts:[{id,text}]` (≥1). (No `form`.)
-- **AlterForm**: `subject`(node) + `form:{fields:[{id,variable(node key),prompt}]}` + `filter?`.
-- **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `form:{fields:[{id,variable(edge key),prompt}]}`.
+- **AlterForm**: `subject`(node) + `form:{content, fields}` (node-variable fields) + `filter?`.
+- **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `form:{content, fields}` (edge-variable fields).
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
 - **Sociogram**: `subject`(node) + `prompts:[{id,text, layout:{layoutVariable:"<layout node key>"}, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.

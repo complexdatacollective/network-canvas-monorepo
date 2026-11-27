@@ -15,6 +15,7 @@ import {
   optionCaseKey,
   type Stage,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -93,15 +94,13 @@ const stageShowing = (prompt: string) =>
     type: 'NameGenerator',
     label: { en: 'People' },
     subject: { entity: 'node', type: NODE_TYPE },
-    form: {
-      fields: [
-        {
-          id: testId('field-L97'),
-          variable: asEntityAttributeReference(NOTE),
-          prompt: { en: prompt },
-        },
-      ],
-    },
+    form: formOf([
+      {
+        id: testId('field-L97'),
+        variable: asEntityAttributeReference(NOTE),
+        prompt: { en: prompt },
+      },
+    ]),
     prompts: [{ id: 'prompt', text: { en: 'Who?' } }],
   }) as unknown as Stage;
 
@@ -162,11 +161,12 @@ function renderForm(
     middleware: (getDefault) => getDefault({ serializableCheck: false }),
   });
 
-  const fields = (stage as unknown as { form: { fields: FormField[] } }).form
-    .fields;
+  const { form } = stage as unknown as {
+    form: ReturnType<typeof formOf<FormField>>;
+  };
 
   function PersonFields() {
-    const { fieldComponents } = useProtocolForm({ fields, ...options });
+    const { formContent } = useProtocolForm({ form, ...options });
     return (
       <>
         {/* A control the interface asks before the protocol's fields. */}
@@ -187,7 +187,7 @@ function renderForm(
             { value: 'cousin', label: 'Cousin' },
           ]}
         />
-        {fieldComponents}
+        {formContent}
       </>
     );
   }
@@ -330,19 +330,19 @@ describe('useProtocolForm dynamic values', () => {
 
 describe('useProtocolForm dynamic values on an edge form', () => {
   function renderEdgeForm(prompt: string, edgeAttributes: object = {}) {
-    const fields: FormField[] = [
+    const form = formOf<FormField>([
       {
         id: testId('field-1'),
         variable: asEntityAttributeReference(EDGE_NOTE),
         prompt: { en: prompt },
       },
-    ];
+    ]);
     const edgeStage = {
       id: 'edges',
       type: 'AlterEdgeForm',
       label: { en: 'Ties' },
       subject: { entity: 'edge', type: KNOWS },
-      form: { fields },
+      form,
     } as unknown as Stage;
     const store = configureStore({
       reducer: { session, protocol, ui },
@@ -415,12 +415,12 @@ describe('useProtocolForm dynamic values on an edge form', () => {
     });
 
     function EdgeFields() {
-      const { fieldComponents } = useProtocolForm({
-        fields,
+      const { formContent } = useProtocolForm({
+        form,
         subject: { entity: 'edge', type: KNOWS },
         currentEntityId: 'e1',
       });
-      return <>{fieldComponents}</>;
+      return <>{formContent}</>;
     }
 
     render(

@@ -1,6 +1,7 @@
 import {
   ASSET_BLOCK_DEFAULTS,
   type AssetBlockAlignment,
+  boundedCache,
   type AssetBlockSize,
   isAssetBlockAlignment,
   isAssetBlockSize,
@@ -136,8 +137,6 @@ export type AssetBlockPlacementProblem = Readonly<
   | { kind: 'notInParagraph' }
   /** Named through a reference (`![alt][label]`, `[label]: asset:…`). */
   | { kind: 'byReference' }
-  /** Inside one version of a `select` or `plural`, which is a line of words. */
-  | { kind: 'inVersion' }
   /** With a value, or a choice of versions, in its description or address. */
   | { kind: 'holdsValue' }
 >;
@@ -347,52 +346,34 @@ const readAssetBlocksInMessage = (
   // The text is always read. Looking for `asset:` in it first would save the
   // reading for most text and miss a file named with the colon escaped
   // (`asset\:id`, `asset&#58;id`), which markdown reads as the same address.
+  // A version of a logic block is a document of its own, whose blocks are
+  // read as the text's own are (see `contentDocument.ts`).
   const structure = messageStructure(message);
-  const [own = '', ...versions] =
-    'nodes' in structure ? levelTexts(structure.nodes) : [message];
-  return [
-    ...blocksInMarkdown(own).map(({ block, problems, written }) => ({
+  const levels = 'nodes' in structure ? levelTexts(structure.nodes) : [message];
+  return levels
+    .flatMap(blocksInMarkdown)
+    .map(({ block, problems, written }) => ({
       block,
       // What a value stands in cannot be read until the value is shown, so
       // nothing else is said of it.
       problems: written.includes(NOT_TEXT)
         ? [{ kind: 'holdsValue' } as const]
         : problems,
-    })),
-    ...versions.flatMap(blocksInMarkdown).map(({ block, problems }) => ({
-      block,
-      problems: [...problems, { kind: 'inVersion' } as const],
-    })),
-  ];
+    }));
 };
-
-// Validation reads each translation that can hold blocks several times (for
-// the asset references, for the blocks' problems, for whether a page shows a
-// file), and an editor checks the protocol again after each change, mostly
-// to text that has not changed. Parsing markdown is the costly part, and its
-// result is only ever read, so one reading serves every reader. Bounded, so
-// that an editor producing a new message with each keystroke cannot grow it
-// without limit.
-const BLOCK_READINGS_KEPT = 500;
-const blockReadings = new Map<string, readonly AssetBlockInText[]>();
 
 /**
  * Every file a localized message names as a block: in its own text, and in
- * each version a `select` or `plural` chooses between, since any of them may
- * be the one a participant is shown. One in a version is found so that it can
- * be reported: a version is a line of words, and holds no block. A message
- * that cannot be read as ICU is searched as it is written.
+ * each version of a logic block, since any of them may be the one a
+ * participant is shown. A message that cannot be read as ICU is searched as
+ * it is written.
+ *
+ * Validation reads each translation that can contain blocks several times
+ * (for the asset references, for the blocks' problems, for whether a page
+ * shows a file), and an editor checks the protocol again after each change,
+ * mostly to text that has not changed. Parsing markdown is the costly part,
+ * and its result is only ever read, so readings are kept (`boundedCache`).
  */
-export const assetBlocksInMessage = (
+export const assetBlocksInMessage: (
   message: string,
-): readonly AssetBlockInText[] => {
-  const known = blockReadings.get(message);
-  if (known !== undefined) return known;
-  const read = readAssetBlocksInMessage(message);
-  if (blockReadings.size >= BLOCK_READINGS_KEPT) {
-    const oldest = blockReadings.keys().next();
-    if (!oldest.done) blockReadings.delete(oldest.value);
-  }
-  blockReadings.set(message, read);
-  return read;
-};
+) => readonly AssetBlockInText[] = boundedCache(500, readAssetBlocksInMessage);

@@ -14,6 +14,7 @@ import {
   asEntityAttributeReference,
   type FormField,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entitySecureAttributesMeta,
@@ -132,6 +133,18 @@ function renderPersonForm(
     protocolLocale = 'en',
   }: Setup,
 ) {
+  // The researcher's form, if the test asks one, with a document in each
+  // language the protocol declares.
+  const form =
+    formFields.length === 0
+      ? undefined
+      : {
+          fields: formFields,
+          content: {
+            ...formOf(formFields).content,
+            ...formOf(formFields, { locale: protocolLocale }).content,
+          },
+        };
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -243,7 +256,7 @@ function renderPersonForm(
         framing="gendered"
         genderIdentityOptions={genderIdentityOptions ?? []}
         optionLabels={optionLabels}
-        formFields={formFields}
+        form={form}
         generatedLabels={{}}
         decryptedNames={decryptedNames}
         displayName={(id) => id}

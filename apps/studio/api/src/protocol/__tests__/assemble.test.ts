@@ -67,7 +67,7 @@ describe('assembleProtocolSections', () => {
       id: 'form',
       type: 'EgoForm',
       label: { en: 'About you' },
-      form: { fields: [] },
+      form: { content: { en: '' }, fields: [] },
     };
     sections.stageOrder = { stages: ['form', finishStageId] };
     // An Ego Form can ask whether to discard changes.

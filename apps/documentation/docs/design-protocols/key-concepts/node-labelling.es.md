@@ -1,7 +1,7 @@
 ---
 title: Etiquetado de nodos
 navOrder: 13
-translatedFrom: 44a0a050e6dfe7dcd627e657ba22133aae96cae4
+translatedFrom: 16f0a31bf39a92b6aec134b3022dba22baa9066b
 ---
 
 ## Cómo se elige la etiqueta de un nodo {#how-a-nodes-label-is-chosen}
@@ -39,32 +39,31 @@ Si vuelves a desactivar **Etiqueta dinámica**, se elimina la etiqueta que escri
 
 ### Escribir la etiqueta {#writing-the-label}
 
-La etiqueta es una sola línea de texto. Puedes escribir texto normal y emojis, e insertar dos clases de elementos desde la barra de herramientas del campo.
+La etiqueta es una sola línea de texto. Puedes escribir texto normal y emojis, e insertar dos clases de elementos con el botón **Atributo** de la barra de herramientas del campo, o escribiendo `{`.
 
-**Valores, con el botón de la jeringa.** Un valor es un marcador de posición: en cada nodo, la etiqueta muestra en su lugar el valor que tiene ese nodo. Puedes insertar cualquier atributo del tipo de nodo, o la **Etiqueta predeterminada**, que es la etiqueta que el nodo habría tenido sin una etiqueta dinámica. Por ejemplo, una etiqueta formada por la etiqueta predeterminada seguida de la edad del nodo muestra «Alice 34» en un nodo y «Bo 27» en otro.
+**Atributos.** Un atributo se muestra como una píldora: en cada nodo, la etiqueta muestra en su lugar el valor que tiene ese nodo. Puedes insertar cualquier atributo del tipo de nodo, o la **Etiqueta predeterminada**, que es la etiqueta que el nodo habría tenido sin una etiqueta dinámica. Por ejemplo, una etiqueta formada por la etiqueta predeterminada seguida de la edad del nodo muestra «Alice 34» en un nodo y «Bo 27» en otro. Puede que un atributo no tenga valor en algunos nodos, y un valor que falta no muestra nada. Consulta [Cuando falta información](/es/design-protocols/key-concepts/piped-text#when-information-is-missing).
 
-Un atributo puede no tener valor en algunos nodos. Cuando insertes uno, selecciónalo en la etiqueta para escribir dos versiones del texto que lo rodea: una para cuando se conoce el valor y otra para cuando no. Consulta [Cuando falta información](/es/design-protocols/key-concepts/piped-text#when-information-is-missing).
+**Atributos dinámicos.** Un atributo dinámico es una palabra o expresión que cambia de un nodo a otro. Elige **Crear atributo dinámico** bajo **Atributos dinámicos** en la lista, elige su **Lógica** y escribe cada versión:
 
-**Lógica, con el botón de lógica.** La lógica inserta un grupo de redacciones alternativas, de las que cada nodo muestra una:
+- **Si … en caso contrario** muestra una versión cuando se cumplen las reglas que defines, y otra en caso contrario. **Si no se cumple … en caso contrario** hace lo contrario.
+- **Redacción distinta para cada respuesta** muestra una versión para cada respuesta a un atributo categórico, ordinal o booleano.
+- **Redacción para números en singular o en plural** muestra una versión para cada forma de número, como «1 hijo» y «3 hijos».
 
-- **Si … en caso contrario** muestra una redacción cuando se cumplen las reglas que definas y otra en caso contrario. **Si no se cumple … en caso contrario** hace lo inverso.
-- **Redacción distinta para cada respuesta** muestra una redacción para cada respuesta de un atributo categórico, ordinal o booleano.
-
-Selecciona un grupo en la etiqueta para abrirlo y escribir el texto de cada uno de sus casos. Un caso puede dejarse vacío, para no mostrar nada, y puede contener valores y más lógica.
+Un atributo dinámico pertenece a la etiqueta, así que se puede usar más de una vez en la etiqueta, y un cambio en él se aplica en todos los lugares de la etiqueta en los que se usa. Selecciona su píldora para cambiarlo. Sus versiones son palabras sin formato. Una versión se puede dejar vacía y, en ese caso, no se muestra nada en lugar de la píldora. Consulta [Atributos dinámicos](/es/design-protocols/key-concepts/piped-text#dynamic-attributes).
 
 ### Reglas {#rules}
 
-Un **Si** comprueba reglas sobre el nodo en el que está la etiqueta. Elige **Editar reglas** en su fila para definirlas. Una regla puede comprobar:
+Un **Si** comprueba reglas sobre el nodo en el que está la etiqueta. Defínelas en **Reglas de «Si»**, en los ajustes del atributo dinámico. Una regla puede comprobar:
 
 - un atributo del nodo, por ejemplo si su edad es de al menos 18;
 - si el nodo tiene un vínculo de un tipo determinado, o un atributo de uno de sus vínculos;
 - el número de vínculos que tiene el nodo, de un tipo o de cualquier tipo. El número puede compararse con un número que indiques (exactamente, más de, como máximo, etc.) o con los demás nodos del mismo tipo: **Es el más alto entre los nodos de su tipo** y **Es el más bajo entre los nodos de su tipo**. Los nodos que empatan en el número más alto, o en el más bajo, cumplen todos la regla. Ningún nodo la cumple cuando todos los nodos del tipo tienen el mismo número de vínculos.
 
-Cuando un **Si** tiene más de una regla, eliges si deben cumplirse todas o basta con cualquiera de ellas.
+Cuando un **Si** tiene más de una regla, eliges en **Coincidencia** si deben cumplirse todas o basta con cualquiera de ellas.
 
-**Añadir «En caso contrario, si»** añade un caso más con sus propias reglas, que se comprueba cuando los casos anteriores no se aplican. El último caso, **En caso contrario**, se muestra cuando no se aplica ninguno de los demás.
+**Añadir «En caso contrario, si»** añade una versión más con sus propias reglas, que se comprueba cuando las versiones anteriores no se aplican. La última versión, **En caso contrario**, se muestra cuando no se aplica ninguna de las demás.
 
-Por ejemplo, para señalar a la persona mejor conectada en un sociograma, escribe la etiqueta predeterminada seguida de un **Si** cuya regla sea que el número de vínculos «conoce» es el más alto entre los nodos de su tipo, y pon un emoji de estrella en ese caso. A medida que la persona participante dibuja vínculos, la estrella pasa al nodo que tenga más.
+Por ejemplo, para señalar a la persona mejor conectada en un sociograma, escribe la etiqueta predeterminada seguida de un atributo dinámico con **Si … en caso contrario**, cuya regla sea que el número de vínculos «conoce» es el más alto entre los nodos de su tipo. Haz que su primera versión sea un emoji de estrella y deja vacía la versión **En caso contrario**. A medida que la persona participante dibuja vínculos, la estrella pasa al nodo que tenga más.
 
 ### Cómo ven las personas participantes una etiqueta dinámica {#how-participants-see-a-dynamic-label}
 
@@ -74,7 +73,7 @@ Una etiqueta dinámica solo cambia lo que se muestra. No se guarda con el nodo n
 
 ### Traducir una etiqueta dinámica {#translating-a-dynamic-label}
 
-En un protocolo con más de un idioma, una etiqueta dinámica se traduce como cualquier otro texto que muestra valores, en la [tabla de traducciones](/es/design-protocols/tutorials/translating-your-protocol#the-translation-table). Sus valores y su lógica se conservan en cada traducción, y se traduce el texto de cada caso.
+En un protocolo con más de un idioma, una etiqueta dinámica se traduce en la [tabla de traducciones](/es/design-protocols/tutorials/translating-your-protocol#the-translation-table), como cualquier otra cadena traducible que muestre valores. La lógica de sus atributos dinámicos es la misma en todos los idiomas, y solo se traduce la redacción de cada versión.
 
 ### Protocolos que usaban un script de etiquetado de nodos {#protocols-that-used-a-node-label-worker}
 

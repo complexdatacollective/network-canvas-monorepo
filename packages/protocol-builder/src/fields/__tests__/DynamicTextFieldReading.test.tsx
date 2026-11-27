@@ -39,7 +39,7 @@ const openPage = () =>
       fields: {
         label: { 'en-US': 'Welcome' },
         content: {
-          'en-US': `Hello{${ABSENT}, select, missing {} other { {${ABSENT}}}}`,
+          'en-US': `Hello {${ABSENT}}`,
         },
       },
     },

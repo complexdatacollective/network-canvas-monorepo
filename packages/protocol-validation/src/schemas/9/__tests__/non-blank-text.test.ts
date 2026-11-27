@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { testId } from '../../../__tests__/testIds.ts';
+import { formOf } from '../../../testing/fixtures.ts';
 import { localized } from '../../../utils/test-utils.ts';
-import { FormFieldSchema, FormSchema } from '../common/forms.ts';
+import {
+  FormFieldSchema,
+  FormSchema,
+  TitlelessFormSchema,
+} from '../common/forms.ts';
 import { panelSchema } from '../common/panels.ts';
 import { promptSchema } from '../common/prompts.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
@@ -58,14 +63,14 @@ describe('nonBlankText', () => {
     'rejects %s, anchored at the language',
     (_n, text) => {
       expect(issuesOf(required, { en: text })).toEqual([
-        { message: 'Text cannot be blank.', path: ['en'] },
+        { message: 'This wording cannot be blank.', path: ['en'] },
       ]);
     },
   );
 
   it('rejects one blank translation even when another has text', () => {
     expect(issuesOf(required, { en: 'Age', fr: '  ' })).toEqual([
-      { message: 'Text cannot be blank.', path: ['fr'] },
+      { message: 'This wording cannot be blank.', path: ['fr'] },
     ]);
   });
 });
@@ -243,11 +248,22 @@ const REQUIRED_TEXT_SITES: readonly {
     schema: FormSchema,
     valid: (title) => ({
       title,
+      ...formOf([
+        { id: testId('field-1'), variable: 'name', prompt: localized('Name?') },
+      ]),
+    }),
+    path: ['title'],
+  },
+  {
+    name: 'the text of a form',
+    schema: TitlelessFormSchema,
+    valid: (content) => ({
+      content,
       fields: [
         { id: testId('field-1'), variable: 'name', prompt: localized('Name?') },
       ],
     }),
-    path: ['title'],
+    path: ['content'],
   },
   {
     name: 'an Information page',
@@ -394,7 +410,7 @@ describe.each(BLANK_REFUSED_SITES)('$name', ({ schema, holding, path }) => {
       expect(
         issuesOf(schema, holding({ en: 'Text', fr: text })),
       ).toContainEqual({
-        message: 'Text cannot be blank.',
+        message: 'This wording cannot be blank.',
         path: [...path, 'fr'],
       });
     },
@@ -424,7 +440,7 @@ describe('a scale attribute end label', () => {
       {
         path: 'parameters.maxLabel.fr',
         code: 'custom',
-        message: 'Text cannot be blank.',
+        message: 'This wording cannot be blank.',
       },
     ]);
   });
@@ -439,7 +455,7 @@ describe.each(REQUIRED_TEXT_SITES)('$name', ({ schema, valid, path }) => {
     'rejects %s, anchored at the language',
     (_n, text) => {
       expect(issuesOf(schema, valid({ en: text }))).toContainEqual({
-        message: 'Text cannot be blank.',
+        message: 'This wording cannot be blank.',
         path: [...path, 'en'],
       });
     },
@@ -495,7 +511,7 @@ describe('option labels', () => {
   const blank = {
     path: 'options.0.label.fr',
     code: 'custom',
-    message: 'Text cannot be blank.',
+    message: 'This wording cannot be blank.',
   };
 
   it.each([

@@ -1,7 +1,11 @@
-import { SyntheticInterview } from '@codaco/protocol-utilities';
+import {
+  type FormDocumentBlocks,
+  SyntheticInterview,
+} from '@codaco/protocol-utilities';
 import {
   type ComponentType,
   createConditionId,
+  createDynamicAttributeId,
   createProtocolObjectId,
   dynamicValueNameFor,
 } from '@codaco/protocol-validation';
@@ -10,9 +14,16 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { expect } from '../fixtures/matrix-test.js';
 import type { InterfaceScenarios } from './types.js';
 
-// Every EgoForm renders its `introductionPanel` above its questions; stages
-// that do not set one get the SyntheticInterview default title.
-const INTRODUCTION = { title: 'About you' };
+// An Ego Form's heading and text are the top of its document, above its
+// fields. A stage that does not write its document gets the SyntheticInterview
+// default: the heading "About you" above its fields.
+const headedForm = (title: string, text?: string) => ({
+  fields: [],
+  content: ({ fields, heading }: FormDocumentBlocks) =>
+    [heading(title), ...(text === undefined ? [] : [text]), ...fields].join(
+      '\n\n',
+    ),
+});
 
 // Variable ids that build() creates and run() needs. `build`/`run` live in
 // separate object-literal closures, so the id is stashed on a module-scoped
@@ -59,14 +70,68 @@ let prePopNameVarId: string;
 let prePopSeededName: string;
 let backNavAgeVarId: string;
 
+let logicEmployedVarId: string;
+let logicEmployerVarId: string;
+let languageNameVarId: string;
+let languageAgeVarId: string;
+
+/**
+ * An Ego Form asking whether the participant is employed, with a logic block
+ * that shows a "Your work" heading and the employer question only to someone
+ * who is. The logic reads the answer as it is given.
+ */
+const buildEmploymentForm = () => {
+  const synth = new SyntheticInterview();
+  const employed = synth.addEgoVariable({
+    type: 'boolean',
+    component: 'Boolean',
+    name: 'employed',
+  });
+  const employer = synth.addEgoVariable({
+    type: 'text',
+    component: 'Text',
+    name: 'employer',
+  });
+  logicEmployedVarId = employed.id;
+  logicEmployerVarId = employer.id;
+  const employedName = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'ego',
+    variableId: employed.id,
+  });
+  synth.addStage('EgoForm', {
+    form: {
+      fields: [
+        {
+          variable: employed.id,
+          component: 'Boolean',
+          prompt: 'Are you employed?',
+        },
+        {
+          variable: employer.id,
+          component: 'Text',
+          prompt: 'Who is your employer?',
+        },
+      ],
+      content: ({ field, heading }) =>
+        [
+          heading('About you'),
+          field(employed.id),
+          `{${employedName}, select, missing {} true {## Your work\n\n${field(employer.id)}} other {}}`,
+        ].join('\n\n'),
+    },
+  });
+  synth.addInformationStage({ title: 'Next', text: 'Continue.' });
+  return synth;
+};
+
 export const egoFormScenarios: InterfaceScenarios = {
   interfaceType: 'EgoForm',
   scenarios: [
     {
-      id: 'intro-panel-and-field-structure',
+      id: 'document-text-and-field-structure',
       covers: [
-        'introductionPanel.title',
-        'introductionPanel.text',
+        'form.content',
         'form.fields-ordering-and-prompt',
         'form.fields[].hint',
         'form.fields[].id',
@@ -80,10 +145,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         const stage = synth.addStage('EgoForm', {
           label: 'INTERNAL LABEL',
           interviewScript: 'SCRIPT TEXT',
-          introductionPanel: {
-            title: 'About You',
-            text: '## Section\n- item one',
-          },
+          form: headedForm('About You', '## Section\n- item one'),
         });
         // Give each field an explicit variable with a clean name rather than
         // one derived from its prompt.
@@ -121,7 +183,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, stage }) => {
-        // introductionPanel renders as real markdown elements, not raw
+        // The document's text renders as real markdown elements, not raw
         // `##`/`-` text (ALLOWED_MARKDOWN_SECTION_TAGS).
         await expect(
           page.getByRole('heading', { level: 1, name: 'About You' }),
@@ -181,7 +243,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const stage = synth.addStage('EgoForm', {
-          introductionPanel: { title: 'About You' },
+          form: headedForm('About You'),
         });
 
         const textVar = synth.addEgoVariable({
@@ -450,9 +512,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
 
         // 7 ordinal options (> 6) turns on the columns layout
         // (useProtocolForm.tsx:268-276).
@@ -538,9 +598,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
 
         const nameVar = synth.addEgoVariable({
           type: 'text',
@@ -616,9 +674,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.minLength/maxLength'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
         const textVar = synth.addEgoVariable({
           type: 'text',
           component: 'Text',
@@ -664,9 +720,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.minValue/maxValue'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
         const numberVar = synth.addEgoVariable({
           type: 'number',
           component: 'Number',
@@ -709,9 +763,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.minSelected/maxSelected'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
         const checkboxVar = synth.addEgoVariable({
           type: 'categorical',
           component: 'CheckboxGroup',
@@ -764,9 +816,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.sameAs', 'validation.differentFrom'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
 
         // Not `required` on purpose: a required field's label text carries a
         // trailing " *", which would break the exact getByLabel below.
@@ -865,9 +915,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.greaterThanVariable-family'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
 
         const startVar = synth.addEgoVariable({
           type: 'number',
@@ -936,9 +984,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['invalid-submit-focuses-first-invalid-control'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
         focusFamilyVarIds = {};
 
         const families: {
@@ -1103,9 +1149,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['required-boolean-renders-as-unselected-choice'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
 
         const booleanVar = synth.addEgoVariable({
           type: 'boolean',
@@ -1195,9 +1239,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['comparison-copy-uses-authored-prompt'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
 
         const targetVar = synth.addEgoVariable({
           type: 'number',
@@ -1265,9 +1307,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
 
         const nameVar = synth.addEgoVariable({
           type: 'text',
@@ -1318,9 +1358,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
         // anchor 2026-07-01, before 30 days, after 0 → valid window is
         // 2026-06-01 .. 2026-07-01. useProtocolForm pre-computes these into
         // Field-level min/max validators (useProtocolForm.tsx:323-341).
@@ -1378,7 +1416,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         });
         prePopNameVarId = nameVar.id;
         const stage = synth.addStage('EgoForm', {
-          introductionPanel: { title: 'About You' },
+          form: headedForm('About You'),
         });
         stage.addFormField({
           variable: nameVar.id,
@@ -1441,9 +1479,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           title: 'Before',
           text: 'Placeholder stage so Back has somewhere to land.',
         });
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
         const ageVar = synth.addEgoVariable({
           type: 'number',
           component: 'Number',
@@ -1526,7 +1562,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const stage = synth.addStage('EgoForm', {
-          introductionPanel: { title: 'About You' },
+          form: headedForm('About You'),
         });
         // Enough fields to overflow the viewport, so the nudge is armed at all
         // (useScrolledToBottom latches immediately on a form that fits).
@@ -1591,7 +1627,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const stage = synth.addStage('EgoForm', {
-          introductionPanel: { title: 'About You' },
+          form: headedForm('About You'),
         });
         // Enough fields to overflow the viewport so the scroll sentinel does
         // not intersect on mount (which would latch hasScrolledToBottom and
@@ -1746,9 +1782,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           component: 'Number',
           name: 'age',
         });
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
         const name = dynamicValueNameFor({
           kind: 'attribute',
           role: 'ego',
@@ -1763,7 +1797,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           variable: ageVar.id,
           component: 'Number',
           prompt: {
-            'en-US': `{${name}, select, missing {How old are you?} other {How old are you, {${name}}?}}`,
+            'en-US': `How old are you, {${name}}?`,
           },
         });
         return synth;
@@ -1781,12 +1815,12 @@ export const egoFormScenarios: InterfaceScenarios = {
           page.locator('[data-dynamic-value]', { hasText: 'Ada' }),
         ).toBeVisible();
 
-        // Clearing the answer shows the version written for a missing value.
+        // Clearing the answer shows nothing in its place.
         await name.fill('');
-        await expect(
-          page.getByRole('spinbutton', { name: 'How old are you?' }),
-        ).toBeVisible();
         await expect(page.locator('[data-dynamic-value]')).toHaveCount(0);
+        await expect(
+          page.getByRole('spinbutton', { name: /^How old are you,\s*\?$/ }),
+        ).toBeVisible();
       },
     },
 
@@ -1805,9 +1839,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           component: 'Text',
           name: 'school',
         });
-        const stage = synth.addStage('EgoForm', {
-          introductionPanel: INTRODUCTION,
-        });
+        const stage = synth.addStage('EgoForm', {});
         // An "If" on a rule about the participant: under 18, or anyone else.
         const minor = createConditionId();
         stage.stageEntry.conditions = {
@@ -1825,20 +1857,31 @@ export const egoFormScenarios: InterfaceScenarios = {
             ],
           },
         };
-        const minorName = dynamicValueNameFor({
-          kind: 'condition',
-          conditionId: minor,
-        });
         stage.addFormField({
           variable: ageVar.id,
           component: 'Number',
           prompt: 'How old are you?',
         });
+        // The question is a dynamic attribute: its wording follows the "If".
+        const schoolQuestion = createDynamicAttributeId();
+        stage.stageEntry.dynamicAttributes = {
+          [schoolQuestion]: {
+            logic: 'conditions',
+            cases: [
+              {
+                condition: minor,
+                when: 'met',
+                wording: { 'en-US': 'Which school do you go to?' },
+              },
+            ],
+            otherwise: { 'en-US': 'Where did you go to school?' },
+          },
+        };
         stage.addFormField({
           variable: schoolVar.id,
           component: 'Text',
           prompt: {
-            'en-US': `{${minorName}, select, true {Which school do you go to?} other {Where did you go to school?}}`,
+            'en-US': `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: schoolQuestion })}}`,
           },
         });
         return synth;
@@ -1861,6 +1904,190 @@ export const egoFormScenarios: InterfaceScenarios = {
         await expect(
           page.getByRole('textbox', { name: 'Where did you go to school?' }),
         ).toBeVisible();
+      },
+    },
+
+    {
+      id: 'logic-block-shows-field',
+      covers: ['form.content.logic-block-shows-field'],
+      build: buildEmploymentForm,
+      run: async ({ page }) => {
+        const employer = page.getByRole('textbox', {
+          name: 'Who is your employer?',
+        });
+        const work = page.getByRole('heading', { name: 'Your work' });
+        const announced = (text: string) =>
+          page.getByRole('status').filter({ hasText: text });
+
+        // Unanswered, the logic block shows nothing.
+        await expect(
+          page.getByRole('radiogroup', { name: /^Are you employed\?/ }),
+        ).toBeVisible();
+        await expect(employer).toHaveCount(0);
+        await expect(work).toHaveCount(0);
+
+        // The answer shows the block's heading and question as it is given,
+        // and screen readers are told a question was added.
+        await page.getByRole('radio', { name: 'Yes' }).click();
+        await expect(employer).toBeVisible();
+        await expect(work).toBeVisible();
+        await expect(announced('A new question is shown.')).toHaveCount(1);
+
+        await page.getByRole('radio', { name: 'No' }).click();
+        await expect(employer).toHaveCount(0);
+        await expect(work).toHaveCount(0);
+        await expect(announced('A question is no longer shown.')).toHaveCount(
+          1,
+        );
+      },
+    },
+
+    {
+      id: 'hidden-answer-cleared-on-submit',
+      covers: ['form.content.hidden-answer-cleared-on-submit'],
+      build: buildEmploymentForm,
+      run: async ({ page, interview, protocol }) => {
+        const employer = page.getByRole('textbox', {
+          name: 'Who is your employer?',
+        });
+        const storedEmployer = async () =>
+          (await protocol.getNetworkState(interview.interviewId))?.ego[
+            entityAttributesProperty
+          ][logicEmployerVarId];
+
+        // Answer the question the logic block shows, and store the answer.
+        await page.getByRole('radio', { name: 'Yes' }).click();
+        await employer.fill('Acme');
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+        await protocol.waitForEgoAttribute(
+          interview.interviewId,
+          logicEmployerVarId,
+          'Acme',
+        );
+
+        // Back on the form, hiding the question and showing it again keeps
+        // the answer until the form is submitted.
+        await page.getByTestId('previous-button').click();
+        await expect(page).toHaveURL(/step=0/);
+        await expect(employer).toHaveValue('Acme');
+        await page.getByRole('radio', { name: 'No' }).click();
+        await expect(employer).toHaveCount(0);
+        await page.getByRole('radio', { name: 'Yes' }).click();
+        await expect(employer).toHaveValue('Acme');
+
+        // Submitted while hidden, the stored answer is cleared.
+        await page.getByRole('radio', { name: 'No' }).click();
+        await expect(employer).toHaveCount(0);
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+        await protocol.waitForEgoAttribute(
+          interview.interviewId,
+          logicEmployedVarId,
+          false,
+        );
+        await expect.poll(storedEmployer).toBeUndefined();
+      },
+    },
+
+    {
+      id: 'field-in-one-language-only',
+      covers: ['form.content.field-in-one-language-only'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.setLocalization({
+          defaultLocale: 'en-US',
+          locales: ['en-US', 'es'],
+        });
+        const name = synth.addEgoVariable({
+          type: 'text',
+          component: 'Text',
+          name: 'name',
+        });
+        const age = synth.addEgoVariable({
+          type: 'number',
+          component: 'Number',
+          name: 'age',
+        });
+        languageNameVarId = name.id;
+        languageAgeVarId = age.id;
+        // The Spanish form does not ask the age.
+        synth.addStage('EgoForm', {
+          form: {
+            fields: [
+              {
+                variable: name.id,
+                component: 'Text',
+                prompt: {
+                  'en-US': 'What is your name?',
+                  'es': '¿Cómo te llamas?',
+                },
+              },
+              {
+                variable: age.id,
+                component: 'Number',
+                prompt: { 'en-US': 'How old are you?' },
+              },
+            ],
+            content: ({ field, heading }) => ({
+              'en-US': [
+                heading('About you'),
+                field(name.id),
+                field(age.id),
+              ].join('\n\n'),
+              'es': [heading('Sobre ti'), field(name.id)].join('\n\n'),
+            }),
+          },
+        });
+        synth.addInformationStage({ title: 'Next', text: 'Continue.' });
+        return synth;
+      },
+      run: async ({ page, interview, stage, protocol }) => {
+        const storedEgo = async () =>
+          (await protocol.getNetworkState(interview.interviewId))?.ego[
+            entityAttributesProperty
+          ];
+
+        // In English, both questions are asked and answered.
+        await expect(stage.form.fields()).toHaveCount(2);
+        await page
+          .getByRole('textbox', { name: 'What is your name?' })
+          .fill('Ada');
+        await page
+          .getByRole('spinbutton', { name: 'How old are you?' })
+          .fill('40');
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+        await protocol.waitForEgoAttribute(
+          interview.interviewId,
+          languageAgeVarId,
+          40,
+        );
+
+        // In Spanish, the form is the Spanish document: the age is not in it.
+        await page.getByTestId('previous-button').click();
+        await expect(page).toHaveURL(/step=0/);
+        await page.evaluate(() => window.__test.setRequestedLocales(['es']));
+        await expect(
+          page.getByRole('heading', { level: 1, name: 'Sobre ti' }),
+        ).toBeVisible();
+        await expect(stage.form.fields()).toHaveCount(1);
+        await expect(
+          page.getByRole('spinbutton', { name: 'How old are you?' }),
+        ).toHaveCount(0);
+
+        // Submitting the Spanish form leaves the age it does not ask alone.
+        await page
+          .getByRole('textbox', { name: '¿Cómo te llamas?' })
+          .fill('Ana');
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+        await protocol.waitForEgoAttribute(
+          interview.interviewId,
+          languageNameVarId,
+          'Ana',
+        );
+        expect((await storedEgo())?.[languageAgeVarId]).toBe(40);
       },
     },
   ],

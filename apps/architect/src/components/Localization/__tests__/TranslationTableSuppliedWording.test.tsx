@@ -1,17 +1,15 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import type userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
 
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 
-import TranslationTable from '../TranslationTable';
+import {
+  type RenderedTable,
+  renderTranslationTable,
+} from './renderTranslationTable';
 
 // Every protocol shows the interview's Back button, which Network Canvas
 // words as "Back" in English.
@@ -34,35 +32,18 @@ const study = (
   ...(interfaceText === undefined ? {} : { interfaceText }),
 });
 
-const renderTable = (protocol: CurrentProtocol) => {
-  const store = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  store.dispatch(setActiveProtocol(structuredClone(protocol)));
-  render(
-    <Provider store={store}>
-      <FormStoreProvider>
-        <TranslationTable onSaved={vi.fn()} onCancel={vi.fn()} />
-      </FormStoreProvider>
-    </Provider>,
-  );
-  return { store, user: userEvent.setup() };
-};
-
 const save = async (user: ReturnType<typeof userEvent.setup>) => {
   const button = screen.getByRole('button', { name: 'Save' });
   await user.click(button);
   await waitFor(() => expect(button).toBeEnabled());
 };
 
-const heldInterfaceText = (store: ReturnType<typeof renderTable>['store']) =>
+const heldInterfaceText = (store: RenderedTable['store']) =>
   getProtocol(store.getState())?.interfaceText;
 
 describe('a text Network Canvas words, in the translation table', () => {
   it("shows Network Canvas's wording where the protocol has none, and stores a rewording", async () => {
-    const { store, user } = renderTable(study());
+    const { store, user } = renderTranslationTable(study());
     expect(heldInterfaceText(store)).toBeUndefined();
 
     const back = screen.getByDisplayValue('Back');
@@ -76,7 +57,7 @@ describe('a text Network Canvas words, in the translation table', () => {
   });
 
   it("goes back to Network Canvas's wording when its cell is left empty, and stores nothing for it", async () => {
-    const { store, user } = renderTable(
+    const { store, user } = renderTranslationTable(
       study({ navigation: { back: { en: 'Previous' } } }),
     );
 
@@ -95,7 +76,7 @@ describe('a text Network Canvas words, in the translation table', () => {
   // A save started from the keyboard checks the cells before the emptied
   // one is left, so nothing has put its wording back yet.
   it("saves an emptied cell that still has focus as Network Canvas's wording", async () => {
-    const { store, user } = renderTable(
+    const { store, user } = renderTranslationTable(
       study({ navigation: { back: { en: 'Previous' } } }),
     );
 
@@ -112,7 +93,7 @@ describe('a text Network Canvas words, in the translation table', () => {
   });
 
   it('stores nothing for a rewording typed back to exactly what Network Canvas says', async () => {
-    const { store, user } = renderTable(
+    const { store, user } = renderTranslationTable(
       study({ navigation: { back: { en: 'Previous' } } }),
     );
 
@@ -125,7 +106,7 @@ describe('a text Network Canvas words, in the translation table', () => {
   });
 
   it('still refuses to clear the only translation of a text Network Canvas does not word', async () => {
-    const { user } = renderTable(study());
+    const { user } = renderTranslationTable(study());
 
     const title = screen.getByDisplayValue('Welcome');
     await user.clear(title);

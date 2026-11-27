@@ -4,7 +4,11 @@ import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { openValidationSection } from '../pageobjects/editor-sections/form-field-controls.js';
-import { addFormField } from '../pageobjects/editor-sections/forms.js';
+import {
+  addFormField,
+  closeFieldSettings,
+  openFieldSettings,
+} from '../pageobjects/editor-sections/forms.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
 
@@ -24,9 +28,9 @@ import { Timeline } from '../pageobjects/timeline.js';
  * - saving the stage writes it with the stage;
  * - cancelling or discarding the stage throws it away with the rest.
  *
- * A dialog opened inside the stage editor (the "Edit form field" row dialog)
- * holds its own layer on top: its codebook changes join the stage draft when
- * that dialog is saved, and are dropped when it is cancelled.
+ * A field's settings, which open beside the field in the form's text, write
+ * its attribute's changes straight into the stage's draft: there is no
+ * dialog of their own to save or cancel.
  *
  * Each clause is fenced here rather than asserted once. The oracle throughout
  * is the canonical protocol row in IndexedDB (`readProtocolJson`) — the same
@@ -71,16 +75,7 @@ async function seedStageWithVariable(
   await editor.createNew('EgoForm');
   await editor.setStageName('About You');
 
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('About You');
-  await editor.fillRichText(
-    'Introduction text',
-    'Thanks for taking part in this study.',
-  );
-
-  await addFormField(editor.section('Form configuration'), {
+  await addFormField(editor.section('Form'), {
     variableName: 'age',
     promptText: 'How old are you?',
     inputControl: 'Number Input',
@@ -106,27 +101,18 @@ async function reopenStage(
 }
 
 /**
- * Open the committed field's dialog, set its attribute's Required rule in the
- * nested Validation section, and close the field dialog — saved or cancelled.
+ * Open the committed field's settings, set its attribute's Required rule in
+ * the Validation section, and close the settings again.
  *
- * The section has no submit of its own: the rule belongs to the dialog's layer
- * of the stage draft, which the dialog's Save joins to the stage and its Cancel
- * drops.
+ * The rule belongs to the codebook attribute, and the settings write it into
+ * the stage's draft as it is set.
  */
-async function requireAnAnswerFromTheCodebookEditor(
+async function requireAnAnswerFromTheFieldSettings(
   editor: StageEditor,
-  architectPage: Parameters<typeof readProtocolJson>[0],
-  closeWith: 'Save' | 'Cancel',
 ): Promise<void> {
-  await editor
-    .section('Form configuration')
-    .getByRole('button', { name: 'Edit field', exact: true })
-    .click();
-  const fieldDialog = architectPage.getByRole('dialog', {
-    name: 'Edit form field',
-    exact: true,
-  });
-  const rules = await openValidationSection(fieldDialog);
+  const form = editor.section('Form');
+  const settings = await openFieldSettings(form, 'How old are you?');
+  const rules = await openValidationSection(settings);
   const required = rules.getByRole('switch', {
     name: 'Required answer',
     exact: true,
@@ -134,18 +120,7 @@ async function requireAnAnswerFromTheCodebookEditor(
   await required.click();
   // The switch holding it is what says the gesture was taken.
   await expect(required).toBeChecked();
-
-  await fieldDialog
-    .getByRole('button', { name: closeWith, exact: true })
-    .click();
-  if (closeWith === 'Cancel') {
-    // The rule is a change the dialog holds, so cancelling it asks first.
-    await architectPage
-      .getByRole('dialog', { name: 'Discard your changes?' })
-      .getByRole('button', { name: 'Discard changes', exact: true })
-      .click();
-  }
-  await fieldDialog.waitFor({ state: 'detached' });
+  await closeFieldSettings(form, settings);
 }
 
 async function leaveWithoutSaving(
@@ -166,7 +141,7 @@ async function leaveWithoutSaving(
   await architectPage.waitForURL(/\/protocol$/);
 }
 
-test('a rule set in a saved field dialog is dropped when the stage is discarded', async ({
+test('a rule set in a field’s settings is dropped when the stage is discarded', async ({
   architectPage,
   seed,
 }) => {
@@ -184,10 +159,9 @@ test('a rule set in a saved field dialog is dropped when the stage is discarded'
   // something of its own to revert alongside the rule.
   await editor.setStageName('About You, revised');
 
-  await requireAnAnswerFromTheCodebookEditor(editor, architectPage, 'Save');
+  await requireAnAnswerFromTheFieldSettings(editor);
 
-  // The dialog was saved, so the rule is part of the stage's draft: the stage
-  // is offered for saving. Without this the discard below could pass on a
+  // The rule is part of the stage's draft: the stage is offered for saving. Without this the discard below could pass on a
   // stage the editor thought was untouched.
   await expect(
     architectPage.getByRole('button', { name: 'Finished Editing' }),
@@ -202,7 +176,7 @@ test('a rule set in a saved field dialog is dropped when the stage is discarded'
   expect(after.stages[0]?.label).toEqual({ en: 'About You' });
 });
 
-test('a rule set in a saved field dialog is written when the stage is saved', async ({
+test('a rule set in a field’s settings is written when the stage is saved', async ({
   architectPage,
   seed,
 }) => {
@@ -212,7 +186,7 @@ test('a rule set in a saved field dialog is written when the stage is saved', as
   const editor = await seedStageWithVariable(architectPage);
   await reopenStage(architectPage);
 
-  await requireAnAnswerFromTheCodebookEditor(editor, architectPage, 'Save');
+  await requireAnAnswerFromTheFieldSettings(editor);
 
   // Not in the protocol yet: it is in the draft until the stage is saved.
   expect(
@@ -225,39 +199,6 @@ test('a rule set in a saved field dialog is written when the stage is saved', as
     isRequired(protocol, 'age'),
   );
   expect(validationOf(byName(after, 'age'))).toMatchObject({ required: true });
-});
-
-test('a rule set in a cancelled field dialog leaves nothing unsaved', async ({
-  architectPage,
-  seed,
-}) => {
-  await seed(emptyProtocol());
-  await gotoProtocol(architectPage);
-
-  const editor = await seedStageWithVariable(architectPage);
-  await reopenStage(architectPage);
-
-  await requireAnAnswerFromTheCodebookEditor(editor, architectPage, 'Cancel');
-
-  // The dialog's layer was dropped, so there is nothing to save: the save
-  // control is not offered at all…
-  await expect(
-    architectPage.getByRole('button', { name: 'Finished Editing' }),
-  ).toBeHidden();
-
-  // …and leaving asks nothing, because nothing would be lost by leaving.
-  await architectPage.getByRole('button', { name: 'Cancel' }).first().click();
-  await architectPage.waitForURL(/\/protocol$/);
-  await expect(
-    architectPage.getByRole('dialog', {
-      name: 'Discard unsaved stage changes?',
-    }),
-  ).toHaveCount(0);
-
-  // Read after the stage editor has gone, so a write the cancelled dialog made
-  // would have had every chance to land.
-  const after = await readProtocolJson(architectPage);
-  expect(validationOf(byName(after, 'age'))).toBeUndefined();
 });
 
 test('a codebook edit alone makes a stage unsaved', async ({
@@ -275,7 +216,7 @@ test('a codebook edit alone makes a stage unsaved', async ({
     architectPage.getByRole('button', { name: 'Finished Editing' }),
   ).toBeHidden();
 
-  await requireAnAnswerFromTheCodebookEditor(editor, architectPage, 'Save');
+  await requireAnAnswerFromTheFieldSettings(editor);
 
   // Nothing about the stage DOCUMENT has changed, yet the rule is part of what
   // saving the stage would write, so the save control is offered…
@@ -312,24 +253,22 @@ test('the attribute a discarded field created is not kept in the codebook', asyn
   await editor.setStageName('About You, revised');
 
   // Add a second field on a brand-new attribute, then remove the field again.
-  // The attribute belongs to the stage's draft, so removing the row and then
+  // The attribute belongs to the stage's draft, so removing the field and then
   // throwing the whole stage edit away leaves it out of the codebook.
-  const section = editor.section('Form configuration');
+  const section = editor.section('Form');
   await addFormField(section, {
     variableName: 'orphanVar',
     promptText: 'Something we will discard.',
   });
 
-  await section
-    .getByRole('button', { name: 'Delete field', exact: true })
-    .last()
-    .click();
-  // The row's own control and the confirmation's both read "Delete field", so
-  // the confirm is reached through the dialog rather than by name alone.
-  await architectPage
-    .getByRole('dialog', { name: 'Delete this field?' })
+  const settings = await openFieldSettings(
+    section,
+    'Something we will discard.',
+  );
+  await settings
     .getByRole('button', { name: 'Delete field', exact: true })
     .click();
+  await expect(settings).toBeHidden();
 
   await leaveWithoutSaving(architectPage);
 
@@ -423,7 +362,7 @@ test('a field added to a re-opened stage is unsaved work the editor offers to sa
     architectPage.getByRole('button', { name: 'Finished Editing' }),
   ).toBeHidden();
 
-  await addFormField(editor.section('Form configuration'), {
+  await addFormField(editor.section('Form'), {
     variableName: 'favouriteColour',
     promptText: 'What is your favourite colour?',
   });

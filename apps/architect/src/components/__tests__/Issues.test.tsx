@@ -162,6 +162,42 @@ describe('<Issues />', () => {
     expect(screen.getByRole('button', { name: 'Issues (4)' })).toBeVisible();
   });
 
+  /**
+   * The panel answers a refused save. Once the researcher has put every
+   * problem right, a new problem that their next change brings (a field they
+   * are still adding, say) is shown beside its field and counted on the
+   * button, but does not open the panel and take the keyboard from them.
+   */
+  it('opens again only for the next refused save, not for a new problem', async () => {
+    const view = renderStageForm({ children: <IssuesHarness /> });
+    const state = () => view.getStoreApi().getState();
+
+    act(() => {
+      state().setErrors({ formErrors: [], fieldErrors: { foo: ['bar'] } });
+      view.reportRefusedSubmit();
+    });
+    expect(await screen.findAllByTestId('issue')).toHaveLength(1);
+
+    // Put right: the control goes with the problem.
+    act(() => state().setErrors(null));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /^Issues/ })).toBeNull(),
+    );
+
+    // A new problem: counted, not opened.
+    act(() =>
+      state().setErrors({ formErrors: [], fieldErrors: { foo: ['bar'] } }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Issues (1)' }),
+    ).toBeVisible();
+    expect(screen.queryByTestId('issue')).toBeNull();
+
+    // The next refused save opens it.
+    act(() => view.reportRefusedSubmit());
+    expect(await screen.findAllByTestId('issue')).toHaveLength(1);
+  });
+
   describe('a field that fails several rules', () => {
     // A required text with a length limit that is over the limit and trims to
     // empty: `required` and `maxLength` both fail, and the form store keeps

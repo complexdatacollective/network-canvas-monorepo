@@ -1,0 +1,14 @@
+- main:
+  - heading "About you" [level=1]
+  - text: Are you employed?
+  - radiogroup "Are you employed?":
+    - radio "Yes"
+    - radio "No"
+  - status
+  - navigation:
+    - button "Text size"
+    - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
+    - button "Next Step"
+    - status: You can continue to the next step.
+  - region "Interview notifications"

@@ -8,6 +8,7 @@ import {
   asEntityAttributeReference,
   type Variable,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -76,13 +77,13 @@ const stage: StageProps<'NameGenerator'>['stage'] = {
   subject: { entity: 'node', type: NODE_TYPE },
   form: {
     title: { en: 'Add a person' },
-    fields: [
+    ...formOf([
       {
         id: testId('field-1'),
         variable: asEntityAttributeReference(NICKNAME_VAR),
         prompt: { en: 'Nickname' },
       },
-    ],
+    ]),
   },
   panels: [
     {

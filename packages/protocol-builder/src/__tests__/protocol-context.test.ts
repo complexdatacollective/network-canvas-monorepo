@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { fieldBlockMarkdown } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -230,6 +231,7 @@ describe('protocolContextFromSections', () => {
       subject: { entity: 'node', type: PERSON },
       form: {
         title: text('Add'),
+        content: text(fieldBlockMarkdown(testId('field-1'))),
         fields: [
           {
             id: testId('field-1'),

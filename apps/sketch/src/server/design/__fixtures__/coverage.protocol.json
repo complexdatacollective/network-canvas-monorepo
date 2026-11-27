@@ -486,15 +486,10 @@
       "label": {
         "en": "Consent"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "Taking part"
-        },
-        "text": {
-          "en": "Please read the information about this study before deciding whether to take part."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Taking part\n\nPlease read the information about this study before deciding whether to take part.\n\n![](field:55495839-aa92-58cc-83e7-8b79017016d4)"
+        },
         "fields": [
           {
             "id": "55495839-aa92-58cc-83e7-8b79017016d4",
@@ -512,15 +507,10 @@
       "label": {
         "en": "About"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About you"
-        },
-        "text": {
-          "en": "Please answer the following questions about yourself."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About you\n\nPlease answer the following questions about yourself.\n\n![](field:67623001-2822-583a-9707-8a133967987a)\n\n![](field:acf41636-d774-5d7d-a73d-e953bf43aefe)"
+        },
         "fields": [
           {
             "id": "67623001-2822-583a-9707-8a133967987a",
@@ -680,6 +670,9 @@
       "form": {
         "title": {
           "en": "Add a place"
+        },
+        "content": {
+          "en": "![](field:35c6b26f-8738-5683-a666-1241de786ee7)\n\n![](field:a5a20063-1343-528e-abba-35066a80059f)"
         },
         "fields": [
           {
@@ -930,6 +923,9 @@
         "type": "0019a3dd-a3f9-5329-8011-285e565a09eb"
       },
       "form": {
+        "content": {
+          "en": "![](field:4bd87f34-caa3-50a5-b29a-76deb5374a14)"
+        },
         "fields": [
           {
             "id": "4bd87f34-caa3-50a5-b29a-76deb5374a14",
@@ -1136,6 +1132,9 @@
         "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "form": {
+        "content": {
+          "en": "![](field:56fd8d2b-b26b-5c0e-9e23-dfc901c15a1e)\n\n![](field:ca70154b-da65-535e-96fa-281a351de92f)"
+        },
         "fields": [
           {
             "id": "56fd8d2b-b26b-5c0e-9e23-dfc901c15a1e",
@@ -1488,15 +1487,10 @@
           "type": "finish"
         }
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About you"
-        },
-        "text": {
-          "en": "Please answer the following questions about yourself."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About you\n\nPlease answer the following questions about yourself.\n\n![](field:b5308c11-a5e5-54a9-9ee5-36d998423fa2)\n\n![](field:a7d4cd09-6bb7-539d-bc08-6d0ec6cfb2e1)\n\n![](field:37bf46b0-1144-5bd4-9afb-5c80e20fb7c6)\n\n![](field:079932b3-4abd-5b6b-ba1a-8bffa7c1063f)"
+        },
         "fields": [
           {
             "id": "b5308c11-a5e5-54a9-9ee5-36d998423fa2",

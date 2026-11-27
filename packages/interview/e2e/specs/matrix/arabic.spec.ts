@@ -145,7 +145,11 @@ function arabicInterview() {
   });
   synth
     .addStage('EgoForm', {
-      introductionPanel: { title: 'عنك', text: 'أجب عن السؤال التالي.' },
+      form: {
+        fields: [],
+        content: ({ fields, heading }) =>
+          [heading('عنك'), 'أجب عن السؤال التالي.', ...fields].join('\n\n'),
+      },
     })
     .addFormField({ variable: egoName.id, component: 'Text', prompt: 'الاسم' });
   stages.push({ name: 'EgoForm', shows: 'أجب عن السؤال التالي.' });

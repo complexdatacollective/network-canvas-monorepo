@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -9,7 +9,6 @@ import {
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
-import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
   knowsDefinition,
@@ -63,8 +62,9 @@ const createFixture = () => ({
   editor: mountedAs(alterEdgeFormStageEditor.AlterEdgeForm),
 });
 
-/** What the collapsed field row's badge says about the `edgeNotes` field. */
-const FIELD_ROW_BADGE = 'Text attribute using Text Area input control';
+/** The form's editor, where each field shows its attribute in its corner. */
+const formEditor = async () =>
+  within(await screen.findByRole('textbox', { name: 'Form content' }));
 
 /**
  * What is true of THIS interface and no other. The list of sections it
@@ -104,9 +104,7 @@ describe('the editor for a form about each relationship', () => {
     expect(screen.getByRole('radio', { name: 'knows' })).not.toBeChecked();
     await waitFor(() =>
       expect(
-        harness
-          .outline()
-          .find((section) => section.title === 'Form configuration')?.state,
+        harness.outline().find((section) => section.title === 'Form')?.state,
       ).toBe('Not available yet'),
     );
   });
@@ -114,7 +112,7 @@ describe('the editor for a form about each relationship', () => {
   it('follows an attribute deleted elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
     expect(
-      await screen.findByText(exactlyText(FIELD_ROW_BADGE)),
+      await (await formEditor()).findByText('edgeNotes'),
     ).toBeInTheDocument();
 
     harness.receiveCodebookUpdate({
@@ -146,13 +144,19 @@ describe('the editor for a form about each relationship', () => {
     });
 
     expect(
-      await screen.findByText('This attribute is no longer in the codebook.'),
+      await (await formEditor()).findByText('Deleted attribute'),
     ).toBeInTheDocument();
     // Their deletion is theirs. The field the researcher authored is still on
     // the stage, still pointing where they pointed it: an editor that quietly
     // dropped it would be saving somebody else's edit as this one.
     expectStageUntouched(harness);
-    await harness.roundTrip({ unowned: [] });
+    // Nor does a save keep a field that collects nothing: it is refused until
+    // the researcher chooses another attribute for the field.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('Choose an attribute for this field.'),
+    ).toBeInTheDocument();
+    expectStageUntouched(harness);
   });
 
   /**

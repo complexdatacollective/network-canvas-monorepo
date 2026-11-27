@@ -6,8 +6,8 @@ import type { FieldValueProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import {
   type DynamicValueSite,
-  dynamicValueNamesIn,
   type LocalizedString,
+  messageShowsValues,
 } from '@codaco/protocol-validation';
 import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 
@@ -48,14 +48,6 @@ type DynamicValuesOption = Readonly<{
   /** Where the text sits in a dialog's row, for a form field's caption. */
   fieldPath?: readonly string[];
 }>;
-
-/**
- * Whether a translation shows values, which a plain text control would write
- * back as literal braces. Such text is shown, not edited, where values are not
- * offered.
- */
-const showsValues = (message: string): boolean =>
-  message.includes('{') && dynamicValueNamesIn(message).length > 0;
 
 function ValuesNotEditableHere({ message }: { message: string }) {
   const intl = useAppIntl();
@@ -117,7 +109,7 @@ export function LocalizedInputField({
       hideUntranslatedNote={hideUntranslatedNote}
     >
       {(translation) =>
-        showsValues(translation.message) ? (
+        messageShowsValues(translation.message) ? (
           <ValuesNotEditableHere message={translation.message} />
         ) : wraps ? (
           <WrappingTextField
@@ -210,7 +202,7 @@ export function LocalizedRichTextField({
           hideUntranslatedNote={hideUntranslatedNote}
         >
           {(translation) =>
-            showsValues(translation.message) ? (
+            messageShowsValues(translation.message) ? (
               <ValuesNotEditableHere message={translation.message} />
             ) : (
               <RichTextField

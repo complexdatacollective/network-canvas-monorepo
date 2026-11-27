@@ -15,6 +15,7 @@ import {
   asEntityAttributeReference,
   type Variable,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -354,15 +355,13 @@ describe('AlterForm comparing an answer with a protected one', () => {
       type: 'AlterForm',
       label: { en: 'Alter form' },
       subject: { entity: 'node', type: NODE_TYPE },
-      form: {
-        fields: [
-          {
-            id: testId('field-1'),
-            variable: asEntityAttributeReference(NICKNAME_VARIABLE),
-            prompt: { en: 'Nickname' },
-          },
-        ],
-      },
+      form: formOf([
+        {
+          id: testId('field-1'),
+          variable: asEntityAttributeReference(NICKNAME_VARIABLE),
+          prompt: { en: 'Nickname' },
+        },
+      ]),
     },
     ...alterFormStages.slice(1),
   ];

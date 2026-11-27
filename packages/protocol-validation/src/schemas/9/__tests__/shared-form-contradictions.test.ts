@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
+import { formOf } from '../../../testing/fixtures.ts';
 import {
   createBaseProtocol,
   localized,
@@ -172,7 +173,7 @@ const familyPedigreeProtocol = () => ({
         gestationalCarrierAttribute: 'isGestationalCarrier',
         currentPartnerAttribute: 'isCurrentPartner',
       },
-      form: { fields: formFields },
+      form: formOf(formFields),
     },
   ],
 });
@@ -189,7 +190,7 @@ describe('shared form stage-effective validation contradictions', () => {
             type: 'EgoForm',
             label: localized('Ego'),
             introductionPanel: { title: localized('About you') },
-            form: { fields: formFields },
+            form: formOf(formFields),
           },
         ],
       }),
@@ -205,7 +206,7 @@ describe('shared form stage-effective validation contradictions', () => {
             type: 'AlterForm',
             label: localized('Alter'),
             subject: { entity: 'node', type: 'person' },
-            form: { fields: formFields },
+            form: formOf(formFields),
           },
         ],
       }),
@@ -221,7 +222,7 @@ describe('shared form stage-effective validation contradictions', () => {
             type: 'AlterEdgeForm',
             label: localized('Edge'),
             subject: { entity: 'edge', type: 'knows' },
-            form: { fields: formFields },
+            form: formOf(formFields),
           },
         ],
       }),
@@ -237,7 +238,10 @@ describe('shared form stage-effective validation contradictions', () => {
             type: 'NameGenerator',
             label: localized('Names'),
             subject: { entity: 'node', type: 'person' },
-            form: { title: localized('Add person'), fields: formFields },
+            form: {
+              title: localized('Add person'),
+              ...formOf(formFields),
+            },
             prompts: [{ id: 'prompt', text: localized('Who do you know?') }],
           },
         ],
@@ -276,11 +280,9 @@ describe('shared form stage-effective validation contradictions', () => {
           type: 'AlterForm',
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
-          form: {
-            fields: [
-              { id: 'field-1', variable: 'name', prompt: localized('Name?') },
-            ],
-          },
+          form: formOf([
+            { id: 'field-1', variable: 'name', prompt: localized('Name?') },
+          ]),
         },
       ],
     };
@@ -300,11 +302,9 @@ describe('shared form stage-effective validation contradictions', () => {
           type: 'AlterForm',
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
-          form: {
-            fields: [
-              { id: 'field-1', variable: 'boolA', prompt: localized('First?') },
-            ],
-          },
+          form: formOf([
+            { id: 'field-1', variable: 'boolA', prompt: localized('First?') },
+          ]),
         },
         {
           id: 'composer',
@@ -343,7 +343,7 @@ describe('shared form stage-effective validation contradictions', () => {
           type: 'AlterForm',
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
-          form: { fields: formFields },
+          form: formOf(formFields),
         },
         {
           id: 'composer',
@@ -419,7 +419,7 @@ describe('shared form stage-effective validation contradictions', () => {
           type: 'AlterForm',
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
-          form: { fields: formFields },
+          form: formOf(formFields),
         },
       ],
     };
@@ -456,11 +456,9 @@ describe('shared form stage-effective validation contradictions', () => {
           type: 'AlterForm',
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
-          form: {
-            fields: [
-              { id: 'field-1', variable: 'age', prompt: localized('Age?') },
-            ],
-          },
+          form: formOf([
+            { id: 'field-1', variable: 'age', prompt: localized('Age?') },
+          ]),
         },
       ],
     };

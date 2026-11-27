@@ -5,7 +5,10 @@ import { describe, expect, it } from 'vitest';
 // Regressions found in review: each design compiled to a protocol that
 // validated (or failed in a way the model could not act on) but behaved wrongly
 // in an interview.
-import { findVariableRoleConflicts } from '@codaco/protocol-validation';
+import {
+  fieldBlockMarkdown,
+  findVariableRoleConflicts,
+} from '@codaco/protocol-validation';
 
 import { analyse } from '../analyse.ts';
 import { buildProtocol } from '../build.ts';
@@ -2597,7 +2600,7 @@ describe('instrument attributes', () => {
       attributeIds: ['age'],
     };
 
-    it('gives only the Ego Form an introduction panel, and ends at a finish stage', async () => {
+    it('opens only the Ego Form with a heading and text, and ends at a finish stage', async () => {
       const r = await build(
         design({
           egoAttributes: [A('age', 'number', 'Your age?')],
@@ -2606,8 +2609,19 @@ describe('instrument attributes', () => {
         }),
       );
       expect(r.validation.success).toBe(true);
-      expect(stageById(r.stages, 'about').introductionPanel).toBeDefined();
-      expect(stageById(r.stages, 'af').introductionPanel).toBeUndefined();
+      type FormStage = Stage & {
+        form: { content: LocalizedText; fields: { id: string }[] };
+      };
+      const about = stageById(r.stages, 'about') as FormStage;
+      const af = stageById(r.stages, 'af') as FormStage;
+      // Each form's document places a block for each of its fields.
+      const blocks = (s: FormStage) =>
+        s.form.fields.map((f) => fieldBlockMarkdown(f.id)).join('\n\n');
+      expect(about.introductionPanel).toBeUndefined();
+      expect(about.form.content.en).toBe(
+        `# About you\n\nPlease answer the following questions about yourself.\n\n${blocks(about)}`,
+      );
+      expect(af.form.content.en).toBe(blocks(af));
       expect(r.stages.at(-1)?.type).toBe('FinishSession');
       expect(r.protocol.schemaVersion).toBe(9);
       expect(r.protocol.localization).toEqual({

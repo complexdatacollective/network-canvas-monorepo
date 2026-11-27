@@ -110,7 +110,9 @@ export const removedOptionIds = (
  * `protocol` without the versions that its text writes for options that the
  * variable `variableId` no longer has (`optionIds`): in every translation of
  * every string that can show values, wherever it is (a stage's text, a form
- * field's question, a panel's title, a node type's label).
+ * field's question, a panel's title, a node type's label), including the
+ * versions of its logic blocks; and without the versions that its dynamic
+ * attributes write for those options.
  *
  * A version is written for an option by its id (`optionCaseKey`), so once
  * the option is deleted nothing could ever choose it, and validation refuses
@@ -122,8 +124,8 @@ export const removedOptionIds = (
  * `other` version is what the participant reads for every answer. The
  * researcher decides whether to keep it.
  *
- * Returns `protocol` itself when no text has a version for any of these
- * options, and otherwise a copy with those translations rewritten.
+ * Returns `protocol` itself when no text or dynamic attribute has a version
+ * for any of these options, and otherwise a copy with those rewritten.
  */
 export const withoutRemovedOptionVersions = <T>(
   protocol: T,
@@ -134,6 +136,8 @@ export const withoutRemovedOptionVersions = <T>(
   if (removed.size === 0) return protocol;
   // One rewrite for each translation, however many hits name the variable.
   const paths = new Map<string, (string | number)[]>();
+  // The dynamic attributes whose answers give a version for one of them.
+  const dynamicAttributes = new Map<string, (string | number)[]>();
   for (const hit of walkSchemaReferences(ProtocolStructureSchema, protocol, {
     readAssetBlocks: false,
   })) {
@@ -143,12 +147,39 @@ export const withoutRemovedOptionVersions = <T>(
       hit.inMessage?.optionIds.some((optionId) => removed.has(optionId)) ===
         true
     ) {
-      paths.set(JSON.stringify(hit.path), hit.path);
+      if (hit.asName) {
+        // The name is the dynamic attribute's `value`.
+        const dynamicAttribute = hit.path.slice(0, -1);
+        dynamicAttributes.set(
+          JSON.stringify(dynamicAttribute),
+          dynamicAttribute,
+        );
+      } else {
+        paths.set(JSON.stringify(hit.path), hit.path);
+      }
     }
   }
-  if (paths.size === 0) return protocol;
+  if (paths.size === 0 && dynamicAttributes.size === 0) return protocol;
 
   const copy = structuredClone(protocol);
+  for (const path of dynamicAttributes.values()) {
+    const dynamicAttribute = valueAt(copy, path);
+    if (
+      !isRecord(dynamicAttribute) ||
+      !Array.isArray(dynamicAttribute.answers)
+    ) {
+      continue;
+    }
+    dynamicAttribute.answers = dynamicAttribute.answers.filter(
+      (entry: unknown) => {
+        const optionId =
+          isRecord(entry) && typeof entry.answer === 'string'
+            ? optionIdFromCaseKey(entry.answer)
+            : undefined;
+        return optionId === undefined || !removed.has(optionId);
+      },
+    );
+  }
   for (const path of paths.values()) {
     const message = valueAt(copy, path);
     if (typeof message !== 'string') continue;

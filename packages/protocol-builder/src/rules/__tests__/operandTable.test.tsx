@@ -14,6 +14,7 @@ import {
   type VariableType,
   validateProtocol,
   VariableTypesKeys,
+  fieldBlockMarkdown,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -132,13 +133,16 @@ const personSection = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 const STAGE_ID = createProtocolObjectId();
 
+const AGE_FIELD = createProtocolObjectId();
+
 const stageFields: SectionDoc = {
   label: { en: 'Details' },
   subject: { entity: 'node', type: PERSON },
   form: {
+    content: { en: fieldBlockMarkdown(AGE_FIELD) },
     fields: [
       {
-        id: createProtocolObjectId(),
+        id: AGE_FIELD,
         variable: AGE,
         prompt: { en: 'How old are they?' },
       },

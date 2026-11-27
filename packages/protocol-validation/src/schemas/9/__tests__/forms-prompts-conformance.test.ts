@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { formOf } from '../../../testing/fixtures.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import type { NodeDefinition } from '../codebook/definitions.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
@@ -97,14 +98,25 @@ describe('Forms & prompts schema conformance', () => {
           type: 'NameGenerator',
           label: localized('Generate Names'),
           subject: { entity: 'node', type: 'person' },
-          form: { title: localized('Add person'), fields: [] },
+          form: {
+            title: localized('Add person'),
+            content: localized('Tell us about them.'),
+            fields: [],
+          },
           prompts: [{ id: 'p1', text: localized('Who do you know?') }],
         },
       ]);
 
       expect(
         parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
-      ).toEqual([{ path: 'stages.0.form.fields', code: 'too_small' }]);
+      ).toEqual([
+        {
+          path: 'stages.0.form.content.en',
+          code: 'custom',
+          message: 'Add at least one field to this form.',
+        },
+        { path: 'stages.0.form.fields', code: 'too_small' },
+      ]);
     });
 
     it('rejects an AlterForm with empty form.fields', () => {
@@ -114,13 +126,20 @@ describe('Forms & prompts schema conformance', () => {
           type: 'AlterForm',
           label: localized('Alter Form'),
           subject: { entity: 'node', type: 'person' },
-          form: { fields: [] },
+          form: { content: localized('Tell us about them.'), fields: [] },
         },
       ]);
 
       expect(
         parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
-      ).toEqual([{ path: 'stages.0.form.fields', code: 'too_small' }]);
+      ).toEqual([
+        {
+          path: 'stages.0.form.content.en',
+          code: 'custom',
+          message: 'Add at least one field to this form.',
+        },
+        { path: 'stages.0.form.fields', code: 'too_small' },
+      ]);
     });
 
     it('rejects an AlterEdgeForm with empty form.fields', () => {
@@ -130,13 +149,20 @@ describe('Forms & prompts schema conformance', () => {
           type: 'AlterEdgeForm',
           label: localized('Alter Edge Form'),
           subject: { entity: 'edge', type: 'knows' },
-          form: { fields: [] },
+          form: { content: localized('Tell us about them.'), fields: [] },
         },
       ]);
 
       expect(
         parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
-      ).toEqual([{ path: 'stages.0.form.fields', code: 'too_small' }]);
+      ).toEqual([
+        {
+          path: 'stages.0.form.content.en',
+          code: 'custom',
+          message: 'Add at least one field to this form.',
+        },
+        { path: 'stages.0.form.fields', code: 'too_small' },
+      ]);
     });
 
     it('rejects an EgoForm with empty form.fields', () => {
@@ -145,17 +171,20 @@ describe('Forms & prompts schema conformance', () => {
           id: 'ef1',
           type: 'EgoForm',
           label: localized('Ego Form'),
-          form: { fields: [] },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
-          },
+          form: { content: localized('# Intro\n\ntext'), fields: [] },
         },
       ]);
 
       expect(
         parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
-      ).toEqual([{ path: 'stages.0.form.fields', code: 'too_small' }]);
+      ).toEqual([
+        {
+          path: 'stages.0.form.content.en',
+          code: 'custom',
+          message: 'Add at least one field to this form.',
+        },
+        { path: 'stages.0.form.fields', code: 'too_small' },
+      ]);
     });
 
     it('accepts a NameGenerator with at least one field', () => {
@@ -167,13 +196,13 @@ describe('Forms & prompts schema conformance', () => {
           subject: { entity: 'node', type: 'person' },
           form: {
             title: localized('Add person'),
-            fields: [
+            ...formOf([
               {
                 id: 'field-1',
                 variable: 'personName',
                 prompt: localized('Enter name'),
               },
-            ],
+            ]),
           },
           prompts: [{ id: 'p1', text: localized('Who do you know?') }],
         },
@@ -186,7 +215,7 @@ describe('Forms & prompts schema conformance', () => {
   });
 
   describe('title-less forms for Ego/Alter/AlterEdge', () => {
-    // An ego form's heading is its introduction panel's title.
+    // An ego form's heading is the heading at the top of its document.
     it('rejects an EgoForm whose form carries a title', () => {
       const protocol = createProtocol([
         {
@@ -195,17 +224,13 @@ describe('Forms & prompts schema conformance', () => {
           label: localized('Ego Form'),
           form: {
             title: localized('Tell us about yourself'),
-            fields: [
+            ...formOf([
               {
                 id: 'field-1',
                 variable: 'egoName',
                 prompt: localized('Your name?'),
               },
-            ],
-          },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
+            ]),
           },
         },
       ]);
@@ -226,13 +251,13 @@ describe('Forms & prompts schema conformance', () => {
           subject: { entity: 'node', type: 'person' },
           form: {
             title: localized('About this person'),
-            fields: [
+            ...formOf([
               {
                 id: 'field-1',
                 variable: 'personName',
                 prompt: localized('Their name?'),
               },
-            ],
+            ]),
           },
         },
       ]);
@@ -253,13 +278,13 @@ describe('Forms & prompts schema conformance', () => {
           subject: { entity: 'edge', type: 'knows' },
           form: {
             title: localized('About this relationship'),
-            fields: [
+            ...formOf([
               {
                 id: 'field-1',
                 variable: 'closeness',
                 prompt: localized('How close?'),
               },
-            ],
+            ]),
           },
         },
       ]);
@@ -271,7 +296,52 @@ describe('Forms & prompts schema conformance', () => {
       ]);
     });
 
-    it('accepts a title-less EgoForm', () => {
+    it('accepts a title-less EgoForm whose document opens with a heading', () => {
+      const protocol = createProtocol([
+        {
+          id: 'ef1',
+          type: 'EgoForm',
+          label: localized('Ego Form'),
+          form: formOf(
+            [
+              {
+                id: 'field-1',
+                variable: 'egoName',
+                prompt: localized('Your name?'),
+              },
+            ],
+            { before: '# Intro\n\ntext' },
+          ),
+        },
+      ]);
+
+      expect(
+        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
+      ).toBe(true);
+    });
+
+    it('accepts an EgoForm whose document is only its fields', () => {
+      const protocol = createProtocol([
+        {
+          id: 'ef1',
+          type: 'EgoForm',
+          label: localized('Ego Form'),
+          form: formOf([
+            {
+              id: 'field-1',
+              variable: 'egoName',
+              prompt: localized('Your name?'),
+            },
+          ]),
+        },
+      ]);
+
+      expect(
+        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
+      ).toBe(true);
+    });
+
+    it('rejects an EgoForm without a document', () => {
       const protocol = createProtocol([
         {
           id: 'ef1',
@@ -286,6 +356,27 @@ describe('Forms & prompts schema conformance', () => {
               },
             ],
           },
+        },
+      ]);
+
+      expect(
+        parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
+      ).toEqual([{ path: 'stages.0.form.content', code: 'invalid_type' }]);
+    });
+
+    it('rejects an EgoForm that keeps an introduction panel', () => {
+      const protocol = createProtocol([
+        {
+          id: 'ef1',
+          type: 'EgoForm',
+          label: localized('Ego Form'),
+          form: formOf([
+            {
+              id: 'field-1',
+              variable: 'egoName',
+              prompt: localized('Your name?'),
+            },
+          ]),
           introductionPanel: {
             title: localized('Intro'),
             text: localized('text'),
@@ -294,80 +385,13 @@ describe('Forms & prompts schema conformance', () => {
       ]);
 
       expect(
-        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
-      ).toBe(true);
-    });
-
-    it('accepts an EgoForm whose introduction has only a title', () => {
-      const protocol = createProtocol([
-        {
-          id: 'ef1',
-          type: 'EgoForm',
-          label: localized('Ego Form'),
-          form: {
-            fields: [
-              {
-                id: 'field-1',
-                variable: 'egoName',
-                prompt: localized('Your name?'),
-              },
-            ],
-          },
-          introductionPanel: { title: localized('Intro') },
-        },
-      ]);
-
-      expect(
-        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
-      ).toBe(true);
-    });
-
-    it('rejects an EgoForm without an introduction', () => {
-      const protocol = createProtocol([
-        {
-          id: 'ef1',
-          type: 'EgoForm',
-          label: localized('Ego Form'),
-          form: {
-            fields: [
-              {
-                id: 'field-1',
-                variable: 'egoName',
-                prompt: localized('Your name?'),
-              },
-            ],
-          },
-        },
-      ]);
-
-      expect(
-        parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
-      ).toEqual([{ path: 'stages.0.introductionPanel', code: 'invalid_type' }]);
-    });
-
-    it('rejects an EgoForm whose introduction has an empty title', () => {
-      const protocol = createProtocol([
-        {
-          id: 'ef1',
-          type: 'EgoForm',
-          label: localized('Ego Form'),
-          form: {
-            fields: [
-              {
-                id: 'field-1',
-                variable: 'egoName',
-                prompt: localized('Your name?'),
-              },
-            ],
-          },
-          introductionPanel: { title: localized(''), text: localized('text') },
-        },
-      ]);
-
-      expect(
         parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
       ).toEqual([
-        { path: 'stages.0.introductionPanel.title.en', code: 'too_small' },
+        {
+          path: 'stages.0',
+          code: 'unrecognized_keys',
+          keys: ['introductionPanel'],
+        },
       ]);
     });
 
@@ -380,13 +404,13 @@ describe('Forms & prompts schema conformance', () => {
           subject: { entity: 'node', type: 'person' },
           form: {
             title: localized('Add a person'),
-            fields: [
+            ...formOf([
               {
                 id: 'field-1',
                 variable: 'personName',
                 prompt: localized('Enter name'),
               },
-            ],
+            ]),
           },
           prompts: [{ id: 'p1', text: localized('Who do you know?') }],
         },
@@ -498,7 +522,7 @@ describe('Forms & prompts schema conformance', () => {
       expect(
         result.error?.issues.some(
           (issue) =>
-            issue.message === 'Text cannot be blank.' &&
+            issue.message === 'This wording cannot be blank.' &&
             issue.path.join('.').endsWith(path.join('.')),
         ),
       ).toBe(true);
@@ -674,13 +698,13 @@ describe('Forms & prompts schema conformance', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
-        fields: [
+        ...formOf([
           {
             id: 'field-1',
             variable: 'personName',
             prompt: localized('Enter name'),
           },
-        ],
+        ]),
       },
       prompts: [{ id: 'p1', text: localized('Who do you know?') }],
       behaviours,
@@ -779,13 +803,13 @@ describe('Forms & prompts schema conformance', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
-        fields: [
+        ...formOf([
           {
             id: 'field-1',
             variable: 'personName',
             prompt: localized('Enter name'),
           },
-        ],
+        ]),
       },
       prompts: [{ id: 'p1', text: localized(text) }],
     });
@@ -813,9 +837,9 @@ describe('Forms & prompts schema conformance', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
-        fields: [
+        ...formOf([
           { id: 'field-1', variable: 'personName', prompt: localized(prompt) },
-        ],
+        ]),
       },
       prompts: [{ id: 'p1', text: localized('Who do you know?') }],
     });
@@ -837,25 +861,23 @@ describe('Forms & prompts schema conformance', () => {
     });
   });
 
-  // Instructions to participants live in an Information stage (#1938); only
-  // an Ego Form keeps an introduction, shown above its questions.
+  // Instructions to participants live in an Information stage (#1938), or,
+  // on an Ego Form, in the text of its form.
   describe('introductionPanel', () => {
-    it('is no longer accepted on a stage other than an Ego Form', () => {
+    it('is no longer accepted on an Alter Form', () => {
       const protocol = createProtocol([
         {
           id: 'af1',
           type: 'AlterForm',
           label: localized('Alter Form'),
           subject: { entity: 'node', type: 'person' },
-          form: {
-            fields: [
-              {
-                id: 'field-1',
-                variable: 'personName',
-                prompt: localized('Their name?'),
-              },
-            ],
-          },
+          form: formOf([
+            {
+              id: 'field-1',
+              variable: 'personName',
+              prompt: localized('Their name?'),
+            },
+          ]),
           introductionPanel: {
             title: localized('Intro'),
             text: localized('Some text'),

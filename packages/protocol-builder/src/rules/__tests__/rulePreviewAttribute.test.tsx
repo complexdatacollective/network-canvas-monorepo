@@ -13,14 +13,11 @@ const MOOD = testVariableId('mood');
 const GONE = testVariableId('gone_from_the_codebook');
 
 /**
- * The attribute in a rule sentence is the builder's own attribute pill.
- *
- * Architect's rule sentence drew a filled, type-coloured variable pill, and
- * the `.variable-pill` cascades this sentence and the printable summary carry
- * are the ones written for it — so a rule read back with an outline chip was
+ * The attribute in a rule sentence is the builder's one attribute pill, in
+ * the small size of rule summaries: a rule read back with an outline chip was
  * the one place in the builder where an attribute did not look like one.
- * Asserted through what the pill IS rather than through a class name: the
- * accent custom property and the icon are what a researcher sees.
+ * Asserted through what the pill says about itself (its kind, its accent and
+ * its mark) rather than through its layout.
  */
 const ruleAbout = (attribute: string) => ({
   id: 'rule-1',
@@ -63,12 +60,13 @@ describe('the attribute in a rule sentence', () => {
     previewOf(AGE);
     const pill = pillIn(attributePart());
 
-    // `--paradise-pink` is the number accent in `AttributePill`'s own table,
-    // which that component's test pins against the icon files.
-    expect(pill.style.getPropertyValue('--variable-pill-accent')).toBe(
-      'oklch(var(--paradise-pink))',
+    // `--paradise-pink` is the number accent in `VariablePill`'s own
+    // table, which that component's test pins against the icon files.
+    expect(pill).toHaveClass(
+      '[--variable-pill-accent:oklch(var(--paradise-pink))]',
     );
     expect(pill).toHaveAttribute('data-attribute-type', 'number');
+    expect(pill).toHaveAttribute('data-variable-pill-size', 'sm');
     expect(pill).toHaveClass('variable-pill');
     // The icon is the other half of what the pill says without words, and an
     // outline chip has none.
@@ -79,7 +77,7 @@ describe('the attribute in a rule sentence', () => {
   it('still says in words what kind of answer it is', () => {
     previewOf(MOOD);
 
-    expect(screen.getByLabelText('Mood (attribute type: categorical)')).toBe(
+    expect(screen.getByLabelText('Mood (attribute type: Categorical)')).toBe(
       attributePart(),
     );
   });
@@ -90,9 +88,7 @@ describe('the attribute in a rule sentence', () => {
     const pill = pillIn(part);
 
     expect(pill).toHaveAttribute('data-attribute-missing', '');
-    expect(pill.style.getPropertyValue('--variable-pill-accent')).toBe(
-      'var(--destructive)',
-    );
+    expect(pill).toHaveClass('[--variable-pill-accent:var(--destructive)]');
     // Visible AND described: a researcher who cannot see the accent is told
     // why the rule cannot be read back.
     expect(part).toHaveAttribute(

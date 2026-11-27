@@ -147,7 +147,7 @@ export async function POST(request: Request) {
   } else {
     const storedProtocol = parseStoredProtocol(protocol);
     if (!storedProtocol.success) return unreadable(storedProtocol.error);
-    const { codebook, stages } = storedProtocol.data;
+    const { codebook, stages, localization } = storedProtocol.data;
 
     generate = (dropOut) =>
       generateNetwork({
@@ -155,6 +155,12 @@ export async function POST(request: Request) {
         stages,
         simulateDropOut: dropOut,
         respectSkipLogicAndFiltering,
+        // A synthetic interview has no participant whose browser asks for a
+        // language, so its forms are answered in the language that the
+        // interview shows when the participant asks for none of the
+        // protocol's languages: the protocol's default language.
+        formLanguage: localization.defaultLocale,
+        localization,
       } satisfies GenerateNetworkParams);
     // A completed synthetic interview ends at the finish stage its route
     // reached, and is recorded with that stage's outcome as a participant's

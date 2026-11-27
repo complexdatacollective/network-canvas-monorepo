@@ -17,10 +17,10 @@ import {
   type RichTextAssetBlockKind,
   type RichTextAssetBlockViewProps,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import { useInterfaceLanguage } from '@codaco/fresco-ui/interfaceLanguage';
 import { surfaceSpacingVariants } from '@codaco/fresco-ui/layout/Surface';
 import { Popover, PopoverContent } from '@codaco/fresco-ui/Popover';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import { useTokenPillLanguage } from '@codaco/fresco-ui/TokenPill';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { messages, type SizeChoice } from './assetBlockMessages.ts';
@@ -34,7 +34,6 @@ import {
   COVERED_PROBE_STYLE,
   scrollerOf,
   SETTINGS_COLLISIONS,
-  SETTINGS_OFFSET,
   useSettingsPlacement,
 } from './settingsPlacement.ts';
 
@@ -126,7 +125,7 @@ export const createAssetBlockView = ({
     const [language, setLanguage] = useState<string | undefined>(undefined);
     // What the block says in the interface's own words, inside text in the
     // language being written.
-    const interfaceLanguage = useTokenPillLanguage();
+    const interfaceLanguage = useInterfaceLanguage();
     // The size the corner is being dragged to, while it is being dragged.
     const [dragged, setDragged] = useState<SizeChoice | undefined>(undefined);
     // Whether the file field's resource browser is open. The settings stand
@@ -166,12 +165,15 @@ export const createAssetBlockView = ({
     const [panel, setPanel] = useState<HTMLElement | null>(null);
     // Where the host's bars are read from.
     const coveredRef = useRef<HTMLSpanElement>(null);
+    // The corner that resizes the picture, which the settings leave uncovered.
+    const cornerRef = useRef<HTMLDivElement>(null);
     const placement = useSettingsPlacement(
       showsSettings && !browsing,
       anchorRef,
       panel,
       scroller,
       coveredRef,
+      cornerRef,
     );
 
     return (
@@ -237,6 +239,7 @@ export const createAssetBlockView = ({
           {drawn !== undefined && working && hasRatio(drawn) && (
             <ResizeCorner
               boxRef={boxRef}
+              cornerRef={cornerRef}
               drawn={drawn}
               size={size ?? 'full'}
               onDrag={setDragged}
@@ -260,7 +263,7 @@ export const createAssetBlockView = ({
             id={settingsId}
             anchor={anchorRef}
             side={placement.side}
-            sideOffset={SETTINGS_OFFSET}
+            sideOffset={placement.offset}
             collisionAvoidance={
               placement.overlaps
                 ? SETTINGS_COLLISIONS.over

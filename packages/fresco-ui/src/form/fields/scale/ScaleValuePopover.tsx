@@ -66,7 +66,7 @@ export default function ScaleValuePopover({
           ref={positionerRef}
           aria-hidden="true"
           // oxlint-disable-next-line tailwindcss/enforce-logical -- the effect above moves this to the thumb's measured viewport position, which is a distance from the left
-          className="pointer-events-none! fixed top-0 left-0 z-60"
+          className="pointer-events-none! fixed top-0 left-0 z-3000"
         >
           {/* Centred on the thumb, floated above it; the outer wrapper owns the
               positioning transform so motion is free to animate the bubble. */}

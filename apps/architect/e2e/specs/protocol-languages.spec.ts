@@ -714,8 +714,8 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
               ? {
                   ...stage,
                   content: {
-                    en: `Hello{${name}, select, missing {} other {, {${name}}}}`,
-                    fr: `Bonjour{${name}, select, missing {} other {, {${name}}}}`,
+                    en: `Hello, {${name}}`,
+                    fr: `Bonjour, {${name}}`,
                   },
                 }
               : stage,
@@ -733,7 +733,7 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
   await expect(editor).toBeFocused();
 
   // The toolbar sits above the text it formats, not over it, and stays there
-  // once the value is selected and its versions open beneath it.
+  // once the value's pill is selected.
   const cell = editor.locator('xpath=ancestor::td');
   const toolbarClearsText = async () => {
     const toolbar = await cell.getByRole('toolbar').boundingBox();
@@ -745,9 +745,13 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
     }
   };
   await toolbarClearsText();
-  // Folded, the value's button shows its versions after its name.
-  await editor.getByRole('button', { name: /^last_name/ }).click();
-  await expect(editor.getByLabel('If known', { exact: true })).toBeVisible();
+  const pill = editor.locator('[data-inline-value]');
+  await expect(pill.locator('data.variable-pill')).toHaveAttribute(
+    'value',
+    'last_name',
+  );
+  await pill.click();
+  await expect(pill).toHaveAttribute('data-selected', /.*/);
   await toolbarClearsText();
 });
 
@@ -790,7 +794,7 @@ for (const withValues of [false, true]) {
                       kind: 'attribute',
                       role: 'ego',
                       variableId: testVariableId('firstName'),
-                    })}, select, missing {} other {}}`
+                    })}}`
                   : block,
                 fr: block,
               },

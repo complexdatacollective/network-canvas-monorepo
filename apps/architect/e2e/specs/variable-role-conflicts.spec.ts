@@ -8,10 +8,12 @@ import {
   CurrentProtocolSchema,
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { readStageJson } from '../helpers/read-store.js';
+import { openFieldSettings } from '../pageobjects/editor-sections/forms.js';
 import {
   attributeRows,
   dismissAttributeWindow,
@@ -53,6 +55,13 @@ const categoricalOptions = [
 // `as` cast, but a schema-driven .parse() legitimately produces the branded
 // value from an unknown-typed input — and validates the fixture is
 // real-shape at the same time.
+/** A form that asks one question, for the attribute `variable`. */
+function oneFieldForm(variable: string, prompt: string) {
+  return formOf([
+    { id: createProtocolObjectId(), variable, prompt: { en: prompt } },
+  ]);
+}
+
 function conflictProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse(
     withInterfaceText(
@@ -103,30 +112,14 @@ function conflictProtocol(): CurrentProtocol {
             type: 'AlterForm',
             label: { en: 'Person Details' },
             subject: { entity: 'node', type: 'person' },
-            form: {
-              fields: [
-                {
-                  id: createProtocolObjectId(),
-                  variable: 'sharedVar',
-                  prompt: { en: 'Shared field prompt' },
-                },
-              ],
-            },
+            form: oneFieldForm('sharedVar', 'Shared field prompt'),
           },
           {
             id: createProtocolObjectId(),
             type: 'AlterForm',
             label: { en: 'Extra Person Form' },
             subject: { entity: 'node', type: 'person' },
-            form: {
-              fields: [
-                {
-                  id: createProtocolObjectId(),
-                  variable: 'formOnlyVar',
-                  prompt: { en: 'Form only field prompt' },
-                },
-              ],
-            },
+            form: oneFieldForm('formOnlyVar', 'Form only field prompt'),
           },
           {
             id: createProtocolObjectId(),
@@ -210,41 +203,33 @@ test("lists the other class's variable in each writer's picker as not available,
   // Both pickers are `@codaco/protocol-builder`'s `VariablePickerField`. It
   // lists every attribute of the subject, and the caller marks the ones that
   // cannot be chosen here (`codebook/attributeAvailability.ts`): those are
-  // `aria-disabled`, sit under "Not available here", and choosing one shows
-  // the reason instead of choosing it. Nothing has been typed in either popup,
+  // `aria-disabled` (the bin's picker lists them under "Not available here",
+  // a form field's keeps them in place), and choosing one shows the reason
+  // instead of choosing it. Nothing has been typed in either popup,
   // so there is no create row and every option is an attribute.
   //
-  // AlterForm's field `variable` picker is a VALIDATED writer
-  // (`FormFieldsSection` calls `markCrossClassUses`): it must rule out
+  // AlterForm's field attribute picker, in the field's settings, is a
+  // VALIDATED writer: it must rule out
   // binOnlyVar (an UNVALIDATED-only writer elsewhere), while keeping the
   // field's own current value (sharedVar, also itself part of the conflict)
   // and the unrelated cleanVar on offer.
   await timeline.openStage('Person Details');
-  await editor
-    .section('Form configuration')
-    .getByRole('button', { name: 'Edit field' })
-    .click();
-  const fieldDialog = architectPage.getByRole('dialog', {
-    name: 'Edit form field',
-  });
-  await expect(fieldDialog).toBeVisible();
-
-  const formWindow = await openAttributeWindow(
-    fieldDialog.locator('[data-field-name="variable"]'),
+  const settings = await openFieldSettings(
+    editor.section('Form'),
+    'Shared field prompt',
   );
+  const attributeField = settings.locator('[data-field-name$="-attribute"]');
+
+  const formWindow = await openAttributeWindow(attributeField);
   await expect(formWindow.getByRole('option')).toHaveCount(4);
   await expect(offeredAttributeRows(formWindow, 'sharedVar')).toBeVisible();
   await expect(offeredAttributeRows(formWindow, 'cleanVar')).toBeVisible();
   await expect(offeredAttributeRows(formWindow, 'formOnlyVar')).toBeVisible();
+  // A field's picker keeps an attribute that cannot be chosen in its place in
+  // the list, disabled, with the reason beneath it.
+  await expect(unavailableAttributeRows(formWindow)).toHaveCount(1);
   await expect(
-    formWindow
-      .getByRole('group', { name: 'Not available here', exact: true })
-      .getByRole('option'),
-  ).toHaveCount(1);
-  await expect(
-    formWindow
-      .getByRole('group', { name: 'Not available here', exact: true })
-      .getByRole('option', { name: 'binOnlyVar', exact: true }),
+    formWindow.getByRole('option', { name: 'binOnlyVar', exact: true }),
   ).toHaveAttribute('aria-disabled', 'true');
   expect(await unavailableReason(formWindow, 'binOnlyVar')).toBe(
     'The “Extra Category Bin” stage sets this attribute without validation, so it cannot also be collected here.',
@@ -256,13 +241,13 @@ test("lists the other class's variable in each writer's picker as not available,
     unavailableAttributeRows(formWindow, 'binOnlyVar'),
   ).toBeVisible();
   await dismissAttributeWindow(formWindow);
-  await expect(
-    fieldDialog.locator('[data-field-name="variable"]').locator('data[value]'),
-  ).toHaveAttribute('value', 'sharedVar');
+  await expect(attributeField.locator('data[value]')).toHaveAttribute(
+    'value',
+    'sharedVar',
+  );
 
-  // Navigating away (rather than closing the dialog first) is deliberate:
-  // nothing has been touched, so there is nothing to discard, and it sidesteps
-  // the dialog's own Escape handling entirely.
+  // Navigating away (rather than closing the settings first) is deliberate:
+  // nothing has been touched, so there is nothing to discard.
   await gotoProtocol(architectPage);
 
   // CategoricalBin's prompt `variable` picker is an UNVALIDATED writer

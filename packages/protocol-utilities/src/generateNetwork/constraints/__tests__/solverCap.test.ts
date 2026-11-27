@@ -7,6 +7,7 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 
+import { ENGLISH_FORMS } from '../../../__tests__/englishForms.ts';
 import { ValueGenerator } from '../../../ValueGenerator.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import type { GenerationContext } from '../../context.ts';
@@ -95,6 +96,8 @@ describe('solver search budget exhaustion', () => {
       usedRosterUids: new Set(),
       externalData: undefined,
       respectSkipLogicAndFiltering: false,
+      formLanguage: ENGLISH_FORMS.formLanguage,
+      formLocalization: ENGLISH_FORMS.localization,
       uniqueRegistry: new UniqueRegistry(),
       entityConstraints: { ego: new Map(), node: new Map(), edge: new Map() },
     };

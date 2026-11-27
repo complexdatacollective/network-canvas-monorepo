@@ -8,10 +8,17 @@ import {
   type Codebook,
   type Stage,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { testId, testVariableId } from '../../__tests__/testIds';
 import { buildDatePickerBoundProps } from '../buildDatePickerBoundProps';
+
+/** The protocols here are written in English alone: forms are read in it. */
+const ENGLISH_FORMS = {
+  formLanguage: 'en',
+  localization: { defaultLocale: 'en', locales: ['en'] },
+};
 
 /**
  * A `RelativeDatePicker`'s window is derived three times over, by three packages
@@ -149,16 +156,16 @@ const egoStages: Stage[] = [
     id: testId('stage-ego'),
     type: 'EgoForm',
     label: { en: 'About you' },
-    introductionPanel: { title: { en: 'About you' } },
-    form: {
-      fields: [
+    form: formOf(
+      [
         {
           id: testId('field-1'),
           variable: asEntityAttributeReference(variableId),
           prompt: { en: 'When did you last see them?' },
         },
       ],
-    },
+      { before: '# About you' },
+    ),
   },
 ];
 
@@ -171,6 +178,7 @@ function generatedValues(parameters: {
   const drawn: string[] = [];
   for (let seed = 1; seed <= 16; seed++) {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed,
       codebook: egoCodebook(parameters),
       stages: egoStages,

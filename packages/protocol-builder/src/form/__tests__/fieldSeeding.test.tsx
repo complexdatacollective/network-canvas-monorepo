@@ -22,7 +22,7 @@ const renderField = (fields: SectionDoc, children: ReactNode) =>
       fields,
     },
     sections: (
-      <BuilderSection sectionKey="introduction" title="Introduction">
+      <BuilderSection sectionKey="form-fields" title="Form">
         {children}
       </BuilderSection>
     ),
@@ -39,7 +39,7 @@ describe('a field seeded from the document the form was handed', () => {
         },
       },
       sections: (
-        <BuilderSection sectionKey="introduction" title="Introduction">
+        <BuilderSection sectionKey="form-fields" title="Form">
           <FieldNamespace prefix="form">
             <Field
               name="title"

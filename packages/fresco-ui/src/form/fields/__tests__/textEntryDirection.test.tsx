@@ -125,7 +125,7 @@ describe('the fields lay out what is typed', () => {
     );
     const editor = screen.getByRole('textbox', { name: 'Prompt' });
     expect(editor).toHaveClass(
-      '[&_:is(p,h1,h2,h3,h4,h5,h6)]:text-own-direction',
+      '[&_:is(p,h1,h2,h3,h4,h5,h6,[data-field-label],[data-field-hint])]:text-own-direction',
     );
     expect(editor).not.toHaveAttribute('dir');
   });

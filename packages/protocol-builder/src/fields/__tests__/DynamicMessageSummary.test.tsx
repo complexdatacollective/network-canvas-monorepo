@@ -9,10 +9,8 @@ import {
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import { testVariableId } from '../../testing/testId.ts';
-import {
-  type DynamicMessageSite,
-  DynamicMessageSummary,
-} from '../DynamicTextField.tsx';
+import { DynamicMessageSummary } from '../dynamicText/DynamicMessageSummary.tsx';
+import type { DynamicMessageSite } from '../dynamicText/messageSite.ts';
 
 const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 const LOCALE: LocaleTag = 'en';
@@ -56,15 +54,13 @@ describe('DynamicMessageSummary', () => {
     const summary = getByTestId('summary');
 
     const strong = summary.querySelector('strong');
-    expect(strong?.querySelector('[data-token="name"]')).toHaveTextContent(
+    expect(strong?.querySelector('data[value="name"]')).toHaveTextContent(
       'name',
     );
     const link = summary.querySelector('a');
     expect(link).toHaveAttribute('href', 'https://example.com');
     expect(link).toHaveTextContent('this site');
-    expect(
-      summary.querySelector('em [data-token="place"]'),
-    ).toBeInTheDocument();
+    expect(summary.querySelector('em data[value="place"]')).toBeInTheDocument();
     expect(summary).toHaveTextContent('Read name at this site with place');
     expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
   });
@@ -77,8 +73,10 @@ describe('DynamicMessageSummary', () => {
     const summary = getByTestId('summary');
 
     expect(summary).toHaveTextContent(/^You have n\.$/);
-    expect(summary.querySelectorAll('[data-token]')).toHaveLength(1);
-    expect(summary.querySelector('[data-token="n"]')).toHaveTextContent('n');
+    expect(
+      summary.querySelectorAll('data[data-variable-pill-size]'),
+    ).toHaveLength(1);
+    expect(summary.querySelector('data[value="n"]')).toHaveTextContent('n');
     expect(summary.textContent).not.toContain('friend');
   });
 
@@ -91,7 +89,7 @@ describe('DynamicMessageSummary', () => {
 
     const strong = summary.querySelector('strong');
     expect(strong).toHaveTextContent(/^Hello name today$/);
-    expect(strong?.querySelectorAll('[data-token="name"]')).toHaveLength(1);
+    expect(strong?.querySelectorAll('data[value="name"]')).toHaveLength(1);
     expect(summary.textContent).not.toContain('there');
     expect(summary.textContent).not.toContain('**');
     expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
@@ -105,7 +103,7 @@ describe('DynamicMessageSummary', () => {
     );
     const summary = getByTestId('summary');
 
-    expect(summary.querySelector('h2 [data-token="name"]')).toBeInTheDocument();
+    expect(summary.querySelector('h2 data[value="name"]')).toBeInTheDocument();
     expect(summary.querySelectorAll('p')).toHaveLength(2);
     expect(summary.querySelector('hr')).toBeInTheDocument();
   });
@@ -116,7 +114,7 @@ describe('DynamicMessageSummary', () => {
 
     expect(summary.querySelector('p')).toBeNull();
     expect(
-      summary.querySelector('strong [data-token="name"]'),
+      summary.querySelector('strong data[value="name"]'),
     ).toBeInTheDocument();
   });
 
@@ -160,12 +158,12 @@ describe('DynamicMessageSummary', () => {
     const summary = getByTestId('summary');
     expect(summary.querySelector('strong')).toBe(null);
     expect(summary.textContent).toBe('Hi **name**');
-    expect(summary.querySelector('[data-token="name"]')).toBeInTheDocument();
+    expect(summary.querySelector('data[value="name"]')).toBeInTheDocument();
   });
 });
 
 describe('DynamicMessageSummary pills', () => {
-  it('gives an attribute’s own name its own direction, and the interface’s words the interface’s language', () => {
+  it('draws each value as the pill of its kind, an attribute’s own name in its own direction', () => {
     const { getByTestId } = render(
       <ProtocolLocalizationProvider localization={ENGLISH}>
         <div data-testid="summary">
@@ -191,15 +189,16 @@ describe('DynamicMessageSummary pills', () => {
 
     // The researcher's name, which reads in its own direction whatever the
     // interface's is.
-    const attribute = summary.querySelector(`[data-token="${TEAM}"]`);
-    expect(attribute).toHaveTextContent('team-b!');
-    expect(attribute).toHaveAttribute('dir', 'auto');
-    expect(attribute).not.toHaveAttribute('lang');
+    const attribute = summary.querySelector('data[value="team-b!"]');
+    expect(attribute).toHaveAttribute('data-attribute-type', 'text');
+    expect(attribute?.querySelector('[dir="auto"]')).toHaveTextContent(
+      'team-b!',
+    );
 
-    // A value the interface names, in the interface's language.
-    const today = summary.querySelector('[data-token="now"]');
-    expect(today).toHaveAttribute('lang', 'en');
-    expect(today).toHaveAttribute('dir', 'ltr');
+    // A value the interview supplies, with its own kind.
+    expect(
+      summary.querySelector('data[data-attribute-type="datetime"]'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -244,5 +243,23 @@ describe('DynamicMessageSummary of a value the place does not offer', () => {
       </ProtocolLocalizationProvider>,
     );
     expect(getByTestId('summary')).toHaveTextContent('Hi team');
+  });
+});
+
+describe('DynamicMessageSummary of a page with a logic block', () => {
+  it('lists each branch under the case in which it is shown', () => {
+    const { getByTestId } = renderSummary(
+      `Before\n\n{${TEAM}, select, missing {Nobody yet.} other {Thanks, {${TEAM}}.}}\n\nAfter`,
+      true,
+      true,
+    );
+    const summary = getByTestId('summary');
+
+    const branches = summary.querySelectorAll('[data-branch-summary]');
+    expect([...branches].map((branch) => branch.textContent)).toEqual([
+      'If not knownNobody yet.',
+      'Any other answerThanks, Deleted attribute.',
+    ]);
+    expect(summary).toHaveTextContent(/^Before.*After$/);
   });
 });

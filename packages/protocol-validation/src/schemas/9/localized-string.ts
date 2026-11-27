@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { holdsLineBreak } from '@codaco/shared-consts';
 
 import { isBlankMessage } from '../../localization/blankText.ts';
+import { findContentDocumentTextProblem } from '../../localization/contentDocumentProblems.ts';
 import {
   findDynamicMessageSyntaxProblem,
   findFormattedMessageProblem,
@@ -59,13 +60,20 @@ export type LocalizedTextShape = Readonly<{
    * lines, which is the only text with a place for a block.
    */
   assetBlocks?: true;
+  /**
+   * The text is a form's: it may contain the form's fields as blocks among
+   * its paragraphs (see `fieldBlock.ts`). Only for markdown of several lines.
+   */
+  fieldBlocks?: true;
 }>;
 
 type LocalizedStringDescriptor = Readonly<{
   format: LocalizedStringFormat;
   lines: LocalizedTextLines;
-  /** The text may hold files as blocks (see `LocalizedTextShape`). */
+  /** The text may contain files as blocks (see `LocalizedTextShape`). */
   assetBlocks?: true;
+  /** The text may contain a form's fields (see `LocalizedTextShape`). */
+  fieldBlocks?: true;
   /**
    * The arguments a localized message's translations may use (see
    * `localizedMessage`); absent for text made only of literal text.
@@ -81,7 +89,7 @@ type LocalizedStringDescriptor = Readonly<{
    * editor, because something else decides whether it needs one (the finish
    * stage's screens; see `findFinishStageTextProblems`). Any other text must
    * have one, unless it is wording Network Canvas supplies, which a protocol
-   * being written may hold empty (see `findEmptyTextProblems`).
+   * being written may leave empty (see `findEmptyTextPaths`).
    */
   mayBeEmpty?: true;
 }>;
@@ -197,8 +205,21 @@ export const nonBlankText = () =>
     .string()
     .min(1)
     .refine((message) => message === '' || !isBlankMessage(message), {
-      message: 'Text cannot be blank.',
+      message: 'This wording cannot be blank.',
     });
+
+/**
+ * The rule for one translation of a localized string that may show nothing:
+ * empty, or text that says something (`nonBlankText`). An empty translation
+ * is written, and shows nothing in its language; a language with no
+ * translation is not yet written, and falls back. Text made only of spaces
+ * or other characters that show nothing is still refused, so that "shows
+ * nothing" is written one way.
+ */
+export const emptyOrNonBlankText = () =>
+  z.string().refine((message) => message === '' || !isBlankMessage(message), {
+    message: 'This wording cannot be blank.',
+  });
 
 /**
  * A participant-facing string with one translation per protocol locale.
@@ -226,7 +247,7 @@ const localizedTranslations = (
         if (lines === 'single' && holdsLineBreak(message)) {
           ctx.addIssue({
             code: 'custom',
-            message: 'Text cannot contain a line break.',
+            message: 'This wording cannot contain a line break.',
           });
         }
         const problem = findProblem(message);
@@ -234,7 +255,7 @@ const localizedTranslations = (
       }),
     )
     // Whether the text may have no translation at all depends on where it
-    // sits, which only the protocol can see (`findEmptyTextProblems`).
+    // sits, which only the protocol can see (`findEmptyTextPaths`).
     .superRefine((value, ctx) => {
       for (const locale of Object.keys(value)) {
         const problem = findLocaleTagProblem(locale);
@@ -246,15 +267,14 @@ const localizedTranslations = (
 
 // A block needs paragraphs to sit among, so a declaration that offers blocks
 // on any other text is a mistake in the schema, caught as its module loads.
-const holdsAssetBlocks = ({
-  format,
-  lines,
-  assetBlocks,
-}: LocalizedTextShape): boolean => {
-  if (assetBlocks !== true) return false;
+const blocksAllowed = (
+  { format, lines }: LocalizedTextShape,
+  blocks: true | undefined,
+): boolean => {
+  if (blocks !== true) return false;
   if (format !== 'markdown' || lines !== 'multiple') {
     throw new Error(
-      'Only markdown text of several lines can hold files as blocks.',
+      'Only markdown text of several lines can contain blocks (files or fields).',
     );
   }
   return true;
@@ -262,7 +282,7 @@ const holdsAssetBlocks = ({
 
 export const localizedString = (
   content: z.ZodString,
-  { format, lines, assetBlocks }: LocalizedTextShape,
+  { format, lines, assetBlocks, fieldBlocks }: LocalizedTextShape,
   {
     mayBeEmpty = false,
     dynamicValues,
@@ -288,22 +308,28 @@ export const localizedString = (
     dynamicValues?: DynamicValueSite;
   } = {},
 ) =>
-  localizedTranslations(
-    content,
-    lines,
+  localizedTranslations(content, lines, (message) =>
     dynamicValues === undefined
-      ? findMessageSyntaxProblem
-      : format === 'markdown'
-        ? (message) =>
-            findDynamicMessageSyntaxProblem(message) ??
-            findFormattedMessageProblem(message)
-        : findDynamicMessageSyntaxProblem,
+      ? (findMessageSyntaxProblem(message) ??
+        findContentDocumentTextProblem(message, { format, lines, fieldBlocks }))
+      : (findDynamicMessageSyntaxProblem(message) ??
+        (format === 'markdown'
+          ? findFormattedMessageProblem(message)
+          : undefined) ??
+        findContentDocumentTextProblem(message, {
+          format,
+          lines,
+          fieldBlocks,
+        })),
   ).meta({
     [LOCALIZED_STRING]: {
       format,
       lines,
-      ...(holdsAssetBlocks({ format, lines, assetBlocks })
+      ...(blocksAllowed({ format, lines }, assetBlocks)
         ? { assetBlocks: true }
+        : {}),
+      ...(blocksAllowed({ format, lines }, fieldBlocks)
+        ? { fieldBlocks: true }
         : {}),
       ...(dynamicValues === undefined ? {} : { dynamicValues }),
       ...(mayBeEmpty ? { mayBeEmpty: true } : {}),
@@ -322,8 +348,8 @@ const describeMissingPlacement = (
     .map(([name, key]) => `${name}: ${key}`)
     .join(', ');
   return scenario === ''
-    ? `This text must include ${shown}.`
-    : `This text must include ${shown} in the "${scenario}" scenario.`;
+    ? `This wording must include ${shown}.`
+    : `This wording must include ${shown} in the "${scenario}" scenario.`;
 };
 
 /**
@@ -392,7 +418,8 @@ const isLocalizedStringDescriptor = (
     value.dynamicValues === 'formField' ||
     value.dynamicValues === 'nodeLabel') &&
   (!('mayBeEmpty' in value) || value.mayBeEmpty === true) &&
-  (!('assetBlocks' in value) || value.assetBlocks === true);
+  (!('assetBlocks' in value) || value.assetBlocks === true) &&
+  (!('fieldBlocks' in value) || value.fieldBlocks === true);
 
 export const getLocalizedStringDescriptor = (
   schema: z.ZodType,

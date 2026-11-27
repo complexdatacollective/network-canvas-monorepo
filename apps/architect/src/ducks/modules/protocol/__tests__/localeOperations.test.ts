@@ -7,6 +7,7 @@ import {
   familyPedigreeWordingIn,
 } from '@codaco/interview/supplied-wording';
 import {
+  testId,
   testOptionId,
   testTypeId,
   testVariableId,
@@ -16,13 +17,16 @@ import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
   DEFAULT_FINISH_SESSION_TEXT,
+  dynamicValueNameFor,
   escapeMessageText,
+  fieldBlockMarkdown,
   type LocalizedStringHit,
   messageText,
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   suppliedOptionLabel,
   suppliedOptionLabels,
+  textPlaceOf,
   validateProtocol,
   createProtocolObjectId,
   ProtocolObjectIdSchema,
@@ -39,6 +43,8 @@ import {
   setFallbackLocale,
   movedLocale,
   setTranslation,
+  setTranslations,
+  textKeptAfterRemoval,
   withoutLocale,
 } from '../localeOperations';
 
@@ -431,6 +437,7 @@ describe('removeLocale', () => {
     // it unsaved, with the English deleted.
     const unsaved: LocalizedStringHit = {
       path: ['stages', 0, 'content'],
+      place: textPlaceOf(['stages', 0, 'content']),
       value: { fr: '# Bonjour' },
       format: 'plain',
       lines: 'single',
@@ -499,6 +506,299 @@ describe('removeLocale', () => {
     const removed = protocolOf(removeLocale(reworded, 'fr'));
     expect(removed.localization.locales).toEqual(['en']);
     expect(removed.interfaceText).toBeUndefined();
+  });
+
+  it('removes the dynamic attributes and conditions that only text in the removed language used, on stages and node labels', async () => {
+    const NAME_FIELD = testId('field-name');
+    const NAME = testVariableId('name');
+    const ASKED = testId('condition/asked');
+    const GREETING = testId('dynamic/greeting');
+    const GREETING_NAME = dynamicValueNameFor({
+      kind: 'dynamicAttribute',
+      id: GREETING,
+    });
+    const PERSON = testTypeId('labelled-person');
+    const LINKED = testId('condition/linked');
+    const STAR = testId('dynamic/star');
+    const localization = { defaultLocale: 'en', locales: ['en', 'es'] };
+    const field = fieldBlockMarkdown(NAME_FIELD);
+    // Only the Spanish heading shows the greeting, and only the greeting
+    // tests the condition.
+    const protocol = {
+      name: 'Study',
+      schemaVersion: 9,
+      localization,
+      assetManifest: {},
+      codebook: {
+        node: {
+          // Only the Spanish label shows the star.
+          [PERSON]: {
+            name: 'person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            dynamicLabel: {
+              text: {
+                en: '{node_label}',
+                es: `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: STAR })}} {node_label}`,
+              },
+              conditions: {
+                [LINKED]: {
+                  about: 'node',
+                  rules: [
+                    {
+                      type: 'edge',
+                      id: testId('rule/linked'),
+                      options: { count: 'GREATER_THAN', value: 0 },
+                    },
+                  ],
+                },
+              },
+              dynamicAttributes: {
+                [STAR]: {
+                  logic: 'conditions',
+                  cases: [
+                    {
+                      condition: LINKED,
+                      when: 'met',
+                      wording: { en: '*', es: '*' },
+                    },
+                  ],
+                  otherwise: { en: '-', es: '-' },
+                },
+              },
+            },
+          },
+        },
+        edge: {},
+        ego: {
+          variables: {
+            [NAME]: { name: 'name', type: 'text', component: 'Text' },
+          },
+        },
+      },
+      stages: [
+        {
+          id: testId('about'),
+          type: 'EgoForm',
+          label: { en: 'About you', es: 'Sobre ti' },
+          conditions: {
+            [ASKED]: {
+              rules: [
+                {
+                  id: testId('rule/asked'),
+                  type: 'ego',
+                  options: {
+                    attribute: NAME,
+                    operator: 'EXACTLY',
+                    value: 'Sam',
+                  },
+                },
+              ],
+            },
+          },
+          dynamicAttributes: {
+            [GREETING]: {
+              logic: 'conditions',
+              cases: [
+                {
+                  condition: ASKED,
+                  when: 'met',
+                  wording: { en: 'Sam', es: 'Sam' },
+                },
+              ],
+              otherwise: { en: 'friend', es: 'amigo' },
+            },
+          },
+          form: {
+            content: {
+              en: ['# About you', field].join('\n\n'),
+              es: [`# Hola, {${GREETING_NAME}}`, field].join('\n\n'),
+            },
+            fields: [
+              {
+                id: NAME_FIELD,
+                variable: NAME,
+                prompt: { en: 'What is your name?', es: '¿Cómo te llamas?' },
+              },
+            ],
+          },
+        },
+        createDefaultFinishSessionStage({ id: testId('finish'), localization }),
+      ],
+    } as unknown as CurrentProtocol;
+    expect((await validateProtocol(protocol)).success).toBe(true);
+
+    const removed = protocolOf(removeLocale(protocol, 'es'));
+
+    const [stage] = removed.stages;
+    expect(stage).not.toHaveProperty('dynamicAttributes');
+    expect(stage).not.toHaveProperty('conditions');
+    expect(removed.codebook.node?.[PERSON]?.dynamicLabel).toEqual({
+      text: { en: '{node_label}' },
+    });
+    expect((await validateProtocol(removed)).success).toBe(true);
+  });
+
+  it('removes a form field that only the removed language’s form contained, as the stage editor saves the form', async () => {
+    const NAME_FIELD = testId('field-name');
+    const AGE_FIELD = testId('field-age');
+    const NAME = testVariableId('name');
+    const AGE = testVariableId('age');
+    const localization = { defaultLocale: 'en', locales: ['en', 'es'] };
+    const protocol = {
+      name: 'Study',
+      schemaVersion: 9,
+      localization,
+      assetManifest: {},
+      codebook: {
+        node: {},
+        edge: {},
+        ego: {
+          variables: {
+            [NAME]: { name: 'name', type: 'text', component: 'Text' },
+            [AGE]: { name: 'age', type: 'number', component: 'Number' },
+          },
+        },
+      },
+      stages: [
+        {
+          id: testId('about'),
+          type: 'EgoForm',
+          label: { en: 'About you', es: 'Sobre ti' },
+          form: {
+            content: {
+              en: fieldBlockMarkdown(NAME_FIELD),
+              es: [NAME_FIELD, AGE_FIELD].map(fieldBlockMarkdown).join('\n\n'),
+            },
+            fields: [
+              {
+                id: NAME_FIELD,
+                variable: NAME,
+                prompt: { en: 'What is your name?', es: '¿Cómo te llamas?' },
+              },
+              // English once asked it too; its form no longer does.
+              {
+                id: AGE_FIELD,
+                variable: AGE,
+                prompt: { en: 'How old are you?', es: '¿Qué edad?' },
+              },
+            ],
+          },
+        },
+        createDefaultFinishSessionStage({ id: testId('finish'), localization }),
+      ],
+    } as unknown as CurrentProtocol;
+    expect((await validateProtocol(protocol)).success).toBe(true);
+
+    const removed = protocolOf(removeLocale(protocol, 'es'));
+
+    const [stage] = removed.stages;
+    expect(stage?.type === 'EgoForm' ? stage.form.fields : undefined).toEqual([
+      { id: NAME_FIELD, variable: NAME, prompt: { en: 'What is your name?' } },
+    ]);
+    expect((await validateProtocol(removed)).success).toBe(true);
+  });
+
+  describe('a language whose form alone contains a field whose question is written only in that language', () => {
+    const NAME_FIELD = testId('field-name');
+    const AGE_FIELD = testId('field-age');
+    const NAME = testVariableId('name');
+    const AGE = testVariableId('age');
+    const localization = { defaultLocale: 'en', locales: ['en', 'es'] };
+    const protocol = {
+      name: 'Study',
+      schemaVersion: 9,
+      localization,
+      assetManifest: {},
+      codebook: {
+        node: {},
+        edge: {},
+        ego: {
+          variables: {
+            [NAME]: { name: 'name', type: 'text', component: 'Text' },
+            [AGE]: { name: 'age', type: 'number', component: 'Number' },
+          },
+        },
+      },
+      stages: [
+        {
+          id: testId('about'),
+          type: 'EgoForm',
+          label: { en: 'About you', es: 'Sobre ti' },
+          form: {
+            content: {
+              en: fieldBlockMarkdown(NAME_FIELD),
+              es: [AGE_FIELD, NAME_FIELD].map(fieldBlockMarkdown).join('\n\n'),
+            },
+            fields: [
+              // Only the Spanish form asks it, and only in Spanish.
+              { id: AGE_FIELD, variable: AGE, prompt: { es: '¿Qué edad?' } },
+              {
+                id: NAME_FIELD,
+                variable: NAME,
+                prompt: { en: 'What is your name?', es: '¿Cómo te llamas?' },
+              },
+            ],
+          },
+        },
+        createDefaultFinishSessionStage({ id: testId('finish'), localization }),
+      ],
+    } as unknown as CurrentProtocol;
+
+    it('is removed with that field, whose question is left in no text', async () => {
+      expect((await validateProtocol(protocol)).success).toBe(true);
+
+      const removed = protocolOf(removeLocale(protocol, 'es'));
+
+      const [stage] = removed.stages;
+      expect(stage?.type === 'EgoForm' ? stage.form.fields : undefined).toEqual(
+        [
+          {
+            id: NAME_FIELD,
+            variable: NAME,
+            prompt: { en: 'What is your name?' },
+          },
+        ],
+      );
+      expect((await validateProtocol(removed)).success).toBe(true);
+    });
+
+    it('strands the question in a stage open in an editor whose form asks for the field in another language too', () => {
+      // The editor's English form now asks for the age too, unsaved.
+      const [stage] = protocol.stages;
+      if (stage?.type !== 'EgoForm') throw new Error('The stage is a form.');
+      const open = {
+        ...stage,
+        form: {
+          ...stage.form,
+          content: {
+            ...stage.form.content,
+            en: [NAME_FIELD, AGE_FIELD].map(fieldBlockMarkdown).join('\n\n'),
+          },
+        },
+      };
+      const texts = collectLocalizedStrings({ ...protocol, stages: [open] });
+      expect(
+        getLocaleRemovalImpact(texts, 'es', undefined, () =>
+          textKeptAfterRemoval(protocol, 'es', { index: 0, stage: open }),
+        ).strandedStrings.map(({ path }) => path),
+      ).toEqual([['stages', 0, 'form', 'fields', 0, 'prompt']]);
+    });
+
+    it('strands no text, as the Languages page counts it', () => {
+      const texts = collectLocalizedStrings(protocol);
+      expect(
+        getLocaleRemovalImpact(texts, 'es', undefined, () =>
+          textKeptAfterRemoval(protocol, 'es'),
+        ).strandedStrings,
+      ).toEqual([]);
+      // Read without the protocol, the question has no other translation.
+      expect(
+        getLocaleRemovalImpact(texts, 'es').strandedStrings.map(
+          ({ path }) => path,
+        ),
+      ).toEqual([['stages', 0, 'form', 'fields', 0, 'prompt']]);
+    });
   });
 
   it('refuses a language the protocol does not declare', () => {
@@ -1003,5 +1303,91 @@ describe('the interview’s shared words', () => {
     expect(
       backOf(protocolOf(addLocales(withBack({ en: 'Previous' }), ['ja']))),
     ).toEqual({ en: 'Previous' });
+  });
+});
+
+describe('setTranslations', () => {
+  const NAME_FIELD = testId('field-name');
+  const AGE_FIELD = testId('field-age');
+  const NAME = testVariableId('name');
+  const AGE = testVariableId('age');
+  const UNUSED = testId('condition/unused');
+  const localization = { defaultLocale: 'en', locales: ['en', 'es'] };
+  const name = fieldBlockMarkdown(NAME_FIELD);
+  const age = fieldBlockMarkdown(AGE_FIELD);
+  // Only the Spanish form asks the age, and only in Spanish. No text tests
+  // the condition.
+  const protocol = {
+    name: 'Study',
+    schemaVersion: 9,
+    localization,
+    assetManifest: {},
+    codebook: {
+      node: {},
+      edge: {},
+      ego: {
+        variables: {
+          [NAME]: { name: 'name', type: 'text', component: 'Text' },
+          [AGE]: { name: 'age', type: 'number', component: 'Number' },
+        },
+      },
+    },
+    stages: [
+      {
+        id: testId('about'),
+        type: 'EgoForm',
+        label: { en: 'About you', es: 'Sobre ti' },
+        conditions: {
+          [UNUSED]: {
+            rules: [
+              {
+                id: testId('rule/unused'),
+                type: 'ego',
+                options: { attribute: NAME, operator: 'EXACTLY', value: 'Sam' },
+              },
+            ],
+          },
+        },
+        form: {
+          content: { en: name, es: [name, age].join('\n\n') },
+          fields: [
+            {
+              id: NAME_FIELD,
+              variable: NAME,
+              prompt: { en: 'What is your name?', es: '¿Cómo te llamas?' },
+            },
+            { id: AGE_FIELD, variable: AGE, prompt: { es: '¿Qué edad?' } },
+          ],
+        },
+      },
+      createDefaultFinishSessionStage({ id: testId('finish'), localization }),
+    ],
+  } as unknown as CurrentProtocol;
+
+  it('saves a stage as the stage editor does: a question that no form asks goes, even its last translation, and so does a condition that nothing tests', async () => {
+    expect((await validateProtocol(protocol)).success).toBe(true);
+
+    const saved = protocolOf(
+      setTranslations(protocol, {
+        definitions: [],
+        updates: [
+          {
+            path: ['stages', 0, 'form', 'content'],
+            value: { en: name, es: name },
+          },
+        ],
+      }),
+    );
+
+    const [stage] = saved.stages;
+    expect(stage?.type === 'EgoForm' ? stage.form.fields : undefined).toEqual([
+      {
+        id: NAME_FIELD,
+        variable: NAME,
+        prompt: { en: 'What is your name?', es: '¿Cómo te llamas?' },
+      },
+    ]);
+    expect(stage && 'conditions' in stage).toBe(false);
+    expect((await validateProtocol(saved)).success).toBe(true);
   });
 });

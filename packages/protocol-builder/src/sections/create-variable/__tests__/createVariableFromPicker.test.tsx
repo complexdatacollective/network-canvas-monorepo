@@ -174,9 +174,10 @@ describe('a slot whose attribute needs more than a name', () => {
   /**
    * The editor opens OVER this window, which stays open underneath it waiting
    * for an answer — so nothing on the window may raise it above a dialog
-   * opened after it. jsdom has no stylesheet to paint with, so what is read
-   * here is the raise itself: the popup layer's `z-3000`, which the list's
-   * positioner carries at every other time, is dropped while a create waits.
+   * opened after it. Every popup root on the portal layer is drawn at the
+   * layer's one z-index (`useDrawnOnTopWhenOpened`), so the later one in the
+   * document is on top. jsdom has no stylesheet to paint with, so what is
+   * read here is that order, and that the window sets no z-index of its own.
    */
   it('leaves the editor it opened on top of it', async () => {
     const harness = renderStageEditor({
@@ -211,8 +212,8 @@ describe('a slot whose attribute needs more than a name', () => {
     if (spotlight === null) {
       throw new Error('the window closed, so there is nothing to be under');
     }
-    // The editor is the later of the two, which is the order the rest depends
-    // on.
+    // The editor is the later of the two, and the window does not raise
+    // itself above it.
     expect(
       spotlight.compareDocumentPosition(editor) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -220,7 +221,6 @@ describe('a slot whose attribute needs more than a name', () => {
     expect(spotlight.style.zIndex).toBe('');
     const positioner = spotlight.parentElement;
     expect(positioner).not.toBeNull();
-    expect(positioner).not.toHaveClass('z-3000');
     expect(positioner?.style.zIndex).toBe('');
   });
 

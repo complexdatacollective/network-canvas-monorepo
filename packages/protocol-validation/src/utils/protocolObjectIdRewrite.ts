@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 
+import { renameFieldBlocks } from '../localization/fieldBlock.ts';
 import type { ProtocolObjectId } from '../schemas/9/protocol-object-id.ts';
 import { isStageHit, walkSchemaReferences } from './schemaReferenceWalk.ts';
 
@@ -136,5 +137,36 @@ export const rewriteStageReferences = (
   }).filter(isStageHit)) {
     const renamed = rename(hit.stageId);
     if (renamed !== undefined) setValueAt(root, hit.path, renamed);
+  }
+};
+
+/**
+ * The form a form field's id is in: the path of the field's `id` without
+ * `fields`, the field's index and `id`.
+ */
+export const formPathOfField = (
+  idPath: readonly (string | number)[],
+): readonly (string | number)[] => idPath.slice(0, -3);
+
+/**
+ * Points every field block in the text of the form at `formPath` inside
+ * `root` (its `content`, in each language) at the id `renames` gives the
+ * field it names, leaving the others as they are. A field's id is unique only
+ * among the fields of its form as far as its text is concerned, so each
+ * form's text is rewritten by its own fields' renames. `root` must be a copy
+ * the caller owns.
+ */
+export const rewriteFieldBlockReferences = (
+  root: unknown,
+  formPath: readonly (string | number)[],
+  renames: ReadonlyMap<string, string>,
+): void => {
+  if (renames.size === 0) return;
+  const content = valueAt(root, [...formPath, 'content']);
+  if (!isRecord(content)) return;
+  for (const [locale, message] of Object.entries(content)) {
+    if (typeof message === 'string') {
+      content[locale] = renameFieldBlocks(message, renames);
+    }
   }
 };

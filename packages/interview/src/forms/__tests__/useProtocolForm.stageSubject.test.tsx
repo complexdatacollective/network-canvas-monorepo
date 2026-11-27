@@ -17,6 +17,7 @@ import {
   type ComposerFormField,
   type FormField,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
@@ -179,13 +180,13 @@ describe('useProtocolForm stageSubject', () => {
     const { result } = renderHook(
       () =>
         useProtocolForm({
-          fields,
+          form: formOf(fields),
           subject: { entity: 'node', type: NODE_TYPE },
         }),
       { wrapper: makeWrapper() },
     );
 
-    const stageSubject = firstFieldStageSubject(result.current.fieldComponents);
+    const stageSubject = firstFieldStageSubject(result.current.formContent);
 
     // Without the fix the stageSubject would be null (from the subjectless
     // stage), which the unique/sameAs/differentFrom validators dereference.
@@ -206,19 +207,19 @@ describe('useProtocolForm stageSubject', () => {
     const { result } = renderHook(
       () =>
         useProtocolForm({
-          fields: comparisonFields,
+          form: formOf(comparisonFields),
           subject: { entity: 'node', type: NODE_TYPE },
           formValueAliases: { [DISPLAY_NAME_VAR]: NAME_VAR },
         }),
       { wrapper: makeWrapper() },
     );
 
-    expect(firstFieldProp(result.current.fieldComponents, 'field')).toEqual(
+    expect(firstFieldProp(result.current.formContent, 'field')).toEqual(
       expect.objectContaining({
         validation: expect.objectContaining({ sameAs: DISPLAY_NAME_VAR }),
       }),
     );
-    expect(firstFieldValidationContext(result.current.fieldComponents)).toEqual(
+    expect(firstFieldValidationContext(result.current.formContent)).toEqual(
       expect.objectContaining({
         formValueAliases: { [DISPLAY_NAME_VAR]: NAME_VAR },
       }),
@@ -236,8 +237,8 @@ describe('useProtocolForm stageSubject', () => {
     ];
 
     function Harness() {
-      const { fieldComponents } = useProtocolForm({
-        fields: dottedFields,
+      const { formContent } = useProtocolForm({
+        form: formOf(dottedFields),
         subject: { entity: 'node', type: NODE_TYPE },
       });
 
@@ -248,7 +249,7 @@ describe('useProtocolForm stageSubject', () => {
             return { success: true };
           }}
         >
-          {fieldComponents}
+          {formContent}
           <SubmitButton>Submit</SubmitButton>
         </Form>
       );
@@ -285,8 +286,8 @@ describe('useProtocolForm stageSubject', () => {
       ];
 
       function Harness() {
-        const { fieldComponents } = useProtocolForm({
-          fields: dangerousFields,
+        const { formContent } = useProtocolForm({
+          form: formOf(dangerousFields),
           subject: { entity: 'node', type: NODE_TYPE },
         });
 
@@ -297,7 +298,7 @@ describe('useProtocolForm stageSubject', () => {
               return { success: true };
             }}
           >
-            {fieldComponents}
+            {formContent}
             <SubmitButton>Submit</SubmitButton>
           </Form>
         );
@@ -345,7 +346,8 @@ describe('useProtocolForm variableLabels', () => {
             {
               id: testId('field-1'),
               variable: asEntityAttributeReference(NAME_VAR),
-              prompt: { en: 'What is your name?' },
+              label: { en: 'What is your name?' },
+              component: 'Text',
             },
             blankCaptionField,
           ],
@@ -354,7 +356,7 @@ describe('useProtocolForm variableLabels', () => {
       { wrapper: makeWrapper() },
     );
 
-    const context = firstFieldValidationContext(result.current.fieldComponents);
+    const context = firstFieldValidationContext(result.current.formContent);
     expect(isRecord(context) ? context.variableLabels : undefined).toEqual({
       [NAME_VAR]: 'What is your name?',
     });

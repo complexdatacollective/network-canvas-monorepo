@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
@@ -28,47 +28,42 @@ const RULES: ConditionDraft = {
   ],
 };
 
-// The rule builder is tested on its own; here the dialog only hands back the
-// rules a researcher set, so what the stage keeps of them is what is asked.
-vi.mock('../../rules/ConditionDialog.tsx', () => ({
-  default: ({ onSave }: { onSave: (condition: ConditionDraft) => void }) => (
-    <button type="button" onClick={() => onSave(RULES)}>
-      Save rules
-    </button>
-  ),
-}));
-
 const LINKED = testId('condition/linked');
-const LINKED_NAME = dynamicValueNameFor({
-  kind: 'condition',
-  conditionId: LINKED,
-});
-const TESTS_LINKED = `Do they{${LINKED_NAME}, select, true { still} other {}} talk?`;
+const STILL = testId('dynamic/still');
+const STILL_NAME = dynamicValueNameFor({ kind: 'dynamicAttribute', id: STILL });
+const STILL_DEFINITION = {
+  logic: 'conditions',
+  cases: [{ condition: LINKED, when: 'met', wording: { 'en-US': 'still' } }],
+  otherwise: { 'en-US': 'ever' },
+};
+const USES_STILL = `Do they {${STILL_NAME}} talk?`;
 
 /**
- * The stage's conditions as its form holds them right now, and whether the
- * form has unsaved changes, read the way a host reads them.
+ * The stage's conditions and dynamic attributes as its form holds them right
+ * now, and whether the form has unsaved changes, read the way a host reads
+ * them.
  */
 function StageProbe() {
   const conditions = useStageValue('conditions');
+  const dynamicAttributes = useStageValue('dynamicAttributes');
   const dirty = useFormStore(selectIsFormDirty);
   return (
     <>
       <p data-testid="conditions">{JSON.stringify(conditions ?? null)}</p>
+      <p data-testid="dynamic-attributes">
+        {JSON.stringify(dynamicAttributes ?? null)}
+      </p>
       <p data-testid="form-dirty">{dirty ? 'dirty' : 'clean'}</p>
     </>
   );
 }
 
-const heldConditions = (): unknown =>
-  JSON.parse(screen.getByTestId('conditions').textContent ?? 'null');
+const held = (testIdOf: string): unknown =>
+  JSON.parse(screen.getByTestId(testIdOf).textContent ?? 'null');
 const formIsDirty = () =>
   screen.getByTestId('form-dirty').textContent === 'dirty';
 
-const openCensus = (
-  prompt: string,
-  conditions?: Readonly<Record<string, unknown>>,
-) => {
+const openCensus = (prompt: string) => {
   const { id, type, fields } = loadFixtureStage('dyad-census-1');
   return renderStageEditor({
     stage: {
@@ -76,7 +71,8 @@ const openCensus = (
       type,
       fields: {
         ...fields,
-        ...(conditions !== undefined && { conditions }),
+        conditions: { [LINKED]: RULES },
+        dynamicAttributes: { [STILL]: STILL_DEFINITION },
         prompts: [
           {
             id: testId('dyad-census-prompt-1'),
@@ -98,47 +94,62 @@ const openPrompt = async (harness: ReturnType<typeof openCensus>) => {
 };
 
 const dialogClosed = () =>
-  waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: /prompt/i }),
+    ).not.toBeInTheDocument(),
+  );
 
-describe('an "If" inserted in a row dialog that is cancelled', () => {
-  it('leaves the stage’s conditions as they were, and the stage unchanged', async () => {
-    const harness = openCensus('Who do you know?');
+describe('a dynamic attribute edited in a row dialog that is cancelled', () => {
+  it('goes back to what it was, and leaves the stage unchanged', async () => {
+    const harness = openCensus(USES_STILL);
     const dialog = await openPrompt(harness);
-    expect(heldConditions()).toBeNull();
     expect(formIsDirty()).toBe(false);
 
-    await harness.user.click(
-      dialog.getByRole('textbox', { name: /^Prompt text/ }),
-    );
-    await harness.user.click(
-      dialog.getByRole('button', { name: 'Insert logic' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('option', { name: /^If … else/ }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Save rules' }),
-    );
-    // The "If" declared its condition on the stage while the dialog was open.
+    const text = dialog.getByRole('textbox', { name: /^Prompt text/ });
+    const pill = await waitFor(() => {
+      const found = text.querySelector<HTMLElement>(
+        `[data-inline-value="${STILL_NAME}"]`,
+      );
+      if (found === null) throw new Error('No pill');
+      return found;
+    });
+    // The editor finds what was clicked through `elementFromPoint`.
+    const original = document.elementFromPoint.bind(document);
+    document.elementFromPoint = () => pill;
+    try {
+      await harness.user.click(pill);
+    } finally {
+      document.elementFromPoint = original;
+    }
+    const settings = await screen.findByRole('dialog', {
+      name: 'Dynamic attribute',
+    });
+    const otherwise = within(settings).getByRole('textbox', {
+      name: 'Otherwise',
+    });
+    await harness.user.clear(otherwise);
+    await harness.user.type(otherwise, 'never');
+    // The settings write the stage while the row dialog is open.
     await waitFor(() =>
-      expect(Object.values(heldConditions() ?? {})).toEqual([RULES]),
+      expect(held('dynamic-attributes')).toMatchObject({
+        [STILL]: { otherwise: { 'en-US': 'never' } },
+      }),
     );
 
+    await harness.user.keyboard('{Escape}');
+    // The row itself is unchanged, so the dialog closes without asking.
     await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Discard changes' }),
-    );
     await dialogClosed();
 
-    // Nothing is left to save: not even an empty set of conditions.
     await waitFor(() => expect(formIsDirty()).toBe(false));
-    expect(heldConditions()).toBeNull();
+    expect(held('dynamic-attributes')).toEqual({ [STILL]: STILL_DEFINITION });
   });
 });
 
-describe('an "If" removed from a row', () => {
-  it('leaves its condition on the stage until the stage is saved, which drops it', async () => {
-    const harness = openCensus(TESTS_LINKED, { [LINKED]: RULES });
+describe('a dynamic attribute removed from a row', () => {
+  it('stays on the stage with the condition it tests until the stage is saved, which drops both', async () => {
+    const harness = openCensus(USES_STILL);
     const dialog = await openPrompt(harness);
 
     const text = dialog.getByRole('textbox', { name: /^Prompt text/ });
@@ -149,13 +160,15 @@ describe('an "If" removed from a row', () => {
     await dialogClosed();
 
     // Still there while the stage is edited, so an undo or a paste elsewhere
-    // finds its rules.
-    expect(heldConditions()).toEqual({ [LINKED]: RULES });
+    // finds its settings.
+    expect(held('dynamic-attributes')).toEqual({ [STILL]: STILL_DEFINITION });
+    expect(held('conditions')).toEqual({ [LINKED]: RULES });
 
     const saved = await harness.submit();
     expect(JSON.stringify(saved?.stageDocument.prompts)).not.toContain(
-      LINKED_NAME,
+      STILL_NAME,
     );
+    expect(saved?.stageDocument).not.toHaveProperty('dynamicAttributes');
     expect(saved?.stageDocument).not.toHaveProperty('conditions');
   });
 });

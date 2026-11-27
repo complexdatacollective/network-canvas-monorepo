@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -10,7 +10,6 @@ import {
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
-import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
   mountedAs,
@@ -62,12 +61,9 @@ const createFixture = () => ({
   editor: mountedAs(alterFormStageEditor.AlterForm),
 });
 
-/**
- * What the collapsed field row's badge says about a `text`/`Text` attribute —
- * true of `relationship_to_ego` both before and after it is renamed, since
- * the badge names the attribute's kind and control, not its identifier.
- */
-const FIELD_ROW_BADGE = 'Text attribute using Text Input input control';
+/** The form's editor, where each field shows its attribute in its corner. */
+const formEditor = async () =>
+  within(await screen.findByRole('textbox', { name: 'Form content' }));
 
 /**
  * What is true of THIS interface and no other. The list of sections it
@@ -137,9 +133,7 @@ describe('the editor for a form about each person', () => {
     expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
     await waitFor(() =>
       expect(
-        harness
-          .outline()
-          .find((section) => section.title === 'Form configuration')?.state,
+        harness.outline().find((section) => section.title === 'Form')?.state,
       ).toBe('Not available yet'),
     );
   });
@@ -154,7 +148,7 @@ describe('the editor for a form about each person', () => {
   it('follows an attribute renamed elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
     expect(
-      await screen.findByText(exactlyText(FIELD_ROW_BADGE)),
+      await (await formEditor()).findByText('relationship_to_ego'),
     ).toBeInTheDocument();
 
     harness.receiveCodebookUpdate({
@@ -175,7 +169,7 @@ describe('the editor for a form about each person', () => {
     });
 
     expect(
-      await screen.findByText(exactlyText(FIELD_ROW_BADGE)),
+      await (await formEditor()).findByText('how_they_know_each_other'),
     ).toBeInTheDocument();
     // Their rename is theirs. The stage still holds the field the researcher
     // authored, pointing at the attribute it always did — so a save carries

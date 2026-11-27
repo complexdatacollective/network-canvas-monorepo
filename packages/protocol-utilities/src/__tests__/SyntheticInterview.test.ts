@@ -18,6 +18,7 @@ import {
   type LocalizedString,
   messageText,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   NcNetworkSchema,
   entityAttributesProperty,
@@ -973,34 +974,57 @@ describe('SyntheticInterview', () => {
   });
 
   describe('EgoForm', () => {
-    it('carries the introduction shown above the questions', () => {
+    it('writes the heading and fields its author gives in the document', () => {
       const si = new SyntheticInterview();
-      const stage = si.addStage('EgoForm', {
-        introductionPanel: { title: 'Your details', text: 'A few questions.' },
+      const nickname = si.addEgoVariable({ type: 'text', name: 'nickname' });
+      si.addStage('EgoForm', {
+        form: {
+          fields: [
+            { component: 'Text', variable: nickname.id, prompt: 'Nickname' },
+          ],
+          content: ({ field }) =>
+            `# Your details\n\nA few questions.\n\n${field(nickname.id)}`,
+        },
       });
-      stage.addFormField({ component: 'Text', prompt: 'Nickname' });
 
       const stageConfig = si.getProtocol().stages[0] as Record<string, unknown>;
-      expect(stageConfig.introductionPanel).toEqual({
-        title: { 'en-US': 'Your details' },
-        text: { 'en-US': 'A few questions.' },
-      });
-      const form = stageConfig.form as Record<string, unknown>;
+      expect(stageConfig).not.toHaveProperty('introductionPanel');
+      const form = stageConfig.form as {
+        content: Record<string, string>;
+        fields: { id: string }[];
+      };
       expect(form).not.toHaveProperty('title');
       expect(form.fields).toHaveLength(1);
+      expect(form.content).toEqual(
+        formOf(form.fields, {
+          before: '# Your details\n\nA few questions.',
+          locale: 'en-US',
+        }).content,
+      );
     });
 
-    it('defaults the introduction title when none is given', () => {
+    it('places every field below the heading "About you" by default', () => {
       const si = new SyntheticInterview();
-      si.addStage('EgoForm').addFormField({
-        component: 'Text',
-        prompt: 'Nickname',
+      const stage = si.addStage('EgoForm');
+      stage.addFormField({ component: 'Text', prompt: 'Nickname' });
+      stage.addFormField({ component: 'Number', prompt: 'Age' });
+
+      const form = (si.getProtocol().stages[0] as Record<string, unknown>)
+        .form as { content: Record<string, string>; fields: { id: string }[] };
+      expect(form.content).toEqual(
+        formOf(form.fields, { before: '# About you', locale: 'en-US' }).content,
+      );
+    });
+
+    it('refuses a document that places a field the form does not have', () => {
+      const si = new SyntheticInterview();
+      si.addStage('EgoForm', {
+        form: { fields: [], content: ({ field }) => field('not-a-variable') },
       });
 
-      expect(
-        (si.getProtocol().stages[0] as Record<string, unknown>)
-          .introductionPanel,
-      ).toEqual({ title: { 'en-US': 'About you' } });
+      expect(() => si.getProtocol()).toThrow(
+        /no field for the variable not-a-variable/,
+      );
     });
   });
 
@@ -3651,9 +3675,7 @@ describe('localization', () => {
   it('names an auto-created variable from the default-language caption', () => {
     const synth = new SyntheticInterview();
     synth.setLocalization({ defaultLocale: 'es', locales: ['en-US', 'es'] });
-    const stage = synth.addStage('EgoForm', {
-      introductionPanel: { title: 'Sobre ti' },
-    });
+    const stage = synth.addStage('EgoForm');
     stage.addFormField({
       component: 'Text',
       prompt: { 'en-US': 'Your nickname', 'es': "Tu apodo '{'casa'}'" },

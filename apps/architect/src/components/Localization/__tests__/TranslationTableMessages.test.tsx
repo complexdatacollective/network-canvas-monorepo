@@ -1,16 +1,13 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 
-import TranslationTable from '../TranslationTable';
+import {
+  type RenderedTable,
+  renderTranslationTable,
+} from './renderTranslationTable';
 
 const SIBLINGS =
   '{isYou, select, true {Your brothers and sisters} other {Brothers and sisters of {name}}}';
@@ -47,24 +44,10 @@ const withChoiceInASentence = (listItem: string) => {
   return shown;
 };
 
-const renderTable = (shown: CurrentProtocol = protocol) => {
-  const store = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  store.dispatch(setActiveProtocol(structuredClone(shown)));
-  render(
-    <Provider store={store}>
-      <FormStoreProvider>
-        <TranslationTable onSaved={vi.fn()} onCancel={vi.fn()} />
-      </FormStoreProvider>
-    </Provider>,
-  );
-  return { store, user: userEvent.setup() };
-};
+const renderTable = (shown: CurrentProtocol = protocol) =>
+  renderTranslationTable(shown);
 
-const listItem = (store: ReturnType<typeof renderTable>['store']): unknown => {
+const listItem = (store: RenderedTable['store']): unknown => {
   const stage = getProtocol(store.getState())?.stages[0];
   return stage && 'completeness' in stage
     ? stage.completeness?.itemText?.siblings?.listItem
@@ -75,19 +58,16 @@ const listItem = (store: ReturnType<typeof renderTable>['store']): unknown => {
  * Presses Save and waits for it to finish: Save checks the protocol it would
  * write before writing it, which takes a moment.
  */
-const save = async (user: ReturnType<typeof renderTable>['user']) => {
+const save = async (user: RenderedTable['user']) => {
   const button = screen.getByRole('button', { name: 'Save' });
   await user.click(button);
   await waitFor(() => expect(button).toBeEnabled());
 };
 
-const VERSIONS_BLANK = 'Write something in every version of this text.';
+const VERSIONS_BLANK = 'Write something in every version of this wording.';
 
 /** Leaves the cell for the stage name's English cell. */
-const leaveCell = async (
-  user: ReturnType<typeof renderTable>['user'],
-  language: string,
-) => {
+const leaveCell = async (user: RenderedTable['user'], language: string) => {
   await user.click(
     screen.getByRole('textbox', { name: /Stage name English$/ }),
   );
@@ -148,7 +128,7 @@ describe('TranslationTable: texts with versions', () => {
     );
   });
 
-  it('is edited as piped text is, and saved when the table is saved', async () => {
+  it('is edited as other text is, with the Attribute menu, and saved when the table is saved', async () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('French'));
@@ -156,14 +136,10 @@ describe('TranslationTable: texts with versions', () => {
     // A translation can word the text its own way: here one phrase that
     // names everyone, the participant included.
     await user.type(text, 'Frères et sœurs de ');
-    await user.click(
-      screen.getByRole('button', { name: 'Inject piped text from this stage' }),
-    );
-    const [name] = await screen.findAllByRole('option', { name: /^Name/ });
-    if (name === undefined) throw new Error('Name not offered');
-    await user.click(name);
+    await user.click(screen.getByRole('button', { name: 'Attribute' }));
+    await user.click(await screen.findByRole('option', { name: /^Name/ }));
     await waitFor(() =>
-      expect(text.querySelector('[data-token="name"]')).not.toBeNull(),
+      expect(text.querySelector('[data-inline-value="name"]')).not.toBeNull(),
     );
     await leaveCell(user, 'French');
     expect(listItem(store)).toEqual({ en: SIBLINGS });
@@ -298,7 +274,7 @@ describe('TranslationTable: texts with versions', () => {
     await leaveCell(user, 'French');
 
     const missing =
-      'This text must include the attribute “Name” in the “About someone else” scenario.';
+      'This wording must include the attribute “Name” in the “About someone else” scenario.';
     expect(await screen.findByText(missing)).toBeInTheDocument();
     expect(messageCell('French')).toHaveAttribute('aria-invalid', 'true');
 
@@ -416,7 +392,7 @@ describe('TranslationTable: texts with versions', () => {
 
   /** Opens the choice among the words of `row`, and gives its two rows. */
   const openInlineChoice = async (
-    user: ReturnType<typeof renderTable>['user'],
+    user: RenderedTable['user'],
     row: HTMLElement,
     inside: RegExp,
   ) => {

@@ -1,9 +1,12 @@
 import { z } from 'zod';
 
+import { findContentDocumentTextProblem } from '../../localization/contentDocumentProblems.ts';
 import { findDynamicMessageSyntaxProblem } from '../../localization/dynamicValueMessages.ts';
 import { ConditionsSchema } from './conditions.ts';
+import { DynamicAttributesSchema } from './dynamic-attributes.ts';
 import {
   conditionsContextOf,
+  dynamicAttributesContextOf,
   findSiteMessageProblem,
 } from './dynamic-value-validation.ts';
 import type {
@@ -22,7 +25,9 @@ import { localizedString, nonBlankText } from './localized-string.ts';
  *   would otherwise have chosen for it (`node_label`), or one of the label's
  *   conditions (`condition_<id>`);
  * - `conditions`, the conditions `text` can choose its wording by, by id,
- *   each asked of the node the label is on (see `conditions.ts`).
+ *   each asked of the node the label is on (see `conditions.ts`);
+ * - `dynamicAttributes`, the dynamic attributes `text` shows, by id (see
+ *   `dynamic-attributes.ts`), whose logic reads the node the label is on.
  *
  * The label is one line of plain text, read live: it follows the node's
  * answers and its edges as they change.
@@ -34,6 +39,7 @@ export const NodeLabelSchema = z.strictObject({
     { dynamicValues: 'nodeLabel' },
   ),
   conditions: ConditionsSchema.optional(),
+  dynamicAttributes: DynamicAttributesSchema.optional(),
 });
 export type NodeLabel = z.infer<typeof NodeLabelSchema>;
 
@@ -71,17 +77,24 @@ export const nodeLabelValueContext = ({
   codebook,
   nodeType,
   conditions,
+  dynamicAttributes,
 }: {
   codebook: unknown;
   nodeType: string;
   /** The label's conditions, by id (its `dynamicLabel.conditions`). */
   conditions: unknown;
+  /**
+   * The label's dynamic attributes, by id (its
+   * `dynamicLabel.dynamicAttributes`).
+   */
+  dynamicAttributes?: unknown;
 }): DynamicValueSiteContext => {
   const variables = variablesOfNodeType(codebook, nodeType);
   return {
     roles: new Set<DynamicValueRole>(['node']),
     nodeLabel: true,
     conditions: conditionsContextOf(conditions),
+    dynamicAttributes: dynamicAttributesContextOf(dynamicAttributes),
     variablesFor: (role) => (role === 'node' ? variables : undefined),
   };
 };
@@ -119,6 +132,7 @@ export const findNodeLabelProblems = (
       codebook: protocol.codebook,
       nodeType,
       conditions: label.conditions,
+      dynamicAttributes: label.dynamicAttributes,
     });
     for (const hit of hits) {
       if (
@@ -131,7 +145,15 @@ export const findNodeLabelProblems = (
       }
       for (const [locale, message] of Object.entries(hit.value)) {
         // The field's own check reports what needs no codebook.
-        if (findDynamicMessageSyntaxProblem(message) !== undefined) continue;
+        if (
+          findDynamicMessageSyntaxProblem(message) !== undefined ||
+          findContentDocumentTextProblem(message, {
+            format: 'plain',
+            lines: 'single',
+          }) !== undefined
+        ) {
+          continue;
+        }
         const problem = findSiteMessageProblem(
           message,
           context,

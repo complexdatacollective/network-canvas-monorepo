@@ -1,4 +1,4 @@
-import { formFields } from '../../sections/form-fields/formFields.tsx';
+import { formDocument } from '../../sections/form-document/FormDocumentSection.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
@@ -14,7 +14,7 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
  */
 export const alterEdgeFormStageEditor = defineStageEditor('AlterEdgeForm', [
   subjectPicker({ entity: 'edge', filter: true }),
-  formFields({ subject: 'edge' }),
+  formDocument({ subject: 'edge' }),
   skipLogic(),
   interviewerGuidance(),
 ]);

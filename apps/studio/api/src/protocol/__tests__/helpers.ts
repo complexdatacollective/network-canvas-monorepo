@@ -12,6 +12,7 @@ import {
   deterministicEntityTypeId,
   deterministicVariableId,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   forceExpire,
   makeSyncServer,
@@ -246,13 +247,13 @@ export function baseProtocol(): CurrentProtocol {
           subject: { entity: 'node', type: BASE_CODEBOOK_IDS.person },
           form: {
             title: { en: 'Add person' },
-            fields: [
+            ...formOf([
               {
                 id: BASE_PROTOCOL_IDS.nameField,
                 variable: BASE_CODEBOOK_IDS.personName,
                 prompt: { en: 'Enter name' },
               },
-            ],
+            ]),
           },
           prompts: [
             {

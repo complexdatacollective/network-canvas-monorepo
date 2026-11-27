@@ -508,15 +508,10 @@
       "label": {
         "en": "Your own behaviours"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About you"
-        },
-        "text": {
-          "en": "First, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About you\n\nFirst, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later.\n\n![](field:364925c2-479a-5ab7-abbf-c1dc6ba62f3b)\n\n![](field:9681d8f2-498c-50d5-8d03-caa0129dfd53)\n\n![](field:5864a1e8-5ee5-5053-940f-efbd7e375dfb)\n\n![](field:546badca-b86a-55ff-be8a-9a34653ae703)\n\n![](field:84c017ac-232c-5d42-be03-4cb391119762)"
+        },
         "fields": [
           {
             "id": "364925c2-479a-5ab7-abbf-c1dc6ba62f3b",
@@ -573,6 +568,9 @@
       "form": {
         "title": {
           "en": "Add Person"
+        },
+        "content": {
+          "en": "![](field:fad41bcc-48ca-5887-8e32-ada70c701749)"
         },
         "fields": [
           {
@@ -641,6 +639,9 @@
         "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "form": {
+        "content": {
+          "en": "![](field:9a16ed3c-2a45-5090-a99d-f00beebf34d9)\n\n![](field:73d056c9-61a2-5178-b9de-2b59bb861db0)\n\n![](field:4d770057-278b-529b-8942-67824f654d5c)\n\n![](field:289ca432-cec7-5f9e-b33e-42c69b514d8f)\n\n![](field:6c9a02b6-9346-5f61-a8a0-7c45fb4316c6)\n\n![](field:85b9a830-a37f-54da-91cf-2e7dd3a32a87)"
+        },
         "fields": [
           {
             "id": "9a16ed3c-2a45-5090-a99d-f00beebf34d9",

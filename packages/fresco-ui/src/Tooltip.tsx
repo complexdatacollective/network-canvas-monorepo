@@ -68,7 +68,10 @@ const TooltipContent = React.forwardRef<
           arrowPadding={POPOVER_ARROW_PADDING}
           // The portal container re-enables pointer events on its children, so
           // opting out has to win over that rule.
-          className={cx(pointerEvents === 'none' && 'pointer-events-none!')}
+          className={cx(
+            'z-3000',
+            pointerEvents === 'none' && 'pointer-events-none!',
+          )}
         >
           {/* Deliberately no exit animation: Base UI keeps a closing popup
               mounted until its animations finish, so an exit tween lets stale

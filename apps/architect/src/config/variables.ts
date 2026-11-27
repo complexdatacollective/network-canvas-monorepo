@@ -1,17 +1,4 @@
-import { get } from 'es-toolkit/compat';
-
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
-
-import BooleanVariable from '../images/variables/boolean-variable.svg';
-import CategoricalVariable from '../images/variables/categorical-variable.svg';
-import DateVariable from '../images/variables/date-variable.svg';
-import DefaultVariable from '../images/variables/default-variable.svg';
-import LayoutVariable from '../images/variables/layout-variable.svg';
-import LocationVariable from '../images/variables/location-variable.svg';
-import NumberVariable from '../images/variables/number-variable.svg';
-import OrdinalVariable from '../images/variables/ordinal-variable.svg';
-import ScalarVariable from '../images/variables/scalar-variable.svg';
-import TextVariable from '../images/variables/text-variable.svg';
 
 const configMessages = defineMessages({
   number: {
@@ -81,56 +68,38 @@ export const VARIABLE_TYPES = {
   number: {
     label: configMessages.number,
     value: 'number',
-    icon: NumberVariable,
-    color: 'paradise-pink',
   },
   text: {
     label: configMessages.text,
     value: 'text',
-    icon: TextVariable,
-    color: 'cerulean-blue',
   },
   boolean: {
     label: configMessages.boolean,
     value: 'boolean',
-    icon: BooleanVariable,
-    color: 'neon-carrot',
   },
   ordinal: {
     label: configMessages.ordinal,
     value: 'ordinal',
-    icon: OrdinalVariable,
-    color: 'sea-green',
   },
   categorical: {
     label: configMessages.categorical,
     value: 'categorical',
-    icon: CategoricalVariable,
-    color: 'mustard',
   },
   scalar: {
     label: configMessages.scalar,
     value: 'scalar',
-    icon: ScalarVariable,
-    color: 'kiwi',
   },
   datetime: {
     label: configMessages.date,
     value: 'datetime',
-    icon: DateVariable,
-    color: 'tomato',
   },
   layout: {
     label: configMessages.layout,
     value: 'layout',
-    icon: LayoutVariable,
-    color: 'purple-pizazz',
   },
   location: {
     label: configMessages.location,
     value: 'location',
-    icon: LocationVariable,
-    color: 'slate-blue-dark',
   },
 };
 
@@ -144,11 +113,3 @@ export const getVariableTypeLabel = (
   )?.[1].label;
   return descriptor ? intl.formatMessage(descriptor) : (type ?? '');
 };
-
-const getColorForType = (type: string | undefined) =>
-  get(VARIABLE_TYPES, [type ?? '', 'color'], 'charcoal');
-
-const getIconForType = (type: string | undefined) =>
-  get(VARIABLE_TYPES, `${type ?? ''}.icon`, DefaultVariable);
-
-export { getColorForType, getIconForType };

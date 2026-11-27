@@ -238,9 +238,16 @@ describe('the stage-editor test harness', () => {
 
     // `label` is owned without a section owning it: the stage's name is drawn
     // by the harness's own host chrome, as a host draws it, so it is a field of
-    // the form wherever it sits on the page. `conditions` likewise: the
-    // shell registers the stage's conditions whichever sections it holds.
-    expect(harness.ownedKeys()).toEqual(['conditions', 'label', 'subject']);
+    // the form wherever it sits on the page. `conditions` and
+    // `dynamicAttributes` likewise: the shell registers the stage's conditions
+    // and dynamic attributes whichever sections it holds, because a text
+    // field in any section may add one.
+    expect(harness.ownedKeys()).toEqual([
+      'conditions',
+      'dynamicAttributes',
+      'label',
+      'subject',
+    ]);
     await expect(harness.roundTrip()).rejects.toThrow(/keys: form, prompts/);
 
     // Declared, the same mount round-trips: the list is a statement an editor

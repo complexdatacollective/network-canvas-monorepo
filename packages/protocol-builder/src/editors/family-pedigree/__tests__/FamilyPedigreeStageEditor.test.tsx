@@ -15,8 +15,14 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   suppliedOptionLabel,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import {
+  newFieldPicker,
+  offeredIn,
+  reasonIn,
+} from '../../../sections/form-document/__tests__/formDocumentTesting.ts';
 import { stageFieldsForEditing } from '../../../stageDocument.ts';
 import {
   attributeField,
@@ -240,15 +246,16 @@ describe('the family pedigree stage editor', () => {
   it('owns every key the configured stage holds, and round-trips it', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
-        form: {
-          fields: [
+        form: formOf(
+          [
             {
               id: testId('field-1'),
               variable: OCCUPATION,
               prompt: { 'en-US': 'What do they do?' },
             },
           ],
-        },
+          { locale: 'en-US' },
+        ),
       }),
       editor: familyPedigreeEditor,
     });
@@ -694,14 +701,8 @@ describe('the attribute slots', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Additional person fields' }),
     );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new person field' }),
-    );
-    const dialog = await screen.findByRole('dialog');
-    const offered = await offeredAttributes(
-      harness.user,
-      attributeField('Attribute', dialog),
-    );
+    const picker = await newFieldPicker(harness);
+    const offered = offeredIn(picker);
 
     expect(offered).toContain(OCCUPATION);
     for (const bound of [
@@ -712,13 +713,7 @@ describe('the attribute slots', () => {
     ]) {
       expect(offered).not.toContain(bound);
     }
-    expect(
-      await unavailableReason(
-        harness.user,
-        attributeField('Attribute', dialog),
-        FM_NAME,
-      ),
-    ).toBe(
+    expect(reasonIn(picker, FM_NAME)).toBe(
       'This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.',
     );
   });
@@ -1083,10 +1078,11 @@ describe('the gender identity options, which this stage manages', () => {
   });
 
   // The stage's own text may choose its wording by the person's gender
-  // identity. A version written for an option removed here names an option
-  // the attribute no longer has, which the stage's check refuses, so it goes
-  // with the option and the stage still saves.
-  it('takes the wording written for a removed option out of the stage’s text, and the stage saves', async () => {
+  // identity, through a dynamic attribute of the stage. A version written
+  // for an option removed here names an option the attribute no longer has,
+  // which the stage's check refuses, so it goes with the option and the
+  // stage still saves.
+  it('takes the wording written for a removed option out of the stage’s dynamic attribute, and the stage saves', async () => {
     const gender = dynamicValueNameFor({
       kind: 'attribute',
       role: 'node',
@@ -1099,19 +1095,25 @@ describe('the gender identity options, which this stage manages', () => {
         'woman',
       ),
     );
+    const pronoun = testId('dynamic/pronoun');
+    const prompt = {
+      'en-US': `What is {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: pronoun })}} job?`,
+    };
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
-        form: {
-          fields: [
-            {
-              id: testId('field-1'),
-              variable: OCCUPATION,
-              prompt: {
-                'en-US': `{${gender}, select, ${woman} {What is her job?} other {What is their job?}}`,
-              },
-            },
-          ],
+        dynamicAttributes: {
+          [pronoun]: {
+            logic: 'answers',
+            value: gender,
+            missing: { 'en-US': 'their' },
+            answers: [{ answer: woman, wording: { 'en-US': 'her' } }],
+            other: { 'en-US': 'their' },
+          },
         },
+        form: formOf(
+          [{ id: testId('field-1'), variable: OCCUPATION, prompt }],
+          { locale: 'en-US' },
+        ),
       }),
       editor: familyPedigreeEditor,
     });
@@ -1138,9 +1140,18 @@ describe('the gender identity options, which this stage manages', () => {
 
     const request = await harness.submit();
     expect(request).not.toBeNull();
+    expect(get(request?.stageDocument, ['dynamicAttributes', pronoun])).toEqual(
+      {
+        logic: 'answers',
+        value: gender,
+        missing: { 'en-US': 'their' },
+        answers: [],
+        other: { 'en-US': 'their' },
+      },
+    );
     expect(
       get(request?.stageDocument, ['form', 'fields', 0, 'prompt']),
-    ).toEqual({ 'en-US': `{${gender}, select, other {What is their job?}}` });
+    ).toEqual(prompt);
     // Saved with the option it no longer has a version for.
     expect(get(OPTIONS(harness), [0, 'value'])).toBe('man');
   });
@@ -1164,20 +1175,35 @@ describe('the gender identity options, which this stage manages', () => {
       role: 'ego',
       variableId: egoMood,
     });
-    const aboutMood = `{${mood}, select, ${optionCaseKey(calm)} {Calm.} other {Not calm.}}`;
+    const pronoun = testId('dynamic/pronoun');
+    const pronounDefinition = {
+      logic: 'answers',
+      value: createdGender,
+      missing: { 'en-US': 'their' },
+      answers: [{ answer: optionCaseKey(woman), wording: { 'en-US': 'her' } }],
+      other: { 'en-US': 'their' },
+    };
+    const feeling = testId('dynamic/feeling');
+    const feelingDefinition = {
+      logic: 'answers',
+      value: mood,
+      missing: { 'en-US': 'not calm' },
+      answers: [{ answer: optionCaseKey(calm), wording: { 'en-US': 'calm' } }],
+      other: { 'en-US': 'not calm' },
+    };
+    const prompt = {
+      'en-US': `What is {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: pronoun })}} job? You are {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: feeling })}}.`,
+    };
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
-        form: {
-          fields: [
-            {
-              id: testId('field-1'),
-              variable: OCCUPATION,
-              prompt: {
-                'en-US': `{${createdGender}, select, ${optionCaseKey(woman)} {What is her job?} other {What is their job?}} ${aboutMood}`,
-              },
-            },
-          ],
+        dynamicAttributes: {
+          [pronoun]: pronounDefinition,
+          [feeling]: feelingDefinition,
         },
+        form: formOf(
+          [{ id: testId('field-1'), variable: OCCUPATION, prompt }],
+          { locale: 'en-US' },
+        ),
       }),
       editor: familyPedigreeEditor,
     });
@@ -1252,11 +1278,13 @@ describe('the gender identity options, which this stage manages', () => {
 
     const request = await harness.submit();
     expect(request).not.toBeNull();
+    expect(get(request?.stageDocument, ['dynamicAttributes'])).toEqual({
+      [pronoun]: { ...pronounDefinition, answers: [] },
+      [feeling]: feelingDefinition,
+    });
     expect(
       get(request?.stageDocument, ['form', 'fields', 0, 'prompt']),
-    ).toEqual({
-      'en-US': `{${createdGender}, select, other {What is their job?}} ${aboutMood}`,
-    });
+    ).toEqual(prompt);
     // Saved with the options the edit left it.
     expect(
       get(harness.protocolSections()[FAMILY_MEMBER_SECTION]?.variables, [
@@ -2412,15 +2440,16 @@ describe('the nomination prompts', () => {
   it('offers only boolean attributes nothing else has claimed', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
-        form: {
-          fields: [
+        form: formOf(
+          [
             {
               id: testId('field-1'),
               variable: HAS_PETS,
               prompt: { 'en-US': 'Any pets?' },
             },
           ],
-        },
+          { locale: 'en-US' },
+        ),
       }),
       editor: familyPedigreeEditor,
     });
@@ -2519,24 +2548,10 @@ describe('the nomination prompts', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Additional person fields' }),
     );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new person field' }),
-    );
-    const dialog = await screen.findByRole('dialog');
+    const picker = await newFieldPicker(harness);
 
-    expect(
-      await offeredAttributes(
-        harness.user,
-        attributeField('Attribute', dialog),
-      ),
-    ).not.toContain(HEART_DISEASE);
-    expect(
-      await unavailableReason(
-        harness.user,
-        attributeField('Attribute', dialog),
-        HEART_DISEASE,
-      ),
-    ).toBe(
+    expect(offeredIn(picker)).not.toContain(HEART_DISEASE);
+    expect(reasonIn(picker, HEART_DISEASE)).toBe(
       'This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.',
     );
   });
@@ -2719,14 +2734,8 @@ describe('recording the relationship to the participant', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Additional person fields' }),
     );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new person field' }),
-    );
-    const dialog = await screen.findByRole('dialog');
-    const offered = await offeredAttributes(
-      harness.user,
-      attributeField('Attribute', dialog),
-    );
+    const picker = await newFieldPicker(harness);
+    const offered = offeredIn(picker);
     expect(offered).not.toContain(RELATIONSHIP);
   });
 });

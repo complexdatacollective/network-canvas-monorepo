@@ -29,6 +29,7 @@ import {
 } from './family-pedigree-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
+import { convertFormsToDocuments } from './form-document-migration.ts';
 import { combineInformationContent } from './information-content-migration.ts';
 import {
   legacyMarkdownAsStandard,
@@ -460,8 +461,9 @@ const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
  * that jumped to the stage now jumps to its introduction, so the participant
  * still reads it first.
  *
- * An Ego Form keeps its introduction panel: it shows as the heading and text
- * above the questions rather than as a screen of its own.
+ * An Ego Form's introduction panel is repaired here and kept, for
+ * `convertFormsToDocuments` to write as the heading and text at the top of
+ * its form: it showed above the questions rather than as a screen of its own.
  *
  * Schema 8 accepted a panel whose title or text was only spaces, and
  * published protocols use a body of spaces on purpose to show a panel with
@@ -1144,6 +1146,8 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   addComposerCaptions(migrated, written);
   moveIntroductionPanelsToInformationStages(migrated, localization);
   combineInformationContent(migrated, localization, written);
+  // After the Ego Form's introduction panel is repaired above.
+  convertFormsToDocuments(migrated, localization, written);
   repairNarrativeLabels(migrated);
   repairFormTitles(migrated);
   // After the option values are normalized and the pedigree conversion has
@@ -1205,8 +1209,9 @@ const migrationV8toV9 = createMigration({
   from: 8,
   to: 9,
   dependencies: {},
-  notes: `- Introduction panels within interfaces other than the Ego Form have been removed, so participant-facing instructions on those stages use the Information interface. The content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.
+  notes: `- Introduction panels have been removed from every interface. The introduction panel of an Ego Form is now the heading and text at the top of its form. On other stages, participant-facing instructions use the Information interface: the content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.
 - The page heading, text and media of an Information stage are now one piece of text, which you edit as a single document. The page heading is now a heading at the top of the text, and each image, audio recording or video is a block within the text, in the place it was shown before. A page heading that contained only spaces is left out, as is a file that is no longer among the protocol's resources; if the page then has nothing to show, it shows the name of the stage as its heading. A description you had written for a text item, which participants never saw, is not kept.
+- The form of an Ego Form, Per Alter Form, Per Alter Edge Form, Name Generator or Family Pedigree stage is now one piece of text, which you edit as a single document. Each question is a field within the text, in the order in which the form showed it. The forms of a Network Composer stage are unchanged.
 - Protocols can now be written in multiple languages. Existing protocols are presumed to be in English. If your protocol is written in another language, change its default language on the Languages page in Architect.
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol.
 - Encrypted attributes are no longer experimental: the Anonymisation interface can be added in Architect like any other interface.

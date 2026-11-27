@@ -242,7 +242,7 @@ describe('localizedString', () => {
   it('rejects text that is not valid message syntax', () => {
     const [issue] = issuesOf(required, { en: 'Hello {' });
     expect(issue?.path).toEqual(['en']);
-    expect(issue?.message).toMatch(/^Text is not valid message syntax/);
+    expect(issue?.message).toMatch(/^This wording is not valid message syntax/);
   });
 
   it.each([
@@ -253,7 +253,7 @@ describe('localizedString', () => {
     expect(issuesOf(required, { en: message })).toEqual([
       {
         message:
-          'Text cannot contain placeholders or formatting such as "{name}", plural or select.',
+          'This wording cannot contain placeholders or formatting such as "{name}", plural or select.',
         path: ['en'],
       },
     ]);
@@ -301,7 +301,10 @@ describe('line breaks', () => {
       `refuses %s in ${field} declared one line, in any language`,
       (_name, text) => {
         expect(issuesOf(schema, { en: 'First second', fr: text })).toEqual([
-          { message: 'Text cannot contain a line break.', path: ['fr'] },
+          {
+            message: 'This wording cannot contain a line break.',
+            path: ['fr'],
+          },
         ]);
       },
     );
@@ -333,7 +336,11 @@ describe('Information stage content', () => {
         ),
       ),
     ).toEqual([
-      { path: 'content.fr', code: 'custom', message: 'Text cannot be blank.' },
+      {
+        path: 'content.fr',
+        code: 'custom',
+        message: 'This wording cannot be blank.',
+      },
     ]);
   });
 
@@ -435,24 +442,28 @@ const stageTextOf = (format: 'plain' | 'markdown') =>
     { dynamicValues: 'stageText' },
   );
 
-describe('a line break inside a version of formatted text', () => {
+describe('versions of text of several lines', () => {
   const VERSIONS =
     'Hello\n\n{name, select, missing {there} other {{name},\nwelcome}}';
-  const REFUSAL = /A version of this text cannot contain a line break\./;
 
-  it('is refused where the text is markdown', () => {
-    expect(issuesOf(stageTextOf('markdown'), { en: VERSIONS })).toEqual([
-      { message: expect.stringMatching(REFUSAL), path: ['en'] },
-    ]);
-  });
-
-  it('is accepted outside the versions, and in plain text', () => {
+  // Each version of a logic block is text of several lines of its own.
+  it('may contain a line break in a logic block of markdown', () => {
+    expect(issuesOf(stageTextOf('markdown'), { en: VERSIONS })).toEqual([]);
     expect(
       issuesOf(stageTextOf('markdown'), {
         en: 'Hello\n\n{name, select, missing {there} other {{name}}}',
       }),
     ).toEqual([]);
-    expect(issuesOf(stageTextOf('plain'), { en: VERSIONS })).toEqual([]);
+  });
+
+  it('are refused in plain text, which has no logic blocks', () => {
+    expect(issuesOf(stageTextOf('plain'), { en: VERSIONS })).toEqual([
+      {
+        message:
+          'This wording chooses between versions inside a sentence. Use a dynamic attribute instead.',
+        path: ['en'],
+      },
+    ]);
   });
 });
 
@@ -461,10 +472,6 @@ describe('a value inside a link address of formatted text', () => {
 
   it.each([
     ['in the address', '[Your page](https://example.com/{today})'],
-    [
-      'in a version that opens with spaces',
-      '{today, select, missing {hello} other {    [you](https://example.com/{today})}}',
-    ],
     ['in the title', '[Your page](https://example.com "For {name}")'],
     [
       'in an address written between angle brackets',
@@ -478,10 +485,28 @@ describe('a value inside a link address of formatted text', () => {
       'as a choice of versions',
       '[Your page](https://example.com/{name, select, missing {a} other {b}})',
     ],
+    // A definition gives its address to every link that names its label,
+    // in any block of the document.
+    [
+      'in a link reference definition',
+      'See [your page][page].\n\n[page]: https://example.com/{today}',
+    ],
+    [
+      'in a link reference definition after a logic block',
+      'See [your page][page].\n\n{name, select, missing {Hello} other {Welcome}}\n\n[page]: https://example.com "For {name}"',
+    ],
   ])('is refused %s', (_where, message) => {
     expect(issuesOf(stageTextOf('markdown'), { en: message })).toEqual([
       { message: expect.stringMatching(REFUSAL), path: ['en'] },
     ]);
+  });
+
+  it('is accepted beside a link whose reference definition is in another block', () => {
+    expect(
+      issuesOf(stageTextOf('markdown'), {
+        en: 'See [your page][page], {name}.\n\n{name, select, missing {Hello} other {Welcome}}\n\n[page]: https://example.com',
+      }),
+    ).toEqual([]);
   });
 
   it('is accepted in the words of a link, beside a link, and in plain text', () => {

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import FramingSection from '../editors/family-pedigree/sections/FramingSection.tsx';
@@ -11,18 +11,13 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from '../sections/__tests__/rowFixtures.tsx';
-import FormFieldsSection from '../sections/form-fields/FormFieldsSection.tsx';
+import FormDocumentSection from '../sections/form-document/FormDocumentSection.tsx';
 import InterviewerGuidanceSection from '../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
-import IntroductionSection from '../sections/introduction/IntroductionSection.tsx';
 import NetworkFilterSection from '../sections/network-filter/NetworkFilterSection.tsx';
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
 import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/skip-logic/SkipLogicSection.tsx';
 import SubjectSection from '../sections/subject-picker/SubjectSection.tsx';
-import {
-  attributeField,
-  attributeTrigger,
-} from '../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   localeLeaks,
@@ -78,13 +73,6 @@ const researcherWords = (harness: StageEditorHarness) =>
     harness.hostCodebook(),
   );
 
-/** The first row's own control, where every row carries the same one. */
-const firstButton = (name: string) => {
-  const [button] = screen.getAllByRole('button', { name });
-  if (button === undefined) throw new Error(`There is no "${name}".`);
-  return button;
-};
-
 /**
  * What a Spanish researcher actually reads.
  *
@@ -107,7 +95,6 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <IntroductionSection />
           <SubjectSection entity="node" />
           <PromptsSection
             PromptEditor={TestPromptEditor}
@@ -131,7 +118,7 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
-          <FormFieldsSection subject="node" hasTitle />
+          <FormDocumentSection subject="node" />
         </>
       ),
     });
@@ -204,118 +191,6 @@ describe('the row dialogs under es', () => {
       {
         fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
       },
-    );
-  });
-
-  /**
-   * Every state of the form-field row dialog, because they are four different
-   * surfaces rather than one: the dialog that adds a field, the same dialog
-   * once the picker's last option — the attribute that does not exist yet — is
-   * chosen and half a codebook variable is asked for, the dialog that edits a
-   * field, and the confirmation that removes one.
-   *
-   * The three beyond the first were swept by nothing, and each carries copy the
-   * others never render: the kind-of-answer list, the name of an attribute
-   * being invented and the words on the codebook's own doors are drawn only
-   * under the sentinel, and the edit and remove surfaces are titled by
-   * `editTitle` and by the shared row confirmation.
-   *
-   * The dirty state is left until last on purpose: dismissing a dialog the
-   * researcher has changed asks them first, so an Escape after the sentinel
-   * would sweep a confirmation instead of closing.
-   */
-  it('sweeps the form-fields dialog through add, invent, edit and remove', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      locale: 'es',
-      sections: <FormFieldsSection subject="node" hasTitle />,
-    });
-    await screen.findAllByRole('button');
-
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Crear nuevo campo de formulario',
-      }),
-    );
-    await screen.findByRole('dialog');
-    // Drawn rather than merely mounted: the attribute picker is the last of the
-    // dialog's controls to arrive, and a sweep taken before it is there reads
-    // half a surface.
-    await screen.findByRole('combobox', { name: /^Atributo/u });
-
-    expectNoLocaleLeaks(
-      'the add-a-form-field dialog',
-      researcherWords(harness),
-    );
-
-    await harness.user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-
-    await harness.user.click(firstButton('Edit campo'));
-    await screen.findByRole('dialog');
-    expectNoLocaleLeaks(
-      'the edit-a-form-field dialog',
-      researcherWords(harness),
-    );
-
-    await harness.user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-
-    await harness.user.click(firstButton('Delete campo'));
-    await screen.findByRole('dialog');
-    expectNoLocaleLeaks(
-      'the remove-a-form-field confirmation',
-      researcherWords(harness),
-    );
-
-    await harness.user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Crear nuevo campo de formulario',
-      }),
-    );
-    const row = await screen.findByRole('dialog');
-
-    // The window the attribute is chosen in is a fifth surface, with copy none
-    // of the four above render: its search box, the list under it, and what it
-    // says when nothing a researcher types matches.
-    await harness.user.click(attributeTrigger(attributeField('Atributo', row)));
-    const picker = await waitFor(() => {
-      const found = screen
-        .getAllByRole('dialog')
-        .find((element) => element !== row);
-      if (found === undefined) {
-        throw new Error('the attribute window did not open');
-      }
-      return found;
-    });
-
-    expectNoLocaleLeaks('the attribute window', researcherWords(harness));
-
-    const search = within(picker).getByRole('combobox', {
-      name: 'Find or create an attribute',
-    });
-    await harness.user.type(search, 'apodo');
-    expectNoLocaleLeaks(
-      'the attribute window matching nothing',
-      researcherWords(harness),
-    );
-
-    // Nothing matches what was typed, so the first row offers to make it —
-    // and taking that row is what draws the half-a-codebook-variable surface
-    // below, whose input control is how this knows the surface is up.
-    await harness.user.click(
-      within(picker).getByRole('option', {
-        name: 'Crear «apodo»',
-      }),
-    );
-    await screen.findByRole('combobox', { name: 'Control de entrada' });
-
-    expectNoLocaleLeaks(
-      'the form-field dialog inventing an attribute',
-      researcherWords(harness),
     );
   });
 });

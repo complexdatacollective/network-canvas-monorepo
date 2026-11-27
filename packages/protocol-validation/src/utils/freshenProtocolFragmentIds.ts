@@ -15,7 +15,9 @@ import {
 import { stageSchema } from '../schemas/9/stages/index.ts';
 import { collectLocalizedStringsFromSchema } from './collectLocalizedStrings.ts';
 import {
+  formPathOfField,
   renameKeys,
+  rewriteFieldBlockReferences,
   rewriteStageReferences,
   setObjectIdAt,
   unshareObjects,
@@ -59,11 +61,14 @@ const startsWith = (
  * new random id. Stage references inside the fragment that named a replaced
  * stage name its replacement.
  *
- * The conditions of each stage and node type label in the fragment are
- * treated alike, by their keys, and so are the options of its categorical
- * and ordinal variables, by their ids. Text in the fragment that names a
- * replaced condition (`condition_<id>`) or gives a version for a replaced
- * option of an attribute names its replacement. `fragment` is not changed.
+ * The conditions and dynamic attributes of each stage and node type label in
+ * the fragment are treated alike, by their keys, and so are the options of
+ * its categorical and ordinal variables, by their ids. Text in the fragment
+ * that names a replaced condition (`condition_<id>`) or dynamic attribute
+ * (`dynamic_<id>`), or gives a version for a replaced option of an
+ * attribute, names its replacement; so does a dynamic attribute that names
+ * a replaced condition or option, and a form's text that places a replaced
+ * field. `fragment` is not changed.
  */
 export const freshenProtocolFragmentIds = <T>(
   fragment: T,
@@ -76,6 +81,11 @@ export const freshenProtocolFragmentIds = <T>(
   // By `optionKey`: two variables' options may share an id.
   const optionRenames = new Map<string, string>();
   const stagePaths: (string | number)[][] = [];
+  // By form: a form's text names only its own fields.
+  const fieldRenames = new Map<
+    string,
+    { formPath: readonly (string | number)[]; renames: Map<string, string> }
+  >();
   const copy = structuredClone(fragment);
   unshareObjects(copy);
 
@@ -100,6 +110,13 @@ export const freshenProtocolFragmentIds = <T>(
     setObjectIdAt(copy, path.slice(0, -1), fresh);
     if (id !== undefined && firstOccurrence) idMap.set(id, fresh);
     if (id !== undefined && firstStageOccurrence) stageRenames.set(id, fresh);
+    if (objectKind === 'formField' && id !== undefined) {
+      const formPath = formPathOfField(path);
+      const key = JSON.stringify(formPath);
+      const form = fieldRenames.get(key) ?? { formPath, renames: new Map() };
+      if (!form.renames.has(id)) form.renames.set(id, fresh);
+      fieldRenames.set(key, form);
+    }
     // An option's id is at `[…, 'variables', <variable id>, 'options', <index>, 'id']`.
     const variableId = objectKind === 'option' ? path.at(-4) : undefined;
     if (id !== undefined && typeof variableId === 'string') {
@@ -109,6 +126,9 @@ export const freshenProtocolFragmentIds = <T>(
   }
 
   rewriteStageReferences(schema, copy, (id) => stageRenames.get(id));
+  for (const { formPath, renames } of fieldRenames.values()) {
+    rewriteFieldBlockReferences(copy, formPath, renames);
+  }
 
   // The texts that may name conditions and options, and the objects that
   // declare conditions: each stage, and each node type's label.
@@ -130,11 +150,12 @@ export const freshenProtocolFragmentIds = <T>(
   // destination or by an earlier object or condition in the fragment, so
   // that `idMap` names each replaced key once.
   const conditionRenames = new Map<string, Map<string, string>>();
-  for (const owner of owners) {
-    const conditions = valueAt(copy, [...owner, 'conditions']);
-    if (!isRecord(conditions)) continue;
+  // Dynamic attributes are keyed like conditions, and kept apart by owner
+  // for the same reason.
+  const dynamicAttributeRenames = new Map<string, Map<string, string>>();
+  const renameOwnKeys = (record: Record<string, unknown>) => {
     const renames = new Map<string, string>();
-    for (const key of Object.keys(conditions)) {
+    for (const key of Object.keys(record)) {
       if (isProtocolObjectId(key) && !taken.has(key)) {
         taken.add(key);
         continue;
@@ -144,8 +165,54 @@ export const freshenProtocolFragmentIds = <T>(
       renames.set(key, fresh);
       if (!idMap.has(key)) idMap.set(key, fresh);
     }
-    renameKeys(conditions, renames);
-    conditionRenames.set(JSON.stringify(owner), renames);
+    renameKeys(record, renames);
+    return renames;
+  };
+  for (const owner of owners) {
+    const conditions = valueAt(copy, [...owner, 'conditions']);
+    if (isRecord(conditions)) {
+      conditionRenames.set(JSON.stringify(owner), renameOwnKeys(conditions));
+    }
+    const dynamicAttributes = valueAt(copy, [...owner, 'dynamicAttributes']);
+    if (isRecord(dynamicAttributes)) {
+      dynamicAttributeRenames.set(
+        JSON.stringify(owner),
+        renameOwnKeys(dynamicAttributes),
+      );
+    }
+  }
+
+  // A definition names its owner's conditions, and the options of the
+  // attribute whose answers it reads.
+  for (const owner of owners) {
+    const dynamicAttributes = valueAt(copy, [...owner, 'dynamicAttributes']);
+    if (!isRecord(dynamicAttributes)) continue;
+    const renames = conditionRenames.get(JSON.stringify(owner));
+    for (const definition of Object.values(dynamicAttributes)) {
+      if (!isRecord(definition)) continue;
+      if (Array.isArray(definition.cases)) {
+        for (const entry of definition.cases) {
+          if (!isRecord(entry) || typeof entry.condition !== 'string') continue;
+          entry.condition = renames?.get(entry.condition) ?? entry.condition;
+        }
+      }
+      const parsed =
+        typeof definition.value === 'string'
+          ? parseDynamicValueName(definition.value)
+          : undefined;
+      if (parsed?.kind !== 'attribute' || !Array.isArray(definition.answers)) {
+        continue;
+      }
+      for (const entry of definition.answers) {
+        if (!isRecord(entry) || typeof entry.answer !== 'string') continue;
+        const optionId = optionIdFromCaseKey(entry.answer);
+        const renamed =
+          optionId === undefined
+            ? undefined
+            : optionRenames.get(optionKey(parsed.variableId, optionId));
+        if (renamed !== undefined) entry.answer = optionCaseKey(renamed);
+      }
+    }
   }
 
   for (const hit of texts) {
@@ -163,6 +230,10 @@ export const freshenProtocolFragmentIds = <T>(
       owner === undefined
         ? undefined
         : conditionRenames.get(JSON.stringify(owner));
+    const attributeRenames =
+      owner === undefined
+        ? undefined
+        : dynamicAttributeRenames.get(JSON.stringify(owner));
     const translations = valueAt(copy, hit.path);
     if (!isRecord(translations)) continue;
     for (const [locale, message] of Object.entries(translations)) {
@@ -170,6 +241,12 @@ export const freshenProtocolFragmentIds = <T>(
       translations[locale] = rewriteDynamicValueReferences(message, {
         name: (name) => {
           const parsed = parseDynamicValueName(name);
+          if (parsed?.kind === 'dynamicAttribute') {
+            const renamed = attributeRenames?.get(parsed.id);
+            return renamed === undefined
+              ? undefined
+              : dynamicValueNameFor({ ...parsed, id: renamed });
+          }
           if (parsed?.kind !== 'condition') return undefined;
           const renamed = renames?.get(parsed.conditionId);
           return renamed === undefined

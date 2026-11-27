@@ -17,6 +17,7 @@ import {
   isProtocolObjectId,
   ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -41,6 +42,7 @@ const NAME = testVariableId('name');
 const localized = (text: string): LocalizedString => ({ en: text });
 
 function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
+  const nameField = createProtocolObjectId();
   const stage = {
     id: STAGE_ID,
     type: 'NameGenerator',
@@ -48,13 +50,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     subject: { entity: 'node', type: PERSON },
     form: {
       title: localized('Add person'),
-      fields: [
-        {
-          id: createProtocolObjectId(),
-          variable: NAME,
-          prompt: localized('Name'),
-        },
-      ],
+      ...formOf([{ id: nameField, variable: NAME, prompt: localized('Name') }]),
     },
     prompts: [
       { id: createProtocolObjectId(), text: localized('Who do you know?') },

@@ -1,6 +1,7 @@
 import {
   type ComponentProps,
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
 } from 'react';
@@ -15,9 +16,9 @@ import {
 } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   type BlockMarkdown,
-  type DynamicMessageSite,
   DynamicMessageSummary,
-} from '@codaco/protocol-builder/fields/DynamicTextField';
+} from '@codaco/protocol-builder/fields/dynamicText/DynamicMessageSummary';
+import type { DynamicMessageSite } from '@codaco/protocol-builder/fields/dynamicText/messageSite';
 import { LocalizedMessageVersionsSummary } from '@codaco/protocol-builder/fields/LocalizedMessageField';
 import {
   fallbackDependsOnBrowser,
@@ -29,7 +30,7 @@ import {
   type LocaleTag,
   type LocalizedString,
   type MessageArguments,
-  messageStructure,
+  messageShowsValues,
   messageText,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
@@ -81,6 +82,13 @@ export const useTranslationLanguage = () => {
   const locale = useContext(TranslationLanguageContext);
   return locale === undefined ? {} : languageAttributes(locale);
 };
+
+/** The language of the translation being drawn; undefined outside one. */
+export const useTranslationLocale = () =>
+  useContext(TranslationLanguageContext);
+
+/** How a field of a form is drawn where its form's text places it. */
+type FieldSummary = (fieldId: string) => ReactNode;
 
 type SummaryTextProps = {
   value: LocalizedString | undefined;
@@ -160,14 +168,6 @@ export const SummaryDynamicValuesContext = createContext<
   DynamicMessageSite | undefined
 >(undefined);
 
-/** Whether `text` shows a value or chooses between versions by one. */
-const showsValues = (text: string) => {
-  const structure = messageStructure(text);
-  return (
-    'nodes' in structure && structure.nodes.some((node) => node.kind !== 'text')
-  );
-};
-
 /**
  * One translation. A message whose setting declares arguments reads as its
  * versions, one for each case it distinguishes, with its placeholders named;
@@ -179,12 +179,14 @@ const TranslationText = ({
   locale,
   messageArguments,
   blockImages,
+  fieldSummary,
 }: {
   text: string;
   format: Format;
   locale: LocaleTag;
   messageArguments: MessageArguments | undefined;
   blockImages: MarkdownBlockImages | undefined;
+  fieldSummary?: FieldSummary;
 }) => {
   const dynamicSite = useContext(SummaryDynamicValuesContext);
   // A setting that declares arguments is given them by the interview, not
@@ -198,7 +200,12 @@ const TranslationText = ({
       />
     );
   }
-  if (dynamicSite !== undefined && showsValues(text)) {
+  // The text of a form places its fields, which only the summary of text
+  // with values draws; it is never drawn as plain markdown.
+  if (
+    dynamicSite !== undefined &&
+    (fieldSummary !== undefined || messageShowsValues(text))
+  ) {
     return (
       <LineInParagraph singleLine={format === 'markdown-line'}>
         <DynamicMessageSummary
@@ -208,6 +215,7 @@ const TranslationText = ({
           blockMarkdown={blockMarkdownWith(blockImages)}
           locale={locale}
           site={dynamicSite}
+          fieldSummary={fieldSummary}
         />
       </LineInParagraph>
     );
@@ -275,11 +283,13 @@ const Translations = ({
   format,
   messageArguments,
   blockImages,
+  fieldSummary,
 }: {
   value: LocalizedString;
   format: Format;
   messageArguments: MessageArguments | undefined;
   blockImages: MarkdownBlockImages | undefined;
+  fieldSummary: FieldSummary | undefined;
 }) => {
   const languageName = useLanguageName();
   const { protocol } = useContext(SummaryContext);
@@ -317,6 +327,7 @@ const Translations = ({
                   locale={locale}
                   messageArguments={messageArguments}
                   blockImages={blockImages}
+                  fieldSummary={fieldSummary}
                 />
               </dd>
             )}
@@ -337,10 +348,12 @@ const LocalizedText = ({
   format,
   messageArguments,
   blockImages,
+  fieldSummary,
 }: SummaryTextProps & {
   format: Format;
   messageArguments?: MessageArguments;
   blockImages?: MarkdownBlockImages;
+  fieldSummary?: FieldSummary;
 }) => {
   const multilingual = useMultilingualSummary();
   const resolved = useDefaultLanguageText()(value);
@@ -354,6 +367,7 @@ const LocalizedText = ({
         format={format}
         messageArguments={messageArguments}
         blockImages={blockImages}
+        fieldSummary={fieldSummary}
       />
     );
   }
@@ -365,6 +379,34 @@ const LocalizedText = ({
         locale={resolved.lang}
         messageArguments={messageArguments}
         blockImages={blockImages}
+        fieldSummary={fieldSummary}
+      />
+    </span>
+  );
+};
+
+/**
+ * One translation of a text written in markdown of one line, for something
+ * drawn inside a translation of another text (a field of a form): what
+ * participants using `locale` read, or that it is not translated yet.
+ */
+export const SummaryLineIn = ({
+  value,
+  locale,
+}: SummaryTextProps & { locale: LocaleTag }) => {
+  const text = value?.[locale];
+  if (value === undefined) return null;
+  if (text === undefined) {
+    return <MissingTranslation value={value} locale={locale} />;
+  }
+  return (
+    <span {...languageAttributes(locale)}>
+      <TranslationContent
+        text={text}
+        format="markdown-line"
+        locale={locale}
+        messageArguments={undefined}
+        blockImages={undefined}
       />
     </span>
   );
@@ -378,16 +420,20 @@ export const SummaryMarkdown = ({
   value,
   multiline = false,
   blockImages,
+  fieldSummary,
 }: SummaryTextProps & {
   /** Whether the text's field holds several lines, as its schema declares. */
   multiline?: boolean;
   /** How a file the text holds as a block is drawn; without it, it is not. */
   blockImages?: MarkdownBlockImages;
+  /** For the text of a form: how each field that it places is drawn. */
+  fieldSummary?: FieldSummary;
 }) => (
   <LocalizedText
     value={value}
     format={multiline ? 'markdown-lines' : 'markdown-line'}
     blockImages={blockImages}
+    fieldSummary={fieldSummary}
   />
 );
 

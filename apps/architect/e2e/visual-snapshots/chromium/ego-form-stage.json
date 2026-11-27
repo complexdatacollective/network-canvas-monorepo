@@ -1,5 +1,8 @@
 {
   "form": {
+    "content": {
+      "en": "Thanks for taking part in this study.\n\n![](field:id-1)"
+    },
     "fields": [
       {
         "id": "id-1",
@@ -11,14 +14,6 @@
     ]
   },
   "id": "id-3",
-  "introductionPanel": {
-    "text": {
-      "en": "Thanks for taking part in this study."
-    },
-    "title": {
-      "en": "About You"
-    }
-  },
   "label": {
     "en": "About You"
   },

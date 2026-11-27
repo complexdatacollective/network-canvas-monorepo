@@ -1,24 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
-import {
-  messageStructure,
-  printMessageStructure,
-} from '@codaco/protocol-validation';
 
 import {
-  documentToMessageNodes,
+  documentToMessage,
   type MessageDocumentFormat,
-  type MessageDocumentLabels,
   MessageDocumentProblem,
   messageToDocument,
 } from '../messageDocument';
-
-const labels: MessageDocumentLabels = {
-  switchLabel: (node) => `By ${node.argument}`,
-  switchSummary: (node) => node.argument,
-  versionLabel: (node, key) => `${node.argument} ${key}`,
-};
 
 const WITH_BLOCKS: MessageDocumentFormat = {
   markdown: true,
@@ -30,19 +19,11 @@ const WITHOUT_BLOCKS: MessageDocumentFormat = {
   singleLine: false,
 };
 
-const nodesOf = (message: string) => {
-  const structure = messageStructure(message);
-  if (!('nodes' in structure)) throw new Error('unreadable');
-  return structure.nodes;
-};
-
 const toDocument = (message: string, format = WITH_BLOCKS) =>
-  messageToDocument(nodesOf(message), format, labels);
+  messageToDocument(message, format);
 
 const roundTrip = (message: string, format = WITH_BLOCKS) =>
-  printMessageStructure(
-    documentToMessageNodes(toDocument(message, format), format),
-  );
+  documentToMessage(toDocument(message, format), format).message;
 
 /** Why the message cannot be shown in the editor, if it cannot. */
 const problemOf = (message: string, format = WITH_BLOCKS) => {
@@ -77,7 +58,7 @@ describe('a message holding asset blocks', () => {
       '',
       '![A map](asset:a1?size=large&align=end&loop=false)',
       '',
-      'Meet {name, select, missing {this person} other {{name}}} here.',
+      'Meet {name} here.',
       '',
       '![](asset:a2?autoplay=false)',
     ].join('\n');
@@ -94,7 +75,7 @@ describe('a message holding asset blocks', () => {
   it('keeps a value in the text around a block as a placeholder', () => {
     const document = toDocument('Hi {name}\n\n![](asset:a1)');
     expect(document.content?.[0]?.content?.at(-1)).toEqual({
-      type: 'token',
+      type: 'inlineValue',
       attrs: { id: 'name' },
     });
     expect(document.content?.[1]?.type).toBe('assetBlock');
@@ -119,14 +100,6 @@ describe('a message holding asset blocks', () => {
 // reports it.
 describe('a file written where the editor holds no block', () => {
   it.each([
-    [
-      'a version',
-      '{kind, select, a {![A](asset:one)} other {![B](asset:two)}}',
-    ],
-    [
-      'a sentence of a version',
-      '{kind, select, a {See ![A](asset:one) here} other {none}}',
-    ],
     ['a heading', '# ![A](asset:one)'],
     ['a link', '[![A](asset:one)](https://example.com)'],
     ['emphasis', '*![A](asset:one)*'],
@@ -142,8 +115,12 @@ describe('a file written where the editor holds no block', () => {
     ['a sentence', 'See ![A](asset:one) here'],
     ['an item of a list', '- one\n- ![A](asset:one)'],
     [
-      'the words beside a choice of versions',
-      '{kind, select, a {One} other {Other}}\n\n![A](asset:one)',
+      'a branch of a logic block',
+      '{node_isParticipant, select, true {![A](asset:one)} other {![B](asset:two)}}',
+    ],
+    [
+      'the words beside a logic block',
+      '{node_isParticipant, select, true {One} other {Other}}\n\n![A](asset:one)',
     ],
   ])('is shown in %s', (_where, message) => {
     expect(problemOf(message)).toBeUndefined();
@@ -152,7 +129,7 @@ describe('a file written where the editor holds no block', () => {
   it('is its description, as before, in text not declared to hold blocks', () => {
     expect(
       problemOf(
-        '{kind, select, a {![A](asset:one)} other {B}}',
+        '{node_isParticipant, select, true {![A](asset:one)} other {B}}',
         WITHOUT_BLOCKS,
       ),
     ).toBeUndefined();

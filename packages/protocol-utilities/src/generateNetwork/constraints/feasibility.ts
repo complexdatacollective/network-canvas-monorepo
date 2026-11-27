@@ -241,7 +241,8 @@ function referencedByPopulationForm(
  * `edges.create` alone.
  */
 function collectReferencedScopes(stages: Stage[]): {
-  ego: boolean;
+  /** The ego variables that the schema's tags name with an ego subject. */
+  ego: ReadonlySet<string>;
   node: ReadonlySet<string>;
   edge: ReadonlySet<string>;
 } {
@@ -254,26 +255,36 @@ function collectReferencedScopes(stages: Stage[]): {
     (hit.entity === 'edge' ? edge : node).add(hit.typeId);
   }
 
-  const ego = collectEntityAttributeReferences({ stages }).some(
-    (hit) => hit.subject?.entity === 'ego',
+  const ego = new Set(
+    collectEntityAttributeReferences({ stages })
+      .filter((hit) => hit.subject?.entity === 'ego')
+      .map((hit) => hit.variableId),
   );
 
   return { ego, node, edge };
 }
 
 /**
- * Whether `generateNetwork` runs a handler that writes ego's attributes for any
- * of these stages — the ego counterpart of `worstCaseEntityCounts`' own reading
- * of the stage list, and the second of the two readers the ego scope needs.
+ * The ego variables that `generateNetwork` can write for these stages, read
+ * from the stage list itself: the ego counterpart of `worstCaseEntityCounts`'
+ * own reading of the stage list, and the second of the two readers the ego
+ * scope needs.
  *
- * `handleEgoForm` is the only writer of `egoAttributes`, and it draws the
- * codebook's whole ego attribute set rather than the fields its form declares.
- * So this asks after the stage and not after the variables it names: an
- * EgoForm still mid-edit, with no field added yet, draws every ego variable all
- * the same.
+ * `handleEgoForm` is the only writer of `egoAttributes`, and it draws only the
+ * fields that its form asks, as the interview writes only those. So an ego
+ * variable that no Ego Form field names is never drawn. A field that only one
+ * language's document places is drawn only in that language, and is counted
+ * here all the same.
  */
-function stagesWriteEgo(stages: Stage[]): boolean {
-  return stages.some((stage) => stage.type === 'EgoForm');
+function egoFormVariables(stages: Stage[]): ReadonlySet<string> {
+  const variables = new Set<string>();
+  for (const stage of stages) {
+    if (stage.type !== 'EgoForm') continue;
+    for (const field of stage.form?.fields ?? []) {
+      variables.add(field.variable);
+    }
+  }
+  return variables;
 }
 
 /**
@@ -1229,25 +1240,31 @@ export function analyseFeasibility(
   // variable is never applied — and analysing ego then refuses a protocol over
   // a variable the run never reaches, exactly as an unused node type did.
   //
-  // Read as a whole scope rather than variable by variable, for the reason the
-  // node and edge scopes are: `handleEgoForm` draws the codebook's whole ego
-  // attribute set rather than the fields its form declares, so an ego variable
-  // no field names is drawn all the same wherever an EgoForm exists, and has no
-  // exemption to claim.
+  // Read equality group by equality group, as a node type's variables are
+  // (`unwrittenNodeVariables`): `handleEgoForm` draws only the fields that its
+  // form asks, so an ego variable that no field names is never drawn, and the
+  // rules on it are never applied. A group with any written member is
+  // analysed in full.
   //
-  // Both readers have to agree ego is absent, as for a node or edge type below.
-  // The schema's tags see an ego subject through a form field's `variable`,
-  // which resolves against its stage's subject; `generateNetwork`'s own
-  // dispatch sees the stage whose handler writes ego. So neither a tag dropped
-  // from the schema nor a field list still empty mid-edit can on its own delete
-  // a refusal — which matters more here than it does for a node or edge type,
-  // because dropping this scope wrongly does not make the draw fail. It makes
-  // it emit a value the rule rejects.
-  if (referenced.ego || stagesWriteEgo(stages)) {
+  // Both readers have to agree that a variable is unwritten, as for a node or
+  // edge type below. The schema's tags see an ego subject through a form
+  // field's `variable`, which resolves against its stage's subject (and also
+  // through text and rules that read an ego variable, which keeps it
+  // analysed); `generateNetwork`'s own dispatch sees the Ego Form fields whose
+  // handler writes ego. So a tag dropped from the schema cannot on its own
+  // delete a refusal — which matters more here than it does for a node or edge
+  // type, because exempting a variable wrongly does not make the draw fail. It
+  // makes it emit a value the rule rejects.
+  const egoWritten = new Set([...referenced.ego, ...egoFormVariables(stages)]);
+  if (egoWritten.size > 0) {
     scopes.push({
       entity: 'ego',
       variables: codebook.ego?.variables,
-      unvalidated: NO_UNVALIDATED_VARIABLES,
+      unvalidated: new Set(
+        equalityGroupsOf(codebook.ego?.variables, config.today)
+          .filter((members) => !members.some((id) => egoWritten.has(id)))
+          .flat(),
+      ),
       worstCaseCountFor: () => 1,
       // No stage fixes a value on ego: `additionalAttributes` belongs to a
       // name-generator prompt, whose subject is always a node. A roster row is a node too — it is

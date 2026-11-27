@@ -16,6 +16,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   escapeMarkdownText,
   escapeMessageText,
+  fieldBlockMarkdown,
   informationPageContent,
   type FinishMode,
   type FinishOutcome,
@@ -129,6 +130,7 @@ import type {
   StageEntry,
   TextInput,
   TieStrengthCensusPromptEntry,
+  FormDocumentBlocks,
   VariableEntry,
   VariableOptionInput,
 } from './types.ts';
@@ -813,15 +815,8 @@ export class SyntheticInterview {
       behaviours,
       initialEdges: opts?.initialEdges ?? [],
       ...(opts?.wording && { wording: opts.wording }),
-      ...(type === 'EgoForm' && {
-        introductionPanel: {
-          title: opts?.introductionPanel?.title ?? EGO_FORM_DEFAULT_TITLE,
-          ...(opts?.introductionPanel?.text !== undefined && {
-            text: opts.introductionPanel.text,
-          }),
-        },
-      }),
     };
+    const formContent = opts?.form?.content;
 
     // Handle form fields for NameGenerator (node-based)
     if (
@@ -837,15 +832,16 @@ export class SyntheticInterview {
       entry.form = {
         title: opts.form.title ?? 'Add a person',
         fields,
+        ...(formContent && { content: formContent }),
       };
     }
 
-    // EgoForm's introduction panel is the heading shown above its questions,
-    // so its form has no title of its own.
+    // An Ego Form has no title: its heading is at the top of its document.
     if (opts?.form && type === 'EgoForm') {
       entry.form = {
         title: EGO_FORM_DEFAULT_TITLE,
         fields: opts.form.fields.map((f) => this.resolveEgoFormField(f)),
+        ...(formContent && { content: formContent }),
       };
     }
 
@@ -857,6 +853,7 @@ export class SyntheticInterview {
       entry.form = {
         title: opts.form.title ?? 'Describe this relationship',
         fields,
+        ...(formContent && { content: formContent }),
       };
     }
 
@@ -2372,6 +2369,12 @@ export class SyntheticInterview {
       usedRosterUids: new Set(),
       externalData: undefined,
       respectSkipLogicAndFiltering: false,
+      // The interview built here is read in its default language.
+      formLanguage: this.localization.defaultLocale,
+      formLocalization: {
+        defaultLocale: this.localization.defaultLocale,
+        locales: [...this.localization.locales],
+      },
       uniqueRegistry: new UniqueRegistry(),
       entityConstraints: {
         // Ego takes no rendering: a NetworkComposer's subject is always a node
@@ -2819,9 +2822,9 @@ export class SyntheticInterview {
     }
 
     // Build ego codebook if ego variables exist
-    let ego: Record<string, unknown> | undefined;
+    let ego: { variables: Record<string, Record<string, unknown>> } | undefined;
     if (this.egoVariables.size > 0) {
-      const variables: Record<string, unknown> = {};
+      const variables: Record<string, Record<string, unknown>> = {};
       for (const [varId, varEntry] of this.egoVariables) {
         variables[varId] = this.buildVariable(varEntry);
       }
@@ -2899,6 +2902,46 @@ export class SyntheticInterview {
       },
     );
     return content === undefined ? undefined : this.localized(content);
+  }
+
+  /**
+   * A form's document: the one its author wrote from the blocks that place
+   * its fields, or by default its fields in the order they were added, below
+   * the heading "About you" on an Ego Form.
+   *
+   * Not built with `formOf` from `@codaco/protocol-validation/testing`: that
+   * subpath is for the workspace's tests only and is not published, while
+   * this package is. A fixture's author writes a document by its fields'
+   * variables (`FormDocumentBlocks`), as the fields' ids are made here.
+   */
+  private formContent(
+    type: StageType,
+    form: NonNullable<StageEntry['form']>,
+    fields: readonly Readonly<{ id: string; variable: string }>[],
+  ): LocalizedString {
+    const blockOf = new Map(
+      fields.map(({ id, variable }) => [variable, fieldBlockMarkdown(id)]),
+    );
+    const blocks: FormDocumentBlocks = {
+      field: (variable) => {
+        const block = blockOf.get(variable);
+        invariant(
+          block !== undefined,
+          `The form has no field for the variable ${variable}`,
+        );
+        return block;
+      },
+      fields: [...blockOf.values()],
+      heading: (text) => `# ${escapeMessageText(escapeMarkdownText(text))}`,
+    };
+    const content =
+      form.content ??
+      (({ fields: placed, heading }: FormDocumentBlocks) =>
+        [
+          ...(type === 'EgoForm' ? [heading(EGO_FORM_DEFAULT_TITLE)] : []),
+          ...placed,
+        ].join('\n\n'));
+    return this.message(content(blocks));
   }
 
   private buildComposerField(
@@ -3049,6 +3092,10 @@ export class SyntheticInterview {
       );
     }
 
+    if (stage.dynamicAttributes) {
+      config.dynamicAttributes = stage.dynamicAttributes;
+    }
+
     if (stage.subject) {
       config.subject = stage.subject;
     }
@@ -3064,6 +3111,7 @@ export class SyntheticInterview {
           ? { hint: this.localized(field.hint) }
           : {}),
       }));
+      const content = this.formContent(stage.type, stage.form, fields);
       // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm/FamilyPedigree
       // forms must not carry a title; every other form stage keeps it.
       config.form =
@@ -3071,17 +3119,8 @@ export class SyntheticInterview {
         stage.type === 'AlterEdgeForm' ||
         stage.type === 'EgoForm' ||
         stage.type === 'FamilyPedigree'
-          ? { fields }
-          : { title: this.localized(stage.form.title), fields };
-    }
-
-    if (stage.introductionPanel) {
-      config.introductionPanel = {
-        title: this.localized(stage.introductionPanel.title),
-        ...(stage.introductionPanel.text !== undefined && {
-          text: this.localized(stage.introductionPanel.text),
-        }),
-      };
+          ? { content, fields }
+          : { title: this.localized(stage.form.title), content, fields };
     }
 
     if (stage.prompts.length > 0) {

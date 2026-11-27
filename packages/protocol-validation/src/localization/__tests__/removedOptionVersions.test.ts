@@ -171,4 +171,40 @@ describe('withoutRemovedOptionVersions', () => {
     );
     expect(withoutRemovedOptionVersions(protocol, MOOD_ID, [])).toBe(protocol);
   });
+
+  it('removes the answers of a dynamic attribute for a deleted option, and keeps its other versions', () => {
+    const attributeId = testId('mood wording');
+    const stage = {
+      ...information({
+        en: `I feel {${dynamicValueNameFor({ kind: 'dynamicAttribute', id: attributeId })}}.`,
+      }),
+      dynamicAttributes: {
+        [attributeId]: {
+          logic: 'answers',
+          value: EGO_MOOD,
+          missing: { en: 'fine' },
+          answers: [
+            { answer: happy, wording: { en: 'glad' } },
+            { answer: sad, wording: { en: 'blue' } },
+          ],
+          other: { en: 'fine' },
+        },
+      },
+    };
+    const protocol = protocolWith([stage]);
+
+    const pruned = withoutRemovedOptionVersions(protocol, MOOD_ID, [SAD]);
+
+    expect(
+      (pruned.stages[0] as typeof stage).dynamicAttributes[attributeId],
+    ).toEqual({
+      logic: 'answers',
+      value: EGO_MOOD,
+      missing: { en: 'fine' },
+      answers: [{ answer: happy, wording: { en: 'glad' } }],
+      other: { en: 'fine' },
+    });
+    // A copy: the protocol it was given is left as it was.
+    expect(stage.dynamicAttributes[attributeId]?.answers).toHaveLength(2);
+  });
 });

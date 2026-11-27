@@ -75,10 +75,9 @@ describe('Protocol Summary name generator wording', () => {
         'When it is 0, 2, 3, …Add Number more people',
       ]);
       for (const version of versions) {
-        expect(version.querySelector('[data-token]')).toHaveAttribute(
-          'data-token',
-          'count',
-        );
+        expect(
+          version.querySelector('data[data-attribute-type="placeholder"]'),
+        ).toHaveTextContent('Number');
       }
     },
   );
@@ -205,10 +204,10 @@ describe('Protocol Summary canvas wording', () => {
     expect(row).not.toHaveTextContent('{condition}');
     // Each placeholder is drawn as a pill, named by its label.
     expect(
-      [...row.querySelectorAll('[data-token]')].map((pill) =>
-        pill.getAttribute('data-token'),
+      [...row.querySelectorAll('data[data-attribute-type="placeholder"]')].map(
+        (pill) => pill.textContent,
       ),
-    ).toEqual(['title', 'condition']);
+    ).toEqual(['Stage title', 'Condition name']);
     expect(row).toHaveTextContent(/.+: .+/);
   });
 

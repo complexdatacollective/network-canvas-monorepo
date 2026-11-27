@@ -9,6 +9,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../../__tests__/englishForms.ts';
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { protocolUtilitiesCatalogLoaders } from '../../../locales/catalogs.ts';
 import { formatConstraintConflictReason } from '../../../messages.ts';
@@ -48,6 +49,13 @@ const egoForm = {
     fields: [{ id: 'field-1', variable: 'name', prompt: 'Your name' }],
   },
 } as unknown as Stage;
+
+/** An Ego Form that asks `variable`: an Ego Form writes only what it asks. */
+const egoFormAsking = (variable: string): Stage =>
+  ({
+    ...egoForm,
+    form: { fields: [{ id: 'field-1', variable, prompt: 'Question' }] },
+  }) as unknown as Stage;
 
 function codebookWith(variables: Record<string, unknown>): StructuralCodebook {
   return {
@@ -997,7 +1005,11 @@ describe('analyseFeasibility', () => {
       },
     } as unknown as StructuralCodebook;
 
-    const conflicts = analyseFeasibility(codebook, [egoForm], config);
+    const conflicts = analyseFeasibility(
+      codebook,
+      [egoFormAsking('a')],
+      config,
+    );
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('ego');
@@ -1437,6 +1449,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
 
     for (let seed = 1; seed <= 20; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: uniqueFlag,
         stages,
         seed,
@@ -1458,6 +1471,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
 
     for (let seed = 1; seed <= 20; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: uniqueFlag,
         stages,
         seed,
@@ -1483,6 +1497,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
 
     for (let seed = 1; seed <= 20; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: uniqueFlag,
         stages,
         seed,
@@ -1660,6 +1675,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
       seed: number,
     ) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook,
         stages,
@@ -2211,9 +2227,14 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
       'a prompt fixes "Age" to true, and every value the draw can give "Retired" breaks a comparison against it',
     );
 
-    expect(() => generateNetwork({ codebook, stages, seed: 1 })).toThrow(
-      SyntheticDataConstraintError,
-    );
+    expect(() =>
+      generateNetwork({
+        ...ENGLISH_FORMS,
+        codebook,
+        stages,
+        seed: 1,
+      }),
+    ).toThrow(SyntheticDataConstraintError);
   });
 
   it('accepts a component the search declines to analyse whose fold survives', () => {
@@ -2228,7 +2249,12 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
 
     expect(analyseFeasibility(codebook, stages, config)).toEqual([]);
 
-    const { network } = generateNetwork({ codebook, stages, seed: 1 });
+    const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
+      codebook,
+      stages,
+      seed: 1,
+    });
     expect(network.nodes.length).toBeGreaterThan(0);
     for (const node of network.nodes) {
       const attributes = node[entityAttributesProperty];
@@ -2464,6 +2490,7 @@ describe('a codebook scope no stage names', () => {
   it('generates that protocol rather than moving the refusal to the draw', () => {
     // The premise the acceptance rests on: the form really does reach nobody.
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook: withArtefactContradiction,
       stages: [nameGenerator, artefactForm()],
@@ -2539,7 +2566,7 @@ describe('a codebook scope no stage names', () => {
   it('still refuses the same contradiction once an EgoForm writes ego', () => {
     const conflicts = analyseFeasibility(
       egoCodebook,
-      [nameGenerator, egoForm],
+      [nameGenerator, egoFormAsking('code')],
       config,
     );
 
@@ -2548,23 +2575,46 @@ describe('a codebook scope no stage names', () => {
     expect(conflicts[0]?.reason).toBe('minLength 10 exceeds maxLength 5');
   });
 
-  it('keeps ego for an EgoForm whose fields name no ego variable', () => {
-    // `handleEgoForm` draws the codebook's whole ego attribute set rather than
-    // the fields its form declares, so a form still empty mid-edit — or one
-    // naming other variables — draws `code` all the same. Read from the stage
-    // rather than from the references its fields carry for exactly this case:
-    // with the scope wrongly dropped the draw does not fail, it emits a value
-    // the rule rejects.
+  it('accepts a contradiction on an ego variable that no Ego Form asks', () => {
+    // `handleEgoForm` draws only the fields that its form asks, as the
+    // interview writes only those, so a form still empty mid-edit, or one that
+    // asks other variables, never draws `code`.
     const emptyForm = { ...egoForm, form: { fields: [] } } as unknown as Stage;
 
+    expect(
+      analyseFeasibility(egoCodebook, [nameGenerator, emptyForm], config),
+    ).toEqual([]);
+    expect(
+      analyseFeasibility(egoCodebook, [nameGenerator, egoForm], config),
+    ).toEqual([]);
+  });
+
+  it('refuses a contradiction on an ego variable held equal to one that a form asks', () => {
+    // `sameAs` holds the two to one value, so drawing `name` draws `code`'s
+    // value too: the group is analysed in full.
+    const grouped = {
+      ego: {
+        variables: {
+          code: {
+            ...contradiction,
+            validation: { ...contradiction.validation, sameAs: 'name' },
+          },
+          name: { name: 'Name', type: 'text' },
+        },
+      },
+      node: { person },
+    } as unknown as StructuralCodebook;
+
     const conflicts = analyseFeasibility(
-      egoCodebook,
-      [nameGenerator, emptyForm],
+      grouped,
+      [nameGenerator, egoForm],
       config,
     );
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0]?.entity).toBe('ego');
+    expect(conflicts.map((conflict) => conflict.entity)).toContain('ego');
+    expect(conflicts.map((conflict) => conflict.reason)).toContain(
+      'minLength 10 exceeds maxLength 5',
+    );
   });
 
   it('keeps ego for a stage the schema gives an ego subject', () => {
@@ -2641,6 +2691,7 @@ describe('a codebook scope only a content stage names', () => {
 
   it('builds no node of that type, which is what the acceptance rests on', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       codebook: nodeCodebook,
       stages: [narrative()],
       seed: 1,
@@ -2669,6 +2720,7 @@ describe('a codebook scope only a content stage names', () => {
       } as unknown as Stage;
 
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         codebook,
         stages: [stage],
         seed: 1,
@@ -2696,6 +2748,7 @@ describe('a codebook scope only a content stage names', () => {
 
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         codebook: {
           node: { person: plainPerson },
         } as unknown as StructuralCodebook,
@@ -2850,7 +2903,11 @@ describe('a text length beyond what a generated value can hold', () => {
       ego: { variables: { bio: overCap } },
     } as unknown as StructuralCodebook;
 
-    const conflicts = analyseFeasibility(codebook, [egoForm], config);
+    const conflicts = analyseFeasibility(
+      codebook,
+      [egoFormAsking('bio')],
+      config,
+    );
 
     expect(conflicts).toHaveLength(1);
     expect(conflicts[0]?.entity).toBe('ego');
@@ -3008,6 +3065,7 @@ describe('roster rows the rules turn away, at the seam the counts feed', () => {
     ).toEqual([]);
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook: codebook as Parameters<typeof generateNetwork>[0]['codebook'],
         stages: [roster, census],

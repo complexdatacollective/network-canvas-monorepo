@@ -2,9 +2,12 @@
 
 import { Select } from '@base-ui/react/select';
 import { Check, ChevronDown } from 'lucide-react';
-import type { ComponentPropsWithoutRef } from 'react';
+import { type ComponentPropsWithoutRef, useId, useState } from 'react';
 
-import { usePortalContainer } from '../../../PortalContainer';
+import {
+  useDrawnOnTopWhenOpened,
+  usePortalContainer,
+} from '../../../PortalContainer';
 import {
   presentationalTextProps,
   presentationalTextValue,
@@ -58,6 +61,7 @@ function SelectField(props: SelectProps) {
   } = props;
 
   const { onOptionToggle } = useFormFeedback();
+  const descriptionId = useId();
 
   // Base UI calls this only for the person's own choice.
   const handleValueChange = (newValue: unknown) => {
@@ -75,6 +79,11 @@ function SelectField(props: SelectProps) {
   };
 
   const portalContainer = usePortalContainer();
+  // Base UI can mount the list before it opens (to read an autofilled value),
+  // so it is moved over the popups opened before it each time it opens.
+  const [listOpen, setListOpen] = useState(rest.defaultOpen ?? false);
+  const [portalNode, setPortalNode] = useState<HTMLDivElement | null>(null);
+  useDrawnOnTopWhenOpened(rest.open ?? listOpen, portalNode);
 
   // Rendering only: for one render the store can still hold the previous
   // field's value (see the render-tolerance contract on `useField`). Only a
@@ -95,6 +104,10 @@ function SelectField(props: SelectProps) {
       // already branches on it.
       value={selectedValue}
       onValueChange={handleValueChange}
+      onOpenChange={(open, event) => {
+        setListOpen(open);
+        rest.onOpenChange?.(open, event);
+      }}
       disabled={disabled}
       readOnly={readOnly}
       name={name}
@@ -148,8 +161,15 @@ function SelectField(props: SelectProps) {
           <ChevronDown className="h-[1.2em] w-[1.2em]" />
         </Select.Icon>
       </Select.Trigger>
-      <Select.Portal container={portalContainer ?? undefined}>
-        <Select.Positioner className="z-50" alignItemWithTrigger={false}>
+      <Select.Portal
+        ref={setPortalNode}
+        container={portalContainer ?? undefined}
+      >
+        {/*
+          On the layer popovers are drawn on (`z-3000`), so a select inside a
+          popover opens its list over it, as a combobox does.
+        */}
+        <Select.Positioner className="z-3000" alignItemWithTrigger={false}>
           <Select.Popup
             className={cx(
               'elevation-high rounded-sm border-2 border-transparent',
@@ -159,19 +179,35 @@ function SelectField(props: SelectProps) {
             )}
           >
             <Select.List className="p-1">
-              {options.map((option) => (
+              {options.map((option, index) => (
                 <Select.Item
                   key={option.value}
                   value={option.value}
                   disabled={option.disabled}
                   className={dropdownItemVariants()}
+                  {...(option.description !== undefined && {
+                    'aria-describedby': `${descriptionId}-${index}`,
+                  })}
                 >
-                  <Select.ItemText
-                    className="min-w-0 flex-1 wrap-break-word whitespace-normal"
-                    {...presentationalTextProps(option.label)}
-                  >
-                    {presentationalTextValue(option.label)}
-                  </Select.ItemText>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <Select.ItemText
+                      className="wrap-break-word whitespace-normal"
+                      {...presentationalTextProps(option.label)}
+                    >
+                      {presentationalTextValue(option.label)}
+                    </Select.ItemText>
+                    {option.description !== undefined && (
+                      <span
+                        id={`${descriptionId}-${index}`}
+                        // Read as the option's description rather than as
+                        // part of its name.
+                        aria-hidden
+                        className="text-sm whitespace-normal text-current/70"
+                      >
+                        {option.description}
+                      </span>
+                    )}
+                  </span>
                   <Select.ItemIndicator>
                     <Check className="h-[1.2em] w-[1.2em]" />
                   </Select.ItemIndicator>

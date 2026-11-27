@@ -430,7 +430,8 @@ describe('SiteNavigation', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Software' }));
     const architectLink = screen.getByRole('link', { name: 'Architect' });
-    const portalLayer = baseElement.querySelector('.z-3000');
+    // The portal container's layer: every popup on it carries `z-3000` too.
+    const portalLayer = baseElement.querySelector('.isolate.z-3000');
     if (!portalLayer) throw new Error('Expected the portal container layer.');
 
     expect(portalLayer).toContainElement(architectLink);
@@ -446,7 +447,7 @@ describe('SiteNavigation', () => {
     const architectLink = screen.getByRole('link', { name: 'Architect' });
     expect(container).not.toContainElement(architectLink);
     expect(document.body).toContainElement(architectLink);
-    expect(architectLink.closest('.z-3000')).toBeNull();
+    expect(architectLink.closest('.isolate.z-3000')).toBeNull();
   });
 });
 

@@ -59,11 +59,11 @@ The page has no separate heading field. To give it a heading, place the cursor i
 <!-- field: content -->
 <!-- scene: information-blocks -->
 
-The whole page is one text, written in the **Rich Text** editor. To add an image, a video or audio, place the cursor where it should go and choose **Insert image**, **Insert video** or **Insert audio** in the toolbar; each is added as a block that you can drag to another place in the text. Everything appears from top to bottom in the order it has in the text. The page cannot be empty, and you can add as much as you need. Participants scroll if the page is longer than the screen.
+The whole page is written as one document in the **Rich Text** editor. To add an image, a video or audio, place the cursor where it should go and choose **Insert image**, **Insert video** or **Insert audio** in the toolbar; each is added as a block that you can drag to another place in the text. Everything appears from top to bottom in the order it has in the text. The page cannot be empty, and you can add as much as you need. Participants scroll if the page is longer than the screen.
 
 Select a block to open its settings. Audio and video start playing as soon as the page opens and repeat when they end, unless you turn off **Start playing automatically** or **Repeat when it ends**. A video that starts automatically is muted. Give each image, video and audio block a **Description**, which a screen reader reads in place of it.
 
-> Do: Consider using piped text to customize what is shown to the participant to communicate more effectively.
+> Do: Tailor the page to each participant. Choose **Attribute** in the toolbar to show something that the participant told you earlier, such as their name, and **Logic block** to show content only to the participants that it applies to.
 
 <!-- include: skip-logic -->
 

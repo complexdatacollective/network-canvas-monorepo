@@ -46,6 +46,7 @@ const mockProtocol2: CurrentProtocol = {
       label: { en: 'Test Stage' },
       form: {
         title: { en: 'Test Form' },
+        content: { en: '' },
         fields: [],
       },
       subject: {

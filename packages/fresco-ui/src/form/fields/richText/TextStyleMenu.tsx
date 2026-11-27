@@ -14,7 +14,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../../../DropdownMenu';
-import { useTokenPillLanguage } from '../../../TokenPill';
+import { useInterfaceLanguage } from '../../../interfaceLanguage';
 import { headingVariants } from '../../../typography/Heading';
 import { paragraphVariants } from '../../../typography/Paragraph';
 import { ToolbarButton } from './EditorToolbar';
@@ -89,7 +89,7 @@ export function TextStyleMenu({
   // The style's name is the interface's words, drawn in the toolbar of a
   // field whose region is in the language of the text being written: it
   // says its own language and direction, as a pill's label does.
-  const labelLanguage = useTokenPillLanguage();
+  const labelLanguage = useInterfaceLanguage();
   const [open, setOpen] = useState(false);
   // Whether the list is closing because a style was chosen.
   const picked = useRef(false);

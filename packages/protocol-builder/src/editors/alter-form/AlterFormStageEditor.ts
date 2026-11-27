@@ -1,4 +1,4 @@
-import { formFields } from '../../sections/form-fields/formFields.tsx';
+import { formDocument } from '../../sections/form-document/FormDocumentSection.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
@@ -14,7 +14,7 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
  */
 export const alterFormStageEditor = defineStageEditor('AlterForm', [
   subjectPicker({ entity: 'node', filter: true }),
-  formFields({ subject: 'node' }),
+  formDocument({ subject: 'node' }),
   skipLogic(),
   interviewerGuidance(),
 ]);

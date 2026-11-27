@@ -2,22 +2,28 @@ import { isEqual } from 'es-toolkit';
 
 import type {
   RichTextVersion,
-  RichTextVersionsAction,
   RichTextVersionsAttributes,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import type {
-  TokenPillLabel,
-  TokenPillVariant,
-} from '@codaco/fresco-ui/TokenPill';
+import type { PresentationalText } from '@codaco/fresco-ui/PresentationalText';
 import {
   assetBlocksInMarkdown,
+  fieldBlockMarkdown,
+  type ContentLogic,
+  type ContentNode,
+  type ContentNodes,
+  isPluralCategory,
   MISSING_CASE,
   type MessageNode,
   type MessageSwitch,
   messageStructure,
   type MessageVersion,
+  type PluralCategory,
+  printContentDocument,
+  printMessageStructure,
+  readContentDocument,
   VERSION_LINE_LEAD,
 } from '@codaco/protocol-validation';
+import { isRecord } from '@codaco/shared-consts';
 
 import {
   markdownToRichTextContent,
@@ -26,169 +32,358 @@ import {
 } from '../markdown/markdownAdapter';
 
 /**
- * How a message's text is read: as markdown, or as plain text. A markdown
- * document may hold blocks unless it is one line; a version of a piece of
- * text is always one line.
+ * How a message's text is read: as markdown, or as plain text. Markdown of
+ * several lines is a document (`readContentDocument`): paragraphs and other
+ * blocks, files as blocks where the text may contain them, logic blocks, and,
+ * in a form, its fields. A message of one line is words, values and
+ * formatting only.
  */
 export type MessageDocumentFormat = Readonly<{
   markdown: boolean;
   singleLine: boolean;
-  /** Whether markdown of several lines may hold files as blocks. */
+  /** Whether markdown of several lines may contain files as blocks. */
   assetBlocks?: boolean;
 }>;
 
-/** What the editor calls a switch and each of its versions. */
+/**
+ * What the editor calls a switch of wording supplied by Network Canvas and
+ * each of its versions. Only that wording has switches inside its lines (see
+ * `MessageDocumentOptions.versions`); the text a researcher writes chooses
+ * between versions with logic blocks and dynamic attributes instead.
+ */
 export type MessageDocumentLabels = Readonly<{
   switchLabel: (node: MessageSwitch) => string;
   /**
    * What a switch's folded pill says: the name of the value it is on, as the
    * interface's words or, for a name someone wrote, in its own direction.
    */
-  switchSummary: (node: MessageSwitch) => TokenPillLabel;
+  switchSummary: (node: MessageSwitch) => PresentationalText;
   versionLabel: (node: MessageSwitch, key: string) => string;
+}>;
+
+/**
+ * A field of a form as its block shows it: the attribute it collects, whether
+ * it shows validation hints, and its question and hint in the language being
+ * edited, each one line of markdown as a message (`prompt`, `hint`). Read
+ * from the form's `fields` when a document opens, and collected from its
+ * blocks when it is written (`documentToMessage`).
+ */
+export type FieldText = Readonly<{
+  variable: string;
+  showValidationHints: boolean;
+  /** The question; absent when it is empty. */
+  prompt?: string;
+  /** The hint; absent when it is empty. */
+  hint?: string;
+}>;
+
+type MessageDocumentOptions = Readonly<{
   /**
-   * Whether a switch is logic (versions chosen by a test) rather than a
-   * value shown when it is known; a value when not given.
+   * How the switches of wording supplied by Network Canvas are shown, as
+   * lines with a version for each case. Without it a switch inside a line is
+   * refused (`inlineChoice`): researcher text chooses its wording with logic
+   * blocks and dynamic attributes.
    */
-  variantOf?: (node: MessageSwitch) => TokenPillVariant;
-  /** How a switch on a condition reads, as an "If"; see `IfBlockLabels`. */
-  ifBlock?: IfBlockLabels;
+  versions?: MessageDocumentLabels;
+  /** The field each field block names, for the text of a form. */
+  fieldText?: (fieldId: string) => FieldText | undefined;
+  /**
+   * Whether each field block contains the field's question and hint
+   * (`'editable'`, the default), or no text, for an editor whose field
+   * blocks have none (fresco-ui's `RichTextFieldBlocks.text`).
+   */
+  fieldBlockText?: 'editable' | 'none';
 }>;
 
-/** One row of an "If": the condition it tests, and the case it is for. */
-export type IfRow = Readonly<{ argument: string; key: string }>;
-
 /**
- * How the editor shows a switch on a condition: as one "If" whose rows are
- * the condition's case, each "else if" the text nests in the version for
- * every other case, and what it reads otherwise.
+ * Why a message cannot be shown in the editor as it is: a value inside a link
+ * address, a choice of versions inside a sentence of researcher text, a
+ * document that `readContentDocument` cannot read as one (a logic block of
+ * no known shape, a field written where a block cannot stand), or a file
+ * written where the editor holds no block, which it would write back as the
+ * file's description alone.
  */
-export type IfBlockLabels = Readonly<{
-  /** Whether `node` switches on a condition, on one of its two cases. */
-  is: (node: MessageSwitch) => boolean;
-  label: (rows: readonly IfRow[]) => string;
-  summary: (rows: readonly IfRow[]) => TokenPillLabel;
-  rowLabel: (row: IfRow, index: number) => string;
-  otherwiseLabel: string;
-  /** Names the button a row's label is, where its rules can be edited. */
-  rowAction?: string;
-  /** Names the button that removes a row, where one can be removed. */
-  rowRemovable?: string;
-  /** Buttons under the rows, such as “Add else if”. */
-  actions?: readonly RichTextVersionsAction[];
-}>;
+type MessageDocumentProblemKind =
+  | 'valueInLinkAddress'
+  | 'inlineChoice'
+  | 'unreadableDocument'
+  | 'linesInVersion'
+  | 'misplacedFile';
 
-const IF_ROW_KEY = /^if:([^:]+):([^:]+)$/;
+export class MessageDocumentProblem extends Error {
+  readonly kind: MessageDocumentProblemKind;
 
-/** The key the editor gives the row of an "If" for `row`. */
-const ifRowKey = (row: IfRow): string => `if:${row.argument}:${row.key}`;
-
-/** The row an editor's version key stands for, if it is a row of an "If". */
-export const ifRowOf = (versionKey: string): IfRow | undefined => {
-  const match = IF_ROW_KEY.exec(versionKey);
-  return match?.[1] === undefined || match[2] === undefined
-    ? undefined
-    : { argument: match[1], key: match[2] };
-};
-
-/**
- * The rows of the "If" that `node` opens: its own case, then the case of
- * each "If" that is the whole of the version before it shown otherwise.
- */
-const ifRowsOf = (
-  node: MessageSwitch,
-  is: IfBlockLabels['is'],
-): Readonly<{
-  rows: readonly (IfRow & Readonly<{ nodes: readonly MessageNode[] }>)[];
-  otherwise: readonly MessageNode[];
-}> => {
-  const rows: (IfRow & Readonly<{ nodes: readonly MessageNode[] }>)[] = [];
-  let current = node;
-  for (;;) {
-    const own = current.versions.find(({ key }) => key !== 'other');
-    const otherwise =
-      current.versions.find(({ key }) => key === 'other')?.nodes ?? [];
-    rows.push({
-      argument: current.argument,
-      key: own?.key ?? '',
-      nodes: own?.nodes ?? [],
-    });
-    const [only, ...rest] = otherwise;
-    if (only?.kind !== 'switch' || rest.length > 0 || !is(only)) {
-      return { rows, otherwise };
-    }
-    current = only;
+  constructor(kind: MessageDocumentProblemKind) {
+    super(kind);
+    this.kind = kind;
   }
-};
+}
 
 /**
- * The editor holds `#`, the number a plural is on, as a placeholder named
- * for that plural's value, so the pill can say whose number it is.
+ * The editor holds `#`, the number a plural of supplied wording is on, as a
+ * value named for that plural's value, so the pill can say whose number it is.
  */
 export const countTokenId = (argument: string): string => `#${argument}`;
 
 const countArgumentOf = (tokenId: string): string | undefined =>
   tokenId.startsWith('#') ? tokenId.slice(1) : undefined;
 
-/** What a versions element records about the switch it stands for. */
-type SwitchMeta = Readonly<{
-  argument: string;
-  type: MessageSwitch['type'];
-  offset?: number;
-  /** Set for an "If", whose versions are its rows (see `ifRowsOf`). */
-  rows?: true;
-}>;
+/** The editor's node for a value shown in a line (fresco-ui's). */
+const INLINE_VALUE = 'inlineValue';
+const FIELD_BLOCK = 'fieldBlock';
+const FIELD_LABEL = 'fieldLabel';
+const FIELD_HINT = 'fieldHint';
+const LOGIC_BLOCK = 'logicBlock';
+const LOGIC_BRANCH = 'logicBranch';
 
-type IfRowContent = IfRow & Readonly<{ content: readonly RichTextContent[] }>;
+const inlineValue = (id: string): RichTextContent => ({
+  type: INLINE_VALUE,
+  attrs: { id },
+});
+
+// ---------------------------------------------------------------------------
+// Logic blocks as the editor holds them
+// ---------------------------------------------------------------------------
 
 /**
- * The editor's element for an "If" of `rows`, each with the line it shows,
- * and the line shown `otherwise`. Also how an "If" already in the text is
- * rewritten when a row is added or removed, or its rules change what a row
- * is called.
+ * What a logic block's node records about its logic (its `meta`). The condition
+ * versions of a `conditions` block are its branches (`ConditionVersionMeta`);
+ * the value an `answers` or `number` block reads is here.
  */
-export const ifBlockAttributes = (
-  rows: readonly IfRowContent[],
-  otherwise: readonly RichTextContent[],
-  block: IfBlockLabels,
-): RichTextVersionsAttributes => ({
-  label: block.label(rows),
-  summary: block.summary(rows),
-  versions: [
-    ...rows.map((row, index) => ({
-      key: ifRowKey(row),
-      label: block.rowLabel(row, index),
-      content: row.content,
-      ...(block.rowAction !== undefined && { action: block.rowAction }),
-      ...(block.rowRemovable !== undefined &&
-        rows.length > 1 && { removable: block.rowRemovable }),
-    })),
-    { key: 'other', label: block.otherwiseLabel, content: otherwise },
-  ],
-  variant: 'logic',
-  ...(block.actions !== undefined &&
-    block.actions.length > 0 && { actions: block.actions }),
-  meta: {
-    argument: rows[0]?.argument ?? '',
-    type: 'select',
-    rows: true,
-  } satisfies SwitchMeta,
-});
+export type LogicBlockMeta =
+  | Readonly<{ kind: 'conditions' }>
+  | Readonly<{ kind: 'answers'; value: string }>
+  | Readonly<{ kind: 'number'; value: string }>
+  | Readonly<{ kind: 'participant' }>;
 
-/** The rows of an "If" as the editor holds it, and what it shows otherwise. */
-export const ifBlockRowsIn = (
-  attributes: Readonly<{ versions: readonly RichTextVersion[] }>,
-): Readonly<{
-  rows: readonly IfRowContent[];
-  otherwise: readonly RichTextContent[];
-}> => ({
-  rows: attributes.versions.flatMap((version) => {
-    const row = ifRowOf(version.key);
-    return row === undefined ? [] : [{ ...row, content: version.content }];
-  }),
-  otherwise:
-    attributes.versions.find(({ key }) => key === 'other')?.content ?? [],
-});
+/**
+ * What a branch of a `conditions` block records: the condition of its
+ * condition version.
+ */
+export type ConditionVersionMeta = Readonly<{
+  conditionId: string;
+  when: 'met' | 'notMet';
+}>;
+
+/**
+ * One branch of a logic block: its key, and, for a `conditions` block, its
+ * condition version.
+ */
+export type LogicBranch = Readonly<{
+  key: string;
+  meta: ConditionVersionMeta | null;
+}>;
+
+/**
+ * The key of the last branch of a logic block: the one shown when no condition
+ * version of a `conditions` block applies, or when an `answers` block's answer
+ * has no branch. One key for both, so a block whose logic changes between “If”,
+ * “Participant or someone else” and “Different content for each answer” keeps
+ * the content of its last branch.
+ */
+export const OTHERWISE_VERSION = 'otherwise';
+/** The key of the branch shown when the value is not known. */
+export const MISSING_VERSION = MISSING_CASE;
+/** The key of the participant's branch of a `participant` block. */
+export const PARTICIPANT_VERSION = 'participant';
+
+const CONDITION_VERSION_KEY_PREFIX = 'row:';
+
+/** The key of the branch for a condition version of a `conditions` block. */
+export const conditionVersionKey = (conditionId: string): string =>
+  `${CONDITION_VERSION_KEY_PREFIX}${conditionId}`;
+
+/** The logic a block's `meta` records, or undefined when it records none. */
+export const logicBlockMetaOf = (meta: unknown): LogicBlockMeta | undefined => {
+  if (!isRecord(meta)) return undefined;
+  switch (meta.kind) {
+    case 'conditions':
+      return { kind: 'conditions' };
+    case 'participant':
+      return { kind: 'participant' };
+    case 'answers':
+    case 'number':
+      return typeof meta.value === 'string' && meta.value !== ''
+        ? { kind: meta.kind, value: meta.value }
+        : undefined;
+    default:
+      return undefined;
+  }
+};
+
+/**
+ * The condition version a branch's `meta` records, or undefined for any other
+ * branch.
+ */
+export const conditionVersionMetaOf = (
+  meta: unknown,
+): ConditionVersionMeta | undefined =>
+  isRecord(meta) &&
+  typeof meta.conditionId === 'string' &&
+  (meta.when === 'met' || meta.when === 'notMet')
+    ? { conditionId: meta.conditionId, when: meta.when }
+    : undefined;
+
+/** The branches of a `conditions` block with these condition versions. */
+export const conditionBranches = (
+  conditionVersions: readonly ConditionVersionMeta[],
+): LogicBranch[] => [
+  ...conditionVersions.map((conditionVersion) => ({
+    key: conditionVersionKey(conditionVersion.conditionId),
+    meta: conditionVersion,
+  })),
+  { key: OTHERWISE_VERSION, meta: null },
+];
+
+/** The branches of an `answers` block giving a branch to each of `caseKeys`. */
+export const answerBranches = (caseKeys: readonly string[]): LogicBranch[] => [
+  { key: MISSING_VERSION, meta: null },
+  ...caseKeys.map((key) => ({ key, meta: null })),
+  { key: OTHERWISE_VERSION, meta: null },
+];
+
+/** The branches of a `number` block: one per plural category, `other` last. */
+export const numberBranches = (
+  categories: readonly PluralCategory[],
+): LogicBranch[] => [
+  { key: MISSING_VERSION, meta: null },
+  ...categories
+    .filter((category) => category !== 'other')
+    .map((key) => ({ key, meta: null })),
+  { key: 'other', meta: null },
+];
+
+/** The branches of a `participant` block. */
+export const participantBranches = (): LogicBranch[] => [
+  { key: PARTICIPANT_VERSION, meta: null },
+  { key: OTHERWISE_VERSION, meta: null },
+];
+
+/** What a logic block's node records about `logic` (its `meta`). */
+export const metaOfLogic = (logic: ContentLogic): LogicBlockMeta => {
+  switch (logic.kind) {
+    case 'answers':
+    case 'number':
+      return { kind: logic.kind, value: logic.value };
+    case 'conditions':
+      return { kind: 'conditions' };
+    case 'participant':
+    default:
+      return { kind: 'participant' };
+  }
+};
+
+/** Each branch of `logic`, with the content it shows. */
+export const branchesOfLogic = (
+  logic: ContentLogic,
+): readonly (LogicBranch & Readonly<{ content: ContentNodes }>)[] => {
+  switch (logic.kind) {
+    case 'conditions':
+      return [
+        ...logic.versions.map(({ conditionId, when, content }) => ({
+          key: conditionVersionKey(conditionId),
+          meta: { conditionId, when },
+          content,
+        })),
+        { key: OTHERWISE_VERSION, meta: null, content: logic.otherwise },
+      ];
+    case 'answers':
+      return [
+        { key: MISSING_VERSION, meta: null, content: logic.missing },
+        ...logic.versions.map(({ caseKey, content }) => ({
+          key: caseKey,
+          meta: null,
+          content,
+        })),
+        { key: OTHERWISE_VERSION, meta: null, content: logic.other },
+      ];
+    case 'number':
+      return [
+        { key: MISSING_VERSION, meta: null, content: logic.missing },
+        ...logic.counted.versions.map(({ category, content }) => ({
+          key: category,
+          meta: null,
+          content,
+        })),
+        { key: 'other', meta: null, content: logic.counted.other },
+      ];
+    case 'participant':
+    default:
+      return [
+        { key: PARTICIPANT_VERSION, meta: null, content: logic.participant },
+        { key: OTHERWISE_VERSION, meta: null, content: logic.otherwise },
+      ];
+  }
+};
+
+type BranchContent = Readonly<{
+  key: string;
+  meta: unknown;
+  content: ContentNodes;
+}>;
+
+/** The logic a block of `meta` with these branches is. */
+const logicOfBranches = (
+  meta: LogicBlockMeta,
+  branches: readonly BranchContent[],
+): ContentLogic => {
+  const contentOf = (key: string): ContentNodes =>
+    branches.find((branch) => branch.key === key)?.content ?? [];
+  switch (meta.kind) {
+    case 'conditions':
+      return {
+        kind: 'conditions',
+        versions: branches.flatMap((branch) => {
+          const conditionVersion = conditionVersionMetaOf(branch.meta);
+          return conditionVersion === undefined
+            ? []
+            : [{ ...conditionVersion, content: branch.content }];
+        }),
+        otherwise: contentOf(OTHERWISE_VERSION),
+      };
+    case 'answers':
+      return {
+        kind: 'answers',
+        value: meta.value,
+        missing: contentOf(MISSING_VERSION),
+        versions: branches
+          .filter(
+            ({ key }) =>
+              key !== MISSING_VERSION &&
+              key !== OTHERWISE_VERSION &&
+              key !== '',
+          )
+          .map(({ key, content }) => ({ caseKey: key, content })),
+        other: contentOf(OTHERWISE_VERSION),
+      };
+    case 'number':
+      return {
+        kind: 'number',
+        value: meta.value,
+        missing: contentOf(MISSING_VERSION),
+        counted: {
+          by: 'category',
+          versions: branches.flatMap(({ key, content }) =>
+            isPluralCategory(key) && key !== 'other'
+              ? [{ category: key, content }]
+              : [],
+          ),
+          other: contentOf('other'),
+        },
+      };
+    case 'participant':
+    default:
+      return {
+        kind: 'participant',
+        participant: contentOf(PARTICIPANT_VERSION),
+        otherwise: contentOf(OTHERWISE_VERSION),
+      };
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Supplied wording's versions (switches inside a line)
+// ---------------------------------------------------------------------------
 
 /**
  * A switch's versions in the order the editor shows them: what the text reads
@@ -203,9 +398,9 @@ const inShownOrder = <Version extends Readonly<{ key: string }>>(
 ];
 
 /**
- * A switch's versions in the order the message records them: the version
- * for when the value is not known first, as the insert menu writes it, so
- * opening and editing a text never reorders what it already says.
+ * A switch's versions in the order the message records them: the version for
+ * when the value is not known first, so opening and editing a text never
+ * reorders what it already says.
  */
 const inRecordedOrder = <Version extends Readonly<{ key: string }>>(
   versions: readonly Version[],
@@ -213,6 +408,13 @@ const inRecordedOrder = <Version extends Readonly<{ key: string }>>(
   ...versions.filter(({ key }) => key === MISSING_CASE),
   ...versions.filter(({ key }) => key !== MISSING_CASE),
 ];
+
+/** What a versions element records about the switch it stands for. */
+type SwitchMeta = Readonly<{
+  argument: string;
+  type: MessageSwitch['type'];
+  offset?: number;
+}>;
 
 /**
  * Whether one entry of a versions element's `versions` is a version. The
@@ -238,17 +440,20 @@ export const isSwitchMeta = (value: unknown): value is SwitchMeta =>
   'type' in value &&
   (value.type === 'select' || value.type === 'plural');
 
+// ---------------------------------------------------------------------------
+// Markers: values held in place while the words around them are markdown
+// ---------------------------------------------------------------------------
+
 // Stand-ins for the values and switches while the text around them is read
-// as markdown: private-use characters that authored text cannot hold, so no
-// markdown syntax forms around them and none is mistaken for one.
-const MARKER_OPEN = '';
-const MARKER_CLOSE = '';
-const MARKER = /(\d+)/g;
+// as markdown: private-use characters that authored text cannot contain, so
+// no markdown syntax forms around them and none is mistaken for one.
+const MARKER_OPEN = '\u{e000}';
+const MARKER_CLOSE = '\u{e001}';
+const MARKER = /\u{e000}(\d+)\u{e001}/gu;
 const markerFor = (index: number) => `${MARKER_OPEN}${index}${MARKER_CLOSE}`;
-const holdsMarker = (text: string) => text.includes(MARKER_OPEN);
+const containsMarker = (text: string) => text.includes(MARKER_OPEN);
 
 // A version is read behind `VERSION_LINE_LEAD`, which is then taken off.
-// (Writing needs none: the editor escapes such text wherever it is.)
 const withoutLineLead = (
   line: readonly RichTextContent[],
 ): RichTextContent[] => {
@@ -259,28 +464,6 @@ const withoutLineLead = (
   const text = first.text.slice(VERSION_LINE_LEAD.length);
   return text === '' ? rest : [{ ...first, text }, ...rest];
 };
-
-/**
- * Why a message cannot be shown in the editor as it is: a value inside a link
- * address, a version of markdown text that runs over more than one line
- * (paragraphs, a list, a heading), which a version's one-line editor would
- * run together and write back that way, or a file written where the editor
- * holds no block (see protocol-validation's `AssetBlockPlacementProblem`),
- * which it would write back as the file's description alone.
- */
-type MessageDocumentProblemKind =
-  | 'valueInLinkAddress'
-  | 'linesInVersion'
-  | 'misplacedFile';
-
-export class MessageDocumentProblem extends Error {
-  readonly kind: MessageDocumentProblemKind;
-
-  constructor(kind: MessageDocumentProblemKind) {
-    super(kind);
-    this.kind = kind;
-  }
-}
 
 const PLAIN_LINE = (text: string): RichTextContent => ({
   type: 'doc',
@@ -294,7 +477,7 @@ const PLAIN_LINE = (text: string): RichTextContent => ({
 /**
  * Replaces each marker in the document's text with the node it stands for,
  * carrying the text's marks onto it. A marker in an attribute (a link
- * address) cannot be shown.
+ * address, a file's address or description) cannot be shown.
  */
 const restoreMarkers = (
   content: RichTextContent,
@@ -305,8 +488,6 @@ const restoreMarkers = (
       throw new MessageDocumentProblem('valueInLinkAddress');
     }
   }
-  // A file's block keeps its address and description as attributes, where a
-  // value cannot be shown any more than in a link's address.
   if (
     content.type !== 'text' &&
     content.attrs !== undefined &&
@@ -319,7 +500,7 @@ const restoreMarkers = (
 
   const restored: RichTextContent[] = [];
   for (const child of content.content) {
-    if (child.type !== 'text' || !holdsMarker(child.text ?? '')) {
+    if (child.type !== 'text' || !containsMarker(child.text ?? '')) {
       restored.push(restoreMarkers(child, pieces));
       continue;
     }
@@ -344,8 +525,7 @@ const restoreMarkers = (
 };
 
 // The spaces at each end of a text, and what lies between them; text that is
-// all spaces is all `before`. Sliced rather than matched, so a long run of
-// spaces costs one pass.
+// all spaces is all `before`.
 const edgeSpace = (text: string): [string, string, string] => {
   const start = text.length - text.trimStart().length;
   const end = text.trimEnd().length;
@@ -353,13 +533,8 @@ const edgeSpace = (text: string): [string, string, string] => {
   return [text.slice(0, start), text.slice(start, end), text.slice(end)];
 };
 
-// Asked of what markdown reads, never of how the text is spelled: an address
-// may be written with its colon escaped (`asset\:id`, `asset&#58;id`).
-const namesFile = (markdown: string): boolean =>
-  assetBlocksInMarkdown(markdown).length > 0;
-
-// Whether text declared to hold blocks names a file anywhere but in a
-// paragraph of its own text, which is the one place a block is written.
+// Whether markdown names a file anywhere but in a paragraph of its own, the
+// one place a block is written.
 const misplacesFile = (markdown: string): boolean =>
   assetBlocksInMarkdown(markdown).some(({ problems }) =>
     problems.some(
@@ -367,28 +542,96 @@ const misplacesFile = (markdown: string): boolean =>
     ),
   );
 
+// ---------------------------------------------------------------------------
+// Reading: message → document
+// ---------------------------------------------------------------------------
+
+type Reading = Readonly<{
+  format: MessageDocumentFormat;
+  options: MessageDocumentOptions;
+}>;
+
+type Level = { text: string; pieces: RichTextContent[] };
+
+/**
+ * One level of a message as text with a marker for each value (and, in
+ * supplied wording, each switch), and the nodes the markers stand for.
+ * `plural` names the plural whose version the level is directly in.
+ */
+const levelOf = (
+  nodes: readonly MessageNode[],
+  plural: string | undefined,
+  reading: Reading,
+): Level => {
+  const pieces: RichTextContent[] = [];
+  let text = '';
+  for (const node of nodes) {
+    if (node.kind === 'text') {
+      text += node.text;
+      continue;
+    }
+    text += markerFor(pieces.length);
+    if (node.kind === 'argument') {
+      pieces.push(inlineValue(node.name));
+      continue;
+    }
+    if (node.kind === 'count') {
+      // In supplied wording, the number a plural shows; in a number logic
+      // block's branch, the value it is on, shown as itself.
+      pieces.push(
+        inlineValue(
+          reading.options.versions === undefined
+            ? (plural ?? '')
+            : countTokenId(plural ?? ''),
+        ),
+      );
+      continue;
+    }
+    const labels = reading.options.versions;
+    if (labels === undefined) throw new MessageDocumentProblem('inlineChoice');
+    const inner = node.type === 'plural' ? node.argument : plural;
+    const versions: RichTextVersion[] = inShownOrder(node.versions).map(
+      (version) => {
+        const nested = levelOf(version.nodes, inner, reading);
+        return {
+          key: version.key,
+          label: labels.versionLabel(node, version.key),
+          content: versionLine(nested, reading.format),
+        };
+      },
+    );
+    const meta: SwitchMeta = {
+      argument: node.argument,
+      type: node.type,
+      ...(node.offset !== undefined && { offset: node.offset }),
+    };
+    const attrs: RichTextVersionsAttributes = {
+      label: labels.switchLabel(node),
+      summary: labels.switchSummary(node),
+      versions,
+      meta,
+    };
+    pieces.push({ type: 'versions', attrs });
+  }
+  return { text, pieces };
+};
+
 /**
  * A version's line from its markdown. Markdown drops the spaces at the ends
  * of a line, but a version's spaces are part of the sentence it sits in, so
  * they are kept as text.
  */
 const versionLine = (
-  markdown: string,
-  pieces: readonly RichTextContent[],
+  { text, pieces }: Level,
   format: MessageDocumentFormat,
 ): RichTextContent[] => {
   if (!format.markdown) {
-    return (
-      restoreMarkers(PLAIN_LINE(markdown), pieces).content?.[0]?.content ?? []
-    );
+    return restoreMarkers(PLAIN_LINE(text), pieces).content?.[0]?.content ?? [];
   }
-  if (markdown.includes('\n')) {
+  if (text.includes('\n')) {
     throw new MessageDocumentProblem('linesInVersion');
   }
-  if (format.assetBlocks === true && namesFile(markdown)) {
-    throw new MessageDocumentProblem('misplacedFile');
-  }
-  const [before, middle, after] = edgeSpace(markdown);
+  const [before, middle, after] = edgeSpace(text);
   const parsed = restoreMarkers(
     markdownToRichTextContent(VERSION_LINE_LEAD + middle, {
       inline: true,
@@ -402,102 +645,184 @@ const versionLine = (
   return line;
 };
 
-/**
- * The editor's document for a message: its text read as markdown or plain
- * text, each value a placeholder (`token`), and each switch a versions
- * element whose versions are lines of their own.
- *
- * Throws `MessageDocumentProblem` for a message the editor cannot hold, such
- * as one with a value inside a link address, or a version of markdown that
- * runs over more than one line.
- */
-export const messageToDocument = (
+/** The one paragraph of a message of one line, as the editor holds it. */
+const lineDocumentOf = (
   nodes: readonly MessageNode[],
-  format: MessageDocumentFormat,
-  labels: MessageDocumentLabels,
+  reading: Reading,
 ): RichTextContent => {
-  const level = (
-    levelNodes: readonly MessageNode[],
-    plural: string | undefined,
-  ) => {
-    const pieces: RichTextContent[] = [];
-    let text = '';
-    for (const node of levelNodes) {
-      if (node.kind === 'text') {
-        text += node.text;
-        continue;
-      }
-      text += markerFor(pieces.length);
-      if (node.kind === 'argument') {
-        pieces.push({ type: 'token', attrs: { id: node.name } });
-      } else if (node.kind === 'count') {
-        pieces.push({
-          type: 'token',
-          attrs: { id: countTokenId(plural ?? '') },
-        });
-      } else if (labels.ifBlock?.is(node) === true) {
-        const block = labels.ifBlock;
-        const { rows, otherwise } = ifRowsOf(node, block.is);
-        const line = (lineNodes: readonly MessageNode[]) => {
-          const nested = level(lineNodes, plural);
-          return versionLine(nested.text, nested.pieces, format);
-        };
-        pieces.push({
-          type: 'versions',
-          attrs: ifBlockAttributes(
-            rows.map((row) => ({
-              argument: row.argument,
-              key: row.key,
-              content: line(row.nodes),
-            })),
-            line(otherwise),
-            block,
-          ),
-        });
-      } else {
-        const inner = node.type === 'plural' ? node.argument : plural;
-        const versions: RichTextVersion[] = inShownOrder(node.versions).map(
-          (version) => {
-            const nested = level(version.nodes, inner);
-            return {
-              key: version.key,
-              label: labels.versionLabel(node, version.key),
-              content: versionLine(nested.text, nested.pieces, format),
-            };
-          },
-        );
-        const meta: SwitchMeta = {
-          argument: node.argument,
-          type: node.type,
-          ...(node.offset !== undefined && { offset: node.offset }),
-        };
-        const attrs: RichTextVersionsAttributes = {
-          label: labels.switchLabel(node),
-          summary: labels.switchSummary(node),
-          versions,
-          ...(labels.variantOf?.(node) === 'logic' && { variant: 'logic' }),
-          meta,
-        };
-        pieces.push({ type: 'versions', attrs });
-      }
-    }
-    return { text, pieces };
-  };
-
-  const top = level(nodes, undefined);
-  if (!format.markdown) return restoreMarkers(PLAIN_LINE(top.text), top.pieces);
-  if (format.assetBlocks === true && misplacesFile(top.text)) {
-    throw new MessageDocumentProblem('misplacedFile');
+  const top = levelOf(nodes, undefined, reading);
+  if (!reading.format.markdown) {
+    return restoreMarkers(PLAIN_LINE(top.text), top.pieces);
   }
   return restoreMarkers(
-    markdownToRichTextContent(top.text, {
-      inline: format.singleLine,
-      links: true,
-      assetBlocks: format.assetBlocks === true,
-    }),
+    markdownToRichTextContent(top.text, { inline: true, links: true }),
     top.pieces,
   );
 };
+
+/**
+ * The inline content of a field's question or hint, as one line of markdown.
+ */
+const fieldLineOf = (
+  message: string | undefined,
+  reading: Reading,
+): RichTextContent[] | undefined => {
+  if (message === undefined || message === '') return undefined;
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) {
+    throw new MessageDocumentProblem('unreadableDocument');
+  }
+  const line =
+    lineDocumentOf(structure.nodes, {
+      format: { markdown: true, singleLine: true },
+      // A field's question is researcher text: no switches inside it.
+      options: { fieldText: reading.options.fieldText },
+    }).content?.[0]?.content ?? [];
+  return line.length > 0 ? line : undefined;
+};
+
+/** The editor's block for the field `fieldId`. */
+const fieldBlockOf = (fieldId: string, reading: Reading): RichTextContent => {
+  const field = reading.options.fieldText?.(fieldId);
+  const attrs = {
+    fieldId,
+    variable: field?.variable ?? '',
+    showValidationHints: field?.showValidationHints ?? false,
+  };
+  if (reading.options.fieldBlockText === 'none') {
+    return { type: FIELD_BLOCK, attrs };
+  }
+  const label = fieldLineOf(field?.prompt, reading);
+  const hint = fieldLineOf(field?.hint, reading);
+  return {
+    type: FIELD_BLOCK,
+    attrs,
+    content: [
+      {
+        type: FIELD_LABEL,
+        ...(label !== undefined && { content: label }),
+      },
+      { type: FIELD_HINT, ...(hint !== undefined && { content: hint }) },
+    ],
+  };
+};
+
+/** The blocks of markdown that a run of a document is. */
+const markdownBlocksOf = (
+  nodes: readonly MessageNode[],
+  plural: string | undefined,
+  reading: Reading,
+): RichTextContent[] => {
+  const level = levelOf(nodes, plural, reading);
+  if (reading.format.assetBlocks === true && misplacesFile(level.text)) {
+    throw new MessageDocumentProblem('misplacedFile');
+  }
+  const document = restoreMarkers(
+    markdownToRichTextContent(level.text, {
+      links: true,
+      assetBlocks: reading.format.assetBlocks === true,
+    }),
+    level.pieces,
+  );
+  const blocks = document.content ?? [];
+  // An empty run reads as one empty paragraph, which is no block of its own.
+  return blocks.length === 1 &&
+    blocks[0]?.type === 'paragraph' &&
+    (blocks[0].content ?? []).length === 0
+    ? []
+    : blocks;
+};
+
+/** The editor's blocks for a document's nodes. */
+const blocksOf = (
+  nodes: ContentNodes,
+  plural: string | undefined,
+  reading: Reading,
+): RichTextContent[] =>
+  nodes.flatMap((node): RichTextContent[] => {
+    if (node.kind === 'markdown') {
+      return markdownBlocksOf(node.nodes, plural, reading);
+    }
+    if (node.kind === 'field') return [fieldBlockOf(node.fieldId, reading)];
+    return [logicBlockOf(node.logic, reading)];
+  });
+
+/** A branch's blocks; one empty paragraph for a branch that shows nothing. */
+const branchBlocks = (blocks: RichTextContent[]): RichTextContent[] =>
+  blocks.length === 0 ? [{ type: 'paragraph' }] : blocks;
+
+const logicBlockOf = (
+  logic: ContentLogic,
+  reading: Reading,
+): RichTextContent => ({
+  type: LOGIC_BLOCK,
+  attrs: { meta: metaOfLogic(logic) },
+  content: branchesOfLogic(logic).map((branch) => ({
+    type: LOGIC_BRANCH,
+    attrs: { key: branch.key, meta: branch.meta },
+    content: branchBlocks(
+      blocksOf(
+        branch.content,
+        // A number's forms are versions of a plural on its value.
+        logic.kind === 'number' && branch.key !== MISSING_VERSION
+          ? logic.value
+          : undefined,
+        reading,
+      ),
+    ),
+  })),
+});
+
+/**
+ * The editor's document for a message: its text read as markdown or plain
+ * text, each value an `inlineValue`, each switch of supplied wording a
+ * versions element whose versions are lines of their own, and, in markdown of
+ * several lines, each logic block a `logicBlock` and each field of a form a
+ * `fieldBlock` (with its question and hint from `options.fieldText`, unless
+ * `options.fieldBlockText` is `'none'`).
+ *
+ * Throws `MessageDocumentProblem` for a message the editor cannot show.
+ */
+export const messageToDocument = (
+  message: string,
+  format: MessageDocumentFormat,
+  options: MessageDocumentOptions = {},
+): RichTextContent => {
+  const reading: Reading = { format, options };
+  if (format.markdown && !format.singleLine) {
+    const document = readContentDocument(message);
+    if (document.problems.length > 0) {
+      throw new MessageDocumentProblem(
+        document.problems.some(({ kind }) => kind === 'inlineChoice')
+          ? 'inlineChoice'
+          : 'unreadableDocument',
+      );
+    }
+    const blocks = blocksOf(document.nodes, undefined, reading);
+    return {
+      type: 'doc',
+      content: blocks.length === 0 ? [{ type: 'paragraph' }] : blocks,
+    };
+  }
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) {
+    throw new MessageDocumentProblem('unreadableDocument');
+  }
+  return lineDocumentOf(structure.nodes, reading);
+};
+
+/** The inline content of a one-line message, as the editor holds it. */
+export const inlineContent = (
+  nodes: readonly MessageNode[],
+  format: MessageDocumentFormat,
+  options: MessageDocumentOptions = {},
+): RichTextContent[] =>
+  lineDocumentOf(nodes, { format: { ...format, singleLine: true }, options })
+    .content?.[0]?.content ?? [];
+
+// ---------------------------------------------------------------------------
+// Writing: document → message
+// ---------------------------------------------------------------------------
 
 const plainTextOf = (content: RichTextContent): string => {
   if (content.type === 'text') return content.text ?? '';
@@ -506,14 +831,14 @@ const plainTextOf = (content: RichTextContent): string => {
 };
 
 /**
- * Replaces each placeholder and versions element with a marker, keeping its
- * marks on the marker, so the text around them can be written as markdown.
+ * Replaces each value and versions element with a marker, keeping its marks
+ * on the marker, so the text around them can be written as markdown.
  */
 const withMarkers = (
   content: RichTextContent,
   pieces: RichTextContent[],
 ): RichTextContent => {
-  if (content.type === 'token' || content.type === 'versions') {
+  if (content.type === INLINE_VALUE || content.type === 'versions') {
     const index = pieces.length;
     pieces.push(content);
     return {
@@ -559,7 +884,7 @@ const lineDocument = (line: readonly RichTextContent[]): RichTextContent => ({
  * `pluralArgument` names the plural whose version the piece sits directly
  * in. ICU reads `#` as that plural's number only there: at the top level, or
  * inside a select (even one within a plural), `#` is literal text. A count
- * pill pasted anywhere else keeps its value as an ordinary placeholder.
+ * pill pasted anywhere else keeps its value as an ordinary value.
  */
 const pieceNode = (
   piece: RichTextContent,
@@ -567,7 +892,7 @@ const pieceNode = (
   pluralArgument: string | undefined,
 ): MessageNode | undefined => {
   const attrs = piece.attrs ?? {};
-  if (piece.type === 'token') {
+  if (piece.type === INLINE_VALUE) {
     const id = typeof attrs.id === 'string' ? attrs.id : '';
     const countArgument = countArgumentOf(id);
     if (countArgument === undefined) return { kind: 'argument', name: id };
@@ -577,41 +902,6 @@ const pieceNode = (
   }
   const meta: unknown = attrs.meta;
   if (!isSwitchMeta(meta) || !Array.isArray(attrs.versions)) return undefined;
-  if (meta.rows === true) {
-    // An "If": each row after the first is an "If" of its own, the whole of
-    // what the row before it reads otherwise.
-    const listed = attrs.versions.filter(isRichTextVersion);
-    const nodesOf = (version: RichTextVersion | undefined) =>
-      version === undefined
-        ? []
-        : // An "If" is a select, where `#` is literal text: a count pill in
-          // one of its rows keeps its value as an ordinary placeholder.
-          messageNodesOf(
-            lineDocument(version.content),
-            format,
-            true,
-            undefined,
-          );
-    let otherwise: MessageNode[] = nodesOf(
-      listed.find(({ key }) => key === 'other'),
-    );
-    let outermost: MessageSwitch | undefined;
-    for (const version of listed.toReversed()) {
-      const row = ifRowOf(version.key);
-      if (row === undefined) continue;
-      outermost = {
-        kind: 'switch',
-        argument: row.argument,
-        type: 'select',
-        versions: [
-          { key: row.key, nodes: nodesOf(version) },
-          { key: 'other', nodes: otherwise },
-        ],
-      };
-      otherwise = [outermost];
-    }
-    return outermost;
-  }
   const versions = inRecordedOrder(
     attrs.versions.filter(isRichTextVersion),
   ).map((version): MessageVersion => ({
@@ -672,8 +962,129 @@ const messageNodesOf = (
 };
 
 /**
- * The message the editor's document holds: its text as markdown or plain
- * text, each placeholder a value, and each versions element a switch.
+ * Whether a message structure (`messageStructure`) shows nothing: only blank
+ * words. PV's `isBlankMessage` asks the same of a stored message.
+ */
+export const isBlankStructure = (nodes: readonly MessageNode[]): boolean =>
+  nodes.every((node) => node.kind === 'text' && node.text.trim() === '');
+
+const MARKDOWN_LINE: MessageDocumentFormat = {
+  markdown: true,
+  singleLine: true,
+};
+
+/** A field's question or hint as a message, or undefined when it is empty. */
+const fieldLineMessage = (
+  content: readonly RichTextContent[] | undefined,
+): string | undefined => {
+  const nodes = messageNodesOf(
+    lineDocument(content ?? []),
+    MARKDOWN_LINE,
+    false,
+    undefined,
+  );
+  return isBlankStructure(nodes) ? undefined : printMessageStructure(nodes);
+};
+
+const fieldTextOf = (block: RichTextContent): [string, FieldText] => {
+  const attrs = block.attrs ?? {};
+  const fieldId = typeof attrs.fieldId === 'string' ? attrs.fieldId : '';
+  const [label, hint] = [FIELD_LABEL, FIELD_HINT].map(
+    (type) => block.content?.find((child) => child.type === type)?.content,
+  );
+  const prompt = fieldLineMessage(label);
+  const hintMessage = fieldLineMessage(hint);
+  return [
+    fieldId,
+    {
+      variable: typeof attrs.variable === 'string' ? attrs.variable : '',
+      showValidationHints: attrs.showValidationHints === true,
+      ...(prompt !== undefined && { prompt }),
+      ...(hintMessage !== undefined && { hint: hintMessage }),
+    },
+  ];
+};
+
+type Writing = Readonly<{
+  format: MessageDocumentFormat;
+  fieldTexts: Map<string, FieldText>;
+}>;
+
+/** A document's nodes from the editor's blocks. */
+const contentOfBlocks = (
+  blocks: readonly RichTextContent[],
+  plural: string | undefined,
+  writing: Writing,
+): ContentNode[] => {
+  const nodes: ContentNode[] = [];
+  let run: RichTextContent[] = [];
+  const endRun = () => {
+    if (run.length === 0) return;
+    const written = messageNodesOf(
+      { type: 'doc', content: run },
+      writing.format,
+      false,
+      undefined,
+    ).map((node): MessageNode =>
+      // A value on the number a branch is a form of shows that number: it
+      // is written as the value, which reads the same in every branch.
+      node.kind === 'count' && plural !== undefined
+        ? { kind: 'argument', name: plural }
+        : node,
+    );
+    if (!isBlankStructure(written))
+      nodes.push({ kind: 'markdown', nodes: written });
+    run = [];
+  };
+  for (const block of blocks) {
+    if (block.type === FIELD_BLOCK) {
+      endRun();
+      const [fieldId, text] = fieldTextOf(block);
+      writing.fieldTexts.set(fieldId, text);
+      nodes.push({ kind: 'field', fieldId });
+      continue;
+    }
+    if (block.type === LOGIC_BLOCK) {
+      endRun();
+      const logic = contentLogicOf(block, writing);
+      if (logic !== undefined) nodes.push({ kind: 'logic', logic });
+      continue;
+    }
+    run.push(block);
+  }
+  endRun();
+  return nodes;
+};
+
+const contentLogicOf = (
+  block: RichTextContent,
+  writing: Writing,
+): ContentLogic | undefined => {
+  const meta = logicBlockMetaOf(block.attrs?.meta);
+  if (meta === undefined) return undefined;
+  const branches = (block.content ?? [])
+    .filter((child) => child.type === LOGIC_BRANCH)
+    .map((child): BranchContent => {
+      const key = typeof child.attrs?.key === 'string' ? child.attrs.key : '';
+      return {
+        key,
+        meta: child.attrs?.meta,
+        content: contentOfBlocks(
+          child.content ?? [],
+          meta.kind === 'number' && key !== MISSING_VERSION
+            ? meta.value
+            : undefined,
+          writing,
+        ),
+      };
+    });
+  return logicOfBranches(meta, branches);
+};
+
+/**
+ * The message nodes the editor's document of one line is: its text as
+ * markdown or plain text, each value an argument, and each versions element
+ * of supplied wording a switch.
  */
 export const documentToMessageNodes = (
   document: RichTextContent,
@@ -681,23 +1092,78 @@ export const documentToMessageNodes = (
 ): MessageNode[] => messageNodesOf(document, format, false, undefined);
 
 /**
+ * The message the editor's document is, or undefined for a document that says
+ * nothing, and the question, hint and settings of each field it places, by
+ * field id (for the text of a form; see `FieldText`). Markdown of several
+ * lines is written as `printContentDocument` writes a document: its blocks
+ * separated by blank lines, each logic block in its one shape, each field as
+ * `![](field:<id>)`.
+ */
+export const documentToMessage = (
+  document: RichTextContent,
+  format: MessageDocumentFormat,
+): Readonly<{
+  message: string | undefined;
+  fieldTexts: ReadonlyMap<string, FieldText>;
+}> => {
+  const fieldTexts = new Map<string, FieldText>();
+  if (format.markdown && !format.singleLine) {
+    const nodes = contentOfBlocks(document.content ?? [], undefined, {
+      format,
+      fieldTexts,
+    });
+    const message = printContentDocument(nodes);
+    return {
+      message: message.trim() === '' ? undefined : message,
+      fieldTexts,
+    };
+  }
+  const nodes = documentToMessageNodes(document, format);
+  return {
+    message: isBlankStructure(nodes) ? undefined : printMessageStructure(nodes),
+    fieldTexts,
+  };
+};
+
+/**
+ * The editor node of one field block, with `text` as its question and hint:
+ * what a form's text holds for the field `fieldId`. Undefined where the
+ * block cannot be opened (`MessageDocumentProblem`).
+ */
+export const fieldBlockNodeOf = (
+  fieldId: string,
+  text: FieldText,
+): RichTextContent | undefined => {
+  try {
+    return messageToDocument(
+      fieldBlockMarkdown(fieldId),
+      { markdown: true, singleLine: false },
+      { fieldText: (candidate) => (candidate === fieldId ? text : undefined) },
+    ).content?.[0];
+  } catch (error) {
+    if (error instanceof MessageDocumentProblem) return undefined;
+    throw error;
+  }
+};
+
+/**
  * The editor's document for the stored text of the field `name`. Validation
- * refuses a protocol holding text the editor cannot hold, so one that reaches
- * an editor is a fault, and this throws.
+ * refuses a protocol containing text the editor cannot show, so one that
+ * reaches an editor is a fault, and this throws.
  */
 export const openMessageDocument = (
   name: string,
   message: string,
   format: MessageDocumentFormat,
-  labels: MessageDocumentLabels,
+  options: MessageDocumentOptions = {},
 ): RichTextContent => {
-  const fault = (cause?: unknown) =>
-    new Error(`The text of "${name}" cannot be opened for editing.`, { cause });
-  const structure = messageStructure(message);
-  if (!('nodes' in structure)) throw fault();
   try {
-    return messageToDocument(structure.nodes, format, labels);
+    return messageToDocument(message, format, options);
   } catch (error) {
-    throw error instanceof MessageDocumentProblem ? fault(error) : error;
+    throw error instanceof MessageDocumentProblem
+      ? new Error(`The text of "${name}" cannot be opened for editing.`, {
+          cause: error,
+        })
+      : error;
   }
 };

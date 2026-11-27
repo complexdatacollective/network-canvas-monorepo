@@ -13,6 +13,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../schemas/9/family-pedigree-values.ts';
 import { ProtocolSchemaV9 } from '../../schemas/9/schema.ts';
+import { formOf } from '../../testing/fixtures.ts';
 import {
   findExclusiveVariableConflicts,
   findStageManagedOptionBindings,
@@ -185,15 +186,13 @@ describe('findExclusiveVariableConflicts', () => {
   it('reports a form field bound to the participant marker', () => {
     const protocol = protocolWith([
       familyPedigree({
-        form: {
-          fields: [
-            {
-              id: 'field-1',
-              variable: 'isEgo',
-              prompt: localized('Are you the participant?'),
-            },
-          ],
-        },
+        form: formOf([
+          {
+            id: 'field-1',
+            variable: 'isEgo',
+            prompt: localized('Are you the participant?'),
+          },
+        ]),
       }),
     ]);
     const conflicts = findExclusiveVariableConflicts(protocol);
@@ -419,15 +418,13 @@ describe('findStageManagedOptionBindings', () => {
         label: localized('Ask gender'),
         type: 'NameGenerator',
         subject: { entity: 'node', type: 'family_member' },
-        form: {
-          fields: [
-            {
-              id: 'field-1',
-              variable: 'genderIdentity',
-              prompt: localized('Gender?'),
-            },
-          ],
-        },
+        form: formOf([
+          {
+            id: 'field-1',
+            variable: 'genderIdentity',
+            prompt: localized('Gender?'),
+          },
+        ]),
         prompts: [{ id: 'p1', text: localized('Name people') }],
       },
     ]);

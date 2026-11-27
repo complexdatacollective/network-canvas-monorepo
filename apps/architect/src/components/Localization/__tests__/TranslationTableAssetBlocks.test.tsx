@@ -1,10 +1,6 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { Provider } from 'react-redux';
-import { describe, expect, it, vi } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
   testTypeId,
   testVariableId,
@@ -14,11 +10,9 @@ import {
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
 import { testProtocol } from '~/__tests__/helpers';
-import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 
-import TranslationTable from '../TranslationTable';
+import { renderTranslationTable } from './renderTranslationTable';
 
 const BLOCK = '![A map of the area](asset:map?size=medium&align=end)';
 const ENGLISH = `# Welcome\n\n${BLOCK}\n\nSome text`;
@@ -63,22 +57,8 @@ const protocol = testProtocol({
   ],
 });
 
-const renderTable = (shown: CurrentProtocol = protocol) => {
-  const store = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  store.dispatch(setActiveProtocol(structuredClone(shown)));
-  render(
-    <Provider store={store}>
-      <FormStoreProvider>
-        <TranslationTable onSaved={vi.fn()} onCancel={vi.fn()} />
-      </FormStoreProvider>
-    </Provider>,
-  );
-  return { store, user: userEvent.setup() };
-};
+const renderTable = (shown: CurrentProtocol = protocol) =>
+  renderTranslationTable(shown);
 
 const pageContentCell = (language: string) =>
   screen.getByRole('button', {

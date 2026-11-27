@@ -142,7 +142,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         });
         stage.addPrompt({
           text: {
-            'en-US': `{${focal}, select, missing {Who does this person know?} other {Who does {${focal}} know?}}`,
+            'en-US': `Who does {${focal}} know?`,
           },
           createEdge: friendship.id,
         });

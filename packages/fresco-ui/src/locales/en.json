@@ -571,25 +571,17 @@
     "defaultMessage": "Insert emoji",
     "description": "Accessible name and tooltip of the toolbar button in the rich text editor that opens a searchable menu of emoji to insert into the text. Also names the menu."
   },
+  "frescoUi.richTextEditor.emojiMenuNoMatches": {
+    "defaultMessage": "Nothing matches your search.",
+    "description": "Shown in the rich text editor’s emoji menu when the search matches no emoji."
+  },
+  "frescoUi.richTextEditor.emojiMenuSearch": {
+    "defaultMessage": "Search",
+    "description": "Accessible name and placeholder of the search box in the rich text editor’s emoji menu, which filters the emoji that can be inserted into the text."
+  },
   "frescoUi.richTextEditor.emptyVersion": {
     "defaultMessage": "Shows nothing",
     "description": "Muted hint shown inside an empty version of a piece of text, such as the version shown when a participant’s name is not known. An empty version is allowed: in that case nothing is shown in its place. The hint is not part of the text."
-  },
-  "frescoUi.richTextEditor.insertMenuNoMatches": {
-    "defaultMessage": "Nothing matches your search.",
-    "description": "Shown in the rich text editor’s insert menu when the search matches nothing that can be inserted."
-  },
-  "frescoUi.richTextEditor.insertMenuRequired": {
-    "defaultMessage": "Required in this text",
-    "description": "Marker on an entry in the rich text editor’s insert menu, such as a person’s name, that the text being written must include and does not include yet."
-  },
-  "frescoUi.richTextEditor.insertMenuRequiredMissing": {
-    "defaultMessage": "Something this text requires is not in it yet",
-    "description": "Second line of the tooltip, and part of the accessible name, of the toolbar button that opens the rich text editor’s insert menu, while the menu offers something, such as a person’s name, that the text being written must include and does not include yet."
-  },
-  "frescoUi.richTextEditor.insertMenuSearch": {
-    "defaultMessage": "Search",
-    "description": "Accessible name and placeholder of the search box in the rich text editor’s insert menu, which filters the things that can be inserted into the text."
   },
   "frescoUi.richTextEditor.linkUrlLabel": {
     "defaultMessage": "Link URL",

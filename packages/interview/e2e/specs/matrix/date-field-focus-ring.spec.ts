@@ -32,9 +32,7 @@ matrixTest(
       component: 'DatePicker',
       parameters: { type: 'full' },
     });
-    const stage = synth.addStage('EgoForm', {
-      introductionPanel: { title: 'About you' },
-    });
+    const stage = synth.addStage('EgoForm');
     stage.addFormField({
       variable: nameVariable.id,
       component: 'Text',

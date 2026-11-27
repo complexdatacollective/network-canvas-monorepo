@@ -236,3 +236,40 @@ export function resolveTranslation(
   const [first] = Object.values(asLocalizedString(value) ?? {});
   return first === undefined ? NO_TRANSLATION : { text: messageText(first) };
 }
+
+/** One translation as the protocol stores it, and its language. */
+export type StoredTranslation = Readonly<{
+  message: string;
+  locale: LocaleTag;
+}>;
+
+/**
+ * The stored message that `resolveTranslation` shows, ICU syntax and all,
+ * with the language it is written in: for wording whose syntax decides what
+ * it reads as, such as wording with a version for each plural form. Without
+ * a declaration, or with no translation in a declared language, the first
+ * translation stands in. Undefined when the string has no translation.
+ */
+export function resolveStoredTranslation(
+  value: unknown,
+  localization: ProtocolLocalization | undefined,
+  locale: LocaleTag | undefined,
+): StoredTranslation | undefined {
+  const translations = asLocalizedString(value);
+  if (translations === undefined) return undefined;
+  if (
+    localization !== undefined &&
+    localization.locales.some((declared) =>
+      Object.hasOwn(translations, declared),
+    )
+  ) {
+    const resolved = resolveLocalizedString(translations, localization, [
+      locale ?? localization.defaultLocale,
+    ]);
+    return { message: resolved.text, locale: resolved.locale };
+  }
+  const [first] = Object.entries(translations);
+  return first === undefined
+    ? undefined
+    : { message: first[1], locale: first[0] };
+}

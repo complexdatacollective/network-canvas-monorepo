@@ -6,13 +6,16 @@
 // Derived from the zod schemas in
 // packages/protocol-validation/src/schemas/9 (stages, common/prompts,
 // common/forms, common/panels, common/skipLogic, filters/filter, codebook,
-// variables/variable, localized-string, stage-wording) and the ICU escaping in
-// packages/protocol-validation/src/localization/messageSyntax.ts. It describes
+// variables/variable, localized-string, stage-wording, dynamic-attributes,
+// dynamic-value-names), the ICU escaping in
+// packages/protocol-validation/src/localization/messageSyntax.ts, and the
+// reading of multi-line text in localization/contentDocument.ts and
+// localization/fieldBlock.ts. It describes
 // only what a fix needs to write; the model reads every other shape from the
 // protocol it is given. Keep it as short as accuracy allows: it is sent with
 // every review. Bump the version when the text changes.
 
-export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v4
+export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v5
 
 This is what you need to write fixes that leave the protocol valid. For anything not described here, copy the shape the protocol already uses.
 
@@ -28,9 +31,11 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 
 - Write ONLY the protocol's default language (localization.defaultLocale). To change a text, set its default-language key: /stages/<stageId>/prompts/<promptId>/text/en. A new text object holds only that key: { "en": "…" }. Never add, change or remove another language's key: a text needs a version in only one language, and the researcher's translators own the others.
 - Write protocol text in the protocol's default language, whatever language your findings are in.
-- Each value is an ICU MessageFormat message that must be literal text. Write a literal { or } as '{' or '}'. An apostrophe is literal ("Don't", "the participant's") except directly before another apostrophe, {, }, < or >, where it must be doubled (''). Plural, select and placeholders such as {name} are not allowed, with two exceptions: keep a placeholder or select that is already in a text you edit, and write the minimum notice's plural exactly as shown below. A placeholder already in a text shows an attribute, a node's label or today's date, or chooses the text's wording by an answer or a condition. It names the value directly: {ego_<variable id>} for one of the participant's attributes, {node_label} for a person's label, {condition_<condition id>}, {now}, always with each - of an id written as _. A select chooses by an option's id written the same way, or by true and false.
-- Single-line texts (stage labels, prompts, form questions and hints, option labels, titles) cannot contain a line break. Information content and FinishSession content may have several lines.
-- Markdown (**bold**, *italic*) is allowed in prompts, form questions and hints, option labels and Information content; stage labels and titles are plain text. Bold the key phrase of a prompt.
+- Each value is an ICU MessageFormat message that must be literal text. Write a literal { or } as '{' or '}'. An apostrophe is literal ("Don't", "the participant's") except directly before another apostrophe, {, }, < or >, where it must be doubled (''). Plural, select and placeholders such as {name} are not allowed, with two exceptions: keep a placeholder or logic block that is already in a text you edit, and write the minimum notice's plural exactly as shown below. A placeholder shows a value in a sentence. It names the value directly: {ego_<variable id>} for one of the participant's attributes, {node_label} for a person's label, {now} for today's date, {dynamic_<dynamic attribute id>} for a dynamic attribute (below), always with each - of an id written as _.
+- Single-line texts (stage labels, prompts, form questions and hints, option labels, titles) cannot contain a line break. Information content, FinishSession content and a form's content may have several lines.
+- Markdown (**bold**, *italic*) is allowed in prompts, form questions and hints, option labels, Information content and a form's content; stage labels and titles are plain text. Bold the key phrase of a prompt.
+- A logic block chooses which version of part of a multi-line text is shown. It is a select that is a whole block of the text, with a blank line (or the start or end of the text or version) before and after it; never inside a sentence or a list. Its shapes: {condition_<condition id>, select, true {…} other {…}} (a condition of the stage's "conditions" is met; false {…} for not met; an "other" version that is one further such block is an "else if"); {<role>_<variable id>, select, missing {…} <answer> {…} … other {…}} (by the answer of a categorical, ordinal or boolean attribute; an answer is an option's id written with _, or true or false; missing is no answer); {<role>_<variable id>, select, missing {…} other {{<role>_<variable id>, plural, one {…} other {…}}}} (by a number); {node_isParticipant, select, true {…} other {…}} (the person a form is about is the participant). Each version is a markdown document of its own and may contain any block: paragraphs, headings, lists, asset blocks, field blocks and further logic blocks. Never add a logic block. In one that is already there, edit the words inside its versions as any other text, and keep its select, its keys and its braces exactly as written. Inside a plural's version, write a literal # as '#'.
+- A stage's "dynamicAttributes" ({ <UUID>: DynamicAttribute }) are values that its texts show in a sentence as {dynamic_<id>}, with a wording that logic chooses: { "logic": "conditions", "cases": [{ "condition": <condition id>, "when": "met" | "notMet", "wording": {…} }, …], "otherwise": {…} }, { "logic": "answers", "value": "<role>_<variable id>", "missing": {…}, "answers": [{ "answer": <answer, as in a logic block>, "wording": {…} }, …], "other": {…} }, { "logic": "number", "value", "missing": {…}, "wording": { "en": "{count, plural, one {# child} other {# children}}" } } or { "logic": "participant", "participant": {…}, "otherwise": {…} }. Each wording is plain text on one line. You may rewrite a wording's default-language key. Never add a dynamic attribute or change its logic. Every dynamic attribute must be used by a text of its stage: when you remove the last placeholder that names one, remove the dynamic attribute too.
 - A stage label is at most 100 characters.
 
 ## Codebook
@@ -64,10 +69,10 @@ Each of these objects has an "id": a stage, a prompt, a panel, a form field, a f
 Every stage: { "id", "type", "label": { "en": "…" }, "skipLogic"?, "interviewScript"? (plain text for the interviewer, never shown to the participant) }. Stages about people carry "subject": { "entity": "node", "type": <nodeTypeId> }; an AlterEdgeForm carries "subject": { "entity": "edge", "type": <edgeTypeId> }. A stage marked filter? below accepts "filter": Filter.
 
 - Information: "content": {…}, the whole page as one markdown text. A heading that opens it ("# Welcome") is the page's heading. An image, audio recording or video is a markdown image in a paragraph of its own whose address names an asset by id: ![description](asset:<assetId>?size=small|medium|large&align=start|end&autoplay=false&loop=false), every setting optional. Keep each one exactly as written when you rewrite the text around it.
-- EgoForm: "form": { "fields": [Field, …] }, "introductionPanel": { "title": {…}, "text"?: {…} }. Fields use ego variables.
-- AlterForm (filter?): "form": { "fields": [ … ] }: one form per person shown. Fields use the subject node type's variables.
-- AlterEdgeForm (filter?): "form": { "fields": [ … ] }: one form per tie of the subject edge type. Fields use that edge type's variables.
-- NameGenerator: "form": { "title": {…}, "fields": [ … ] } (a form for each person added), "prompts", "panels"?, "behaviours"?
+- EgoForm: "form": Form. Fields use ego variables. Its content usually opens with a heading and text that introduce the questions.
+- AlterForm (filter?): "form": Form: one form per person shown. Fields use the subject node type's variables.
+- AlterEdgeForm (filter?): "form": Form: one form per tie of the subject edge type. Fields use that edge type's variables.
+- NameGenerator: "form": { "title": {…}, "content": {…}, "fields": [ … ] } (a Form shown for each person added, with a one-line title as the heading of its dialog), "prompts", "panels"?, "behaviours"?
 - NameGeneratorQuickAdd: "quickAdd": <variableId the typed name is stored in>, "prompts", "addNamePlaceholder": {…}, "panels"?, "behaviours"?
 - NameGeneratorRoster: "dataSource": <assetId>, "prompts", "behaviours"?, and settings for its card list
 - Sociogram (filter?): "background", "behaviours"?, "prompts": [{ "id", "text", "layout": { "layoutVariable": <layout variableId> }, "edges"?: { "create"?: <edgeTypeId>, "display"?: [<edgeTypeId>, …] }, "highlight"?: { "allowHighlighting": true, "variable": <boolean variableId> } }]. A prompt cannot both create edges and highlight.
@@ -86,7 +91,9 @@ Name generator limits: "behaviours": { "minNodes"?: whole number ≥ 0, "maxNode
 
 A bin stage whose behaviours.requireCompletePlacement is true needs "unplacedNodesNotice": {…}.
 
-Form field: { "id", "variable": <variableId>, "prompt": {…}, "hint"?: {…} }. A form keeps at least one field and asks each variable once. A variable recorded by a bin, a Sociogram highlight, a census or a prompt tag must not also be asked in a form.
+Form: { "content": {…}, "fields": [Field, …] }. content is the form's page: one multi-line markdown text per language, like Information content (headings, paragraphs, asset blocks, logic blocks). Each field is placed in it, in the order the participant answers, as a field block: a paragraph of its own that contains only ![](field:<fieldId>), with nothing between the brackets. A field block may also be the whole of a paragraph in a version of a logic block, which shows the field only when that version is shown. A logic block cannot depend on a field inside it, or on a field in another version of a logic block that contains it, because the participant sees only one version of each logic block. Each language's content places at least one field, places a field at most once, and places only fields in fields; every field in fields is placed by at least one language's content. Languages may place different fields, so a fix changes only the default-language content: to add a field, insert it into fields and set the default-language content with its block where it belongs; to remove one, set the default-language content without its block, and remove the field from fields only when no other language's content places it.
+
+Field: { "id", "variable": <variableId>, "prompt": {…}, "hint"?: {…}, "showValidationHints"?: true | false }. A form asks each variable once. A variable recorded by a bin, a Sociogram highlight, a census or a prompt tag must not also be asked in a form.
 
 ## Filters and skip logic
 
@@ -119,7 +126,7 @@ A fix is a list of operations, applied in order; a later operation may rely on a
 - Every new object listed under Object ids, and every new codebook type and variable, gets a fresh UUID v4 that the protocol does not already use.
 - Change only the default-language key of a text; never touch another language's.
 - Make the smallest edit that fixes the problem, and leave the protocol valid: every id a fix refers to must exist (or be created by an earlier operation), and every required setting must be present.
-- Removing a stage or a variable: first check that nothing else refers to it (skip destinations, filters, forms, prompts, panels, other stages' settings), and change those too. Prefer removing a form field to deleting its variable.
+- Removing a stage or a variable: first check that nothing else refers to it (skip destinations, filters, forms, prompts, panels, placeholders, logic blocks, dynamic attributes, other stages' settings), and change those too. Prefer removing a form field to deleting its variable.
 - Moving a stage: remove it, then insert an exact copy of it (same id, every key as the protocol has it) before the stage it should precede. Afterwards every skip destination must still be a stage after the stage that names it, and no stage but a FinishSession may follow the first FinishSession.
 
 Worked examples (the protocol's default language is "en"; <…> stands for ids from the protocol, or new UUIDs):
@@ -131,12 +138,14 @@ Worked examples (the protocol's default language is "en"; <…> stands for ids f
 { "op": "set", "path": "/stages/<stageId>/filter", "value": "{\\"rules\\":[{\\"id\\":\\"<new UUID>\\",\\"type\\":\\"node\\",\\"options\\":{\\"type\\":\\"<nodeTypeId>\\",\\"attribute\\":\\"<variableId>\\",\\"operator\\":\\"EXACTLY\\",\\"value\\":true}}]}" }
 To add a rule to an existing filter of one rule, insert the rule at /stages/<stageId>/filter/rules/- and set /stages/<stageId>/filter/join to "\\"AND\\"".
 
-3. Remove a form field:
+3. Remove a form field that no other language's content places:
+{ "op": "set", "path": "/stages/<stageId>/form/content/en", "value": "\\"<the content, exactly as the protocol has it, without the paragraph ![](field:<fieldId>)>\\"" }
 { "op": "remove", "path": "/stages/<stageId>/form/fields/<fieldId>", "value": null }
 
 4. Add an ordinal variable to a node type, and a field for it at the end of a form:
 { "op": "set", "path": "/codebook/node/<nodeTypeId>/variables/<new UUID A>", "value": "{\\"name\\":\\"closeness\\",\\"type\\":\\"ordinal\\",\\"component\\":\\"RadioGroup\\",\\"options\\":[{\\"id\\":\\"<new UUID C>\\",\\"label\\":{\\"en\\":\\"Not close\\"},\\"value\\":1},{\\"id\\":\\"<new UUID D>\\",\\"label\\":{\\"en\\":\\"Close\\"},\\"value\\":2},{\\"id\\":\\"<new UUID E>\\",\\"label\\":{\\"en\\":\\"Very close\\"},\\"value\\":3}],\\"validation\\":{\\"required\\":true}}" }
 { "op": "insert", "path": "/stages/<stageId>/form/fields/-", "value": "{\\"id\\":\\"<new UUID B>\\",\\"variable\\":\\"<new UUID A>\\",\\"prompt\\":{\\"en\\":\\"How close are you to this person?\\"}}" }
+{ "op": "set", "path": "/stages/<stageId>/form/content/en", "value": "\\"<the content, exactly as the protocol has it>\\\\n\\\\n![](field:<new UUID B>)\\"" }
 
 5. Move a stage so it comes before another:
 { "op": "remove", "path": "/stages/<stageId>", "value": null }

@@ -8,6 +8,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../__tests__/englishForms.ts';
 import { generateNetwork } from '../../generateNetwork.ts';
 import type { EntityConstraints } from '../constraints/types.ts';
 
@@ -89,6 +90,7 @@ function rowsOf(ages: number[], keyed: (index: number) => string): NcNode[] {
 
 function draw(seed: number, count: number, rows: NcNode[]): number[] {
   const { network } = generateNetwork({
+    ...ENGLISH_FORMS,
     seed,
     codebook,
     stages: [rosterStage(count)],

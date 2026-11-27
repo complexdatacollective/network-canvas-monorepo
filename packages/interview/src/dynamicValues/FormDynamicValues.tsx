@@ -8,6 +8,10 @@ import {
   useFormHasValue,
   useFormValue,
 } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import {
+  type FormDocumentReading,
+  formShownFields,
+} from '@codaco/network-query';
 import type {
   DynamicValueRole,
   StageSubject,
@@ -21,12 +25,17 @@ import {
   type NcNode,
   type VariableValue,
   VariableValueSchema,
+  readOwnProperty,
+  writeOwnProperty,
 } from '@codaco/shared-consts';
 
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
 import type { RootState } from '../store/store';
-import { readOwnProperty, writeOwnProperty } from '../utils/ownProperty';
-import { DynamicValueEntity } from './DynamicValueScope';
+import {
+  DynamicValueEntity,
+  useDynamicValueSources,
+  withDynamicValueEntities,
+} from './DynamicValueScope';
 
 const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
 
@@ -93,6 +102,13 @@ export type LabelNode = (
  * An interface that shows the node by a label of its own passes `labelNode`,
  * so the form names the node as the interface shows it rather than by the
  * codebook's label rules.
+ *
+ * A form with a document (`document`) shows only the fields that its logic
+ * shows, and an answer to a field that logic hides is never read: not an
+ * answer given before the field was hidden, which the form keeps in case it
+ * is shown again, nor one that is stored (`formShownFields`). Its text, its
+ * logic and the fields shown all read the entity without those answers, so
+ * an answer to a hidden field can never show another field.
  */
 export function FormDynamicValues({
   formSubject,
@@ -104,6 +120,7 @@ export function FormDynamicValues({
   coerce,
   labelNode,
   isParticipant,
+  document,
   children,
 }: {
   formSubject: StageSubject | null | undefined;
@@ -137,6 +154,11 @@ export function FormDynamicValues({
    * Ignored unless the form describes a node of the stage's own subject.
    */
   isParticipant?: boolean;
+  /**
+   * The form's document in the language shown, with the variable of each
+   * field that it places, for a form whose fields its logic shows.
+   */
+  document?: FormDocumentReading;
   children: ReactNode;
 }) {
   const describesStageSubject =
@@ -247,17 +269,18 @@ export function FormDynamicValues({
   const fromLabel = useNodeLabel(fromNode);
   const toLabel = useNodeLabel(toNode);
 
-  const entities = useMemo(
-    () => ({
+  const entities = useMemo(() => {
+    const role = formSubject == null ? undefined : ROLES[formSubject.entity];
+    return {
       attributes:
-        liveAttributes === undefined || formSubject == null
+        liveAttributes === undefined || role === undefined
           ? {}
-          : { [ROLES[formSubject.entity]]: liveAttributes },
+          : { [role]: liveAttributes },
       // A node or edge the form is adding is not in the network yet.
       ids:
-        entityId === undefined || formSubject == null
+        entityId === undefined || role === undefined
           ? {}
-          : { [ROLES[formSubject.entity]]: entityId },
+          : { [role]: entityId },
       labels: {
         ...(nodeLabel !== undefined && { node: nodeLabel }),
         ...(fromLabel !== undefined && { edgeFrom: fromLabel }),
@@ -269,17 +292,39 @@ export function FormDynamicValues({
         formSubject?.entity !== 'node'
           ? {}
           : { node: isParticipant },
-    }),
-    [
-      liveAttributes,
-      formSubject,
-      entityId,
-      nodeLabel,
-      fromLabel,
-      toLabel,
-      isParticipant,
-    ],
-  );
+    };
+  }, [
+    liveAttributes,
+    formSubject,
+    entityId,
+    nodeLabel,
+    fromLabel,
+    toLabel,
+    isParticipant,
+  ]);
 
-  return <DynamicValueEntity {...entities}>{children}</DynamicValueEntity>;
+  // The entity as logic reads it: without the answers of the fields that
+  // logic hides.
+  const parentSources = useDynamicValueSources();
+  const shownEntities = useMemo(() => {
+    if (
+      document === undefined ||
+      parentSources === null ||
+      liveAttributes === undefined ||
+      formSubject == null
+    ) {
+      return entities;
+    }
+    const role = ROLES[formSubject.entity];
+    const { attributes } = formShownFields(
+      document,
+      withDynamicValueEntities(parentSources, entities),
+      role,
+    );
+    return attributes === liveAttributes
+      ? entities
+      : { ...entities, attributes: { [role]: attributes } };
+  }, [document, parentSources, liveAttributes, formSubject, entities]);
+
+  return <DynamicValueEntity {...shownEntities}>{children}</DynamicValueEntity>;
 }

@@ -1,8 +1,8 @@
 import type { FramingId } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
+import { readOwnProperty } from '@codaco/shared-consts';
 
 import type { ContentFormat } from '../../localization/contentFormat';
-import { readOwnProperty } from '../../utils/ownProperty';
 import {
   formatPersonLabel,
   formatRelativeTerm,

@@ -197,15 +197,10 @@
       "label": {
         "en": "Consent"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "Taking part"
-        },
-        "text": {
-          "en": "Do you consent?"
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Taking part\n\nDo you consent?\n\n![](field:55495839-aa92-58cc-83e7-8b79017016d4)"
+        },
         "fields": [
           {
             "id": "55495839-aa92-58cc-83e7-8b79017016d4",
@@ -223,15 +218,10 @@
       "label": {
         "en": "About"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About you"
-        },
-        "text": {
-          "en": "Please answer the following questions about yourself."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About you\n\nPlease answer the following questions about yourself.\n\n![](field:67623001-2822-583a-9707-8a133967987a)\n\n![](field:acf41636-d774-5d7d-a73d-e953bf43aefe)"
+        },
         "fields": [
           {
             "id": "67623001-2822-583a-9707-8a133967987a",
@@ -312,6 +302,9 @@
       "form": {
         "title": {
           "en": "Add a person"
+        },
+        "content": {
+          "en": "![](field:8cf3d98f-9710-5505-87cd-380962b9a703)\n\n![](field:274bf81e-550a-599c-b6dc-9aac9c98219f)"
         },
         "fields": [
           {
@@ -411,15 +404,10 @@
       "label": {
         "en": "Mood form"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About you"
-        },
-        "text": {
-          "en": "Please answer the following questions about yourself."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About you\n\nPlease answer the following questions about yourself.\n\n![](field:ea47b2f1-5ef0-50ef-8d8f-8bf387835b0e)\n\n![](field:c1cefedb-a6ff-56e5-ab29-5df5a9844596)"
+        },
         "fields": [
           {
             "id": "ea47b2f1-5ef0-50ef-8d8f-8bf387835b0e",

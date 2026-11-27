@@ -775,7 +775,6 @@
   "architect.protocolSummary.stage.form.form": "النموذج",
   "architect.protocolSummary.stage.form.title": "العنوان: {value1}",
   "architect.protocolSummary.stage.interviewScript.interviewerScript": "نص القائم بالمقابلة",
-  "architect.protocolSummary.stage.introductionPanel.introductionPanel": "اللوحة التمهيدية",
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": "مصدر بيانات GeoJSON",
   "architect.protocolSummary.stage.mapOptions.mapboxAPIKey": "مفتاح Mapbox API",
   "architect.protocolSummary.stage.nameGenerationStep.formFields": "حقول النموذج",

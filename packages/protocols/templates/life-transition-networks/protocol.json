@@ -449,15 +449,10 @@
       "label": {
         "en": "Welcome and consent"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About this interview"
-        },
-        "text": {
-          "en": "This is a **conversation**, not a questionnaire. We would like you to tell us about a time your life changed in an important way, and about the people who were part of that story.\n\nAs you talk, the interviewer will **create a network** of the people you mention on the screen in front of you. You can correct it at any point — if someone is missing, or in the wrong place, just say so.\n\nThe people you name are recorded only by the first name or nickname you choose. The interviewer will tell you before you start whether the session is being recorded, and what happens to that recording.\n\nYou can skip anything, pause, or stop at any time, and you do not have to give a reason. The researcher will answer any questions you have before you choose below."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About this interview\n\nThis is a **conversation**, not a questionnaire. We would like you to tell us about a time your life changed in an important way, and about the people who were part of that story.\n\nAs you talk, the interviewer will **create a network** of the people you mention on the screen in front of you. You can correct it at any point — if someone is missing, or in the wrong place, just say so.\n\nThe people you name are recorded only by the first name or nickname you choose. The interviewer will tell you before you start whether the session is being recorded, and what happens to that recording.\n\nYou can skip anything, pause, or stop at any time, and you do not have to give a reason. The researcher will answer any questions you have before you choose below.\n\n![](field:94ebe3fd-1c58-5ff6-9146-811cb5eb0116)"
+        },
         "fields": [
           {
             "id": "94ebe3fd-1c58-5ff6-9146-811cb5eb0116",
@@ -496,15 +491,10 @@
         }
       },
       "interviewScript": "",
-      "introductionPanel": {
-        "title": {
-          "en": "Tell us what happened"
-        },
-        "text": {
-          "en": "Think of a time in the last few years when **your life changed in an important way**. It might be something you chose, or something that happened to you."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# Tell us what happened\n\nThink of a time in the last few years when **your life changed in an important way**. It might be something you chose, or something that happened to you.\n\n![](field:2e6ef52c-6f97-5ce7-afce-4f02216bd547)\n\n![](field:a3cf9bae-ddad-5d32-ac84-a90518404e82)\n\n![](field:c2dc2e1f-9f3a-51a4-b33e-030a04cd8b7b)"
+        },
         "fields": [
           {
             "id": "2e6ef52c-6f97-5ce7-afce-4f02216bd547",
@@ -539,6 +529,82 @@
       "label": {
         "en": "The people in your story"
       },
+      "dynamicAttributes": {
+        "5746ed66-8583-4516-8fc9-f3b64ec7df56": {
+          "logic": "conditions",
+          "cases": [
+            {
+              "condition": "9b394ed9-2912-499c-a902-bd9312069792",
+              "when": "met",
+              "wording": {
+                "en": "Knew them before"
+              }
+            }
+          ],
+          "otherwise": {
+            "en": "Knew them before the change"
+          }
+        },
+        "e6d43064-aa32-4c1b-8623-586443333168": {
+          "logic": "conditions",
+          "cases": [
+            {
+              "condition": "9b394ed9-2912-499c-a902-bd9312069792",
+              "when": "met",
+              "wording": {
+                "en": "New since"
+              }
+            }
+          ],
+          "otherwise": {
+            "en": "New since the change"
+          }
+        },
+        "d91b2fbc-e2b5-493c-b5c2-9008412311cc": {
+          "logic": "conditions",
+          "cases": [
+            {
+              "condition": "9b394ed9-2912-499c-a902-bd9312069792",
+              "when": "met",
+              "wording": {
+                "en": "Lost touch since"
+              }
+            }
+          ],
+          "otherwise": {
+            "en": "Lost touch since the change"
+          }
+        },
+        "88c952d7-b503-4177-8ec4-e0537e1aa422": {
+          "logic": "conditions",
+          "cases": [
+            {
+              "condition": "9b394ed9-2912-499c-a902-bd9312069792",
+              "when": "met",
+              "wording": {
+                "en": "How close you were before"
+              }
+            }
+          ],
+          "otherwise": {
+            "en": "How close you were before the change"
+          }
+        }
+      },
+      "conditions": {
+        "9b394ed9-2912-499c-a902-bd9312069792": {
+          "rules": [
+            {
+              "id": "c9b31cdb-aed0-4b79-8e0e-c236c550761f",
+              "type": "ego",
+              "options": {
+                "attribute": "d8394f0b-b581-5159-b926-28b64408fd9d",
+                "operator": "EXISTS"
+              }
+            }
+          ]
+        }
+      },
       "interviewScript": "You should operate this interface throughout, building the map while listening to the participant's narration. Add each person when they are mentioned, using the first name or nickname the participant chooses. Automatic layout is enabled at the start to keep the map legible as it grows. Leave it on while adding people, and pause it only when you need to make a deliberate adjustment. Treat automatically produced positions as a display aid, not as evidence about closeness or importance. If position, circles, or clusters are intended to represent meaning, ask the participant what the arrangement should convey, turn off automatic layout, make the placement yourself, and confirm your interpretation. Do not impose a fixed meaning unless your study's field manual defines one. Ask open questions about how people are connected and record the configured details without interrupting the story more than necessary.\n\nWhen naming slows, use the same sequence of cues with every participant. First ask whether there is anyone else they would like to add. Then prompt across contexts such as family, friends, work or study, neighborhood, community or faith groups, services and professionals, and online ties. Follow up on groups and people who know one another, while allowing uncertainty, multiple group memberships, and relationships that changed over time. Visual mapping can feel exposing, so check your entries and placements verbally, make any requested corrections yourself, avoid pressuring the participant to rank anyone precisely, and follow your study's privacy and distress procedures.",
       "subject": {
         "entity": "node",
@@ -561,7 +627,7 @@
             "variable": "836afb8d-9b14-5b10-8ee5-08c2917b738a",
             "component": "Toggle",
             "label": {
-              "en": "Knew them before {ego_d8394f0b_b581_5159_b926_28b64408fd9d, select, missing {the change} other {{ego_d8394f0b_b581_5159_b926_28b64408fd9d}}}"
+              "en": "{dynamic_5746ed66_8583_4516_8fc9_f3b64ec7df56} {ego_d8394f0b_b581_5159_b926_28b64408fd9d}"
             }
           },
           {
@@ -569,7 +635,7 @@
             "variable": "f9c50272-f343-5db1-9e7e-5dafcd21c55b",
             "component": "Toggle",
             "label": {
-              "en": "New since {ego_d8394f0b_b581_5159_b926_28b64408fd9d, select, missing {the change} other {{ego_d8394f0b_b581_5159_b926_28b64408fd9d}}}"
+              "en": "{dynamic_e6d43064_aa32_4c1b_8623_586443333168} {ego_d8394f0b_b581_5159_b926_28b64408fd9d}"
             }
           },
           {
@@ -593,7 +659,7 @@
             "variable": "bfc384de-08f6-590d-9861-eded48dff1bc",
             "component": "Toggle",
             "label": {
-              "en": "Lost touch since {ego_d8394f0b_b581_5159_b926_28b64408fd9d, select, missing {the change} other {{ego_d8394f0b_b581_5159_b926_28b64408fd9d}}}"
+              "en": "{dynamic_d91b2fbc_e2b5_493c_b5c2_9008412311cc} {ego_d8394f0b_b581_5159_b926_28b64408fd9d}"
             }
           },
           {
@@ -601,7 +667,7 @@
             "variable": "b59f9ba7-7a61-584b-bbb2-9b08db22d24c",
             "component": "LikertScale",
             "label": {
-              "en": "How close you were before {ego_d8394f0b_b581_5159_b926_28b64408fd9d, select, missing {the change} other {{ego_d8394f0b_b581_5159_b926_28b64408fd9d}}}"
+              "en": "{dynamic_88c952d7_b503_4177_8ec4_e0537e1aa422} {ego_d8394f0b_b581_5159_b926_28b64408fd9d}"
             }
           },
           {

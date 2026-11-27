@@ -139,6 +139,13 @@ export type RuleSetFieldProps = CreateFormFieldProps<
     targets?: readonly RuleTargetType[];
     /** What each target is offered as, in place of the usual sentences. */
     targetLabels?: Readonly<Partial<Record<RuleTargetType, string>>>;
+    /**
+     * The label of the control that says whether all of the rules or any one
+     * of them must match. With a label, the control is shown as soon as there
+     * is a rule, side by side, without a hint; without one, it is shown only
+     * for more than one rule.
+     */
+    joinLabel?: string;
   }
 >;
 
@@ -177,6 +184,7 @@ function RuleSetControl({
   addRuleLabel,
   targets,
   targetLabels,
+  joinLabel,
   disabled = false,
   readOnly = false,
   'aria-labelledby': ariaLabelledBy,
@@ -261,14 +269,17 @@ function RuleSetControl({
         readOnly={readOnly}
       />
 
-      {rules.length > 1 && (
+      {rules.length > (joinLabel === undefined ? 1 : 0) && (
         <UnconnectedField
           name="join"
           component={RadioGroupField}
-          label={intl.formatMessage(messages.joinLabel)}
-          hint={intl.formatMessage(messages.joinHint)}
+          label={joinLabel ?? intl.formatMessage(messages.joinLabel)}
+          {...(joinLabel === undefined && {
+            hint: intl.formatMessage(messages.joinHint),
+          })}
+          orientation={joinLabel === undefined ? 'vertical' : 'horizontal'}
           options={[...joinOptions(intl)]}
-          value={join}
+          value={join ?? (joinLabel === undefined ? undefined : 'AND')}
           disabled={disabled}
           readOnly={readOnly}
           onChange={(next) => {

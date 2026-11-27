@@ -14,6 +14,7 @@ import {
   type VariableOptions,
   type Variables,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -25,6 +26,12 @@ import {
 import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { buildDatePickerBoundProps } from '../buildDatePickerBoundProps';
 import { buildFieldValidationProps } from '../buildFieldValidationProps';
+
+/** The protocols here are written in English alone: forms are read in it. */
+const ENGLISH_FORMS = {
+  formLanguage: 'en',
+  localization: { defaultLocale: 'en', locales: ['en'] },
+};
 
 const PERSON = testTypeId('person');
 const TOKEN = testTypeId('token');
@@ -308,13 +315,16 @@ async function collectFailures(
  * Form fields for every variable a form can render. Layout and location
  * variables have no participant-facing control, so no form lists them.
  */
-function formFields(variables: Variables): { variable: string }[] {
+function formFields(variables: Variables): { id: string; variable: string }[] {
   return Object.entries(variables)
     .filter(
       ([, variable]) =>
         variable.type !== 'layout' && variable.type !== 'location',
     )
-    .map(([variableId]) => ({ variable: variableId }));
+    .map(([variableId]) => ({
+      id: testId(`field ${variableId}`),
+      variable: variableId,
+    }));
 }
 
 const FOUR_OPTIONS: VariableOptions = [
@@ -984,7 +994,7 @@ const stages = [
     id: 'stage-ego',
     type: 'EgoForm',
     label: { en: 'About you' },
-    form: { fields: formFields(egoVariables) },
+    form: formOf(formFields(egoVariables)),
   },
   {
     id: 'stage-people',
@@ -1000,7 +1010,7 @@ const stages = [
     prompts: [{ id: 'p1', text: { en: 'Name people' } }],
     form: {
       title: { en: 'About this person' },
-      fields: formFields(personVariables),
+      ...formOf(formFields(personVariables)),
     },
     behaviours: { minNodes: 6, maxNodes: 6 },
   },
@@ -1018,7 +1028,7 @@ const stages = [
     prompts: [{ id: 'p2', text: { en: 'Name tokens' } }],
     form: {
       title: { en: 'About this token' },
-      fields: formFields(tokenVariables),
+      ...formOf(formFields(tokenVariables)),
     },
     behaviours: { minNodes: 2, maxNodes: 2 },
   },
@@ -1053,7 +1063,7 @@ const stages = [
     type: 'AlterEdgeForm',
     label: { en: 'About connections' },
     subject: { entity: 'edge', type: FRIEND },
-    form: { fields: formFields(friendVariables) },
+    form: formOf(formFields(friendVariables)),
   },
 ] as unknown as Stage[];
 
@@ -1094,6 +1104,7 @@ describe('synthetic data conformance', () => {
     // Seed chosen so the draw produces multiple edges (see the >= 2 guard
     // below); re-scan candidate seeds if generator draw order changes again.
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 13,
       codebook,
       stages,
@@ -1105,6 +1116,7 @@ describe('synthetic data conformance', () => {
 
   it('generates values that pass the real form validators for every legal rule', async () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 13,
       codebook,
       stages,
@@ -1129,6 +1141,7 @@ describe('synthetic data conformance', () => {
 
     for (let seed = 1; seed <= 10; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook,
         stages,
@@ -1214,7 +1227,7 @@ const hazardFormStage = {
   prompts: [{ id: 'p1', text: { en: 'Name people' } }],
   form: {
     title: { en: 'About this person' },
-    fields: formFields(hazardVariables),
+    ...formOf(formFields(hazardVariables)),
   },
   behaviours: { minNodes: 8, maxNodes: 8 },
 };
@@ -1259,6 +1272,7 @@ async function measureHazard(stageList: Stage[]): Promise<HazardMeasurement> {
 
   for (let seed = 1; seed <= 10; seed++) {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed,
       codebook: hazardCodebook,
       stages: stageList,
@@ -1313,6 +1327,7 @@ describe('a variable used by both a form and a binning stage', () => {
   // for. Every subject node still holds a value of each prompt's variable.
   it('sorts every subject node into a bin', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook: hazardCodebook,
       stages: hazardFormAndBinStages,
@@ -1480,7 +1495,7 @@ const crossResolutionStages = [
     id: 'stage-cross-resolution',
     type: 'EgoForm',
     label: { en: 'Dates' },
-    form: { fields: formFields(crossResolutionVariables) },
+    form: formOf(formFields(crossResolutionVariables)),
   },
 ] as unknown as Stage[];
 
@@ -1495,6 +1510,7 @@ function shown(value: VariableValue | undefined): string {
  */
 async function crossResolutionFailures(seed: number): Promise<string[]> {
   const { network } = generateNetwork({
+    ...ENGLISH_FORMS,
     seed,
     codebook: crossResolutionCodebook,
     stages: crossResolutionStages,
@@ -1567,6 +1583,7 @@ describe('date comparators across picker resolutions', () => {
     const wrong: string[] = [];
     for (let seed = 1; seed <= 25; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook: crossResolutionCodebook,
         stages: crossResolutionStages,
@@ -1635,7 +1652,7 @@ const coarseBoundStages = [
     id: 'stage-coarse-bound',
     type: 'EgoForm',
     label: { en: 'Coarse dates' },
-    form: { fields: formFields(coarseBoundVariables) },
+    form: formOf(formFields(coarseBoundVariables)),
   },
 ] as unknown as Stage[];
 
@@ -1645,6 +1662,7 @@ describe('a DatePicker bound coarser than its own picker resolution', () => {
 
     for (let seed = 1; seed <= 25; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook: coarseBoundCodebook,
         stages: coarseBoundStages,
@@ -1671,6 +1689,7 @@ describe('a DatePicker bound coarser than its own picker resolution', () => {
 
     for (let seed = 1; seed <= 25; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook: coarseBoundCodebook,
         stages: coarseBoundStages,
@@ -1762,7 +1781,7 @@ const rosterDateStages = [
     prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
       title: { en: 'About this person' },
-      fields: formFields(rosterDateVariables),
+      ...formOf(formFields(rosterDateVariables)),
     },
     behaviours: { minNodes: 3, maxNodes: 3 },
   },
@@ -1848,7 +1867,7 @@ const rosterPinStages = [
     prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
       title: { en: 'About this person' },
-      fields: formFields(rosterPinVariables),
+      ...formOf(formFields(rosterPinVariables)),
     },
     behaviours: { minNodes: 2, maxNodes: 2 },
   },
@@ -1874,6 +1893,7 @@ describe('a roster pinning one end of a comparator', () => {
 
     for (let seed = 1; seed <= 25; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook: rosterPinCodebook,
         stages: rosterPinStages,
@@ -1902,6 +1922,7 @@ describe('a roster pinning one end of a comparator', () => {
 
     for (let seed = 1; seed <= 25; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook: rosterPinCodebook,
         stages: rosterPinStages,
@@ -1993,7 +2014,7 @@ const narrowStages = [
     prompts: [{ id: 'p1', text: { en: 'Name people' } }],
     form: {
       title: { en: 'About this person' },
-      fields: formFields(narrowVariables),
+      ...formOf(formFields(narrowVariables)),
     },
     behaviours: { minNodes: 2, maxNodes: 2 },
   },
@@ -2005,6 +2026,7 @@ describe('a number range too narrow to hold a whole value', () => {
 
     for (let seed = 1; seed <= 50; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook: narrowCodebook,
         stages: narrowStages,
@@ -2039,6 +2061,7 @@ describe('a roster fixing both ends of a cross-resolution comparator', () => {
 
     for (let seed = 1; seed <= 25; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook: rosterDateCodebook,
         stages: rosterDateStages,
@@ -2068,6 +2091,7 @@ describe('a roster fixing both ends of a cross-resolution comparator', () => {
 
     for (let seed = 1; seed <= 25; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook: rosterDateCodebook,
         stages: rosterDateStages,

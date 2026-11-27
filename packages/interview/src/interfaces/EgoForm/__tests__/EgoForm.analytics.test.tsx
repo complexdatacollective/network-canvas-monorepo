@@ -1,23 +1,13 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { act, render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
+import { act, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import { fieldBlockMarkdown } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 
 import { testVariableId } from '../../../__tests__/testIds';
-import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
-import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
-import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
-import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
-import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
-import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
-import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
-import EgoForm from '../EgoForm';
+import { renderEgoForm } from './renderEgoForm';
 
 class StubResizeObserver {
   observe() {}
@@ -60,133 +50,70 @@ beforeAll(() => {
 const NICKNAME_VARIABLE = testVariableId('nickname');
 const BORN_ON_VARIABLE = testVariableId('born_on');
 
+const NOTES_VARIABLE = testVariableId('notes');
+
+const englishForm = formOf(
+  [
+    {
+      id: 'field-1',
+      variable: NICKNAME_VARIABLE,
+      prompt: { en: 'Your nickname' },
+    },
+    {
+      id: 'field-2',
+      variable: BORN_ON_VARIABLE,
+      prompt: { en: 'Your date of birth' },
+    },
+  ],
+  { before: '# About you' },
+);
+// The Spanish document also asks for notes, which the English one does not.
+const notesField = {
+  id: 'field-3',
+  variable: NOTES_VARIABLE,
+  prompt: { es: 'Notas' },
+};
+
 const stage = {
   id: 'ego-form',
   type: 'EgoForm',
   label: { en: 'About you' },
-  introductionPanel: { title: { en: 'About you' } },
   form: {
-    fields: [
-      {
-        id: 'field-1',
-        variable: NICKNAME_VARIABLE,
-        prompt: { en: 'Your nickname' },
-      },
-      {
-        id: 'field-2',
-        variable: BORN_ON_VARIABLE,
-        prompt: { en: 'Your date of birth' },
-      },
-    ],
+    fields: [...englishForm.fields, notesField],
+    content: {
+      ...englishForm.content,
+      es: `${englishForm.content.en}\n\n${fieldBlockMarkdown(notesField.id)}`,
+    },
   },
 } as unknown as StageProps<'EgoForm'>['stage'];
 
-const codebook = {
-  node: {},
-  edge: {},
-  ego: {
-    variables: {
-      [NICKNAME_VARIABLE]: {
-        name: 'Nickname',
-        type: 'text',
-        component: 'Text',
-      },
-      [BORN_ON_VARIABLE]: {
-        name: 'Born on',
-        type: 'datetime',
-        component: 'DatePicker',
-        parameters: { type: 'full' },
-      },
-    },
+const egoVariables = {
+  [NICKNAME_VARIABLE]: { name: 'Nickname', type: 'text', component: 'Text' },
+  [BORN_ON_VARIABLE]: {
+    name: 'Born on',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full' },
+  },
+  [NOTES_VARIABLE]: { name: 'Notes', type: 'text', component: 'TextArea' },
+};
+
+const requiredNicknameVariables = {
+  ...egoVariables,
+  [NICKNAME_VARIABLE]: {
+    name: 'Nickname',
+    type: 'text',
+    component: 'Text',
+    validation: { required: true },
   },
 };
 
-const requiredNicknameCodebook = {
-  ...codebook,
-  ego: {
-    variables: {
-      ...codebook.ego.variables,
-      [NICKNAME_VARIABLE]: {
-        name: 'Nickname',
-        type: 'text',
-        component: 'Text',
-        validation: { required: true },
-      },
-    },
-  },
-};
-
-const renderEgoForm = (
-  bookOfCodes: typeof codebook = codebook,
-  onMoveForward?: (moveForward: () => Promise<void>) => void,
-) => {
-  const store = configureStore({
-    reducer: { session, protocol, ui },
-    preloadedState: {
-      session: {
-        id: 'session',
-        network: {
-          ego: { [entityAttributesProperty]: {} },
-          nodes: [],
-          edges: [],
-        },
-      } as never,
-      protocol: {
-        id: 'protocol',
-        hash: 'hash',
-        schemaVersion: 9,
-        localization: { defaultLocale: 'en', locales: ['en'] },
-        codebook: bookOfCodes,
-        stages: [
-          stage,
-          {
-            id: 'next-screen',
-            type: 'Information',
-            label: { en: 'Next screen' },
-            content: { en: '# Next screen' },
-          },
-        ],
-      } as never,
-    },
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-
+/** Renders the form, returning the tracker's record of events. */
+const renderTrackedEgoForm = (variables = egoVariables) => {
   const track = vi.fn();
   const tracker: Tracker = { track, captureException: vi.fn() };
-
-  function Harness() {
-    const navigation = useInterviewNavigation(0);
-    onMoveForward?.(navigation.moveForward);
-
-    return (
-      <StageMetadataProvider value={navigation.registerBeforeNext}>
-        <EgoForm
-          stage={stage}
-          getNavigationHelpers={() => ({
-            moveForward: navigation.moveForward,
-            moveBackward: vi.fn(),
-          })}
-        />
-      </StageMetadataProvider>
-    );
-  }
-
-  render(
-    <TestProtocolLocalization>
-      <Provider store={store}>
-        <AnalyticsContext.Provider value={tracker}>
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-            <DialogProvider>
-              <Harness />
-            </DialogProvider>
-          </CurrentStepProvider>
-        </AnalyticsContext.Provider>
-      </Provider>
-    </TestProtocolLocalization>,
-  );
-
-  return track;
+  const rendered = renderEgoForm({ stage, egoVariables: variables, tracker });
+  return { track, ...rendered };
 };
 
 // Audit sweep: the shared FormFieldSchema (protocol-validation's
@@ -196,8 +123,8 @@ const renderEgoForm = (
 // EgoForm, always. The control comes from the codebook entry, exactly as the
 // rendered Field resolves it.
 describe('EgoForm analytics', () => {
-  it('records each field real input control on form_opened', async () => {
-    const track = renderEgoForm();
+  it('records the input control of each field that the form asks in the language shown, and no others', async () => {
+    const { track } = renderTrackedEgoForm();
 
     expect(await screen.findByLabelText(/Your nickname/)).toBeInTheDocument();
 
@@ -210,15 +137,14 @@ describe('EgoForm analytics', () => {
   });
 
   it('records the real input control on form_validation_failed', async () => {
-    let moveForward: (() => Promise<void>) | undefined;
-    const track = renderEgoForm(requiredNicknameCodebook, (forward) => {
-      moveForward = forward;
-    });
+    const { track, moveForward } = renderTrackedEgoForm(
+      requiredNicknameVariables,
+    );
 
     expect(await screen.findByLabelText(/Your nickname/)).toHaveValue('');
 
     await act(async () => {
-      await moveForward?.();
+      await moveForward();
     });
 
     const failed = track.mock.calls.find(

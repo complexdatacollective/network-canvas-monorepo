@@ -1,6 +1,7 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import {
   createConditionId,
+  createDynamicAttributeId,
   createProtocolObjectId,
   dynamicValueNameFor,
 } from '@codaco/protocol-validation';
@@ -536,7 +537,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         });
         stage.addPrompt({
           text: {
-            'en-US': `{${first}, select, missing {Do these two} other {Do {${first}} and {${second}, select, missing {this person} other {{${second}}}}}} know each other?`,
+            'en-US': `Do {${first}} and {${second}} know each other?`,
           },
         });
         synth.addManualNode(stage.id, nodeType.id, 'n0', {
@@ -601,17 +602,44 @@ export const dyadCensusScenarios: InterfaceScenarios = {
             ],
           },
         };
-        const secondIsSamName = dynamicValueNameFor({
-          kind: 'condition',
-          conditionId: secondIsSam,
+        // Each sentence is a dynamic attribute: wording chosen by its "If".
+        const aboutSecond = createDynamicAttributeId();
+        const aboutFirst = createDynamicAttributeId();
+        stage.stageEntry.dynamicAttributes = {
+          [aboutSecond]: {
+            logic: 'conditions',
+            cases: [
+              {
+                condition: secondIsSam,
+                when: 'met',
+                wording: { 'en-US': 'Second is Sam.' },
+              },
+            ],
+            otherwise: { 'en-US': 'Second is someone else.' },
+          },
+          [aboutFirst]: {
+            logic: 'conditions',
+            cases: [
+              {
+                condition: firstIsConnected,
+                when: 'met',
+                wording: { 'en-US': 'First has ties.' },
+              },
+            ],
+            otherwise: { 'en-US': 'First has no ties.' },
+          },
+        };
+        const aboutSecondName = dynamicValueNameFor({
+          kind: 'dynamicAttribute',
+          id: aboutSecond,
         });
-        const firstIsConnectedName = dynamicValueNameFor({
-          kind: 'condition',
-          conditionId: firstIsConnected,
+        const aboutFirstName = dynamicValueNameFor({
+          kind: 'dynamicAttribute',
+          id: aboutFirst,
         });
         stage.addPrompt({
           text: {
-            'en-US': `{${secondIsSamName}, select, true {Second is Sam.} other {Second is someone else.}} {${firstIsConnectedName}, select, true {First has ties.} other {First has no ties.}} Do they know each other?`,
+            'en-US': `{${aboutSecondName}} {${aboutFirstName}} Do they know each other?`,
           },
         });
         synth.addManualNode(stage.id, nodeType.id, 'n0', {

@@ -12,6 +12,7 @@ import {
   NodeLabelSchema,
   optionCaseKey,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -66,6 +67,29 @@ const conditionNamed = (label: string) => {
   return {
     id,
     name: dynamicValueNameFor({ kind: 'condition', conditionId: id }),
+  };
+};
+/**
+ * A dynamic attribute of a label that shows `wording` while `condition` is
+ * met, and "·" while it is not: its id, the name text gives it, and its
+ * definition.
+ */
+const shownWhenMet = (
+  label: string,
+  condition: Readonly<{ id: string }>,
+  wording: string,
+) => {
+  const id = testId(`dynamic attribute ${label}`);
+  return {
+    id,
+    name: dynamicValueNameFor({ kind: 'dynamicAttribute', id }),
+    definition: {
+      logic: 'conditions',
+      cases: [
+        { condition: condition.id, when: 'met', wording: { en: wording } },
+      ],
+      otherwise: { en: '·' },
+    },
   };
 };
 
@@ -152,13 +176,13 @@ function storeWith(
           subject: { entity: 'node', type: PLACE },
           form: {
             title: { en: 'Add a place' },
-            fields: [
+            ...formOf([
               {
                 id: testId('field-L114'),
                 variable: asEntityAttributeReference(NAME_VAR),
                 prompt: { en: 'Name' },
               },
-            ],
+            ]),
           },
           prompts: [{ id: testId('prompt-1'), text: { en: 'Name a place' } }],
         },
@@ -274,10 +298,10 @@ describe('a node type’s own label', () => {
 
   it('chooses a version by a condition’s rules, met or not', () => {
     const large = conditionNamed('large');
+    const star = shownWhenMet('star', large, '⭐');
     const label: NodeLabel = NodeLabelSchema.parse({
-      text: {
-        en: `{${large.name}, select, true {⭐ } other {}}{${large.name}, select, false {· } other {}}{${NAMES.label}}`,
-      },
+      text: { en: `{${star.name}} {${NAMES.label}}` },
+      dynamicAttributes: { [star.id]: star.definition },
       conditions: {
         [large.id]: {
           about: 'node',
@@ -355,10 +379,20 @@ describe('a label that follows how its node is connected', () => {
   const near = conditionNamed('near');
   const most = conditionNamed('most');
   const least = conditionNamed('least');
+  const linkedIcon = shownWhenMet('linked', linked, '🔗');
+  const nearIcon = shownWhenMet('near', near, '📍');
+  const mostIcon = shownWhenMet('most', most, '👑');
+  const leastIcon = shownWhenMet('least', least, '🌱');
   const label: NodeLabel = NodeLabelSchema.parse({
     text: {
-      en: `{${linked.name}, select, true {🔗 } other {}}{${near.name}, select, true {📍 } other {}}{${most.name}, select, true {👑 } other {}}{${least.name}, select, true {🌱 } other {}}{${NAMES.label}}`,
+      en: `{${linkedIcon.name}} {${nearIcon.name}} {${mostIcon.name}} {${leastIcon.name}} {${NAMES.label}}`,
     },
+    dynamicAttributes: Object.fromEntries(
+      [linkedIcon, nearIcon, mostIcon, leastIcon].map((icon) => [
+        icon.id,
+        icon.definition,
+      ]),
+    ),
     conditions: {
       [linked.id]: edgeRule('r1', { count: 'GREATER_THAN', value: 0 }),
       [near.id]: edgeRule('r2', { type: NEAR, operator: 'EXISTS' }),
@@ -373,7 +407,7 @@ describe('a label that follows how its node is connected', () => {
 
   it('marks no node out when none is connected', () => {
     const store = storeWith(label, [a, b, c]);
-    expect(renderLabel(store, a).result.current).toBe('A');
+    expect(renderLabel(store, a).result.current).toBe('· · · · A');
   });
 
   it('shows whether it has any edge, an edge of one type, and the most or fewest', () => {
@@ -382,18 +416,18 @@ describe('a label that follows how its node is connected', () => {
       [a, b, c, d],
       [edge('1', 'a', 'b', FAR), edge('2', 'a', 'c', NEAR)],
     );
-    expect(renderLabel(store, a).result.current).toBe('🔗 📍 👑 A');
-    expect(renderLabel(store, b).result.current).toBe('🔗 B');
-    expect(renderLabel(store, c).result.current).toBe('🔗 📍 C');
-    expect(renderLabel(store, d).result.current).toBe('🌱 D');
+    expect(renderLabel(store, a).result.current).toBe('🔗 📍 👑 · A');
+    expect(renderLabel(store, b).result.current).toBe('🔗 · · · B');
+    expect(renderLabel(store, c).result.current).toBe('🔗 📍 · · C');
+    expect(renderLabel(store, d).result.current).toBe('· · · 🌱 D');
   });
 
   it('follows an edge added to the node, and is not redrawn for one added elsewhere', async () => {
     const store = storeWith(label, [a, b, c, d], [edge('1', 'a', 'b', FAR)]);
     const labelOfC = renderLabel(store, c);
     const labelOfA = renderLabel(store, a);
-    expect(labelOfC.result.current).toBe('🌱 C');
-    expect(labelOfA.result.current).toBe('🔗 👑 A');
+    expect(labelOfC.result.current).toBe('· · · 🌱 C');
+    expect(labelOfA.result.current).toBe('🔗 · 👑 · A');
     const rendersOfA = labelOfA.renders();
 
     // An edge between two other nodes leaves A as it was: connected, and
@@ -403,8 +437,8 @@ describe('a label that follows how its node is connected', () => {
         addEdge({ from: 'c', to: 'd', type: NEAR, currentStep: 0 }),
       );
     });
-    expect(labelOfC.result.current).toBe('🔗 📍 C');
-    expect(labelOfA.result.current).toBe('🔗 A');
+    expect(labelOfC.result.current).toBe('🔗 📍 · · C');
+    expect(labelOfA.result.current).toBe('🔗 · · · A');
 
     // A is no longer alone at the top, so its label did change above. An
     // edge that changes nothing A's label reads does not redraw it.
@@ -415,14 +449,13 @@ describe('a label that follows how its node is connected', () => {
         addEdge({ from: 'c', to: 'd', type: FAR, currentStep: 0 }),
       );
     });
-    expect(labelOfA.result.current).toBe('🔗 🌱 A');
+    expect(labelOfA.result.current).toBe('🔗 · · 🌱 A');
   });
 
   it('does not redraw a node whose facts an edge elsewhere leaves alone', async () => {
     const onlyLinked: NodeLabel = NodeLabelSchema.parse({
-      text: {
-        en: `{${linked.name}, select, true {🔗 } other {}}{${NAMES.label}}`,
-      },
+      text: { en: `{${linkedIcon.name}} {${NAMES.label}}` },
+      dynamicAttributes: { [linkedIcon.id]: linkedIcon.definition },
       conditions: {
         [linked.id]: edgeRule('r1', {
           count: 'GREATER_THAN_OR_EQUAL',
@@ -438,7 +471,7 @@ describe('a label that follows how its node is connected', () => {
         addEdge({ from: 'c', to: 'd', type: NEAR, currentStep: 0 }),
       );
     });
-    expect(labelOfA.result.current).toBe('A');
+    expect(labelOfA.result.current).toBe('· A');
     expect(labelOfA.renders()).toBe(before);
 
     await act(async () => {
@@ -459,10 +492,10 @@ describe('a label that follows how its node is connected', () => {
       wrapper: wrapperFor(store),
     });
     expect([a, b, c, d].map((node) => result.current(node))).toEqual([
-      '🔗 📍 👑 A',
-      '🔗 B',
-      '🔗 📍 C',
-      '🌱 D',
+      '🔗 📍 👑 · A',
+      '🔗 · · · B',
+      '🔗 📍 · · C',
+      '· · · 🌱 D',
     ]);
   });
 });

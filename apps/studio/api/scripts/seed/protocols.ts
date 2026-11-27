@@ -37,6 +37,8 @@ export type SeededVersion = {
   label: string;
   codebook: CurrentProtocol['codebook'];
   stages: Stage[];
+  /** The version's languages, of which its forms are answered in the default. */
+  localization: CurrentProtocol['localization'];
   schemaVersion: number;
   /** section id -> section hash, for the asset and template pin sets. */
   sectionHashes: Record<string, string>;
@@ -111,6 +113,7 @@ const readVersion = Effect.fnUntraced(function* (
     label,
     codebook: document.codebook,
     stages: document.stages,
+    localization: document.localization,
     schemaVersion: document.schemaVersion,
     sectionHashes,
     publishedAt,

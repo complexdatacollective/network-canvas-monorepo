@@ -1,8 +1,14 @@
-import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { getMarkdownAttributeValues } from '@codaco/fresco-ui/RenderMarkdown';
 import {
+  type DynamicValueReading,
+  logicInputsFor,
+  type LogicSources,
+  readDynamicValue,
+} from '@codaco/network-query';
+import {
   ASCII_PUNCTUATION,
-  type Conditions,
+  chooseVersion,
+  type DynamicAttributes,
   DYNAMIC_VALUE_MARKER,
   type DynamicValueReference,
   type DynamicValueRole,
@@ -15,79 +21,55 @@ import {
   isSameOptionValue,
   type LocaleTag,
   type LocalizedString,
+  type LogicChoice,
+  logicOfDynamicAttribute,
   markdownTree,
   type ParsedDynamicValuePath,
   type Variable,
 } from '@codaco/protocol-validation';
+import { boundedCache, readOwnProperty } from '@codaco/shared-consts';
 
 import type { ContentFormat } from '../localization/contentFormat';
-import type { ConnectivityIndex } from '../nodeLabels/connectivity';
-import { readOwnProperty } from '../utils/ownProperty';
-import { conditionHolds } from './conditions';
 
 /**
- * Everything a stage's text can show at one place in the interview: the
- * values the interview itself knows, the attributes of each entity on screen
- * there, with the codebook variables that describe them, and the label each
- * node on screen shows. Text names each of these directly (see
- * `parseDynamicValueName`). Built by `DynamicValueScope`; a role with no
- * attributes or label is not on screen, so a value about it reads as
- * missing.
+ * Everything a stage's text can show at one place in the interview: what
+ * logic reads there (`LogicSources`: the values the interview itself knows,
+ * the attributes of each entity on screen, with the codebook variables that
+ * describe them, the label each node on screen shows, and the conditions the
+ * text can choose its wording by), and the dynamic attributes it can show.
+ * Text names each of these directly (see `parseDynamicValueName`). Built by
+ * `DynamicValueScope`; a role with no attributes or label is not on screen,
+ * so a value about it reads as missing.
  */
-export type DynamicValueSources = Readonly<{
-  intrinsics: Readonly<Record<IntrinsicDynamicValue, unknown>>;
-  attributes: Readonly<
-    Partial<Record<DynamicValueRole, Readonly<Record<string, unknown>>>>
-  >;
-  labels: Readonly<Partial<Record<DynamicValueRole, string>>>;
-  /**
-   * Whether each node on screen that may be the participant is (see
-   * `node_isParticipant`); a role without an entry reads as missing.
-   */
-  participants?: Readonly<Partial<Record<DynamicValueRole, boolean>>>;
-  /**
-   * The conditions the text can choose its wording by, by id (the stage's,
-   * or a node type label's), with what they are asked of here: the id of
-   * each entity on screen that is saved in the network, the node type its
-   * node roles are of, and how the network's nodes are connected.
-   */
-  conditions?: Conditions | undefined;
-  entityIds?: Readonly<Partial<Record<DynamicValueRole, string>>>;
-  nodeType?: string | undefined;
-  connectivity?: ConnectivityIndex | undefined;
-  /**
-   * Conditions already judged, by id, for a caller that judges them itself
-   * (a node's label, which follows each one closely). A condition without an
-   * entry is judged from `conditions`.
-   */
-  conditionFacts?: Readonly<Record<string, boolean>>;
-  variablesFor: (
-    role: DynamicValueRole,
-  ) => Readonly<Record<string, Variable>> | undefined;
+export type DynamicValueSources = LogicSources &
+  Readonly<{
+    intrinsics: Readonly<Record<IntrinsicDynamicValue, unknown>>;
+    labels: Readonly<Partial<Record<DynamicValueRole, string>>>;
+    /**
+     * The dynamic attributes the text can show, by id (the stage's, or a
+     * node type label's): wording that logic chooses, from the conditions
+     * and the values here.
+     */
+    dynamicAttributes?: DynamicAttributes | undefined;
+    variablesFor: (
+      role: DynamicValueRole,
+    ) => Readonly<Record<string, Variable>> | undefined;
+  }>;
+
+const MISSING: DynamicValueReading = { missing: true };
+
+/**
+ * How a dynamic attribute's chosen version becomes text: its wording in the
+ * language of the text that shows it (`locale`), falling back as protocol
+ * text does, and a number's wording formatted with its count.
+ */
+export type DynamicAttributeWording = Readonly<{
+  locale: LocaleTag;
+  wordingOf: (
+    choice: LogicChoice<LocalizedString>,
+    locale: LocaleTag,
+  ) => string;
 }>;
-
-/**
- * A value as one message reads it: missing, or present, with the raw value
- * and what it is, for choosing its versions and for formatting.
- */
-type ResolvedDynamicValue =
-  | Readonly<{ missing: true }>
-  | Readonly<{
-      missing: false;
-      value: unknown;
-      /** The codebook variable, for an attribute. */
-      variable?: Variable;
-      /** The intrinsic, for a value the interview knows. */
-      intrinsic?: IntrinsicDynamicValue;
-    }>;
-
-const MISSING: ResolvedDynamicValue = { missing: true };
-
-/**
- * Missing as the interview's forms judge an answer missing: null, undefined,
- * text of only spaces, NaN and an empty list. 0 and false are answers.
- */
-const isMissing = isUnanswered;
 
 /**
  * The value a name in a message stands for, here. A name that stands for
@@ -97,61 +79,25 @@ const isMissing = isUnanswered;
 const resolveDynamicValue = (
   parsed: ParsedDynamicValuePath | undefined,
   sources: DynamicValueSources,
-): ResolvedDynamicValue => {
+  wording?: DynamicAttributeWording,
+): DynamicValueReading => {
   if (parsed === undefined) return MISSING;
-  if (parsed.kind === 'intrinsic') {
-    const value = sources.intrinsics[parsed.name];
-    return isMissing(value)
-      ? MISSING
-      : { missing: false, value, intrinsic: parsed.name };
-  }
-  if (parsed.kind === 'label') {
-    // A node on screen always has a label, and its text is shown as the node
-    // shows it, even when that is only spaces.
-    const label = sources.labels[parsed.role];
-    return label === undefined ? MISSING : { missing: false, value: label };
-  }
-  if (parsed.kind === 'participant') {
-    const isParticipant = sources.participants?.[parsed.role];
-    return isParticipant === undefined
-      ? MISSING
-      : { missing: false, value: isParticipant };
-  }
-  if (parsed.kind === 'condition') {
-    const { conditionId } = parsed;
-    const judged =
-      sources.conditionFacts === undefined
+  if (parsed.kind === 'dynamicAttribute') {
+    const definition =
+      sources.dynamicAttributes === undefined
         ? undefined
-        : readOwnProperty(sources.conditionFacts, conditionId);
-    const condition =
-      sources.conditions === undefined
-        ? undefined
-        : readOwnProperty(sources.conditions, conditionId);
-    const met =
-      judged ??
-      (condition === undefined
-        ? undefined
-        : conditionHolds(condition, sources));
-    return met === undefined ? MISSING : { missing: false, value: met };
+        : readOwnProperty(sources.dynamicAttributes, parsed.id);
+    if (definition === undefined || wording === undefined) return MISSING;
+    const text = wording.wordingOf(
+      chooseVersion(
+        logicOfDynamicAttribute(definition),
+        logicInputsFor(sources, wording.locale),
+      ),
+      wording.locale,
+    );
+    return text === '' ? MISSING : { missing: false, value: text };
   }
-  // An entity's attributes can be keyed by a roster column's heading as well
-  // as by variable ids, so only an own value counts.
-  const attributes = sources.attributes[parsed.role];
-  const value =
-    attributes === undefined
-      ? undefined
-      : readOwnProperty(attributes, parsed.variableId);
-  if (isMissing(value)) return MISSING;
-  const variables = sources.variablesFor(parsed.role);
-  const variable =
-    variables === undefined
-      ? undefined
-      : readOwnProperty(variables, parsed.variableId);
-  return {
-    missing: false,
-    value,
-    ...(variable !== undefined && { variable }),
-  };
+  return readDynamicValue(parsed, sources);
 };
 
 /** How values are written, in the language the participant reads. */
@@ -161,6 +107,8 @@ export type DynamicValueFormatters = Readonly<{
   resolveLabel: (label: LocalizedString) => string;
   /** "Yes" and "No", for a true or false value with no option labels. */
   booleanWords: Readonly<{ yes: string; no: string }>;
+  /** A dynamic attribute's chosen version as text (see `DynamicAttributeWording`). */
+  wordingOf: DynamicAttributeWording['wordingOf'];
 }>;
 
 const DATE_ONLY = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
@@ -277,7 +225,7 @@ const formatOne = (
  * text as written.
  */
 const formatDynamicValue = (
-  resolved: Extract<ResolvedDynamicValue, { missing: false }>,
+  resolved: Extract<DynamicValueReading, { missing: false }>,
   formatters: DynamicValueFormatters,
 ): string => {
   const { value, variable, intrinsic } = resolved;
@@ -298,9 +246,14 @@ const formatDynamicValue = (
 
 /**
  * A piece of resolved text: words of the message, or a value in it, with the
- * name the message gives it and its text.
+ * name the message gives it and its text. A dynamic attribute's chosen
+ * wording is marked `wording`: it is the researcher's wording, shown as the
+ * words around it are, and not a value filled in for the participant. It is
+ * still kept apart from the words, so that markdown in it shows as typed.
  */
-export type DynamicTextPart = string | Readonly<{ name: string; text: string }>;
+export type DynamicTextPart =
+  | string
+  | Readonly<{ name: string; text: string; wording?: true }>;
 
 export type DynamicText = Readonly<{
   parts: readonly DynamicTextPart[];
@@ -335,15 +288,13 @@ const warnOfUnknownNames = (
   );
 };
 
-const referencesByMessage = new Map<string, readonly DynamicValueReference[]>();
-const referencesIn = (message: string): readonly DynamicValueReference[] => {
-  let references = referencesByMessage.get(message);
-  if (references === undefined) {
-    references = dynamicValueReferencesIn(message);
-    referencesByMessage.set(message, references);
-  }
-  return references;
-};
+/**
+ * The values `message` refers to. Text is resolved again each time a value
+ * it shows changes, mostly from messages that have not, so readings are kept
+ * (`boundedCache`).
+ */
+const referencesIn: (message: string) => readonly DynamicValueReference[] =
+  boundedCache(500, dynamicValueReferencesIn);
 
 /**
  * The version of `message` (written in `locale`) that the values at this
@@ -369,11 +320,20 @@ export const resolveDynamicText = (
   if (references.length === 0) return undefined;
   warnOfUnknownNames(message, references);
 
-  const resolved = new Map<string, ResolvedDynamicValue>(
+  const wording: DynamicAttributeWording = {
+    locale,
+    wordingOf: formatters.wordingOf,
+  };
+  const resolved = new Map<string, DynamicValueReading>(
     references.map(({ name, parsed }) => [
       name,
-      resolveDynamicValue(parsed, sources),
+      resolveDynamicValue(parsed, sources, wording),
     ]),
+  );
+  const wordingNames = new Set(
+    references.flatMap(({ name, parsed }) =>
+      parsed?.kind === 'dynamicAttribute' ? [name] : [],
+    ),
   );
   const stateOf = (
     name: string,
@@ -401,8 +361,11 @@ export const resolveDynamicText = (
       // Validation shows a value only where it is present; one that is
       // missing anyway (a role not on screen) shows nothing.
       if (value === undefined || value.missing) return [];
+      const text = formatDynamicValue(value, formatters);
       return [
-        { name: part.argument, text: formatDynamicValue(value, formatters) },
+        wordingNames.has(part.argument)
+          ? { name: part.argument, text, wording: true }
+          : { name: part.argument, text },
       ];
     },
   );

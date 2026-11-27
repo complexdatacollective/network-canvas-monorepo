@@ -404,7 +404,8 @@ export function Toaster() {
         data-testid="toast-viewport"
         className={cx(
           'group/toasts phone-landscape:max-w-sm fixed top-auto bottom-2 mx-auto flex w-full',
-          'tablet-portrait:inset-e-8 tablet-portrait:bottom-8 z-10',
+          // Over every popup and dialog (see `PortalContainerProvider`).
+          'tablet-portrait:inset-e-8 tablet-portrait:bottom-8 z-3001',
           // Space between toasts when expanded, and their swipe area. Also
           // the viewport's own flex gap — which lays nothing out, as every
           // child is absolutely positioned — so `useStackSpace` can read it

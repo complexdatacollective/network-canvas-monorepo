@@ -62,13 +62,11 @@ Use this stage when you want to collect a small amount of information about each
 <!-- field: form.title -->
 <!-- scene: name-generator-form -->
 
-The form contains the questions the participant answers each time they add a node. The **form title** is the heading shown at the top of the form, such as _Add a person_. Each field below it records one attribute of the node.
-
-For a new attribute, the input control you choose for its field also sets the kind of data the attribute holds.
-
-Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
+The form contains the questions the participant answers each time they add a node. The **Dialog title** is the heading of the dialog in which the participant fills in the form, such as _Add a person_. Each field in the form records one attribute of the node.
 
 > Do: Include a field for an attribute called `name`, so [node labeling](https://documentation.networkcanvas.com/design-protocols/key-concepts/node-labelling) works correctly everywhere else in the interview.
+
+<!-- include: form-document -->
 
 ## Write the prompts
 

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
 import { testId } from '../../../__tests__/testIds.ts';
+import { formOf } from '../../../testing/fixtures.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
@@ -138,15 +139,13 @@ describe('stage subjects resolve during collection', () => {
   it('existence-checks a FamilyPedigree form field variable', () => {
     const protocol = protocolWith([
       familyPedigree({
-        form: {
-          fields: [
-            {
-              id: 'field-1',
-              variable: 'notInCodebook',
-              prompt: localized('Tell us more'),
-            },
-          ],
-        },
+        form: formOf([
+          {
+            id: 'field-1',
+            variable: 'notInCodebook',
+            prompt: localized('Tell us more'),
+          },
+        ]),
       }),
     ]);
     expect(
@@ -225,15 +224,13 @@ describe('stage subjects resolve during collection', () => {
   it('accepts a pedigree whose references all exist', () => {
     const protocol = protocolWith([
       familyPedigree({
-        form: {
-          fields: [
-            {
-              id: 'field-1',
-              variable: 'hasConditionX',
-              prompt: localized('Affected?'),
-            },
-          ],
-        },
+        form: formOf([
+          {
+            id: 'field-1',
+            variable: 'hasConditionX',
+            prompt: localized('Affected?'),
+          },
+        ]),
       }),
     ]);
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
@@ -245,15 +242,13 @@ describe('stage subjects resolve during collection', () => {
   it('resolves the subject on the hit itself, so no consumer re-derives one', () => {
     const protocol = protocolWith([
       familyPedigree({
-        form: {
-          fields: [
-            {
-              id: 'field-1',
-              variable: 'hasConditionX',
-              prompt: localized('Affected?'),
-            },
-          ],
-        },
+        form: formOf([
+          {
+            id: 'field-1',
+            variable: 'hasConditionX',
+            prompt: localized('Affected?'),
+          },
+        ]),
       }),
     ]);
     const subjectAt = (path: (string | number)[]) =>

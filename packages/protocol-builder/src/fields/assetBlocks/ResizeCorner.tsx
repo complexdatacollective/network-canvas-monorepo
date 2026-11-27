@@ -7,7 +7,7 @@ import {
   ASSET_BLOCK_OUTLINE_WIDTH,
   assetBlockControlsProps,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import { useTokenPillLanguage } from '@codaco/fresco-ui/TokenPill';
+import { useInterfaceLanguage } from '@codaco/fresco-ui/interfaceLanguage';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { ASSET_BLOCK_SIZES } from '@codaco/shared-consts';
 
@@ -80,12 +80,15 @@ const CORNER_OFFSET = -(
 
 export function ResizeCorner({
   boxRef,
+  cornerRef,
   drawn,
   size,
   onDrag,
   onDrop,
 }: {
   boxRef: RefObject<HTMLDivElement | null>;
+  /** The corner as it is drawn, for what must leave it uncovered. */
+  cornerRef?: RefObject<HTMLDivElement | null>;
   drawn: DrawnFile & { ratio: number };
   size: SizeChoice;
   onDrag: (size: SizeChoice | undefined) => void;
@@ -94,7 +97,7 @@ export function ResizeCorner({
   const intl = useAppIntl();
   // The size's name is the interface's words, over text in the language
   // being written.
-  const interfaceLanguage = useTokenPillLanguage();
+  const interfaceLanguage = useInterfaceLanguage();
   const probeRef = useRef<HTMLSpanElement>(null);
   // Where the pointer took hold, and how tall the picture was then.
   const [held, setHeld] = useState<
@@ -132,6 +135,7 @@ export function ResizeCorner({
     <>
       <span ref={probeRef} aria-hidden />
       <div
+        ref={cornerRef}
         {...assetBlockControlsProps}
         aria-hidden
         data-asset-block-resize=""

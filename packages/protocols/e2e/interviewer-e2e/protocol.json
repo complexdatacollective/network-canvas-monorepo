@@ -86,15 +86,10 @@
       "label": {
         "en-US": "About you"
       },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction"
-        },
-        "text": {
-          "en-US": "Tell us about **you**."
-        }
-      },
       "form": {
+        "content": {
+          "en-US": "# Introduction\n\nTell us about **you**.\n\n![](field:6c796996-4804-5e39-a916-76c2f4b9125f)"
+        },
         "fields": [
           {
             "id": "6c796996-4804-5e39-a916-76c2f4b9125f",

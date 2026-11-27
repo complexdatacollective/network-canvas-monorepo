@@ -199,6 +199,31 @@ describe('getIsUsed', () => {
     expect(result[variable6]).toBe(false);
   });
 
+  it('returns true for a variable that only the live stage’s dynamic attribute chooses its wording by', () => {
+    // A dynamic attribute names its attribute as a value name on its own,
+    // outside any text, so neither the id nor a text search finds it.
+    openStageDraft({
+      dynamicAttributes: {
+        [testVariableId('dynamic')]: {
+          logic: 'answers',
+          value: dynamicValueNameFor({
+            kind: 'attribute',
+            role: 'ego',
+            variableId: variable6,
+          }),
+          missing: { en: 'someone' },
+          answers: [],
+          other: { en: 'them' },
+        },
+      },
+    });
+
+    const result = getIsUsed(asState(mockStateWithoutUse));
+
+    expect(result[variable6]).toBe(true);
+    expect(result[variable5]).toBe(false);
+  });
+
   it('checks codebook for variable validation use', () => {
     // variable1 has sameAs: variable2, so variable2 should be detected as used.
     // The variable must have a type field for the schema to validate it.

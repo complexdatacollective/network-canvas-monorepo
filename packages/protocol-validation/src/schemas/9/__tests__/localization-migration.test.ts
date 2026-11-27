@@ -6,12 +6,19 @@ import { z } from 'zod';
 
 import { asOneLine } from '@codaco/shared-consts';
 
+import { withFieldIdsHidden } from '../../../__tests__/fieldBlocks.ts';
 import {
   stageWithoutSuppliedText,
   withoutSuppliedWording,
 } from '../../../__tests__/suppliedWording.ts';
 import { withOriginalCodebookKeys } from '../../../__tests__/testIds.ts';
+import {
+  fieldIdsIn,
+  printContentDocument,
+  readContentDocument,
+} from '../../../localization/contentDocument.ts';
 import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
+import { fieldBlockMarkdown } from '../../../localization/fieldBlock.ts';
 import {
   escapeMessageText,
   messageText,
@@ -29,6 +36,7 @@ import {
   collectLocalizedStringSites,
 } from '../../../utils/collectLocalizedStrings.ts';
 import { extractProtocol } from '../../../utils/extractProtocol.ts';
+import { textPlaceOf } from '../../../utils/textPlace.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import { legacyMarkdownAsStandard } from '../legacy-markdown.ts';
@@ -134,6 +142,95 @@ const pageBehind = (document: unknown, at: Path): string | undefined => {
   ].join('\n\n');
 };
 
+// A form's document, read: the text above its fields, and the fields it
+// places, in order.
+const formReading = (message: string) => {
+  const { nodes, problems } = readContentDocument(message);
+  return {
+    problems,
+    kinds: nodes.map(({ kind }) => kind),
+    text: messageText(
+      printContentDocument(nodes.filter(({ kind }) => kind === 'markdown')),
+    ),
+    fields: fieldIdsIn(nodes),
+  };
+};
+
+// Schema 8 held a form as its list of fields, and an Ego Form's heading and
+// text as its introduction panel. The migrated form's document has the
+// panel's title as a heading and its text below it, then a block for each
+// of the migrated form's fields, which ask for the schema 8 form's
+// variables in the same order.
+const formExpected = (document: unknown, form: Path, migrated: unknown) => {
+  const stage = getAt(document, form.slice(0, -1));
+  const panel =
+    isRecord(stage) && isRecord(stage.introductionPanel)
+      ? stage.introductionPanel
+      : {};
+  const before = [
+    ...(typeof panel.title === 'string' ? [`# ${panel.title}`] : []),
+    ...(typeof panel.text === 'string' ? [panel.text] : []),
+  ];
+  const fields = getAt(migrated, [...form, 'fields']);
+  const listed = Array.isArray(fields) ? fields.filter(isRecord) : [];
+  expect(listed.map(({ variable }) => variable)).toEqual(
+    (getAt(document, [...form, 'fields']) as { variable: string }[]).map(
+      ({ variable }) => variable,
+    ),
+  );
+  return {
+    problems: [],
+    kinds: [
+      ...(before.length > 0 ? ['markdown'] : []),
+      ...listed.map(() => 'field'),
+    ],
+    text: before.join('\n\n'),
+    fields: listed.map(({ id }) => id),
+  };
+};
+
+type Hit = ReturnType<typeof collectLocalizedStrings>[number];
+
+/**
+ * `hits`, with the text of each Ego Form's introduction panel in `document`
+ * as a site of its own at the panel's text: the paragraphs of the migrated
+ * form's document between its heading and its fields, as the migration wrote
+ * them from the panel's text alone.
+ */
+const withPanelTexts = (hits: readonly Hit[], document: unknown): Hit[] => [
+  ...hits,
+  ...hits.flatMap((hit): Hit[] => {
+    const at = hit.path;
+    if (at.at(-1) !== 'content' || at.at(-2) !== 'form') return [];
+    const panelPath = [...at.slice(0, -2), 'introductionPanel', 'text'];
+    if (typeof getAt(document, panelPath) !== 'string') return [];
+    // The text between the heading and the fields: the message without its
+    // first line and without the block of each field that it places, which
+    // close it.
+    const between = (message: string) => {
+      const blocks = fieldIdsIn(readContentDocument(message).nodes)
+        .map((id) => `\n\n${fieldBlockMarkdown(id)}`)
+        .join('');
+      expect(message.endsWith(blocks)).toBe(true);
+      return message
+        .slice(0, message.length - blocks.length)
+        .replace(/^[^\n]*\n\n/, '');
+    };
+    return [
+      {
+        ...hit,
+        path: panelPath,
+        value: Object.fromEntries(
+          Object.entries(hit.value).map(([locale, message]) => [
+            locale,
+            between(message),
+          ]),
+        ),
+      },
+    ];
+  }),
+];
+
 const nameBehindLabel = (document: unknown, at: Path): unknown => {
   const owner = getAt(document, at.slice(0, -1));
   if (at.at(-3) === 'edges' && isRecord(owner) && isRecord(owner.subject)) {
@@ -162,6 +259,7 @@ const nameBehindLabel = (document: unknown, at: Path): unknown => {
 
 // `value` with every `id` key removed, for comparing what the migration gives
 // with a fixture whose readable ids it replaces.
+// A field block names its field by id, so its address is left out as well.
 const withoutIds = (value: unknown): unknown =>
   Array.isArray(value)
     ? value.map(withoutIds)
@@ -171,7 +269,9 @@ const withoutIds = (value: unknown): unknown =>
             .filter(([key]) => key !== 'id')
             .map(([key, child]) => [key, withoutIds(child)]),
         )
-      : value;
+      : typeof value === 'string'
+        ? withFieldIdsHidden(value)
+        : value;
 
 /** Rows the migration gave ids, without them, once each id is a UUID. */
 const rowsWithMintedIds = (rows: unknown): unknown => {
@@ -298,7 +398,8 @@ describe('v8 to v9 localization migration', () => {
     // Schema 8 has no Language Chooser, so a schema 8 document has none of
     // its text to wrap. The migration writes none of the wording Network
     // Canvas supplies (the interview shows it), so those texts are not
-    // wrapped either. Nor does schema 8 have a node type's own label.
+    // wrapped either. Nor does schema 8 have a node type's own label, or
+    // dynamic attributes.
     const missed = [...declarations]
       .filter(([declaration]) => !wrapped.has(declaration))
       .map(([, where]) => where)
@@ -306,6 +407,7 @@ describe('v8 to v9 localization migration', () => {
         (where) =>
           !where.includes('[type=LanguageChooser]') &&
           !where.endsWith('.dynamicLabel.text') &&
+          !where.includes('.dynamicAttributes{}') &&
           !isSuppliedDeclaration(where),
       );
     expect(missed).toEqual([]);
@@ -405,6 +507,14 @@ describe('v8 to v9 localization migration', () => {
       if (getAt(migrated, [...at.slice(0, 2), 'type']) === 'FinishSession') {
         continue;
       }
+      expect(Object.keys(value)).toEqual(['en']);
+      const place = textPlaceOf(at);
+      if (place.kind === 'formContent') {
+        expect(formReading(value.en ?? '')).toEqual(
+          formExpected(document, place.form, migrated),
+        );
+        continue;
+      }
       const source = getAt(document, at);
       const expectedText =
         typeof source === 'string'
@@ -412,7 +522,6 @@ describe('v8 to v9 localization migration', () => {
           : (explanationBehind(source) ??
             pageBehind(document, at) ??
             nameBehindLabel(document, at));
-      expect(Object.keys(value)).toEqual(['en']);
       expect(messageText(value.en ?? '')).toBe(expectedText);
     }
   });
@@ -426,7 +535,10 @@ describe('v8 to v9 localization migration', () => {
       `> ${text} <b>{x}</b> it's '<'<br>www.example.org :smile:`;
     const document = schema8Protocol(legacy);
     const migrated = migrateProtocol(document, 9);
-    const hits = collectLocalizedStrings(migrated).filter(
+    const hits = withPanelTexts(
+      collectLocalizedStrings(migrated),
+      document,
+    ).filter(
       ({ path: at, arguments: declared }) =>
         at[0] !== 'interfaceText' &&
         declared === undefined &&
@@ -510,7 +622,10 @@ describe('v8 to v9 localization migration', () => {
     const broken = (text: string) => `${text} \n\n second\r\nthird\u2028\n`;
     const document = schema8Protocol(broken);
     const migrated = migrateReadable(document);
-    const hits = collectLocalizedStrings(migrated).filter(
+    const hits = withPanelTexts(
+      collectLocalizedStrings(migrated),
+      document,
+    ).filter(
       ({ path: at, arguments: declared }) =>
         at[0] !== 'interfaceText' &&
         declared === undefined &&
@@ -603,7 +718,10 @@ describe('v8 to v9 localization migration', () => {
     // Text that may show values reads as before.
     for (const { path: at, value } of dynamicSites) {
       const before = getAt(plain, at);
-      if (before !== undefined) expect(value).toEqual(before);
+      // The migration gives each field a new id each time.
+      if (before !== undefined) {
+        expect(withoutIds(value)).toEqual(withoutIds(before));
+      }
     }
     // Text that cannot show values may keep the character.
     expect(

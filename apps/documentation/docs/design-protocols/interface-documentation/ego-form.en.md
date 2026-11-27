@@ -11,7 +11,19 @@ navOrder: 16
 
 </InterfaceSummary>
 
-The Ego Form is an interface that collects data on your participant (ego). When using the Ego Form, participants complete a [form](../key-concepts/forms) about themselves that consists of one or more fields. This Interface also contains an embedded introductory panel where the purpose of the form can be described to a participant.
+The Ego Form is an interface that collects data on your participant (ego). When using the Ego Form, participants complete a [form](../key-concepts/forms) about themselves that consists of one or more fields.
+
+<AppOnly app="current">
+
+To explain the purpose of the form to the participant, write a heading and some text at the top of the form, above its first field.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+This Interface also contains an embedded introductory panel where the purpose of the form can be described to a participant.
+
+</AppOnly>
 
 ## Configuring Ego Form
 

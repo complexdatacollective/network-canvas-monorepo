@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createProtocolObjectId } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  fieldBlockMarkdown,
+} from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -172,6 +175,62 @@ describe('LanguageList', () => {
     const remove = removeButton('French');
     expect(remove).toHaveAttribute('aria-disabled', 'true');
     expect(remove).toHaveAccessibleDescription(STRANDED_REASON);
+  });
+
+  // Removing Spanish removes the field that only the Spanish form asks for,
+  // and its question with it, as the stage editor saves the form.
+  it('removes a language whose only copy of a text is the question of a field that only its form asks for', async () => {
+    const { store } = renderLanguageList({
+      name: 'Study',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en', 'es'] },
+      assetManifest: {},
+      codebook: {
+        node: {},
+        edge: {},
+        ego: {
+          variables: {
+            name: { name: 'name', type: 'text', component: 'Text' },
+            age: { name: 'age', type: 'number', component: 'Number' },
+          },
+        },
+      },
+      stages: [
+        {
+          id: createProtocolObjectId(),
+          type: 'EgoForm',
+          label: { en: 'About you', es: 'Sobre ti' },
+          form: {
+            content: {
+              en: fieldBlockMarkdown('field-name'),
+              es: ['field-age', 'field-name']
+                .map(fieldBlockMarkdown)
+                .join('\n\n'),
+            },
+            fields: [
+              {
+                id: 'field-age',
+                variable: 'age',
+                prompt: { es: '¿Qué edad?' },
+              },
+              {
+                id: 'field-name',
+                variable: 'name',
+                prompt: { en: 'Your name?', es: '¿Su nombre?' },
+              },
+            ],
+          },
+        },
+      ],
+    } as unknown as CurrentProtocol);
+    const { confirm } = globalThis.__architectDialogMocks;
+
+    const remove = removeButton('Spanish');
+    expect(remove).not.toHaveAttribute('aria-disabled');
+    fireEvent.click(remove);
+
+    await vi.waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+    expect(getProtocol(store.getState())?.localization.locales).toEqual(['en']);
   });
 
   it('keeps an unavailable delete button in the tab order, and shows why on focus', async () => {

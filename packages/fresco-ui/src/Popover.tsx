@@ -20,7 +20,7 @@ import {
   POPOVER_ARROW_PADDING,
 } from './popoverArrow';
 import { type PopupSide, usePhysicalSide } from './popupSide';
-import { usePortalContainer } from './PortalContainer';
+import { useDrawnOnTopWhenOpened, usePortalContainer } from './PortalContainer';
 import { cx } from './utils/cva';
 
 const popupAnimations = {
@@ -285,9 +285,12 @@ function PopoverContent({
   const { mounted } = usePopoverContext();
   const portalContainer = usePortalContainer();
   const physicalSide = usePhysicalSide(side);
+  const [portalNode, setPortalNode] = useState<HTMLDivElement | null>(null);
+  useDrawnOnTopWhenOpened(mounted, portalNode);
 
   return (
     <BasePopover.Portal
+      ref={setPortalNode}
       container={portalContainer ?? undefined}
       keepMounted={keepMounted}
     >

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLayoutEffect } from 'react';
 import { expect, it, vi } from 'vitest';
@@ -6,24 +6,13 @@ import { expect, it, vi } from 'vitest';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
-import {
-  collectAttribute,
-  fieldsOf,
-  openField,
-} from '../../editors/__tests__/formEditorHarness.tsx';
 import { writeInto } from '../../editors/__tests__/writeInto.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import FormFieldsSection from '../../sections/form-fields/FormFieldsSection.tsx';
+import FormDocumentSection from '../../sections/form-document/FormDocumentSection.tsx';
 import type { StageFormDraft } from '../../stageDocument.ts';
 import { useStageEdit } from '../../stageEdit.tsx';
-import { fixtureVariableId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { useStageEditorForm } from '../stageEditorContext.ts';
-
-const RELATIONSHIP_TO_EGO = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'relationship_to_ego',
-);
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
 vi.mock('../../fields/RichTextField.tsx', () => ({
@@ -113,7 +102,7 @@ it('reads the value a control is holding before anything is saved', async () => 
  * written is a draft the researcher can lose.
  *
  * A name generator's form, because it is a saved stage whose sections write
- * BENEATH a top-level key — `form.title` and `form.fields` — which is where a
+ * BENEATH a top-level key — `form.title` — which is where a
  * reading assembled by field name rather than by field path stops looking.
  */
 function renderFormProbe() {
@@ -134,7 +123,7 @@ function renderFormProbe() {
     sections: (
       <>
         <Probe />
-        <FormFieldsSection subject="node" hasTitle />
+        <FormDocumentSection subject="node" hasTitle />
       </>
     ),
   });
@@ -152,7 +141,7 @@ function renderFormProbe() {
 
 it('follows a control whose name is a path into the document', async () => {
   const { harness, read } = renderFormProbe();
-  const title = await screen.findByRole('textbox', { name: 'Form title' });
+  const title = await screen.findByRole('textbox', { name: 'Dialog title' });
 
   expect(read().draft).toEqual(read().committed);
 
@@ -165,26 +154,4 @@ it('follows a control whose name is a path into the document', async () => {
   // rather than a latch that anything typed sets for good.
   await writeInto(harness, title, 'Add a person');
   expect(read().draft).toEqual(read().committed);
-});
-
-it('follows a row a list section has added beneath a top-level key', async () => {
-  const { harness, read } = renderFormProbe();
-  await screen.findByRole('textbox', { name: 'Form title' });
-  expect(fieldsOf(read().draft)).toHaveLength(1);
-
-  const dialog = await openField(harness, 'Create new form field');
-  await collectAttribute(harness, dialog, RELATIONSHIP_TO_EGO);
-  await writeInto(
-    harness,
-    dialog.getByRole('textbox', { name: 'Question text' }),
-    'How do you know them?',
-  );
-  await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
-  await waitFor(() =>
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-  );
-
-  const added = read();
-  expect(fieldsOf(added.draft)).toHaveLength(2);
-  expect(added.draft).not.toEqual(added.committed);
 });

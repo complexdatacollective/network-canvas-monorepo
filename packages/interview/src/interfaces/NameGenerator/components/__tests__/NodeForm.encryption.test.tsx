@@ -7,6 +7,7 @@ import {
   asEntityAttributeReference,
   type Variable,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -317,13 +318,13 @@ const nicknameStages: Parameters<typeof createEncryptionStore>[1] = [
     subject: { entity: 'node', type: NODE_TYPE },
     form: {
       title: { en: 'Add a person' },
-      fields: [
+      ...formOf([
         {
           id: testId('field-1'),
           variable: asEntityAttributeReference(NICKNAME_VARIABLE),
           prompt: { en: 'Nickname' },
         },
-      ],
+      ]),
     },
     prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
   },

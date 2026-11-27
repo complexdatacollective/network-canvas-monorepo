@@ -13,8 +13,6 @@ import DynamicTextField from './DynamicTextField.tsx';
 /** The heading a roster stage shows over the people it offers. */
 const TITLE_FIELD = 'panelTitle';
 const TITLE_LABEL = 'Panel heading';
-const INSERT_LABEL =
-  'Inject piped text from interview metadata or a network attribute';
 
 const title = (
   <Field<typeof DynamicTextField>
@@ -34,7 +32,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Text a participant reads that can show values the interview fills in: the participant’s answers, the people a question is about, today’s date. What it can show depends on where the text sits. The syringe button (“Inject piped text from interview metadata or a network attribute”), or typing `{`, opens a searchable menu of those values; a chosen value shows as a chip among the words, and is written into the text by the name of what it shows: an attribute by its id, never by its name, so renaming the attribute changes no text. A value that can be missing is inserted as a piece of text with one version for when it is known and one for when it is not, so the participant never meets a gap. Fields reach this through `LocalizedInputField` and `LocalizedRichTextField` with `dynamicValues` set.',
+          'Text that a participant reads, which can show values that the interview fills in: the participant’s answers, the people a question is about, today’s date, and the stage’s dynamic attributes. The Attribute button, or typing `{`, opens the list of what the text can show here, grouped by whose it is; a chosen value shows as a pill among the words. A dynamic attribute is a word or phrase that reads differently in different cases; its pill opens its settings. Text of several lines can also contain logic blocks: content that is shown only in some cases. Fields reach this through `LocalizedInputField` and `LocalizedRichTextField` with `dynamicValues` set.',
       },
     },
   },
@@ -50,8 +48,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * Today's date is something any stage text can show. Chosen from the menu, it
- * arrives as a chip and a save binds it to the stage.
+ * Today's date is something any stage text can show. Chosen from the
+ * Attribute menu, it arrives as a pill, and a save writes it into the text.
  */
 export const InsertingAValue: Story = {
   play: async ({ canvasElement }) => {
@@ -61,14 +59,19 @@ export const InsertingAValue: Story = {
 
     const editor = await canvas.findByRole('textbox', { name: TITLE_LABEL });
     await userEvent.click(editor);
-
-    await userEvent.click(canvas.getByRole('button', { name: INSERT_LABEL }));
-    const search = await body.findByRole('combobox', { name: 'Search' });
-    await userEvent.type(search, 'today');
-    await userEvent.keyboard('{Enter}');
+    await userEvent.click(canvas.getByRole('button', { name: 'Attribute' }));
+    const menu = await body.findByRole('dialog', {
+      name: 'Insert an attribute',
+    });
+    await expect(within(menu).getByText('Interview attributes')).toBeVisible();
+    await userEvent.click(
+      within(menu).getByRole('option', { name: /^Today’s date/ }),
+    );
 
     await waitFor(async () => {
-      await expect(editor).toHaveTextContent('Today’s date');
+      await expect(
+        editor.querySelector('[data-inline-value="now"]'),
+      ).not.toBeNull();
     });
 
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
@@ -80,12 +83,7 @@ export const InsertingAValue: Story = {
   },
 };
 
-/**
- * A value that can be missing arrives open, with the version that shows it
- * first and the one for when it is missing below it, in the pill's place.
- * Undo still takes it back: the editor keeps its history while the values
- * it offers are reordered.
- */
+/** Undo takes back a value put in from the Attribute menu. */
 export const UndoingAValue: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -94,33 +92,27 @@ export const UndoingAValue: Story = {
 
     const editor = await canvas.findByRole('textbox', { name: TITLE_LABEL });
     await userEvent.click(editor);
-    await userEvent.click(canvas.getByRole('button', { name: INSERT_LABEL }));
-    const search = await body.findByRole('combobox', { name: 'Search' });
-    await userEvent.type(search, 'ego_name');
-    await userEvent.keyboard('{Enter}');
-
-    const known = await canvas.findByRole('textbox', { name: 'If known' });
-    const missing = canvas.getByRole('textbox', { name: 'If not known' });
-    await expect(known.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-      missing.getBoundingClientRect().top,
+    await userEvent.click(canvas.getByRole('button', { name: 'Attribute' }));
+    await userEvent.click(
+      await body.findByRole('option', { name: /^Today’s date/ }),
     );
-    await expect(
-      editor.querySelector('[data-versions-pill]'),
-    ).not.toBeVisible();
+    await waitFor(() =>
+      expect(editor.querySelector('[data-inline-value="now"]')).not.toBeNull(),
+    );
     await waitFor(() => expect(editor).toHaveFocus());
 
     await userEvent.keyboard(withMod('z'));
     await waitFor(() =>
-      expect(editor.querySelector('[data-versions-element]')).toBeNull(),
+      expect(editor.querySelector('[data-inline-value="now"]')).toBeNull(),
     );
     await userEvent.keyboard(withMod('{Shift>}z{/Shift}'));
     await waitFor(() =>
-      expect(editor.querySelector('[data-versions-element]')).not.toBeNull(),
+      expect(editor.querySelector('[data-inline-value="now"]')).not.toBeNull(),
     );
   },
 };
 
-/** Held elsewhere: the text can be read, and nothing can be inserted. */
+/** Held elsewhere: the text can be read, and nothing can be put in. */
 export const ASpectator: Story = {
   args: {
     readOnly: true,
@@ -132,7 +124,7 @@ export const ASpectator: Story = {
     const editor = await canvas.findByRole('textbox', { name: TITLE_LABEL });
     await expect(editor).toHaveAttribute('contenteditable', 'false');
     await expect(
-      canvas.getByRole('button', { name: INSERT_LABEL }),
-    ).toBeDisabled();
+      canvas.getByRole('button', { name: 'Attribute' }),
+    ).toHaveAttribute('aria-disabled', 'true');
   },
 };

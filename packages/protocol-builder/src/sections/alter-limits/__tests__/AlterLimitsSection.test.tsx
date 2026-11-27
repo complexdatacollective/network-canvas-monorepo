@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { fieldBlockMarkdown } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
@@ -44,6 +45,7 @@ const unlimitedStage = {
       subject: { entity: 'node', type: PERSON },
       form: {
         title: en('Add a person'),
+        content: en(fieldBlockMarkdown(testId('field-1'))),
         fields: [
           {
             id: testId('field-1'),

@@ -17,9 +17,14 @@ const build = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('EgoForm', {
     label: 'About You',
-    introductionPanel: {
-      title: 'About You',
-      text: 'Please answer the following questions about yourself. Your responses will be kept confidential.',
+    form: {
+      fields: [],
+      content: ({ fields, heading }) =>
+        [
+          heading('About You'),
+          'Please answer the following questions about yourself. Your responses will be kept confidential.',
+          ...fields,
+        ].join('\n\n'),
     },
   });
   stage.addFormField({ component: 'Text', prompt: 'What is your name?' });

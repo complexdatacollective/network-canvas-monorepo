@@ -22,6 +22,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { useTrack } from '../../analytics/useTrack';
+import { ContentDocument } from '../../content/ContentDocument';
 import { useInterviewCompletion } from '../../contexts/InterviewCompletionContext';
 import {
   useContractHandlers,
@@ -29,7 +30,6 @@ import {
 } from '../../contract/context';
 import type { CompletedAction } from '../../contract/types';
 import { DynamicTextParts } from '../../dynamicValues/DynamicText';
-import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { useStageWording } from '../../localization/useStageWording';
 import { getInterviewId } from '../../selectors/session';
@@ -77,7 +77,7 @@ function ScreenText({
       // Room between the text and the buttons that follow it.
       className="focusable mb-6 last:mb-0"
     >
-      <LocalizedMarkdown
+      <ContentDocument
         value={value}
         allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
       />

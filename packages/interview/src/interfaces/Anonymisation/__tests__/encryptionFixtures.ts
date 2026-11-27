@@ -4,6 +4,7 @@ import {
   getLocaleMetadata,
   type Variable,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -122,7 +123,7 @@ const nameGeneratorStages: Stages = [
     subject: { entity: 'node', type: NODE_TYPE },
     form: {
       title: { en: 'Add a person' },
-      fields: [
+      ...formOf([
         {
           id: testId('field-1'),
           variable: asEntityAttributeReference(NAME_VARIABLE),
@@ -133,7 +134,7 @@ const nameGeneratorStages: Stages = [
           variable: asEntityAttributeReference(AGE_VARIABLE),
           prompt: { en: 'Age' },
         },
-      ],
+      ]),
     },
     prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
   },
@@ -146,20 +147,18 @@ export const alterFormStages: Stages = [
     type: 'AlterForm',
     label: { en: 'Alter form' },
     subject: { entity: 'node', type: NODE_TYPE },
-    form: {
-      fields: [
-        {
-          id: testId('field-1'),
-          variable: asEntityAttributeReference(NAME_VARIABLE),
-          prompt: { en: 'Name' },
-        },
-        {
-          id: testId('field-2'),
-          variable: asEntityAttributeReference(AGE_VARIABLE),
-          prompt: { en: 'Age' },
-        },
-      ],
-    },
+    form: formOf([
+      {
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(NAME_VARIABLE),
+        prompt: { en: 'Name' },
+      },
+      {
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(AGE_VARIABLE),
+        prompt: { en: 'Age' },
+      },
+    ]),
   },
   {
     id: testId('next-screen'),

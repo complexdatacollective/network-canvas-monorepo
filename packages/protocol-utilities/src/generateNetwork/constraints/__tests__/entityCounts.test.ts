@@ -13,6 +13,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { ENGLISH_FORMS } from '../../../__tests__/englishForms.ts';
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import { buildEntityConstraints } from '../buildConstraints.ts';
@@ -1224,6 +1225,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     const drawn = new Set<string>();
     for (let seed = 1; seed <= 50; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook,
         stages: [rosterStage(), census],
@@ -1269,6 +1271,7 @@ describe('generateNetwork with a roster-capped unique variable', () => {
 
   it('generates nothing, rather than refusing, for a known-empty roster', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook,
       stages: [rosterStage()],
@@ -1283,6 +1286,7 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     // adds the two people it can. Counting the pool's length instead refused
     // this protocol for needing three distinct booleans it never asks for.
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook,
       stages: [rosterStage()],
@@ -1305,6 +1309,7 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     // the draw, on whichever seeds reached the third person.
     const generate = (): unknown =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook,
         stages: [rosterStage()],
@@ -1326,6 +1331,7 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     // name generator's person then has none left to be told apart by.
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook,
         stages: [
@@ -1348,7 +1354,12 @@ describe('generateNetwork with a roster-capped unique variable', () => {
     // and two boolean values cannot tell them apart. Refusing up front is the
     // only alternative to throwing partway through the draw.
     expect(() =>
-      generateNetwork({ seed: 1, codebook, stages: [rosterStage()] }),
+      generateNetwork({
+        ...ENGLISH_FORMS,
+        seed: 1,
+        codebook,
+        stages: [rosterStage()],
+      }),
     ).toThrow(SyntheticDataConstraintError);
   });
 });
@@ -1402,6 +1413,7 @@ describe('generateNetwork with a filtered writer on existing nodes', () => {
 
   it('generates when the filter reaches one holder of a unique boolean', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook,
       stages,
@@ -1444,6 +1456,7 @@ describe('generateNetwork with a unique group a roster populates unevenly', () =
     // space and refused this protocol. The rows share the group's `unique`
     // slot, so the draw takes the first and passes the other two over.
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook,
       stages: [rosterStage()],
@@ -1469,6 +1482,7 @@ describe('generateNetwork with a unique group a roster populates unevenly', () =
     // issue. Under-counting here would move this refusal into the draw.
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook,
         stages: [rosterStage()],
@@ -1488,6 +1502,7 @@ describe('generateNetwork with a unique group a roster populates unevenly', () =
     // fabricates have one boolean left to be told apart by.
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook,
         stages: [
@@ -1535,6 +1550,7 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     // the name generator added before it hold. Reading the protocol-wide total
     // refused this for needing 21 distinct booleans it never asks for.
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook,
       stages: [
@@ -1554,6 +1570,7 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
     // composer's own pass.
     const generate = (): unknown =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook,
         stages: [networkComposer()],
@@ -1582,6 +1599,7 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
 
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook,
         stages: [networkComposer(), census],
@@ -1640,6 +1658,7 @@ describe('generateNetwork with a filtered pair-edge stage', () => {
 
   it('creates no edges at all when the filter admits one node', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook: {
         node: { person },
@@ -1675,6 +1694,7 @@ describe('generateNetwork with a filtered pair-edge stage', () => {
     // a run that throws mid-draw, which this whole pass exists to prevent.
     const generate = (): unknown =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook: {
           node: { person },
@@ -1765,6 +1785,7 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
     // candidates, so one pair is all it can join and two booleans cover it.
     // Reading the protocol-wide total refused this for needing 45.
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook: uniqueBooleanEdge,
       stages: [twoPeople, census, eightPeople],
@@ -1779,6 +1800,7 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
     // about the count is blanket-narrowed: the pair set is genuinely 45 here.
     const generate = (): unknown =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook: uniqueBooleanEdge,
         stages: [twoPeople, eightPeople, census],
@@ -1791,6 +1813,7 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
   it('still refuses when the census own people exhaust the value space', () => {
     const generate = (): unknown =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook: uniqueBooleanEdge,
         stages: [
@@ -1868,6 +1891,7 @@ describe('generateNetwork with a census configured to create no edges', () => {
 
   it('generates, rather than refusing, and creates the nothing it counted', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 1,
       codebook,
       stages,
@@ -1881,6 +1905,7 @@ describe('generateNetwork with a census configured to create no edges', () => {
   it('still refuses when the ceiling is above zero at all', () => {
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook,
         stages,
@@ -1895,6 +1920,7 @@ describe('generateNetwork with a census configured to create no edges', () => {
     // let a protocol through that draws at up to a half per pair.
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 1,
         codebook,
         stages,
@@ -1982,6 +2008,7 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
 
   it('creates one edge per pair, whichever prompt reached it first', () => {
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [threePeople, census],
@@ -2001,6 +2028,7 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     // connected and records that answer per prompt, so both prompts read as
     // answered for all three pairs while one edge joins each of them.
     const { stageMetadata } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook,
       stages: [threePeople, census],
@@ -2019,6 +2047,7 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     // Three values for the three edges the two prompts share between them.
     // Counting a pair set per prompt would refuse this for needing six.
     const { network } = generateNetwork({
+      ...ENGLISH_FORMS,
       seed: 3,
       codebook: bandsOf(3),
       stages: [threePeople, census],
@@ -2033,6 +2062,7 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
   it('refuses a value space that cannot cover the pairs even once', () => {
     expect(() =>
       generateNetwork({
+        ...ENGLISH_FORMS,
         seed: 3,
         codebook: bandsOf(2),
         stages: [threePeople, census],
@@ -2107,6 +2137,7 @@ describe('worstCaseEntityCounts with roster rows shared across node types', () =
     const drawn = new Set<number>();
     for (let seed = 1; seed <= 50; seed++) {
       const { network } = generateNetwork({
+        ...ENGLISH_FORMS,
         seed,
         codebook,
         stages: [

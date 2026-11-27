@@ -8,7 +8,7 @@ import {
 
 import { buildSyntheticPayload } from './synthetic-payload.js';
 
-/** The smallest schema-valid EgoForm: a form title and one text field. */
+/** The smallest schema-valid EgoForm: a heading and one text field. */
 function egoFormWithTextField(
   synth: SyntheticInterview,
   variableName: string,
@@ -18,9 +18,7 @@ function egoFormWithTextField(
     component: 'Text',
     name: variableName,
   });
-  const stage = synth.addStage('EgoForm', {
-    introductionPanel: { title: 'About you' },
-  });
+  const stage = synth.addStage('EgoForm');
   stage.addFormField({
     variable: variable.id,
     component: 'Text',

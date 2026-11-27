@@ -1,7 +1,7 @@
 ---
 title: Formulaire ego
 navOrder: 16
-translatedFrom: b5f817e698cceea73129407bded73d8f2bdbede1
+translatedFrom: 8d51cac0feee6f916ea0e51b014d9b1a0cbbac81
 ---
 
 <InterfaceSummary type="EgoForm">
@@ -12,7 +12,19 @@ translatedFrom: b5f817e698cceea73129407bded73d8f2bdbede1
 
 </InterfaceSummary>
 
-L’interface « Formulaire ego » est une interface qui recueille des données sur l’ego (la personne participante, au centre de son réseau). Dans une étape « Formulaire ego », les personnes participantes remplissent un [formulaire](../key-concepts/forms) les concernant, composé d’un ou de plusieurs champs. Cette interface comporte aussi un panneau d’introduction intégré, dans lequel le but du formulaire peut être expliqué à la personne participante.
+L’interface « Formulaire ego » est une interface qui recueille des données sur l’ego (la personne participante, au centre de son réseau). Dans une étape « Formulaire ego », les personnes participantes remplissent un [formulaire](../key-concepts/forms) les concernant, composé d’un ou de plusieurs champs.
+
+<AppOnly app="current">
+
+Pour expliquer le but du formulaire à la personne participante, rédigez un titre et un texte en haut du formulaire, au-dessus de son premier champ.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Cette interface comporte aussi un panneau d’introduction intégré, dans lequel le but du formulaire peut être expliqué à la personne participante.
+
+</AppOnly>
 
 ## Configurer une étape « Formulaire ego » {#configuring-ego-form}
 

@@ -1,0 +1,11 @@
+- main:
+  - heading "Next" [level=1]
+  - paragraph: Continue.
+  - navigation:
+    - button "Text size"
+    - 'combobox "Interview language: español"'
+    - progressbar "Progress indicator": x
+    - button "Previous Step"
+    - button "Next Step"
+    - status
+  - region "Interview notifications"

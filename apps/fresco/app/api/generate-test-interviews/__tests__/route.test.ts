@@ -94,6 +94,30 @@ beforeEach(() => {
   });
 });
 
+describe('synthetic interview language', () => {
+  it('answers the forms in the protocol’s default language, which a participant who asks for none of its languages reads', async () => {
+    findProtocol.mockResolvedValue({
+      name: 'Fixture',
+      stages: [],
+      codebook: {},
+      // The default language is not the first that the protocol lists.
+      localization: { defaultLocale: 'es', locales: ['en', 'es'] },
+    });
+
+    await (await POST(request())).text();
+
+    expect(generateNetwork).toHaveBeenCalledTimes(2);
+    for (const [params] of generateNetwork.mock.calls) {
+      // The protocol's languages go too, so that a form without a document
+      // in that language falls back to the default as the interview does.
+      expect(params).toMatchObject({
+        formLanguage: 'es',
+        localization: { defaultLocale: 'es', locales: ['en', 'es'] },
+      });
+    }
+  });
+});
+
 describe('synthetic generation failure transport', () => {
   it('returns an encoded authentication refusal without querying or generating', async () => {
     requireApiAuth.mockRejectedValue(new Error('Unauthorized'));

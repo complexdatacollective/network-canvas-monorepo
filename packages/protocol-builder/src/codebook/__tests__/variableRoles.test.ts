@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
-import { PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS } from '@codaco/protocol-validation';
+import {
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  fieldBlockMarkdown,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -94,6 +97,7 @@ const sections = (): Record<string, SectionDoc> => ({
     label: { en: 'Form' },
     subject: SUBJECT,
     form: {
+      content: { en: fieldBlockMarkdown(testId('field-1')) },
       fields: [
         {
           id: testId('field-1'),

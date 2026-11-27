@@ -15,7 +15,7 @@ const protocol = {
 const blankPrompt = {
   code: 'custom',
   path: ['stages', 0, 'prompts', 0, 'text', 'en'],
-  message: 'Text cannot be blank.',
+  message: 'This wording cannot be blank.',
 };
 
 // Anything that is not the protocol's own content left empty may be a fault in
@@ -26,7 +26,7 @@ describe('findRefusedContent', () => {
       {
         path: blankPrompt.path,
         place: 'Stage “Friends”, prompt 1',
-        message: 'Text cannot be blank.',
+        message: 'This wording cannot be blank.',
       },
     ]);
   });

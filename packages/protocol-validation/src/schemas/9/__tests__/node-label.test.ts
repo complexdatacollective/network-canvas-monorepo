@@ -34,6 +34,27 @@ const NAME = dynamicValueNameFor({
   role: 'node',
   variableId: NAME_VAR,
 });
+const PLACE_ID = testId('place-icon');
+const PLACE = dynamicValueNameFor({ kind: 'dynamicAttribute', id: PLACE_ID });
+const LINKED_ID = testId('linked-icon');
+const LINKED = dynamicValueNameFor({ kind: 'dynamicAttribute', id: LINKED_ID });
+
+// Dynamic attributes of the label: an icon for the kind of place, and one
+// for whether the place is linked to another.
+const placeIcons = {
+  [PLACE_ID]: {
+    logic: 'answers',
+    value: KIND,
+    missing: { en: '·' },
+    answers: [{ answer: HOSPITAL, wording: { en: '🏥' } }],
+    other: { en: '·' },
+  },
+  [LINKED_ID]: {
+    logic: 'conditions',
+    cases: [{ condition: BIG_ID, when: 'met', wording: { en: '🔗' } }],
+    otherwise: { en: '·' },
+  },
+};
 
 const codebook = (label: unknown) => ({
   node: {
@@ -135,11 +156,10 @@ describe('ConditionSchema', () => {
 });
 
 describe('NodeLabelSchema', () => {
-  it('accepts a label with nested versions', () => {
+  it('accepts a label whose dynamic attributes choose by an attribute and by a condition', () => {
     const result = NodeLabelSchema.safeParse({
-      text: {
-        en: `{${KIND}, select, missing {} ${HOSPITAL} {🏥 {${BIG}, select, true {🔗} other {}}} other {}}{node_label}`,
-      },
+      text: { en: `{${PLACE}}{${LINKED}} {node_label}` },
+      dynamicAttributes: placeIcons,
       conditions: {
         [BIG_ID]: {
           about: 'node',
@@ -154,6 +174,22 @@ describe('NodeLabelSchema', () => {
       },
     });
     expect(result.success).toBe(true);
+  });
+
+  // A label chooses between versions by its dynamic attributes.
+  it('refuses a label that chooses between versions inside it', () => {
+    const result = NodeLabelSchema.safeParse({
+      text: {
+        en: `{${KIND}, select, missing {} ${HOSPITAL} {🏥 } other {}}{node_label}`,
+      },
+    });
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ['text', 'en'],
+        message:
+          'This wording chooses between versions inside a sentence. Use a dynamic attribute instead.',
+      }),
+    ]);
   });
 
   it('refuses a condition id that is not a UUID', () => {
@@ -194,23 +230,28 @@ describe('findNodeLabelProblems', () => {
     ],
   };
 
-  it('accepts attributes, the default label and conditions, met or not', () => {
+  it('accepts attributes, the default label and dynamic attributes', () => {
     expect(
       problemsOf({
-        text: {
-          en: `{${KIND}, select, missing {} ${HOSPITAL} {🏥 } other {}}{${BIG}, select, true {⭐ } other {}}{${BIG}, select, false {· } other {}}{node_label}`,
-        },
+        text: { en: `{${PLACE}}{${LINKED}} {${NAME}} {node_label}` },
         conditions: { [BIG_ID]: big },
+        dynamicAttributes: placeIcons,
       }),
     ).toEqual([]);
   });
 
-  it('requires a version for when an attribute is missing', () => {
-    const problems = problemsOf({
-      text: { en: `{${NAME}}` },
-    });
-    expect(problems.map((problem) => problem.path)).toEqual([
-      [...LABEL_PATH, 'text', 'en'],
+  // An attribute with no value shows nothing.
+  it('accepts an attribute without a version for when it is missing', () => {
+    expect(problemsOf({ text: { en: `{${NAME}}` } })).toEqual([]);
+  });
+
+  it('refuses a dynamic attribute that the label does not have', () => {
+    expect(problemsOf({ text: { en: `{${PLACE}} {node_label}` } })).toEqual([
+      {
+        path: [...LABEL_PATH, 'text', 'en'],
+        message:
+          'This label refers to a dynamic attribute that no longer exists.',
+      },
     ]);
   });
 
@@ -227,7 +268,7 @@ describe('findNodeLabelProblems', () => {
         role: 'ego',
         variableId: testVariableId('anything'),
       }),
-      'This label cannot use an attribute of the participant, because the text does not refer to the participant.',
+      'This label cannot use an attribute of the participant, because the wording does not refer to the participant.',
     ],
     [
       'an encrypted attribute',
@@ -250,7 +291,7 @@ describe('findNodeLabelProblems', () => {
     [
       'a condition that does not exist',
       dynamicValueNameFor({ kind: 'condition', conditionId: testId('gone') }),
-      'This label has an If block whose rules no longer exist.',
+      'This label has a logic block whose rules no longer exist.',
     ],
     [
       'a name that refers to nothing',
@@ -260,9 +301,9 @@ describe('findNodeLabelProblems', () => {
   ])(
     'refuses %s, and names it as a researcher knows it',
     (_, name, message) => {
-      expect(
-        problemsOf({ text: { en: `{${name}, select, missing {} other {x}}` } }),
-      ).toEqual([{ path: [...LABEL_PATH, 'text', 'en'], message }]);
+      expect(problemsOf({ text: { en: `{${name}}` } })).toEqual([
+        { path: [...LABEL_PATH, 'text', 'en'], message },
+      ]);
     },
   );
 
@@ -272,43 +313,12 @@ describe('findNodeLabelProblems', () => {
       conditions: { [BIG_ID]: big },
     });
     expect(problems[0]?.message).toBe(
-      'An If block cannot be shown as words. It chooses which version of the text is shown. Give the text a version for when its rules are met and a version for when they are not.',
+      'A logic block cannot be shown as words. It chooses which version of the wording is shown. Give the wording a version for when its rules are met and a version for when they are not.',
     );
-  });
-
-  it('refuses a case that is neither true nor false', () => {
-    expect(
-      problemsOf({
-        text: { en: `{${BIG}, select, yes {a} other {b}}` },
-        conditions: { [BIG_ID]: big },
-      }),
-    ).toEqual([
-      {
-        path: [...LABEL_PATH, 'text', 'en'],
-        message:
-          'This label chooses its wording by an If block, but one of its versions is neither for when its rules are met nor for when they are not.',
-      },
-    ]);
-  });
-
-  it('refuses a case that is not one of the attribute’s options', () => {
-    expect(
-      problemsOf({
-        text: {
-          en: `{${KIND}, select, hospital {a} ${optionCaseKey(testId('deleted'))} {c} other {b}}`,
-        },
-      }),
-    ).toEqual([
-      {
-        path: [...LABEL_PATH, 'text', 'en'],
-        message:
-          'This label chooses its wording by the "kind" attribute of the node that the label is on, but one of its versions is for an option that no longer exists.',
-      },
-    ]);
   });
 });
 
-describe('a protocol whose text chooses its wording by conditions', () => {
+describe('a protocol whose text chooses between versions by conditions', () => {
   type Draft = ReturnType<typeof completeProtocol>;
   const isPlainText = (variable: unknown) =>
     typeof variable === 'object' &&
@@ -356,12 +366,20 @@ describe('a protocol whose text chooses its wording by conditions', () => {
   };
 
   const NAMED_ID = testId('named');
+  const STAR_ID = testId('star');
   const labelWith = (rules: unknown[], join?: string) => ({
     text: {
-      en: `{${dynamicValueNameFor({ kind: 'condition', conditionId: NAMED_ID })}, select, true {⭐ } other {}}{node_label}`,
+      en: `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id: STAR_ID })}} {node_label}`,
     },
     conditions: {
       [NAMED_ID]: { about: 'node', ...(join && { join }), rules },
+    },
+    dynamicAttributes: {
+      [STAR_ID]: {
+        logic: 'conditions',
+        cases: [{ condition: NAMED_ID, when: 'met', wording: { en: '⭐' } }],
+        otherwise: { en: '·' },
+      },
     },
   });
 
@@ -399,6 +417,29 @@ describe('a protocol whose text chooses its wording by conditions', () => {
       ),
     );
     expect(issuePathsOf(protocol)).toEqual([]);
+  });
+
+  it('reports a version that has never been written once, in the language that shows it', () => {
+    const { protocol, nodeType, setLabel } = fixture();
+    const label = labelWith([
+      { type: 'edge', id: testId('r1'), options: { count: 'MOST' } },
+    ]);
+    label.dynamicAttributes[STAR_ID]!.otherwise = {} as never;
+    setLabel(label);
+    const result = ProtocolSchemaV9.safeParse(protocol);
+    expect(
+      result.success
+        ? []
+        : result.error.issues.map(({ path, message }) => [
+            path.join('.'),
+            message,
+          ]),
+    ).toEqual([
+      [
+        `codebook.node.${nodeType}.dynamicLabel.dynamicAttributes.${STAR_ID}.otherwise.en`,
+        'Write this version in English.',
+      ],
+    ]);
   });
 
   it('refuses a label rule about another node type, the participant, or an edge type that does not exist', () => {

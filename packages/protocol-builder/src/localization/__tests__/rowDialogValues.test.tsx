@@ -9,7 +9,17 @@ import {
 import { alterFormStageEditor } from '../../editors/alter-form/AlterFormStageEditor.ts';
 import { dyadCensusStageEditor } from '../../editors/dyad-census/DyadCensusStageEditor.ts';
 import {
+  caretInQuestion,
+  formEditor,
+} from '../../sections/form-document/__tests__/formDocumentTesting.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+  openAttributePicker,
+} from '../../testing/attributePicker.ts';
+import {
   loadFixtureStage,
+  fixtureOptionId,
   fixtureStageId,
   fixtureTypeId,
   fixtureVariableId,
@@ -23,8 +33,24 @@ const CONTACT_FREQ = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
   'contactFreq',
 );
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
 
-/** A condition on the first node of the pair, and text that tests it. */
+/** The first node of the pair's contactFreq and flagged, as text names them. */
+const FIRST_CONTACT_FREQ = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'dyadSource',
+  variableId: CONTACT_FREQ,
+});
+const FIRST_FLAGGED = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'dyadSource',
+  variableId: FLAGGED,
+});
+
+/** A condition on the first node of the pair. */
 const LINKED = testId('condition/linked');
 const RULES = [
   {
@@ -33,10 +59,19 @@ const RULES = [
     options: { count: 'GREATER_THAN', value: 0 },
   },
 ];
-const TESTS_LINKED = `Do they{${dynamicValueNameFor({
-  kind: 'condition',
-  conditionId: LINKED,
-})}, select, true { still} other {}} talk?`;
+
+/** A dynamic attribute that tests the condition, and text that shows it. */
+const STILL = testId('dynamic/still');
+const STILL_NAME = dynamicValueNameFor({ kind: 'dynamicAttribute', id: STILL });
+const STILL_DEFINITION = {
+  logic: 'conditions',
+  cases: [{ condition: LINKED, when: 'met', wording: { 'en-US': 'still' } }],
+  otherwise: { 'en-US': 'ever' },
+};
+const USES_STILL = `Do they {${STILL_NAME}} talk?`;
+
+/** The name of the list that the toolbar's Attribute button opens. */
+const ATTRIBUTE_MENU = 'Insert an attribute';
 
 const openCensus = () => {
   const { id, type, fields } = loadFixtureStage('dyad-census-1');
@@ -59,23 +94,57 @@ const openCensus = () => {
   });
 };
 
-/** Opens the prompt's dialog and inserts today's date into its text. */
-const insertTodayInPrompt = async (harness: ReturnType<typeof openCensus>) => {
+type Harness = ReturnType<typeof openCensus>;
+
+/** Opens the only prompt's dialog, and hands back the dialog. */
+const openPrompt = async (harness: Harness) => {
   await harness.opened();
   await harness.user.click(screen.getByRole('button', { name: 'Edit prompt' }));
-  const dialog = within(await screen.findByRole('dialog'));
-  await harness.user.click(
-    dialog.getByRole('button', {
-      name: 'Inject piped text from interview metadata or a network attribute',
-    }),
+  return within(await screen.findByRole('dialog'));
+};
+
+/** Opens the attribute list from the toolbar of the open row's text. */
+const openAttributeMenu = async (
+  harness: Harness,
+  dialog: ReturnType<typeof within>,
+) => {
+  await harness.user.click(dialog.getByRole('button', { name: 'Attribute' }));
+  return within(await screen.findByRole('dialog', { name: ATTRIBUTE_MENU }));
+};
+
+/** Opens the prompt's dialog and inserts today's date into its text. */
+const insertTodayInPrompt = async (harness: Harness) => {
+  const dialog = await openPrompt(harness);
+  const menu = await openAttributeMenu(harness, dialog);
+  await harness.user.click(menu.getByRole('option', { name: /Today’s date/ }));
+  await waitFor(() =>
+    expect(
+      dialog.getByRole('textbox', { name: /^Prompt text/ }),
+    ).toHaveTextContent('Today’s date'),
   );
-  await harness.user.click(
-    await screen.findByRole('option', { name: /Today’s date/ }),
-  );
-  expect(
-    dialog.getByRole('textbox', { name: /^Prompt text/ }),
-  ).toHaveTextContent('Today’s date');
   return dialog;
+};
+
+/**
+ * Clicks a value's pill in a text. The editor finds what was clicked through
+ * `elementFromPoint`, which jsdom does not implement, so the pill is what is
+ * at every point while it is clicked.
+ */
+const clickPill = async (harness: Harness, text: HTMLElement, name: string) => {
+  const pill = await waitFor(() => {
+    const found = text.querySelector<HTMLElement>(
+      `[data-inline-value="${name}"]`,
+    );
+    if (found === null) throw new Error(`No pill for ${name}`);
+    return found;
+  });
+  const original = document.elementFromPoint.bind(document);
+  document.elementFromPoint = () => pill;
+  try {
+    await harness.user.click(pill);
+  } finally {
+    document.elementFromPoint = original;
+  }
 };
 
 const dialogClosed = () =>
@@ -86,10 +155,10 @@ const promptsText = (prompts: unknown) => JSON.stringify(prompts);
 
 /**
  * What a row's dialog inserts is written into the row's text, and the row
- * reaches the stage only when the dialog saves. (An "If" also declares its
- * condition on the stage while the dialog is open, and a dialog that closes
- * without saving puts the stage's conditions back exactly as they were: see
- * `stageConditions.test.tsx`, where the rules dialog is a stand-in.)
+ * reaches the stage only when the dialog saves. (A dynamic attribute also
+ * declares itself on the stage while the dialog is open, and a dialog that
+ * closes without saving puts the stage back exactly as it was: see
+ * `stageConditions.test.tsx`.)
  */
 describe('values inserted in a row dialog', () => {
   it('leave the stage as it was when the dialog is cancelled', async () => {
@@ -111,6 +180,7 @@ describe('values inserted in a row dialog', () => {
       expect.objectContaining({ text: { 'en-US': 'Who do you know?' } }),
     ]);
     expect(saved?.stageDocument).not.toHaveProperty('conditions');
+    expect(saved?.stageDocument).not.toHaveProperty('dynamicAttributes');
   });
 
   it('are in the row’s text by name when the dialog is saved', async () => {
@@ -130,7 +200,7 @@ describe('values inserted in a row dialog', () => {
 });
 
 describe('a deleted row', () => {
-  it('takes the condition only it tested with it', async () => {
+  it('takes with it the dynamic attribute only it showed, and the condition only that tested', async () => {
     const { id, type, fields } = loadFixtureStage('dyad-census-1');
     const harness = renderStageEditor({
       stage: {
@@ -139,10 +209,11 @@ describe('a deleted row', () => {
         fields: {
           ...fields,
           conditions: { [LINKED]: { about: 'dyadSource', rules: RULES } },
+          dynamicAttributes: { [STILL]: STILL_DEFINITION },
           prompts: [
             {
               id: testId('dated'),
-              text: { 'en-US': TESTS_LINKED },
+              text: { 'en-US': USES_STILL },
               createEdge: KNOWS,
             },
             {
@@ -170,90 +241,170 @@ describe('a deleted row', () => {
     expect(saved?.stageDocument.prompts).toEqual([
       expect.objectContaining({ id: testId('plain') }),
     ]);
+    expect(saved?.stageDocument).not.toHaveProperty('dynamicAttributes');
     expect(saved?.stageDocument).not.toHaveProperty('conditions');
   });
 });
 
 describe('a value with answers inserted in a row dialog', () => {
-  const insertAndSave = async (option: RegExp) => {
+  it('is written by its name when the value itself is shown', async () => {
     const harness = openCensus();
-    await harness.opened();
+    const dialog = await openPrompt(harness);
+    const menu = await openAttributeMenu(harness, dialog);
     await harness.user.click(
-      screen.getByRole('button', { name: 'Edit prompt' }),
-    );
-    const dialog = within(await screen.findByRole('dialog'));
-    // Wording by answer is logic, which has a menu of its own.
-    await harness.user.click(
-      dialog.getByRole('button', {
-        name: /Different wording/.test(option.source)
-          ? 'Insert logic'
-          : 'Inject piped text from interview metadata or a network attribute',
-      }),
-    );
-    await harness.user.click(
-      await screen.findByRole('option', { name: option }),
+      menu.getByRole('option', { name: /^First node: contactFreq/ }),
     );
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await dialogClosed();
+
     const saved = await harness.submit();
-    const variable =
-      harness.hostCodebook().node?.[PERSON]?.variables?.[CONTACT_FREQ];
-    const options = variable?.type === 'ordinal' ? variable.options : [];
-    return {
-      text: promptsText(saved?.stageDocument.prompts),
-      caseKeys: options.map((each) => optionCaseKey(each.id)),
-    };
-  };
-
-  const FIRST_CONTACT_FREQ = dynamicValueNameFor({
-    kind: 'attribute',
-    role: 'dyadSource',
-    variableId: CONTACT_FREQ,
-  });
-
-  it('is written by its name when only the value itself is shown', async () => {
-    const { text, caseKeys } = await insertAndSave(
-      /First node: contactFreq.*Ordinal/,
-    );
+    const text = promptsText(saved?.stageDocument.prompts);
     expect(text).toContain(`{${FIRST_CONTACT_FREQ}}`);
-    expect(caseKeys.length).toBeGreaterThan(0);
-    for (const key of caseKeys) expect(text).not.toContain(`${key} {`);
+    expect(text).not.toContain(`{${FIRST_CONTACT_FREQ}, select,`);
+    expect(saved?.stageDocument).not.toHaveProperty('dynamicAttributes');
   });
 
-  it('chooses each answer by its option’s id when it is shown by answer', async () => {
-    const { text, caseKeys } = await insertAndSave(
-      /First node: contactFreq.*Different wording for each answer/,
-    );
-    expect(text).toContain(`{${FIRST_CONTACT_FREQ}, select,`);
-    expect(caseKeys.length).toBeGreaterThan(0);
-    for (const key of caseKeys) expect(text).toContain(` ${key} {`);
-  });
-});
-
-describe('a value shown by answer in an open dialog', () => {
-  it('relabels its versions when an answer is renamed in the codebook', async () => {
+  it('gets a version for each answer, by its option’s id, from a dynamic attribute', async () => {
     const harness = openCensus();
-    await harness.opened();
+    const dialog = await openPrompt(harness);
+    const menu = await openAttributeMenu(harness, dialog);
     await harness.user.click(
-      screen.getByRole('button', { name: 'Edit prompt' }),
+      menu.getByRole('option', { name: 'Create dynamic attribute' }),
     );
-    const dialog = within(await screen.findByRole('dialog'));
+    const create = await screen.findByRole('dialog', {
+      name: 'Create a dynamic attribute',
+    });
+
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Insert logic' }),
+      within(create).getByRole('combobox', { name: /^Logic/ }),
     );
     await harness.user.click(
       await screen.findByRole('option', {
-        name: /First node: contactFreq.*Different wording for each answer/,
+        name: /^Different wording for each answer/,
       }),
     );
-    expect(
-      await dialog.findByRole('textbox', { name: 'Weekly' }),
-    ).toBeInTheDocument();
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute', create),
+      FIRST_CONTACT_FREQ,
+    );
 
+    const variable =
+      harness.hostCodebook().node?.[PERSON]?.variables?.[CONTACT_FREQ];
+    const options = variable?.type === 'ordinal' ? variable.options : [];
+    expect(options.length).toBeGreaterThan(0);
+    // Each answer is offered by its label, and written for by its id.
+    for (const option of options) {
+      await harness.user.type(
+        within(create).getByRole('textbox', {
+          name: String(option.label['en-US']),
+        }),
+        `often ${option.value}`,
+      );
+    }
+    await harness.user.type(
+      within(create).getByRole('textbox', { name: 'If not known' }),
+      'unknown',
+    );
+    await harness.user.type(
+      within(create).getByRole('textbox', { name: 'Any other answer' }),
+      'other',
+    );
+    await harness.user.click(
+      within(create).getByRole('button', { name: 'Create dynamic attribute' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Create a dynamic attribute' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await dialogClosed();
+    const saved = await harness.submit();
+
+    const definitions = Object.entries(
+      (saved?.stageDocument.dynamicAttributes ?? {}) as Record<
+        string,
+        { value?: string; answers?: { answer: string }[] }
+      >,
+    );
+    expect(definitions).toHaveLength(1);
+    const [[id, definition]] = definitions as [
+      [string, (typeof definitions)[0][1]],
+    ];
+    expect(definition.value).toBe(FIRST_CONTACT_FREQ);
+    expect(definition.answers?.map((each) => each.answer)).toEqual(
+      options.map((option) => optionCaseKey(option.id)),
+    );
+    expect(promptsText(saved?.stageDocument.prompts)).toContain(
+      `{${dynamicValueNameFor({ kind: 'dynamicAttribute', id })}}`,
+    );
+  });
+});
+
+describe('a dynamic attribute shown by answer in an open dialog', () => {
+  it('relabels its versions when an answer is renamed in the codebook', async () => {
+    const BY_FREQUENCY = testId('dynamic/by-frequency');
+    const BY_FREQUENCY_NAME = dynamicValueNameFor({
+      kind: 'dynamicAttribute',
+      id: BY_FREQUENCY,
+    });
+    const WEEKLY = fixtureOptionId(
+      { entity: 'node', typeName: 'person' },
+      'contactFreq',
+      3,
+    );
+    const { id, type, fields } = loadFixtureStage('dyad-census-1');
+    const harness = renderStageEditor({
+      stage: {
+        id,
+        type,
+        fields: {
+          ...fields,
+          dynamicAttributes: {
+            [BY_FREQUENCY]: {
+              logic: 'answers',
+              value: FIRST_CONTACT_FREQ,
+              missing: { 'en-US': 'sometimes' },
+              answers: [
+                {
+                  answer: optionCaseKey(WEEKLY),
+                  wording: { 'en-US': 'every week' },
+                },
+              ],
+              other: { 'en-US': 'often' },
+            },
+          },
+          prompts: [
+            {
+              id: testId('dyad-census-prompt-1'),
+              text: { 'en-US': `Do they talk {${BY_FREQUENCY_NAME}}?` },
+              createEdge: KNOWS,
+            },
+          ],
+        },
+      },
+      registry: dyadCensusStageEditor,
+    });
     const person = harness.hostCodebook().node?.[PERSON];
     if (person === undefined) throw new Error('No person type');
     const contactFreq = person.variables?.[CONTACT_FREQ];
     if (contactFreq?.type !== 'ordinal') throw new Error('No contactFreq');
+
+    const dialog = await openPrompt(harness);
+    await clickPill(
+      harness,
+      dialog.getByRole('textbox', { name: /^Prompt text/ }),
+      BY_FREQUENCY_NAME,
+    );
+    const settings = within(
+      await screen.findByRole('dialog', { name: 'Dynamic attribute' }),
+    );
+    expect(
+      await settings.findByRole('textbox', { name: 'Weekly' }),
+    ).toBeInTheDocument();
+
     harness.receiveCodebookUpdate({
       node: {
         [PERSON]: {
@@ -264,7 +415,7 @@ describe('a value shown by answer in an open dialog', () => {
               ...contactFreq,
               // The same options, by id, one of them relabelled.
               options: contactFreq.options.map((option) =>
-                option.value === 3
+                option.id === WEEKLY
                   ? { ...option, label: { 'en-US': '**Every** week' } }
                   : option,
               ),
@@ -274,58 +425,55 @@ describe('a value shown by answer in an open dialog', () => {
       },
     });
 
-    // The editor takes a new document once the researcher has left it, as
-    // they have when they rename the answer in another field.
-    await harness.user.click(dialog.getByRole('heading', { level: 2 }));
-    // The pill is folded again once the document is rebuilt.
-    const pill = await waitFor(() => {
-      const found = document.querySelector<HTMLElement>('[data-versions-pill]');
-      if (found === null) throw new Error('No pill');
-      return found;
-    });
-    await harness.user.click(pill);
     expect(
-      await dialog.findByRole('textbox', { name: 'Every week' }),
+      await settings.findByRole('textbox', { name: 'Every week' }),
     ).toBeInTheDocument();
     expect(
-      dialog.queryByRole('textbox', { name: 'Weekly' }),
+      settings.queryByRole('textbox', { name: 'Weekly' }),
     ).not.toBeInTheDocument();
   });
 });
 
 describe('a yes-or-no value without labels for its answers', () => {
-  it('is listed but cannot be shown as itself, only by answer', async () => {
+  it('is listed but cannot be shown as itself, only chosen by in a dynamic attribute', async () => {
     const harness = openCensus();
-    await harness.opened();
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Edit prompt' }),
-    );
-    const dialog = within(await screen.findByRole('dialog'));
-    await harness.user.click(
-      dialog.getByRole('button', {
-        name: 'Inject piped text from interview metadata or a network attribute',
-      }),
-    );
+    const dialog = await openPrompt(harness);
+    const menu = await openAttributeMenu(harness, dialog);
 
-    const asItself = await screen.findByRole('option', {
-      name: /First node: flagged.*Add labels for its yes and no answers first/,
-    });
+    const asItself = menu.getByRole('option', { name: /^First node: flagged/ });
     expect(asItself).toHaveAttribute('aria-disabled', 'true');
+    expect(asItself).toHaveTextContent(
+      'Add labels for its yes and no answers first',
+    );
     await harness.user.click(asItself);
     expect(
       dialog.getByRole('textbox', { name: /^Prompt text/ }),
     ).not.toHaveTextContent('flagged');
 
-    // By answer it needs no labels, and is offered with the logic.
-    await harness.user.keyboard('{Escape}');
+    // By answer it needs no labels: a dynamic attribute can choose by it.
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Insert logic' }),
+      menu.getByRole('option', { name: 'Create dynamic attribute' }),
     );
-    expect(
+    const create = await screen.findByRole('dialog', {
+      name: 'Create a dynamic attribute',
+    });
+    await harness.user.click(
+      within(create).getByRole('combobox', { name: /^Logic/ }),
+    );
+    await harness.user.click(
       await screen.findByRole('option', {
-        name: /First node: flagged.*Different wording for each answer/,
+        name: /^Different wording for each answer/,
       }),
-    ).not.toHaveAttribute('aria-disabled', 'true');
+    );
+    const picker = await openAttributePicker(
+      harness.user,
+      attributeField('Attribute', create),
+    );
+    const row = picker.querySelector<HTMLElement>(
+      `[role="option"][data-attribute-id="${CSS.escape(FIRST_FLAGGED)}"]`,
+    );
+    expect(row).not.toBeNull();
+    expect(row).not.toHaveAttribute('data-unavailable');
   });
 });
 
@@ -352,76 +500,89 @@ describe("a census prompt's preview", () => {
     await harness.opened();
 
     await waitFor(() =>
-      expect(document.querySelector('[data-token="now"]')).toHaveTextContent(
-        'Today’s date',
-      ),
+      expect(
+        document.querySelector('data[data-attribute-type="datetime"]'),
+      ).toHaveTextContent('Today’s date'),
     );
     expect(screen.queryByText(/\{now\}/)).not.toBeInTheDocument();
   });
 });
 
-describe('a form field saved before fields had ids', () => {
+describe("a form's text", () => {
+  /** The fixture alter form's fields, as the stage stores them. */
+  const fixtureFields = () => {
+    const form = loadFixtureStage('alter-form-1').fields.form as {
+      fields: readonly { id: string; prompt: Record<string, string> }[];
+    };
+    return form.fields;
+  };
+
   it('offers every attribute of the node it asks about', async () => {
-    // The fixture's fields carry no ids, as a protocol saved before
-    // Architect gave them one does.
     const harness = renderStageEditor({
       stageId: fixtureStageId('alter-form-1'),
       registry: alterFormStageEditor,
     });
     await harness.opened();
-    const [first] = screen.getAllByRole('button', { name: 'Edit field' });
-    if (first === undefined) throw new Error('No field to edit');
-    await harness.user.click(first);
-    const dialog = within(await screen.findByRole('dialog'));
-    const [insert] = dialog.getAllByRole('button', {
-      name: 'Inject piped text from interview metadata or a network attribute',
-    });
-    if (insert === undefined) throw new Error('No insert button');
-    await harness.user.click(insert);
-
-    const offered = (await screen.findAllByRole('option')).map(
-      (option) => option.textContent ?? '',
+    const editor = await formEditor();
+    const [first] = fixtureFields();
+    if (first === undefined) throw new Error('The fixture has no field.');
+    await caretInQuestion(harness, editor, first.id);
+    await harness.user.click(screen.getByRole('button', { name: 'Attribute' }));
+    const menu = within(
+      await screen.findByRole('dialog', { name: ATTRIBUTE_MENU }),
     );
+
+    const offered = menu
+      .getAllByRole('option')
+      .map((option) => option.textContent ?? '');
     // The name comes from an earlier stage; the form asks for the other two,
     // the first field for relationship_to_ego itself.
     for (const attribute of ['name', 'relationship_to_ego', 'flagged']) {
       expect(offered.some((label) => label.startsWith(attribute))).toBe(true);
     }
   });
-});
 
-describe("a value inserted in a form field's question", () => {
-  it('shows in the field preview as a pill rather than crashing it', async () => {
+  it('shows a value inserted in a field’s question as a pill, and saves it by name', async () => {
     const harness = renderStageEditor({
       stageId: fixtureStageId('alter-form-1'),
       registry: alterFormStageEditor,
     });
     await harness.opened();
-    const [first] = screen.getAllByRole('button', { name: 'Edit field' });
-    if (first === undefined) throw new Error('No field to edit');
-    await harness.user.click(first);
-    const dialog = within(await screen.findByRole('dialog'));
-    const [insert] = dialog.getAllByRole('button', {
-      name: 'Inject piped text from interview metadata or a network attribute',
-    });
-    if (insert === undefined) throw new Error('No insert button');
-    await harness.user.click(insert);
+    const editor = await formEditor();
+    const [first] = fixtureFields();
+    if (first === undefined) throw new Error('The fixture has no field.');
+    await caretInQuestion(harness, editor, first.id);
+    await harness.user.click(screen.getByRole('button', { name: 'Attribute' }));
+    const menu = within(
+      await screen.findByRole('dialog', { name: ATTRIBUTE_MENU }),
+    );
     await harness.user.click(
-      await screen.findByRole('option', { name: /Today’s date/ }),
+      menu.getByRole('option', { name: /Today’s date/ }),
     );
 
-    // The preview is the interview's own field, shown with no participant to
-    // fill the value in from.
-    const preview = await dialog.findByRole('region', {
-      name: 'Interactive preview',
+    // The question is drawn as the participant sees it, the value as a pill.
+    const question = await waitFor(() => {
+      const found = editor
+        .querySelector(`[data-field-id="${first.id}"]`)
+        ?.querySelector<HTMLElement>('[data-field-label]');
+      if (found === null || found === undefined) throw new Error('No question');
+      return found;
     });
     await waitFor(() =>
-      expect(preview.querySelector('[data-token="now"]')).toHaveTextContent(
-        'Today’s date',
-      ),
+      expect(
+        question.querySelector('data[data-attribute-type="datetime"]'),
+      ).toHaveTextContent('Today’s date'),
     );
-    expect(preview).toHaveTextContent("What is this person's relationship");
-    expect(preview).not.toHaveTextContent('{now}');
+    expect(question).toHaveTextContent("What is this person's relationship");
+    expect(question).not.toHaveTextContent('{now}');
+
+    const saved = await harness.submit();
+    const form = saved?.stageDocument.form as
+      | { fields: { id: string; prompt: Record<string, string> }[] }
+      | undefined;
+    expect(
+      form?.fields.find((field) => field.id === first.id)?.prompt['en-US'],
+    ).toBe(`{now}${first.prompt['en-US']}`);
   });
 });
 
@@ -453,20 +614,21 @@ describe('a value inserted in default-language text that is translated', () => {
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await dialogClosed();
 
-    // Piped values are optional: the French text need not show the date.
+    // Values are optional: the French text need not show the date.
     const saved = await harness.submit();
     expect(saved).not.toBeNull();
     expect(screen.queryByText(/must show/)).not.toBeInTheDocument();
-    expect(JSON.stringify(saved?.stageDocument.prompts)).toContain(
-      'Qui connaissez-vous ?',
-    );
+    const text = promptsText(saved?.stageDocument.prompts);
+    expect(text).toContain('{now}');
+    expect(text).toContain('Qui connaissez-vous ?');
   });
 });
 
 /**
- * The rules an "If" tests are kept on the stage, and editing them in a row's
- * dialog changes them there at once. The row that already tests them stays
- * on the stage whether or not the dialog saves.
+ * The rules of a dynamic attribute's case are kept on the stage, and editing
+ * them in a row's dialog changes them there at once. The row that already
+ * shows the dynamic attribute stays on the stage whether or not the dialog
+ * saves.
  */
 describe('rules edited in a row dialog', () => {
   const openCensusWithAnIf = () => {
@@ -478,10 +640,11 @@ describe('rules edited in a row dialog', () => {
         fields: {
           ...fields,
           conditions: { [LINKED]: { about: 'dyadSource', rules: RULES } },
+          dynamicAttributes: { [STILL]: STILL_DEFINITION },
           prompts: [
             {
               id: testId('dyad-census-prompt-1'),
-              text: { 'en-US': TESTS_LINKED },
+              text: { 'en-US': USES_STILL },
               createEdge: KNOWS,
             },
           ],
@@ -491,39 +654,25 @@ describe('rules edited in a row dialog', () => {
     });
   };
 
-  /** Opens the prompt, and in it the If's rules, and asks them of the other node. */
-  const askTheOtherNode = async (
-    harness: ReturnType<typeof openCensusWithAnIf>,
-  ) => {
-    await harness.opened();
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Edit prompt' }),
+  /** Opens the prompt, and in it the case's rules, and asks them of the other node. */
+  const askTheOtherNode = async (harness: Harness) => {
+    const dialog = await openPrompt(harness);
+    await clickPill(
+      harness,
+      dialog.getByRole('textbox', { name: /^Prompt text/ }),
+      STILL_NAME,
     );
-    const dialog = within(await screen.findByRole('dialog'));
-    const pill = await waitFor(() => {
-      const found = document.querySelector<HTMLElement>('[data-versions-pill]');
-      if (found === null) throw new Error('No pill');
-      return found;
-    });
-    await harness.user.click(pill);
-    await harness.user.click(
-      await dialog.findByRole('button', { name: 'Edit rules' }),
-    );
-    const rules = within(
-      await screen.findByRole('dialog', {
-        name: 'Edit rules',
-      }),
+    const settings = within(
+      await screen.findByRole('dialog', { name: 'Dynamic attribute' }),
     );
     await harness.user.selectOptions(
-      rules.getByRole('combobox', { name: /^Check rules against/ }),
+      settings.getByRole('combobox', { name: /^Check rules against/ }),
       'The second node of the pair',
     );
-    await harness.user.click(rules.getByRole('button', { name: 'Save rules' }));
+    await harness.user.keyboard('{Escape}');
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', {
-          name: 'Edit rules',
-        }),
+        screen.queryByRole('dialog', { name: 'Dynamic attribute' }),
       ).not.toBeInTheDocument(),
     );
     return dialog;

@@ -425,7 +425,7 @@ export const migrationNoteMessages = defineMessages({
   schema9IntroductionPanels: {
     id: 'protocolValidation.migrationNotes.schema9.introductionPanels',
     defaultMessage:
-      'Introduction panels within interfaces other than the Ego Form have been removed, so participant-facing instructions on those stages use the Information interface. The content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.',
+      'Introduction panels have been removed from every interface. The introduction panel of an Ego Form is now the heading and text at the top of its form. On other stages, participant-facing instructions use the Information interface: the content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.',
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: introductionPanels. An introduction panel is the screen with a title and text that opened a form or census stage before its questions. An Information stage is a stage type that shows a title and text to the participant. Per Alter Form, Per Alter Edge Form, Dyad Census, Tie-Strength Census, Ego Form and Information are names of stage types; translate them as the rest of the app does. Skip logic decides whether a stage is shown. The stage name is the name shown for the stage in the list of stages.',
   },
@@ -449,6 +449,13 @@ export const migrationNoteMessages = defineMessages({
       "The page heading, text and media of an Information stage are now one piece of text, which you edit as a single document. The page heading is now a heading at the top of the text, and each image, audio recording or video is a block within the text, in the place it was shown before. A page heading that contained only spaces is left out, as is a file that is no longer among the protocol's resources; if the page then has nothing to show, it shows the name of the stage as its heading. A description you had written for a text item, which participants never saw, is not kept.",
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: informationContent. Information is the name of an interface (stage type) that shows a page of text and media to participants. The page heading was a separate title field; the media are files the researcher added to the page. A block is an item that sits on its own line between paragraphs. The name of the stage is the name shown for the stage in the list of stages. A text item is one of the separate pieces of text the page was made of before this change; it is not one of the new blocks.',
+  },
+  schema9FormDocuments: {
+    id: 'protocolValidation.migrationNotes.schema9.formDocuments',
+    defaultMessage:
+      'The form of an Ego Form, Per Alter Form, Per Alter Edge Form, Name Generator or Family Pedigree stage is now one piece of text, which you edit as a single document. Each question is a field within the text, in the order in which the form showed it. The forms of a Network Composer stage are unchanged.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: formDocuments. Ego Form, Per Alter Form, Per Alter Edge Form, Name Generator, Family Pedigree and Network Composer are names of interfaces (stage types). A form is the list of questions on a stage; a Network Composer stage keeps its forms as lists. A field is the place in the text where one question and its answer box are shown.',
   },
   schema9ParticipantTextNotBlank: {
     id: 'protocolValidation.migrationNotes.schema9.participantTextNotBlank',
@@ -665,6 +672,7 @@ const migrationNoteSets: Record<
     messages: [
       migrationNoteMessages.schema9IntroductionPanels,
       migrationNoteMessages.schema9InformationContent,
+      migrationNoteMessages.schema9FormDocuments,
       migrationNoteMessages.schema9DefaultLanguage,
       migrationNoteMessages.schema9FinishStage,
       migrationNoteMessages.schema9EncryptedAttributes,

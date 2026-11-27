@@ -5,11 +5,10 @@ import {
   TYPE,
 } from '@formatjs/icu-messageformat-parser';
 
-import { holdsLineBreak } from '@codaco/shared-consts';
+import { boundedCache } from '@codaco/shared-consts';
 
 import { isBlankText } from './blankText.ts';
 import type { LocaleTag } from './localeTag.ts';
-import { versionLineMarkdown } from './markdownText.ts';
 import { markdownTree } from './markdownTree.ts';
 import type { MessagePart } from './messageArguments.ts';
 
@@ -20,9 +19,8 @@ import type { MessagePart } from './messageArguments.ts';
  * - `cases`, the keys a select on the value may name besides `missing` and
  *   `other` (the option or yes/no cases the text gives a version for);
  * - `numeric`, whether a plural may choose a version by it;
- * - `optional`, whether it can be missing where the text is shown. Such a
- *   value is shown only inside a version of a select on it that is for when
- *   it has a value, and that select has a `missing` version;
+ * - `optional`, whether it can be missing where the text is shown. A value
+ *   that is missing shows nothing;
  * - `unshowable`, why the text cannot show the value itself, though it may
  *   still choose versions by it (a yes/no attribute with no labels for its
  *   answers), or undefined when it can.
@@ -30,7 +28,7 @@ import type { MessagePart } from './messageArguments.ts';
 export type DynamicValueArgument = Readonly<{
   /**
    * The value as a researcher knows it, for the problems that concern it:
-   * `the "Age" attribute of the participant`, `today’s date`, `an If block`.
+   * `the "Age" attribute of the participant`, `today’s date`, `a logic block`.
    * Never the name the message uses for it.
    */
   description: string;
@@ -84,29 +82,18 @@ const PLURAL_CATEGORIES: ReadonlySet<string> = new Set([
 
 // A message is read far more often than it changes: the interview reads a
 // node type's label once for every node it draws, each time one changes. The
-// elements are only ever read, so one parse serves every reader. Bounded, so
-// that an editor producing a new message with each keystroke cannot grow it
-// without limit.
-const PARSED_MESSAGES_KEPT = 500;
-const parsedMessages = new Map<string, MessageFormatElement[] | string>();
-
-const parseMessage = (message: string): MessageFormatElement[] | string => {
-  const known = parsedMessages.get(message);
-  if (known !== undefined) return known;
-  let parsed: MessageFormatElement[] | string;
-  try {
-    parsed = parse(message, PARSE_OPTIONS);
-  } catch (error) {
-    if (!(error instanceof SyntaxError)) throw error;
-    parsed = `Text is not valid message syntax (${error.message}).`;
-  }
-  if (parsedMessages.size >= PARSED_MESSAGES_KEPT) {
-    const oldest = parsedMessages.keys().next();
-    if (!oldest.done) parsedMessages.delete(oldest.value);
-  }
-  parsedMessages.set(message, parsed);
-  return parsed;
-};
+// elements are only ever read, so one parse serves every reader.
+const parseMessage = boundedCache(
+  500,
+  (message: string): MessageFormatElement[] | string => {
+    try {
+      return parse(message, PARSE_OPTIONS);
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+      return `This wording is not valid message syntax (${error.message}).`;
+    }
+  },
+);
 
 /**
  * What one value is, as far as choosing a version goes: missing, or present
@@ -340,33 +327,21 @@ const hasChoice = (elements: readonly MessageFormatElement[]): boolean =>
   );
 
 const BLANK_PROBLEM =
-  'Text cannot be blank in every version: at least one of its versions must show some text or a value.';
+  'This wording cannot be blank in every version: at least one of its versions must show some words or a value.';
 
 const MARKER_PROBLEM =
-  'Text cannot contain the private-use character U+E000: the interview uses it to place values.';
-
-/**
- * Whether some version holds a line break. A version of a piece of text is
- * part of one line; text outside any version may run over several lines.
- */
-const versionHoldsLineBreak = (
-  nodes: readonly MessageFormatElement[],
-  inVersion = false,
-): boolean =>
-  nodes.some((node) =>
-    node.type === TYPE.literal
-      ? inVersion && holdsLineBreak(node.value)
-      : versionsOf(node).some((version) =>
-          versionHoldsLineBreak(version, true),
-        ),
-  );
+  'This wording cannot contain the private-use character U+E000: the interview uses it to place values.';
 
 type MarkdownTree = ReturnType<typeof markdownTree>;
 type MarkdownNode = MarkdownTree | MarkdownTree['children'][number];
 
+// A link reference definition (`[label]: address`) gives its address to
+// every link that names its label, in whichever block of the document the
+// link is: the interview reads a document's definitions as the whole
+// document's (`withSharedDefinitions`).
 const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
   if (
-    node.type === 'link' &&
+    (node.type === 'link' || node.type === 'definition') &&
     `${node.url}${node.title ?? ''}`.includes(DYNAMIC_VALUE_MARKER)
   ) {
     return true;
@@ -375,15 +350,11 @@ const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
 };
 
 /**
- * Whether a link's address or title holds a value or a choice of versions:
- * both are fixed text. The text and each of its versions is read as markdown
- * of its own (`markdownTree`), a version as it reads inside the line it sits
- * in (`versionLineMarkdown`).
+ * Whether a link's address or title contains a value or a choice of
+ * versions: both are fixed text. The text and each version of a logic block
+ * is read as markdown of its own (`markdownTree`).
  */
-const linkHoldsValue = (
-  nodes: readonly MessageFormatElement[],
-  inVersion = false,
-): boolean => {
+const linkHoldsValue = (nodes: readonly MessageFormatElement[]): boolean => {
   const markdown = nodes
     .map((node) =>
       node.type === TYPE.literal ? node.value : DYNAMIC_VALUE_MARKER,
@@ -391,11 +362,9 @@ const linkHoldsValue = (
     .join('');
   return (
     (markdown.includes(DYNAMIC_VALUE_MARKER) &&
-      linkAddressHoldsValue(
-        markdownTree(inVersion ? versionLineMarkdown(markdown) : markdown),
-      )) ||
+      linkAddressHoldsValue(markdownTree(markdown))) ||
     nodes.some((node) =>
-      versionsOf(node).some((version) => linkHoldsValue(version, true)),
+      versionsOf(node).some((version) => linkHoldsValue(version)),
     )
   );
 };
@@ -411,9 +380,6 @@ export const findFormattedMessageProblem = (
 ): string | undefined => {
   const elements = parseMessage(message);
   if (typeof elements === 'string') return undefined;
-  if (versionHoldsLineBreak(elements)) {
-    return 'A version of this text cannot contain a line break. Put the line break outside the versions.';
-  }
   if (linkHoldsValue(elements)) {
     return 'A link address cannot contain a value. Put the value in the words of the link, or outside the link.';
   }
@@ -447,7 +413,7 @@ export const findDynamicMessageSyntaxProblem = (
         node.type !== TYPE.argument &&
         node.type !== TYPE.pound
       ) {
-        return 'This text cannot format numbers, dates or times, or contain tags.';
+        return 'This wording cannot format numbers, dates or times, or contain tags.';
       }
     }
     return undefined;
@@ -479,13 +445,9 @@ export type DynamicValueLookup = (
 const atSentenceStart = (description: string): string =>
   description.charAt(0).toUpperCase() + description.slice(1);
 
-const unguarded = (value: DynamicValueArgument): string =>
-  `${atSentenceStart(value.description)} can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.`;
-
 const findElementsProblem = (
   elements: readonly MessageFormatElement[],
   argumentOf: DynamicValueLookup,
-  guarded: ReadonlySet<string>,
 ): string | undefined => {
   for (const element of elements) {
     switch (element.type) {
@@ -495,11 +457,9 @@ const findElementsProblem = (
       case TYPE.argument: {
         const value = argumentOf(element.value);
         if (typeof value === 'string') return value;
+        // A value that is missing shows nothing.
         if (value.unshowable !== undefined) {
           return `${atSentenceStart(value.description)} cannot be shown as words. ${atSentenceStart(value.unshowable)}`;
-        }
-        if (value.optional && !guarded.has(element.value)) {
-          return unguarded(value);
         }
         break;
       }
@@ -507,26 +467,15 @@ const findElementsProblem = (
         const name = element.value;
         const value = argumentOf(name);
         if (typeof value === 'string') return value;
-        const hasMissing = MISSING_CASE in element.options;
         for (const [key, option] of Object.entries(element.options)) {
           if (
             key !== 'other' &&
             key !== MISSING_CASE &&
             !value.cases.includes(key)
           ) {
-            return `This text has a version that ${value.description} can never choose.`;
+            return `This wording has a version that ${value.description} can never choose.`;
           }
-          // A case version is read only when the value is that case, so it
-          // has a value; `other` only once `missing` has taken the rest. A
-          // version never takes away what an outer select already proved:
-          // inside one for when the value is present, an inner `missing`
-          // version is never read, and an inner `other` still has it.
-          const present =
-            key !== MISSING_CASE &&
-            (key !== 'other' || hasMissing || !value.optional);
-          const inner = new Set(guarded);
-          if (present) inner.add(name);
-          const problem = findElementsProblem(option.value, argumentOf, inner);
+          const problem = findElementsProblem(option.value, argumentOf);
           if (problem !== undefined) return problem;
         }
         break;
@@ -536,21 +485,16 @@ const findElementsProblem = (
         const value = argumentOf(name);
         if (typeof value === 'string') return value;
         if (!value.numeric || element.pluralType !== 'cardinal') {
-          return `${atSentenceStart(value.description)} is not a number, so it cannot choose a version of the text by number.`;
+          return `${atSentenceStart(value.description)} is not a number, so it cannot choose a version of the wording by number.`;
         }
         if (element.offset !== 0) {
           return `The singular and plural versions for ${value.description} cannot use an offset.`;
         }
-        if (value.optional && !guarded.has(name)) return unguarded(value);
         for (const [key, option] of Object.entries(element.options)) {
           if (!PLURAL_CATEGORIES.has(key)) {
             return `"${key}" is not a plural category. Use "zero", "one", "two", "few", "many" or "other".`;
           }
-          const problem = findElementsProblem(
-            option.value,
-            argumentOf,
-            guarded,
-          );
+          const problem = findElementsProblem(option.value, argumentOf);
           if (problem !== undefined) return problem;
         }
         break;
@@ -560,7 +504,7 @@ const findElementsProblem = (
       case TYPE.time:
       case TYPE.tag:
       default:
-        return 'This text cannot format numbers, dates or times, or contain tags.';
+        return 'This wording cannot format numbers, dates or times, or contain tags.';
     }
   }
   return undefined;
@@ -571,12 +515,12 @@ const findElementsProblem = (
  * values `argumentOf` gives, or undefined when it can. One pass checks that
  * it parses, contains no marker, uses only names the site can show (else it
  * reports the problem `argumentOf` gives for the first one that it cannot),
- * chooses versions only by a value's presence (`missing`), its cases or, for
- * a number, its plural category, and shows a value that can be missing only
- * inside a version for when it has one. Then it checks that some version the
- * values can reach shows something: only a value that can be missing reads
- * `missing`, only the value's cases are chosen, and only the plural
- * categories `locale` gives some number.
+ * and chooses versions only by a value's presence (`missing`), its cases or,
+ * for a number, its plural category. A value that is missing shows nothing,
+ * so a value that can be missing may be shown anywhere. Then it checks that
+ * some version the values can reach shows something: only a value that can
+ * be missing reads `missing`, only the value's cases are chosen, and only the
+ * plural categories `locale` gives some number.
  */
 export const findDynamicValueProblem = (
   message: string,
@@ -587,7 +531,7 @@ export const findDynamicValueProblem = (
   if (syntax !== undefined) return syntax;
   const elements = parseMessage(message);
   if (typeof elements === 'string') return elements;
-  const problem = findElementsProblem(elements, argumentOf, new Set());
+  const problem = findElementsProblem(elements, argumentOf);
   if (problem !== undefined) return problem;
   if (!hasChoice(elements)) return undefined;
   const categories = reachableCategories(locale);
@@ -637,6 +581,22 @@ export const dynamicValueNamesIn = (message: string): readonly string[] => {
   };
   visit(elements);
   return [...names];
+};
+
+/**
+ * Whether `message` shows a value or chooses between versions by one: it is
+ * valid message syntax and contains anything other than literal text (an
+ * argument, of any format, a select or a plural). Such a message cannot be
+ * edited as plain words, which would write its braces back as literal text.
+ * A message that is not valid message syntax shows no value.
+ */
+export const messageShowsValues = (message: string): boolean => {
+  if (!message.includes('{')) return false;
+  const elements = parseMessage(message);
+  return (
+    typeof elements !== 'string' &&
+    elements.some((element) => element.type !== TYPE.literal)
+  );
 };
 
 /**
@@ -717,7 +677,7 @@ const pluralRules = new Map<string, Intl.PluralRules>();
  * would be English `one` while shown as "1.0001"; with exactly the digits
  * shown, rules that read fraction digits read the ones the participant sees.
  */
-const pluralCategoryOf = (locale: LocaleTag, count: number): string => {
+export const pluralCategoryOf = (locale: LocaleTag, count: number): string => {
   const digits = Number.isFinite(count) ? fractionDigitsOf(count) : 0;
   const key = `${locale} ${digits}`;
   let rules = pluralRules.get(key);

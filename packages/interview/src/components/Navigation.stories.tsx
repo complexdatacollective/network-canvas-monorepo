@@ -908,7 +908,6 @@ function buildRequiredAnswerPayload(): string {
 
   const stage = si.addStage('EgoForm', {
     label: 'About you',
-    introductionPanel: { title: 'About you' },
   });
   const nameVar = si.addEgoVariable({
     type: 'text',

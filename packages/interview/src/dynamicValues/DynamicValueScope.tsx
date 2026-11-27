@@ -9,6 +9,10 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
+import {
+  conditionReadsNetwork,
+  EMPTY_CONNECTIVITY,
+} from '@codaco/network-query';
 import type {
   Codebook,
   DynamicValueRole,
@@ -18,13 +22,9 @@ import type {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import {
-  EMPTY_CONNECTIVITY,
-  getConnectivityIndex,
-} from '../nodeLabels/connectivity';
+import { getConnectivityIndex } from '../nodeLabels/connectivity';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
-import { conditionReadsNetwork } from './conditions';
 import {
   type DynamicValueSources,
   showsDynamicValues,
@@ -118,6 +118,7 @@ export function StageDynamicValues({
       attributes: { ego: egoAttributes },
       labels: NO_LABELS,
       conditions: stage.conditions,
+      dynamicAttributes: stage.dynamicAttributes,
       nodeType: subject?.entity === 'node' ? subject.type : undefined,
       connectivity,
       variablesFor: (role) => {

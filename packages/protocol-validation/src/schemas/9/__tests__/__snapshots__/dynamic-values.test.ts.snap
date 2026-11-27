@@ -2,8 +2,10 @@
 
 exports[`dynamic values in stage text > tags exactly the inventoried stage sites, and none outside stages 1`] = `
 [
+  "AlterEdgeForm form.content formField",
   "AlterEdgeForm form.fields.#.hint formField",
   "AlterEdgeForm form.fields.#.prompt formField",
+  "AlterForm form.content formField",
   "AlterForm form.fields.#.hint formField",
   "AlterForm form.fields.#.prompt formField",
   "Anonymisation explanationText stageText",
@@ -11,10 +13,10 @@ exports[`dynamic values in stage text > tags exactly the inventoried stage sites
   "CategoricalBin prompts.#.otherVariablePrompt formField",
   "CategoricalBin prompts.#.text prompt",
   "DyadCensus prompts.#.text prompt",
+  "EgoForm form.content formField",
   "EgoForm form.fields.#.hint formField",
   "EgoForm form.fields.#.prompt formField",
-  "EgoForm introductionPanel.text stageText",
-  "EgoForm introductionPanel.title stageText",
+  "FamilyPedigree form.content formField",
   "FamilyPedigree form.fields.#.hint formField",
   "FamilyPedigree form.fields.#.prompt formField",
   "FamilyPedigree nominationPrompts.#.text prompt",
@@ -24,6 +26,7 @@ exports[`dynamic values in stage text > tags exactly the inventoried stage sites
   "FinishSession finishedContent stageText",
   "Geospatial prompts.#.text prompt",
   "Information content stageText",
+  "NameGenerator form.content formField",
   "NameGenerator form.fields.#.hint formField",
   "NameGenerator form.fields.#.prompt formField",
   "NameGenerator form.title stageText",

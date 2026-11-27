@@ -139,7 +139,7 @@ const builtInWordingIssues = (
     : findBuiltInWordingProblems(protocol).map((problem) => ({
         code: BUILT_IN_WORDING_MISSING,
         path: [...problem.path, problem.locale],
-        message: `Network Canvas has no built-in wording in the protocol's default language (${problem.locale}), so this text must be written in it, or a language Network Canvas has wording in made the default.`,
+        message: `Network Canvas has no built-in wording in the protocol's default language (${problem.locale}), so write this wording in that language, or make a language that Network Canvas has wording in the default.`,
       }));
 
 /**

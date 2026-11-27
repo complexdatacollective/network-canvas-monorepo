@@ -9,6 +9,11 @@ import {
   withTestIds,
 } from '../../../__tests__/testIds.ts';
 import { analyzeProtocolLocalization } from '../../../localization/analyzeProtocolLocalization.ts';
+import {
+  fieldIdsIn,
+  readContentDocument,
+} from '../../../localization/contentDocument.ts';
+import { fieldBlockMarkdown } from '../../../localization/fieldBlock.ts';
 import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
 import {
@@ -59,6 +64,12 @@ const ASSET_BLOCKS: LocalizedTextShape = {
   lines: 'multiple',
   assetBlocks: true,
 };
+const FORM_DOCUMENT: LocalizedTextShape = {
+  format: 'markdown',
+  lines: 'multiple',
+  assetBlocks: true,
+  fieldBlocks: true,
+};
 
 type ExpectedSite = Readonly<{
   path: Path;
@@ -66,6 +77,8 @@ type ExpectedSite = Readonly<{
   lines: LocalizedTextLines;
   // Whether the text may hold files of the protocol as blocks.
   assetBlocks: boolean;
+  // Whether the text is a form's, which places its fields as blocks.
+  fieldBlocks: boolean;
   // Whether the field's own rule allows an empty translation.
   allowsEmpty: boolean;
   // Whether the field may have no translation at all: only the finish
@@ -78,7 +91,7 @@ type ExpectedSite = Readonly<{
 
 const site = (
   path: Path,
-  { format, lines, assetBlocks }: LocalizedTextShape,
+  { format, lines, assetBlocks, fieldBlocks }: LocalizedTextShape,
   allowsEmpty = false,
   allowsNoTranslation = false,
 ): ExpectedSite => ({
@@ -86,6 +99,7 @@ const site = (
   format,
   lines,
   assetBlocks: assetBlocks === true,
+  fieldBlocks: fieldBlocks === true,
   allowsEmpty,
   allowsNoTranslation,
 });
@@ -215,12 +229,12 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   // The whole page: its heading, text and files in one markdown text.
   site(stage(1, 'content'), ASSET_BLOCKS),
 
-  site(stage(2, 'introductionPanel', 'title'), PLAIN_LINE),
-  site(stage(2, 'introductionPanel', 'text'), MARKDOWN_BLOCKS),
+  site(stage(2, 'form', 'content'), FORM_DOCUMENT),
   site(stage(2, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
   site(stage(2, 'form', 'fields', 0, 'hint'), MARKDOWN_LINE),
 
   site(stage(3, 'form', 'title'), PLAIN_LINE),
+  site(stage(3, 'form', 'content'), FORM_DOCUMENT),
   site(stage(3, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
   messageSite(stage(3, 'minNodesNotice'), MIN_NODES_ARGUMENTS),
   messageSite(stage(3, 'maxNodesNotice'), MAX_NODES_ARGUMENTS),
@@ -258,8 +272,10 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(7, 'edges', 0, 'label'), PLAIN_LINE),
   site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), MARKDOWN_LINE),
 
+  site(stage(8, 'form', 'content'), FORM_DOCUMENT),
   site(stage(8, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
 
+  site(stage(9, 'form', 'content'), FORM_DOCUMENT),
   site(stage(9, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
 
   site(stage(10, 'prompts', 0, 'text'), MARKDOWN_LINE),
@@ -320,6 +336,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       ? site(stage(18, 'wording', key), PLAIN_LINE)
       : messageSite(stage(18, 'wording', key), argumentsOf);
   }),
+  site(stage(18, 'form', 'content'), FORM_DOCUMENT),
   site(stage(18, 'form', 'fields', 0, 'prompt'), MARKDOWN_LINE),
   site(stage(18, 'form', 'fields', 0, 'hint'), MARKDOWN_LINE),
   site(stage(18, 'nominationPrompts', 0, 'text'), MARKDOWN_LINE),
@@ -370,6 +387,21 @@ const setAt = (root: object, path: Path, value: unknown): void => {
   Reflect.set(node, last, value);
 };
 
+/** The field block that a form's text at `path` places first. */
+const fieldBlockAt = (path: Path): string => {
+  const value: unknown = path.reduce<unknown>(
+    (current, part) =>
+      typeof current === 'object' && current !== null
+        ? Reflect.get(current, part)
+        : undefined,
+    completeProtocol(),
+  );
+  const message =
+    typeof value === 'object' && value !== null ? Reflect.get(value, 'en') : '';
+  const [first] = fieldIdsIn(readContentDocument(String(message)).nodes);
+  return first === undefined ? '' : fieldBlockMarkdown(first);
+};
+
 const withValueAt = (path: Path, value: unknown) => {
   const protocol = completeProtocol();
   setAt(protocol, path, value);
@@ -412,20 +444,38 @@ describe('localized string coverage', () => {
     // a protocol's own copy is written in.
     const found = collectLocalizedStrings(completeProtocol())
       .filter(({ path }) => path[0] !== 'interfaceText')
-      .map(({ path, format, lines, assetBlocks, arguments: declaration }) => ({
-        path: pathKey(path),
-        format,
-        lines,
-        assetBlocks: assetBlocks === true,
-        arguments: declaration,
-      }))
+      .map(
+        ({
+          path,
+          format,
+          lines,
+          assetBlocks,
+          fieldBlocks,
+          arguments: declaration,
+        }) => ({
+          path: pathKey(path),
+          format,
+          lines,
+          assetBlocks: assetBlocks === true,
+          fieldBlocks: fieldBlocks === true,
+          arguments: declaration,
+        }),
+      )
       .toSorted((a, b) => a.path.localeCompare(b.path));
     const expected = EXPECTED_SITES.map(
-      ({ path, format, lines, assetBlocks, arguments: declaration }) => ({
+      ({
+        path,
+        format,
+        lines,
+        assetBlocks,
+        fieldBlocks,
+        arguments: declaration,
+      }) => ({
         path: pathKey(path),
         format,
         lines,
         assetBlocks,
+        fieldBlocks,
         arguments: declaration,
       }),
     ).toSorted((a, b) => a.path.localeCompare(b.path));
@@ -464,11 +514,14 @@ describe('localized string coverage', () => {
 
   it.each(EXPECTED_SITES.map((expected) => [siteName(expected), expected]))(
     'rejects a translation in a language the protocol does not declare at %s',
-    (_name, { path, arguments: declaration }) => {
-      // A message shows what it must (see `findMissingPlacement`).
+    (_name, { path, arguments: declaration, fieldBlocks }) => {
+      // A message shows what it must (see `findMissingPlacement`), and a
+      // form's text places the form's field.
       const text = (words: string) =>
         declaration === undefined
-          ? words
+          ? fieldBlocks
+            ? `${words}\n\n${fieldBlockAt(path)}`
+            : words
           : `${words} ${messageUsing(declaration)}`;
       const protocol = withValueAt(path, {
         en: text('English'),

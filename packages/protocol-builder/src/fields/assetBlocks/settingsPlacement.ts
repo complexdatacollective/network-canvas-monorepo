@@ -95,27 +95,59 @@ const clearanceOf = (covered: Covered): Covered => ({
   bottom: covered.bottom + SETTINGS_MARGIN,
 });
 
-/**
- * The part of the window the settings may stand in: what `scroller` shows of
- * the page, or the whole window, less `clearance` at each end.
- */
-const roomIn = (scroller: Element | undefined, clearance: Covered) => {
+/** A part of the window, as `getBoundingClientRect` measures it. */
+type Box = Readonly<{
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}>;
+
+/** What of the window `scroller` shows of the page, or the whole window. */
+const shownBy = (scroller: Element | undefined): Box => {
   const box = scroller?.getBoundingClientRect();
   return {
-    top: Math.max(box?.top ?? 0, 0) + clearance.top,
-    bottom:
-      Math.min(box?.bottom ?? window.innerHeight, window.innerHeight) -
-      clearance.bottom,
+    top: Math.max(box?.top ?? 0, 0),
+    bottom: Math.min(box?.bottom ?? window.innerHeight, window.innerHeight),
+    left: Math.max(box?.left ?? 0, 0),
+    right: Math.min(box?.right ?? window.innerWidth, window.innerWidth),
   };
 };
 
 /**
- * Which side of the file its settings stand on, and whether they may cover
- * part of it to be seen whole.
+ * Where across the window settings `wide` stand: centred on the file, and
+ * moved as far as they must be to stay inside `room`, as the popover moves
+ * them.
+ */
+const acrossFrom = (file: Box, wide: number, room: Box) => {
+  const left = Math.max(
+    Math.min((file.left + file.right - wide) / 2, room.right - wide),
+    room.left,
+  );
+  return { left, right: left + wide };
+};
+
+/**
+ * Whether settings standing at `settings` would come nearer the corner that
+ * resizes the picture than they stand to the file, which leaves a pointer
+ * room to take hold of it.
+ */
+const comesNear = (settings: Box, corner: Box): boolean =>
+  settings.top < corner.bottom + SETTINGS_OFFSET &&
+  settings.bottom > corner.top - SETTINGS_OFFSET &&
+  settings.left < corner.right + SETTINGS_OFFSET &&
+  settings.right > corner.left - SETTINGS_OFFSET;
+
+/**
+ * Which side of the file its settings stand on, whether they may cover part
+ * of it to be seen whole, how far from it they stand, and the part of the
+ * window they keep inside.
  */
 type SettingsPlacement = Readonly<{
   side: 'top' | 'bottom';
   overlaps: boolean;
+  offset: number;
+  room: Box;
 }>;
 
 /**
@@ -126,41 +158,119 @@ type SettingsPlacement = Readonly<{
  * settings that have to be scrolled to be read. Never beside it, where they
  * would cover whatever the page has there.
  *
- * `room` is the part of the window they may stand in (`roomIn`), `tall` how
- * tall the whole of the settings is.
+ * Wherever they stand, they leave uncovered the corner that resizes the
+ * picture (`corner`, where it has one), as far from it as they stand from
+ * the file. Under the file, they stand under the corner too. Moved over the
+ * file, they stand beside the corner, on the side the file is on; where they
+ * are too wide for that, they stand above the corner or under it, whichever
+ * leaves more of them in sight, and scroll within themselves.
+ *
+ * `room` is the part of the window they may stand in, and `settings` how
+ * wide and how tall the whole of them is.
  */
 export const settingsPlacement = (
-  file: Readonly<{ top: number; bottom: number }>,
-  tall: number,
-  room: Readonly<{ top: number; bottom: number }>,
+  file: Box,
+  settings: Readonly<{ wide: number; tall: number }>,
+  room: Box,
+  corner?: Box,
 ): SettingsPlacement => {
+  const { wide, tall } = settings;
   const below = room.bottom - file.bottom - SETTINGS_OFFSET;
   const above = file.top - room.top - SETTINGS_OFFSET;
-  if (below >= tall) return { side: 'bottom', overlaps: false };
-  if (above >= tall) return { side: 'top', overlaps: false };
-  return { side: below >= above ? 'bottom' : 'top', overlaps: true };
+  const across = acrossFrom(file, wide, room);
+  const clearOfCorner = (top: number, bottom: number) =>
+    corner === undefined || !comesNear({ ...across, top, bottom }, corner);
+  const standing = (
+    side: SettingsPlacement['side'],
+    overlaps: boolean,
+  ): SettingsPlacement => ({ side, overlaps, offset: SETTINGS_OFFSET, room });
+
+  const under = file.bottom + SETTINGS_OFFSET;
+  if (below >= tall && clearOfCorner(under, under + tall)) {
+    return standing('bottom', false);
+  }
+  // Under the corner, which hangs below the file.
+  const underCorner =
+    corner === undefined
+      ? 0
+      : Math.max(
+          corner.bottom + SETTINGS_OFFSET - file.bottom,
+          SETTINGS_OFFSET,
+        );
+  if (
+    underCorner > SETTINGS_OFFSET &&
+    room.bottom - file.bottom - underCorner >= tall
+  ) {
+    return { ...standing('bottom', false), offset: underCorner };
+  }
+  const over = file.top - SETTINGS_OFFSET;
+  if (above >= tall && clearOfCorner(over - tall, over)) {
+    return standing('top', false);
+  }
+
+  const side = below >= above ? 'bottom' : 'top';
+  const shown = Math.min(tall, room.bottom - room.top);
+  const top = side === 'bottom' ? room.bottom - shown : room.top;
+  if (corner === undefined || clearOfCorner(top, top + shown)) {
+    return standing(side, true);
+  }
+  const beside =
+    corner.left + corner.right > file.left + file.right
+      ? { ...room, right: Math.min(room.right, corner.left - SETTINGS_OFFSET) }
+      : { ...room, left: Math.max(room.left, corner.right + SETTINGS_OFFSET) };
+  if (beside.right - beside.left >= wide) {
+    return { ...standing(side, true), room: beside };
+  }
+  const roomOverCorner = corner.top - SETTINGS_OFFSET - room.top;
+  const roomUnderCorner = room.bottom - corner.bottom - SETTINGS_OFFSET;
+  if (roomOverCorner >= roomUnderCorner) {
+    return {
+      ...standing('top', true),
+      room: {
+        ...room,
+        bottom: Math.min(room.bottom, corner.top - SETTINGS_OFFSET),
+      },
+    };
+  }
+  return { ...standing('bottom', false), offset: underCorner };
 };
 
-/** Where the settings stand, and what they keep clear of the page's ends. */
-type SettingsLayout = SettingsPlacement & Readonly<{ clearance: Covered }>;
+/**
+ * How far in from each edge of what the page is shown in (`shownBy`) the
+ * popover keeps, to stay inside `room`: its `collisionPadding`.
+ */
+type Clearance = Box;
+
+/** Where the settings stand, and what they keep clear of the page's edges. */
+type SettingsLayout = Omit<SettingsPlacement, 'room'> &
+  Readonly<{ clearance: Clearance }>;
 
 const sameLayout = (one: SettingsLayout, other: SettingsLayout) =>
   one.side === other.side &&
   one.overlaps === other.overlaps &&
+  one.offset === other.offset &&
   one.clearance.top === other.clearance.top &&
-  one.clearance.bottom === other.clearance.bottom;
+  one.clearance.bottom === other.clearance.bottom &&
+  one.clearance.left === other.clearance.left &&
+  one.clearance.right === other.clearance.right;
 
 /**
- * How tall the popup `panel` is drawn in would be with the whole of what
- * `panel` holds in sight: the popup as it is, with the part of `panel` it
- * shows given back as all of it. Whatever the popup draws around `panel`, a
- * border among it, is counted as it is drawn.
+ * How wide and how tall the popup `panel` is drawn in would be with the whole
+ * of what `panel` holds in sight: the popup as it is, with the part of
+ * `panel` it shows given back as all of it. Whatever the popup draws around
+ * `panel`, a border among it, is counted as it is drawn.
  */
-const popupHeightAround = (panel: HTMLElement): number => {
+const popupSizeAround = (
+  panel: HTMLElement,
+): Readonly<{ wide: number; tall: number }> => {
   const popup = panel.closest('[role="dialog"]');
-  const around =
-    popup instanceof HTMLElement ? popup.offsetHeight - panel.clientHeight : 0;
-  return panel.scrollHeight + around;
+  if (!(popup instanceof HTMLElement)) {
+    return { wide: panel.offsetWidth, tall: panel.scrollHeight };
+  }
+  return {
+    wide: popup.offsetWidth,
+    tall: panel.scrollHeight + popup.offsetHeight - panel.clientHeight,
+  };
 };
 
 /**
@@ -168,7 +278,8 @@ const popupHeightAround = (panel: HTMLElement): number => {
  * are open as the page scrolls, the window changes size and the settings
  * change height. `panel` is what scrolls inside them, whose full height is
  * theirs; `scroller` what the page scrolls in; `probeRef` where the host's
- * bars are read (`COVERED_PROBE_STYLE`).
+ * bars are read (`COVERED_PROBE_STYLE`); `cornerRef` the corner that resizes
+ * the block's picture, where it has one, which they leave uncovered.
  */
 export function useSettingsPlacement(
   open: boolean,
@@ -176,11 +287,13 @@ export function useSettingsPlacement(
   panel: HTMLElement | null,
   scroller: Element | undefined,
   probeRef: RefObject<HTMLElement | null>,
+  cornerRef?: RefObject<HTMLElement | null>,
 ): SettingsLayout {
   const [layout, setLayout] = useState<SettingsLayout>({
     side: 'bottom',
     overlaps: false,
-    clearance: clearanceOf(UNCOVERED),
+    offset: SETTINGS_OFFSET,
+    clearance: { ...clearanceOf(UNCOVERED), left: 0, right: 0 },
   });
   useLayoutEffect(() => {
     if (!open || panel === null) return undefined;
@@ -189,14 +302,26 @@ export function useSettingsPlacement(
       frame = undefined;
       const anchor = anchorRef.current;
       if (anchor === null) return;
-      const clearance = clearanceOf(coveredAt(probeRef.current));
+      const shown = shownBy(scroller);
+      const covered = clearanceOf(coveredAt(probeRef.current));
+      const { room, ...placement } = settingsPlacement(
+        anchor.getBoundingClientRect(),
+        popupSizeAround(panel),
+        {
+          ...shown,
+          top: shown.top + covered.top,
+          bottom: shown.bottom - covered.bottom,
+        },
+        cornerRef?.current?.getBoundingClientRect(),
+      );
       const next = {
-        ...settingsPlacement(
-          anchor.getBoundingClientRect(),
-          popupHeightAround(panel),
-          roomIn(scroller, clearance),
-        ),
-        clearance,
+        ...placement,
+        clearance: {
+          top: room.top - shown.top,
+          bottom: shown.bottom - room.bottom,
+          left: room.left - shown.left,
+          right: shown.right - room.right,
+        },
       };
       setLayout((current) => (sameLayout(current, next) ? current : next));
     };
@@ -222,7 +347,7 @@ export function useSettingsPlacement(
       window.removeEventListener('resize', schedule);
       observer?.disconnect();
     };
-  }, [open, anchorRef, panel, scroller, probeRef]);
+  }, [open, anchorRef, panel, scroller, probeRef, cornerRef]);
   return layout;
 }
 

@@ -97,9 +97,7 @@ describe.each(CASES)(
       await noticeField();
 
       expect(
-        screen.getByRole('button', {
-          name: 'Inject piped text from this stage',
-        }),
+        screen.getByRole('button', { name: 'Attribute' }),
       ).toBeInTheDocument();
     });
 

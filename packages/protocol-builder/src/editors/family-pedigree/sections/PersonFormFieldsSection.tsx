@@ -1,4 +1,4 @@
-import FormFieldsSection from '../../../sections/form-fields/FormFieldsSection.tsx';
+import FormDocumentSection from '../../../sections/form-document/FormDocumentSection.tsx';
 import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
 import { usePedigreeDraftBindings } from './pedigreeSlots.ts';
 
@@ -19,7 +19,7 @@ const PERSON_FORM_CAPABILITY = Object.freeze({
  * The researcher's own questions about each family member, asked in the side
  * panel after the interface's built-in fields.
  *
- * The shared form-fields section against the stage subject. It may not collect
+ * The shared form section against the stage subject. It may not collect
  * an attribute bound to one of the person attribute slots — the interface
  * already records those — and it is told what the slots write without
  * validation, so the cross-class rule reads this stage's draft rather than its
@@ -30,7 +30,7 @@ export default function PersonFormFieldsSection() {
     usePedigreeDraftBindings();
 
   return (
-    <FormFieldsSection
+    <FormDocumentSection
       subject="node"
       capability={PERSON_FORM_CAPABILITY}
       draftUnvalidatedVariables={unvalidatedPersonVariables}
@@ -40,9 +40,6 @@ export default function PersonFormFieldsSection() {
       title={messages.personFormTitle}
       sectionKey="person-form-fields"
       description={messages.personFormDescription}
-      fieldLabel={messages.personFormFieldLabel}
-      addLabel={messages.personFormAddLabel}
-      emptyState={messages.personFormEmptyState}
     />
   );
 }

@@ -11,6 +11,7 @@ type GenerateParams = Parameters<typeof generateNetwork>[0];
 type BundledProtocol = {
   codebook: GenerateParams['codebook'];
   stages: GenerateParams['stages'];
+  localization: GenerateParams['localization'];
 };
 
 type ProtocolManifest = {
@@ -52,6 +53,8 @@ describe('bundled protocols are feasible for synthetic generation', () => {
         seed: 1,
         codebook: protocol.codebook,
         stages: protocol.stages,
+        formLanguage: protocol.localization.defaultLocale,
+        localization: protocol.localization,
       }),
     ).not.toThrow();
   });

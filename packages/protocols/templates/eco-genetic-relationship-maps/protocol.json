@@ -552,15 +552,10 @@
       "label": {
         "en": "Welcome and consent"
       },
-      "introductionPanel": {
-        "title": {
-          "en": "About this interview"
-        },
-        "text": {
-          "en": "## Thank you for taking part\n\nIn this interview we will build a map together. First your family and who in it has been affected by this condition, then the friends and other people who matter to you, and then what you share with each of them — information, practical help, feelings, and spiritual connection.\n\n### Some of these questions are personal\n\nWe will ask about illness and about people in your family who have died. We will also ask who finds this subject hard to talk about. You are free to skip any question, to pause, or to stop at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If talking about your family's health brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate support whether or not you choose to take part.**"
-        }
-      },
       "form": {
+        "content": {
+          "en": "# About this interview\n\n## Thank you for taking part\n\nIn this interview we will build a map together. First your family and who in it has been affected by this condition, then the friends and other people who matter to you, and then what you share with each of them — information, practical help, feelings, and spiritual connection.\n\n### Some of these questions are personal\n\nWe will ask about illness and about people in your family who have died. We will also ask who finds this subject hard to talk about. You are free to skip any question, to pause, or to stop at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If talking about your family's health brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate support whether or not you choose to take part.**\n\n![](field:727917e3-e0d2-5bff-a7bc-19e2c01b0c33)"
+        },
         "fields": [
           {
             "id": "727917e3-e0d2-5bff-a7bc-19e2c01b0c33",
@@ -598,15 +593,10 @@
           "stageId": "52981a5b-09e2-5bae-9968-728562698acf"
         }
       },
-      "introductionPanel": {
-        "title": {
-          "en": "A little about you"
-        },
-        "text": {
-          "en": "A few short questions before we start on the map."
-        }
-      },
       "form": {
+        "content": {
+          "en": "# A little about you\n\nA few short questions before we start on the map.\n\n![](field:7dd0a5a1-83b4-56bb-abf5-0bff96e4fc0f)\n\n![](field:6528ef79-06ee-5aab-9e99-b74b37ecd55d)"
+        },
         "fields": [
           {
             "id": "7dd0a5a1-83b4-56bb-abf5-0bff96e4fc0f",
@@ -852,6 +842,26 @@
       "label": {
         "en": "Family pedigree"
       },
+      "dynamicAttributes": {
+        "bd3907f5-7bb6-5a6f-a18c-de74273db41b": {
+          "logic": "participant",
+          "participant": {
+            "en": "Are you"
+          },
+          "otherwise": {
+            "en": "Is"
+          }
+        },
+        "3800e4e5-30f8-5546-b971-4a0f2bc3b6f6": {
+          "logic": "participant",
+          "participant": {
+            "en": "What year were you"
+          },
+          "otherwise": {
+            "en": "What year was"
+          }
+        }
+      },
       "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status, birth year, whether the person has had the condition, and whether they have had genetic testing for it are all asked while each person is added. Take the condition and testing questions slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.",
       "subject": {
         "entity": "node",
@@ -909,19 +919,22 @@
         "currentPartnerAttribute": "503d9c75-5a98-5b8e-a4c3-e85e010ecbe5"
       },
       "form": {
+        "content": {
+          "en": "![](field:27b7efbb-fd25-5a14-8be1-11ec41ba1dd3)\n\n![](field:130a76d8-352a-5458-a960-5faac4d8a1a5)"
+        },
         "fields": [
           {
             "id": "27b7efbb-fd25-5a14-8be1-11ec41ba1dd3",
             "variable": "a514cd54-540e-5f78-b0f1-5d4f7bf2c401",
             "prompt": {
-              "en": "{node_isParticipant, select, true {Are you living or deceased?} other {Is {node_label} living or deceased?}}"
+              "en": "{dynamic_bd3907f5_7bb6_5a6f_a18c_de74273db41b} {node_d22b2968_c4e6_516f_8b0d_9089e9bd058d} living or deceased?"
             }
           },
           {
             "id": "130a76d8-352a-5458-a960-5faac4d8a1a5",
             "variable": "8b12abb5-ac11-5800-b6d7-315a2dab2536",
             "prompt": {
-              "en": "{node_isParticipant, select, true {What year were you born?} other {What year was {node_label} born?}}"
+              "en": "{dynamic_3800e4e5_30f8_5546_b971_4a0f2bc3b6f6} {node_d22b2968_c4e6_516f_8b0d_9089e9bd058d} born?"
             },
             "hint": {
               "en": "Leave this blank if you do not know."

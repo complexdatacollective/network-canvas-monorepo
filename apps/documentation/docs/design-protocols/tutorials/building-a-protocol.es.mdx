@@ -2,7 +2,7 @@
 navOrder: 1
 title: Crear un protocolo
 toc: true
-translatedFrom: 3c654f34f268fd81f17a6b3ef03a825c19e18d44
+translatedFrom: b946460cc4ad231c2acdbda0984b8b2444394d95
 ---
 
 <SummaryCard duration="2 horas">
@@ -249,13 +249,19 @@ En esta sección defines los campos que se mostrarán en el formulario cuando la
 
 Los campos recogen datos sobre los álteres o sobre el ego (la persona entrevistada), y es en ellos donde se definen las variables concretas.
 
-Primero, crea un título para el formulario que oriente a la persona participante sobre la información que quieres recoger. Introduce el título «Add a Clinic or Health Care Provider.» (añade una clínica o un proveedor de servicios de salud).
-
 <AppOnly app="current">
 
-A continuación, define los campos del formulario. Haz clic en **Crear nuevo campo de formulario**, en la sección **Campos del formulario**. Se abre un cuadro de diálogo con los ajustes del campo a la izquierda, donde eliges un atributo para el campo, escribes la pregunta, eliges un control de entrada y estableces la validación que quieras incluir. A la derecha hay una vista previa en directo de la pregunta tal como la verá la persona participante, que se actualiza a medida que trabajas. En una pantalla estrecha, la vista previa aparece debajo de los ajustes.
+Primero, da un título al formulario que oriente a la persona participante sobre la información que quieres recoger. En el campo **Título del cuadro de diálogo**, introduce «Add a Clinic or Health Care Provider.» (añade una clínica o un proveedor de servicios de salud). La persona participante lo ve como el encabezado del cuadro de diálogo en el que añade una clínica.
 
-Para el primer campo, quieres saber el nombre de la clínica que menciona la persona participante. En **Selección de atributo**, haz clic en **Selecciona un atributo** y elige «name» en la lista o, si el tipo de nodo «Clinic» todavía no tiene un atributo «name», escribe «name» y elige **Crear «name»**. Después, en **Configuración del campo**, introduce el **Texto de la pregunta**. En este ejemplo, usa la pregunta «What is the name of this clinic?» (¿cómo se llama esta clínica?).
+A continuación, define los campos del formulario. El formulario se escribe en el editor **Contenido del formulario**, como un único texto en el que cada pregunta es un campo. Coloca el cursor en el editor y elige **Campo** en su barra de herramientas. Aparece un campo nuevo en el texto, con un contorno discontinuo, y se abre una lista de atributos junto al botón **Campo**.
+
+Para el primer campo, quieres saber el nombre de la clínica que menciona la persona participante. Elige «name» en la lista o, si el tipo de nodo «Clinic» todavía no tiene un atributo «name», escribe «name» en el cuadro de búsqueda, elige **Crear «name»** y elige **Texto** como su tipo. Después, escribe la pregunta donde el campo dice **Escribe la pregunta**. En este ejemplo, usa la pregunta «What is the name of this clinic?» (¿cómo se llama esta clínica?).
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Primero, crea un título para el formulario que oriente a la persona participante sobre la información que quieres recoger. Introduce el título «Add a Clinic or Health Care Provider.» (añade una clínica o un proveedor de servicios de salud).
 
 </AppOnly>
 
@@ -271,7 +277,7 @@ En el primer campo, quieres saber el nombre de la clínica que nombra la persona
 
 <AppOnly app="current">
 
-En Architect, cada campo de formulario puede incluir una **indicación** opcional: una nota breve, con formato markdown, que se muestra debajo de la pregunta para orientar a la persona participante sobre cómo responder.
+En Architect, cada campo de formulario puede incluir un **texto de ayuda** opcional: una nota breve que se muestra debajo de la pregunta para orientar a la persona participante sobre cómo responder. Escríbelo donde el campo dice **Añade un texto de ayuda (opcional)**.
 
 </AppOnly>
 
@@ -303,7 +309,17 @@ Si no, haz clic en una variable existente de la lista.
 
 </AppOnly>
 
+<AppOnly app="current">
+
+A continuación, selecciona el campo para abrir sus ajustes: haz clic en su contorno o en su control de entrada. Los ajustes se abren junto al campo. En **Control de entrada**, elige el control de entrada que se mostrará para recoger esta variable.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 Por último, elige el control de entrada que se mostrará para recoger esta variable.
+
+</AppOnly>
 
 <KeyConcept title="Concepto clave: los controles de entrada">
 
@@ -317,11 +333,11 @@ Como preguntas por el nombre de la clínica (una variable de texto sencilla), un
 
 <AppOnly app="current">
 
-![El selector Control de entrada y la vista previa en directo de Architect.](/assets/img/architect-guide/input-control.png)
+![Los ajustes de un campo de formulario en Architect, con la lista Control de entrada.](/assets/img/architect-guide/input-control.png)
 
 </AppOnly>
 
-Por último, define los requisitos de validación de este campo. Indica que este campo de texto es obligatorio. Las opciones de validación disponibles varían según el tipo de variable. Si añades una validación de campo obligatorio, la persona participante tendrá que rellenar este campo antes de poder continuar. Para obtener más información, consulta la [guía de validación de campos](/es/design-protocols/key-concepts/field-validation).
+Por último, define los requisitos de validación de este campo<AppOnly app="current"> en **Validación**, dentro de los ajustes del campo</AppOnly>. Indica que este campo de texto es obligatorio. Las opciones de validación disponibles varían según el tipo de variable. Si añades una validación de campo obligatorio, la persona participante tendrá que rellenar este campo antes de poder continuar. Para obtener más información, consulta la [guía de validación de campos](/es/design-protocols/key-concepts/field-validation).
 
 <Screenshot axis="architect" name="validation"></Screenshot>
 
@@ -329,13 +345,19 @@ Por último, define los requisitos de validación de este campo. Indica que este
 
 Architect también ofrece la opción **Mostrar indicaciones de validación**. Cuando está activada, muestra automáticamente a quienes participan una indicación derivada de las reglas de validación del campo, para que entiendan qué se les pide al responder.
 
-Para probar el campo, responde la pregunta en la vista previa y haz clic en **Comprobar respuesta**. La vista previa aplica las reglas que el atributo ya tiene en el libro de códigos y te muestra lo que se le diría a la persona participante. Responder en la vista previa no cambia tu protocolo. Mientras un campo está creando un atributo nuevo, como en este caso, las reglas que estableces junto con él todavía no están en el libro de códigos, así que **Comprobar respuesta** acepta cualquier cosa hasta que haces clic en **Añadir**; vuelve a abrir el campo después para probarlas.
+El control de entrada, las opciones y la validación pertenecen al atributo, así que se aplican en todos los lugares donde se recoge el atributo. Se guardan con la etapa, cuando la guardas. Para volver a escribir el formulario, haz clic de nuevo en el texto.
+
+Ahora, siguiendo el proceso que acabas de aprender, crea los otros dos campos de este formulario. Coloca el cursor después del primer campo antes de elegir **Campo**, para que los campos queden uno a continuación del otro.
 
 </AppOnly>
 
-Haz clic en <AppOnly app="current">**Añadir**</AppOnly><AppOnly app="classic">**Save and Close** (guardar y cerrar)</AppOnly> para crear tu primer campo de formulario.
+<AppOnly app="classic">
+
+Haz clic en **Save and Close** (guardar y cerrar) para crear tu primer campo de formulario.
 
 Ahora, siguiendo el proceso que acabas de aprender, crea los otros dos campos de este formulario.
+
+</AppOnly>
 
 Crea los campos siguientes con los controles de entrada, las preguntas y las opciones adecuados:
 
@@ -394,13 +416,25 @@ En una etapa posterior recogeremos datos sobre cada una de estas universidades u
 
 La siguiente etapa de este protocolo de ejemplo usa la interfaz «Formulario del ego». Creamos el formulario del ego y le damos un nombre a la etapa como hicimos con las interfaces anteriores.
 
+<AppOnly app="current">
+
+### Presentar el formulario {#introducing-the-form}
+
+Empieza el formulario presentándolo a la persona participante. Puedes explicar qué datos pides y por qué. En el editor **Contenido del formulario**, escribe un encabezado, conviértelo en **Encabezado 1** con la lista de estilos de texto de la barra de herramientas y escribe un párrafo debajo. En nuestro caso, explicamos para qué está pensada la interfaz «Formulario del ego».
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 ### Panel de introducción {#introduction-panel}
 
 El panel de introducción es una función de la interfaz «Formulario del ego» que te permite presentar el formulario a la persona participante. Puedes usarlo para explicar qué datos pides y por qué. En nuestro caso, explicamos para qué está pensada la interfaz «Formulario del ego».
 
+</AppOnly>
+
 <Screenshot axis="architect" name="ego-form"></Screenshot>
 
-Ahora, vamos a crear una serie de campos para nuestro formulario del ego, igual que hicimos al configurar el generador de nombres con formularios. Si no recuerdas cómo lo hicimos, repasa los pasos anteriores.
+Ahora, vamos a crear una serie de campos para nuestro formulario del ego, igual que hicimos al configurar el generador de nombres con formularios. Si no recuerdas cómo lo hicimos, repasa los pasos anteriores.<AppOnly app="current"> Añade los campos debajo de la introducción, uno detrás de otro.</AppOnly>
 
 A continuación, crearemos los campos siguientes, con sus variables, preguntas, controles de entrada y validaciones (si las hay):
 
@@ -449,9 +483,9 @@ Añade solo dos campos a este formulario. Estos son los datos que necesitas, sig
 
 Las dos preguntas se refieren a «this university» (esta universidad). La persona participante ve un formulario para cada universidad que ha seleccionado, así que la pregunta puede nombrar, en su lugar, la universidad a la que se refiere el formulario. Architect lo hace insertando la etiqueta del nodo en el texto de la pregunta, una técnica conocida como texto dinámico (piped text).
 
-Vuelve a abrir el campo `visit_or_study`. Sustituye el texto de la pregunta por «Did you visit » y, a continuación, haz clic en el botón de la jeringa de la barra de herramientas de **Texto de la pregunta**, o escribe `{`. Un menú muestra los valores que puede mostrar esta pregunta. Elige **Etiqueta del nodo**, la primera opción de **Atributos contextuales**, y completa la pregunta con « or study there?». El valor aparece en la pregunta como una píldora **Etiqueta del nodo**, y la vista previa interactiva muestra la pregunta con la misma píldora. La pregunta `overall_review` puede nombrar la universidad de la misma forma.
+En el formulario, sustituye la pregunta del campo `visit_or_study` por «Did you visit » y, a continuación, haz clic en **Atributo** en la barra de herramientas del editor, o escribe `{`. Una lista muestra los valores que puede mostrar esta pregunta. Elige **Etiqueta del nodo**, en **Atributos del nodo**, y completa la pregunta con « or study there?». El valor aparece en la pregunta como una píldora **Etiqueta del nodo**. La pregunta `overall_review` puede nombrar la universidad de la misma forma.
 
-![El editor Texto de la pregunta con el texto «Did you visit [Node label] or study there?», junto a la vista previa interactiva del campo.](/assets/img/piped-text/value-in-question.png)
+![Un campo de formulario cuya pregunta dice «Did you visit [Node label] or study there?».](/assets/img/piped-text/value-in-question.png)
 
 Durante la entrevista, la píldora se sustituye por el texto que muestra cada nodo de universidad, que en esta lista es el nombre de la universidad: «Did you visit Universidad Francisco Marroquín or study there?». El protocolo de ejemplo descargable nombra la universidad de esta forma en las dos preguntas.
 
@@ -460,9 +494,9 @@ Durante la entrevista, la píldora se sustituye por el texto que muestra cada no
 El texto dinámico inserta información ya registrada en la entrevista en el
 texto que lee la persona participante: la etiqueta de un nodo, un atributo del nodo o del vínculo
 al que se refiere una pregunta, un atributo de la persona participante o la fecha de hoy. La etiqueta de un
-nodo nunca falta, así que se puede insertar por sí sola. Cualquier atributo puede
-faltar cuando se muestra la pregunta, así que Architect pide dos versiones del
-texto que lo rodea: una para cuando se conoce el valor y otra para cuando no.
+nodo nunca falta. Cualquier atributo puede faltar cuando se muestra la pregunta,
+y un valor que falta no muestra nada, así que escribe la pregunta de modo que se
+lea bien sin él, o usa la lógica para darle otra versión para ese caso.
 Para ver la explicación completa, consulta [Texto dinámico](/es/design-protocols/key-concepts/piped-text).
 
 </KeyConcept>
@@ -578,7 +612,7 @@ Antes creamos dos tipos de vínculo en el sociograma, que aparecen disponibles p
 
 <AppOnly app="current">
 
-Como en la etapa «Formulario por álter», el texto dinámico puede hacer que esta pregunta nombre a las dos personas de la clase a las que se refiere. Escribe «To the best of your knowledge, do », abre el menú de la jeringa y elige **Primer nodo: etiqueta**. Escribe « and », elige **Segundo nodo: etiqueta** y termina con « spend time together outside of class?». Para cada pareja, la persona participante lee entonces una pregunta como «To the best of your knowledge, do Corbett and Rebecka spend time together outside of class?», con los nombres que muestran los dos nodos.
+Como en la etapa «Formulario por álter», el texto dinámico puede hacer que esta pregunta nombre a las dos personas de la clase a las que se refiere. Escribe «To the best of your knowledge, do », haz clic en **Atributo** y elige **Primer nodo: etiqueta**. Escribe « and », elige **Segundo nodo: etiqueta** y termina con « spend time together outside of class?». Para cada par, la persona participante lee entonces una pregunta como «To the best of your knowledge, do Corbett and Rebecka spend time together outside of class?», con los nombres que muestran los dos nodos.
 
 ![El texto de la pregunta de la etapa «Censo de díadas»: «To the best of your knowledge, do [First node: label] and [Second node: label] spend time together outside of class?» (que tú sepas, ¿[First node: label] y [Second node: label] comparten tiempo fuera de clase?)](/assets/img/piped-text/pair-prompt.png)
 

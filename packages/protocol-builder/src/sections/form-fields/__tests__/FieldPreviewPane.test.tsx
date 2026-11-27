@@ -45,8 +45,8 @@ import { testVariableId } from '../../../testing/testId.ts';
  * mounting this pane alone over a real host would be mounting a whole editor —
  * and what these tests are about is the pane, not the plumbing. The integration
  * criteria (the two named regions, a question appearing as it is typed, the
- * control changing, an option added in the codebook) are asserted in
- * `FormFieldsSection.test.tsx`, through the real dialog over the real host.
+ * control changing, an option added in the codebook) are asserted in the
+ * network composer's own tests, through the real dialog over the real host.
  *
  * `vi.hoisted` because `vi.mock`'s factory runs before the module body.
  */

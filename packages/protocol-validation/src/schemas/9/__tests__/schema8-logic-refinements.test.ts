@@ -7,6 +7,7 @@ import {
   testVariableId,
   withStageTestIds,
 } from '../../../__tests__/testIds.ts';
+import { formOf } from '../../../testing/fixtures.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
@@ -52,15 +53,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'AlterForm',
             label: localized('Alter Form'),
             subject: { entity: 'node', type: 'person' },
-            form: {
-              fields: [
-                {
-                  id: 'field-1',
-                  variable: 'position',
-                  prompt: localized('Place node'),
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: 'field-1',
+                variable: 'position',
+                prompt: localized('Place node'),
+              },
+            ]),
             introductionPanel: {
               title: localized('Intro'),
               text: localized('text'),
@@ -112,15 +111,13 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'AlterForm',
             label: localized('Alter Form'),
             subject: { entity: 'node', type: 'person' },
-            form: {
-              fields: [
-                {
-                  id: 'field-1',
-                  variable: 'nickname',
-                  prompt: localized('Nickname?'),
-                },
-              ],
-            },
+            form: formOf([
+              {
+                id: 'field-1',
+                variable: 'nickname',
+                prompt: localized('Nickname?'),
+              },
+            ]),
             introductionPanel: {
               title: localized('Intro'),
               text: localized('text'),
@@ -750,9 +747,9 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: localized('Add person'),
-        fields: [
+        ...formOf([
           { id: 'field-1', variable: 'name', prompt: localized('Name') },
-        ],
+        ]),
       },
       prompts: [{ id: 'p1', text: localized('Who?') }],
       panels,

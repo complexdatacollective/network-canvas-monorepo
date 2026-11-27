@@ -8,6 +8,7 @@ import {
   asEntityAttributeReference,
   type TitlelessForm,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -68,20 +69,18 @@ const PERSON_TYPE = testTypeId('person');
 const NAME_VAR = testVariableId('name');
 const MET_ON_VAR = testVariableId('met_on');
 
-const form: TitlelessForm = {
-  fields: [
-    {
-      id: testId('field-1'),
-      variable: asEntityAttributeReference(NAME_VAR),
-      prompt: { en: 'Person name' },
-    },
-    {
-      id: testId('field-2'),
-      variable: asEntityAttributeReference(MET_ON_VAR),
-      prompt: { en: 'When you met' },
-    },
-  ],
-};
+const form: TitlelessForm = formOf([
+  {
+    id: testId('field-1'),
+    variable: asEntityAttributeReference(NAME_VAR),
+    prompt: { en: 'Person name' },
+  },
+  {
+    id: testId('field-2'),
+    variable: asEntityAttributeReference(MET_ON_VAR),
+    prompt: { en: 'When you met' },
+  },
+]);
 
 const person: NcNode = {
   [entityPrimaryKeyProperty]: 'person-1',

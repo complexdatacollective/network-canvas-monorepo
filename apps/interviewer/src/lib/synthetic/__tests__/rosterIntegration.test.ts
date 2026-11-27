@@ -189,6 +189,8 @@ describe('synthetic generation over the real Development Protocol', () => {
     const { network } = generateNetwork({
       codebook: protocol.codebook,
       stages: protocol.protocol.stages,
+      formLanguage: protocol.protocol.localization.defaultLocale,
+      localization: protocol.protocol.localization,
       seed: 42,
       externalData,
     });
@@ -216,6 +218,8 @@ describe('synthetic generation over the real Development Protocol', () => {
     const { network } = generateNetwork({
       codebook: protocol.codebook,
       stages: protocol.protocol.stages,
+      formLanguage: protocol.protocol.localization.defaultLocale,
+      localization: protocol.protocol.localization,
       seed: 7,
       externalData,
     });
@@ -244,6 +248,8 @@ describe('synthetic generation over the real Development Protocol', () => {
     const { network } = generateNetwork({
       codebook: protocol.codebook,
       stages: protocol.protocol.stages,
+      formLanguage: protocol.protocol.localization.defaultLocale,
+      localization: protocol.protocol.localization,
       seed: 42,
       externalData,
     });

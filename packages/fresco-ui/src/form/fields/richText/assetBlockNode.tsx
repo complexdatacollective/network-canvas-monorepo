@@ -189,24 +189,38 @@ const CONTROLS_ID_ATTRIBUTE = 'data-asset-block-controls-id';
 export const assetBlockControlsAt = (id: string) =>
   ({ [CONTROLS_ID_ATTRIBUTE]: id }) as const;
 
+// What a researcher can operate in a block's settings. Not judged by
+// `tabindex`: a popover takes its controls out of the Tab order
+// (`tabindex="-1"`) while focus is outside it, and puts them back as focus
+// comes in, so a control judged by it could be reached only once. Elements
+// that take focus only to scroll, or a hidden input that stands behind a
+// switch or a checkbox, are not controls.
 const CONTROL =
-  ':is(input, button, [tabindex]):not([disabled], [tabindex="-1"])';
+  ':is(input:not([type="hidden"]), select, textarea, button, a[href]):not([disabled], [aria-hidden="true"])';
+
+/**
+ * The first control that a researcher can operate in `container`: what Enter
+ * on a selected block goes to in that block's settings, wherever they are
+ * drawn and whether or not focus has been in them before.
+ */
+export const firstSettingsControlIn = (
+  container: ParentNode,
+): HTMLElement | null =>
+  Array.from(container.querySelectorAll<HTMLElement>(CONTROL)).find(
+    (control) => control.closest('[aria-hidden="true"], [inert]') === null,
+  ) ?? null;
 
 /** The first control of the block drawn in `element`, wherever it is drawn. */
 const firstControlOf = (element: HTMLElement): HTMLElement | null => {
-  const inside = element.querySelector<HTMLElement>(
-    `[${CONTROLS_ATTRIBUTE}] ${CONTROL}`,
-  );
-  if (inside !== null) return inside;
+  const inside = element.querySelector(`[${CONTROLS_ATTRIBUTE}]`);
+  const first = inside === null ? null : firstSettingsControlIn(inside);
+  if (first !== null) return first;
   const id = element
     .querySelector(`[${CONTROLS_ID_ATTRIBUTE}]`)
     ?.getAttribute(CONTROLS_ID_ATTRIBUTE);
   if (id === null || id === undefined) return null;
-  return (
-    element.ownerDocument
-      .getElementById(id)
-      ?.querySelector<HTMLElement>(CONTROL) ?? null
-  );
+  const drawn = element.ownerDocument.getElementById(id);
+  return drawn === null ? null : firstSettingsControlIn(drawn);
 };
 
 const isAssetBlock = (node: unknown): boolean =>

@@ -103,11 +103,11 @@ describe('Protocol Summary interview text', () => {
       'When it is 1Enter at most Maximum character.',
       'When it is 0, 2, 3, …Enter at most Maximum characters.',
     ]);
+    // The value is a pill named by its label.
     for (const version of versions) {
-      expect(version.querySelector('[data-token]')).toHaveAttribute(
-        'data-token',
-        'max',
-      );
+      expect(
+        version.querySelector('data[data-attribute-type="placeholder"]'),
+      ).toHaveTextContent('Maximum');
     }
   });
 

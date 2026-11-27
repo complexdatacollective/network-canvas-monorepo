@@ -29,6 +29,7 @@ import {
   WholeNumberValueField,
 } from '../fields/RuleValueField.tsx';
 import VariablePickerField from '../fields/VariablePickerField.tsx';
+import type { VariablePickerGroup } from '../fields/VariablePickerList.tsx';
 import DialogForm, {
   type DialogFormErrors,
   type DialogFormProps,
@@ -38,6 +39,7 @@ import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useHasProtocolBuilderHost } from '../state/context.ts';
 import { useLatest } from '../state/useLatest.ts';
+import { formAnswerGroups, useFormAnswerScope } from './formAnswerScope.ts';
 import type { RuleOperatorOption, RuleOperatorSubject } from './operators.ts';
 import {
   incompleteRulePart,
@@ -1174,6 +1176,22 @@ const useRuleCascade = (
   }, [emptyValue, setFieldValue, values]);
 };
 
+/**
+ * A rule's attribute list. In a logic block of a form, the answers on the
+ * form come first (`FormAnswerScopeProvider`).
+ */
+const useAttributeList = (
+  variableOptions: readonly RuleVariableOption[],
+):
+  | Readonly<{ options: readonly RuleVariableOption[] }>
+  | Readonly<{ groups: VariablePickerGroup[] }> => {
+  const intl = useAppIntl();
+  const scope = useFormAnswerScope();
+  return scope === undefined
+    ? { options: variableOptions }
+    : { groups: formAnswerGroups(variableOptions, scope, intl) };
+};
+
 type BranchProps = Readonly<{
   seed: RuleDraft;
   attributeId: string | undefined;
@@ -1198,6 +1216,7 @@ function EgoRuleFields({
   dateParameters,
 }: BranchProps) {
   const intl = useAppIntl();
+  const attributeList = useAttributeList(variableOptions);
   return (
     <Section
       title={intl.formatMessage(messages.ruleStructureSection)}
@@ -1208,7 +1227,7 @@ function EgoRuleFields({
         label={intl.formatMessage(messages.egoAttributeLabel)}
         hint={intl.formatMessage(messages.egoAttributeHint)}
         component={VariablePickerField}
-        options={variableOptions}
+        {...attributeList}
         emptyMessage={intl.formatMessage(messages.egoAttributeEmpty)}
         initialValue={seedString(seed, 'attribute')}
         required={intl.formatMessage(ruleEditorRequiredMessage)}
@@ -1275,6 +1294,7 @@ function EntityRuleFields({
   // the two and a sentence built from fragments cannot be localised.
   const isNode = target === 'node';
   const intl = useAppIntl();
+  const attributeList = useAttributeList(variableOptions);
 
   return (
     <>
@@ -1362,7 +1382,7 @@ function EntityRuleFields({
             )}
             hint={intl.formatMessage(messages.attributeHint)}
             component={VariablePickerField}
-            options={variableOptions}
+            {...attributeList}
             emptyMessage={intl.formatMessage(
               isNode
                 ? messages.nodeAttributeEmpty

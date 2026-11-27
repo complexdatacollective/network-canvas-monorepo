@@ -24,7 +24,6 @@ import { BaseSequencer, type TestSpecification } from 'vitest/node';
  */
 const SECONDS: Record<string, number> = {
   // From run 41408437901 (2 Nov 2026), whole suite on one runner.
-  'src/sections/form-fields/__tests__/FormFieldsSection.test.tsx': 321,
   'src/editors/family-pedigree/__tests__/FamilyPedigreeStageEditor.test.tsx': 304,
   'src/editors/network-composer/__tests__/composerSections.test.tsx': 156,
   'src/form/arrayFields/__tests__/inlineListLifecycle.test.tsx': 113,

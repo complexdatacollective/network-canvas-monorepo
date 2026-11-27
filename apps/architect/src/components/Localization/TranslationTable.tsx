@@ -69,14 +69,11 @@ import {
 import { getProtocol } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
+import { pathKey, readTranslationFieldName } from './cellNames';
+import { saveTranslations, settleSavedCells } from './saveTranslations';
 import { describePlace, type PlaceDetails, textSteps } from './textPlaces';
 import TranslationCell, { fallbackFor } from './TranslationCell';
-import {
-  clearSaveFindings,
-  readTranslationFieldName,
-  saveTranslations,
-  settleSavedCells,
-} from './translationDrafts';
+import { clearSaveFindings } from './translationDrafts';
 import {
   type MissingFilter,
   readFocusedLanguage,
@@ -252,7 +249,9 @@ type NumberedGroup = ShownGroup & { firstRow: number };
 
 const NAME_SEPARATOR = ' › ';
 
+// A string that is not used in a language lacks nothing there.
 const isMissingIn = (row: ShownRow, locale: LocaleTag) =>
+  row.row.expectedLocales.includes(locale) &&
   !Object.hasOwn(row.row.value, locale);
 
 const renderMuted = (chunks: ReactNode[]) => (
@@ -295,8 +294,6 @@ const GroupHeading = ({ group }: { group: ShownGroup }) => {
   );
 };
 
-const rowKey = (path: TranslationRow['path']) => JSON.stringify(path);
-
 // Set apart from the menu's other options, which a language tag could match.
 const languageOption = (locale: LocaleTag) => `language:${locale}`;
 
@@ -317,7 +314,7 @@ const describeGroups = (
       rows: group.rows.map((row) => {
         const { steps, raw } = textSteps(intl, protocol, row, details);
         return {
-          key: rowKey(row.path),
+          key: pathKey(row.path),
           row,
           name: steps.join(NAME_SEPARATOR),
           rawName: raw,
@@ -585,7 +582,7 @@ const TranslationTableContent = ({
     if (cells.length > 0) {
       setKept((current) => {
         const next = new Set(current);
-        for (const { path } of cells) next.add(rowKey(path));
+        for (const { path } of cells) next.add(pathKey(path));
         return next;
       });
       setHidden((current) => {
@@ -748,7 +745,7 @@ const TranslationTableContent = ({
     for (const name of Object.keys(unfocusedErrors.errors.fieldErrors)) {
       const cell = readTranslationFieldName(name);
       if (cell === undefined) continue;
-      const key = rowItemKey(rowKey(cell.path));
+      const key = rowItemKey(pathKey(cell.path));
       const index = arranged.itemIndexes.get(key);
       if (index !== undefined && (first === undefined || index < first.index)) {
         first = { key, index };
@@ -875,16 +872,22 @@ const TranslationTableContent = ({
 
   const move = useCallback(
     (rowIndex: number, colIndex: number, delta: number): boolean => {
-      const target = tableRef.current?.querySelector<HTMLElement>(
-        `[data-row="${rowIndex + delta}"][data-col="${colIndex}"]`,
-      );
-      if (!target) return false;
-      target.focus();
-      if (target instanceof HTMLTextAreaElement) {
-        const end = target.value.length;
-        target.setSelectionRange(end, end);
+      // A cell of a string that is not used in its language cannot be
+      // edited, and is passed over to the next cell that can.
+      const find = (selector: string) =>
+        tableRef.current?.querySelector<HTMLElement>(selector) ?? null;
+      for (let row = rowIndex + delta; ; row += delta) {
+        const target = find(`[data-row="${row}"][data-col="${colIndex}"]`);
+        if (target) {
+          target.focus();
+          if (target instanceof HTMLTextAreaElement) {
+            const end = target.value.length;
+            target.setSelectionRange(end, end);
+          }
+          return true;
+        }
+        if (!find(`[data-row="${row}"]`)) return false;
       }
-      return true;
     },
     [],
   );
@@ -1189,6 +1192,7 @@ const TranslationTableContent = ({
                 (candidate) => candidate.locale === locale,
               );
               const translated = entry?.translated ?? 0;
+              const used = entry?.total ?? 0;
               const name = languageName(locale);
               return (
                 <th
@@ -1220,9 +1224,7 @@ const TranslationTableContent = ({
                         <ProgressBar
                           orientation="horizontal"
                           percentProgress={
-                            coverage.total === 0
-                              ? 0
-                              : (translated / coverage.total) * 100
+                            used === 0 ? 0 : (translated / used) * 100
                           }
                           nudge={false}
                           // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text
@@ -1236,12 +1238,12 @@ const TranslationTableContent = ({
                       >
                         {intl.formatMessage(messages.progressCount, {
                           translated,
-                          total: coverage.total,
+                          total: used,
                         })}
                       </span>
                       <span className="sr-only" lang="en">
                         {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}
-                        {`${translated} of ${coverage.total} translated`}
+                        {`${translated} of ${used} translated`}
                       </span>
                     </div>
                   </div>

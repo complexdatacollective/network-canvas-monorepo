@@ -340,14 +340,14 @@ describe('a fix that replaces more than one text', () => {
   it('writes nothing new in another language of a text it adds', () => {
     const protocol = makeProtocol();
     const normalized = normalizeOperations(protocol, [
-      op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel`, {
-        en: 'Before you start',
-        fr: 'Avant de commencer',
+      op('set', `/stages/${NAMES_STAGE_ID}/minNodesNotice`, {
+        en: 'Name at least two people',
+        fr: 'Nommez au moins deux personnes',
       }),
     ]);
     expect(normalized).toEqual([
-      op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel`, {
-        en: 'Before you start',
+      op('set', `/stages/${NAMES_STAGE_ID}/minNodesNotice`, {
+        en: 'Name at least two people',
       }),
     ]);
   });
@@ -378,10 +378,14 @@ describe('a fix that changes another language', () => {
   it('is not offered when it writes a translation of a text an earlier edit adds', () => {
     expect(
       recordFix(makeProtocol(), [
-        op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel`, {
-          en: 'Before',
+        op('set', `/stages/${NAMES_STAGE_ID}/minNodesNotice`, {
+          en: 'Name two people',
         }),
-        op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel/fr`, 'Avant'),
+        op(
+          'set',
+          `/stages/${NAMES_STAGE_ID}/minNodesNotice/fr`,
+          'Nommez deux personnes',
+        ),
       ]).targets,
     ).toBeNull();
   });

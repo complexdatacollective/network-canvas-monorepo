@@ -168,13 +168,14 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     const id = item[entityPrimaryKeyProperty];
 
     const {
-      fieldComponents,
+      formContent,
       toAttributePatch,
       componentByVariable,
+      fieldComponents,
       variableByFieldPath,
       passphraseNeeded,
     } = useProtocolForm({
-      fields: form.fields,
+      form,
       autoFocus: false,
       initialValues,
       subject,
@@ -224,9 +225,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     useEffect(() => {
       track('form_opened', {
         form_kind,
-        field_details: form.fields.map(
-          (f) => componentByVariable[f.variable] ?? 'unknown',
-        ),
+        field_details: fieldComponents,
         ...(form_kind === 'alter' || form_kind === 'alter_edge'
           ? { entity_id: id }
           : {}),
@@ -267,7 +266,7 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
         >
           {/* Wrap fields so the last field's :last-child match isn't broken by the hidden submit button. */}
           <QuestionFlow onComplete={onComplete} focusFirst={focusFirst}>
-            {fieldComponents}
+            {formContent}
           </QuestionFlow>
           {submitButton}
         </FormWithoutProvider>

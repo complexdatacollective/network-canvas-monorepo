@@ -424,7 +424,7 @@ describe('how a refusal names what to correct', () => {
 
   it('names a prompt by its stage', () => {
     expect(placesOf(['stages', 5, 'prompts', 1, 'text'])).toEqual([
-      'Stage “People in your life”, prompt 2: Text cannot be blank.',
+      'Stage “People in your life”, prompt 2: This wording cannot be blank.',
     ]);
   });
 

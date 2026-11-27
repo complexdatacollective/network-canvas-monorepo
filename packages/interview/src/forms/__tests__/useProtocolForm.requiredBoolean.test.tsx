@@ -10,6 +10,7 @@ import {
   type ComposerFormField,
   type FormField,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
@@ -96,17 +97,23 @@ function makeWrapper() {
   };
 }
 
-function FormHarness({
-  fields,
-}: {
-  fields: Array<FormField | ComposerFormField>;
-}) {
-  const { fieldComponents } = useProtocolForm({
+function FormHarness({ fields }: { fields: FormField[] }) {
+  const { formContent } = useProtocolForm({
+    form: formOf(fields),
+    subject: { entity: 'node', type: NODE_TYPE },
+  });
+
+  return <Form onSubmit={() => ({ success: true })}>{formContent}</Form>;
+}
+
+/** A Network Composer's fields, asked in turn. */
+function ComposerFormHarness({ fields }: { fields: ComposerFormField[] }) {
+  const { formContent } = useProtocolForm({
     fields,
     subject: { entity: 'node', type: NODE_TYPE },
   });
 
-  return <Form onSubmit={() => ({ success: true })}>{fieldComponents}</Form>;
+  return <Form onSubmit={() => ({ success: true })}>{formContent}</Form>;
 }
 
 describe('useProtocolForm required boolean rendering', () => {
@@ -156,7 +163,7 @@ describe('useProtocolForm required boolean rendering', () => {
 
   it('does not carry codebook options into the swapped control', () => {
     render(
-      <FormHarness
+      <ComposerFormHarness
         fields={[
           {
             id: testId('field-L157'),
@@ -181,7 +188,7 @@ describe('useProtocolForm required boolean rendering', () => {
     const { result } = renderHook(
       () =>
         useProtocolForm({
-          fields: [
+          form: formOf([
             {
               id: testId('field-1'),
               variable: asEntityAttributeReference(REQUIRED_TOGGLE),
@@ -192,7 +199,7 @@ describe('useProtocolForm required boolean rendering', () => {
               variable: asEntityAttributeReference(OPTIONAL_TOGGLE),
               prompt: { en: 'Do you have a car?' },
             },
-          ],
+          ]),
           subject: { entity: 'node', type: NODE_TYPE },
         }),
       { wrapper: makeWrapper() },

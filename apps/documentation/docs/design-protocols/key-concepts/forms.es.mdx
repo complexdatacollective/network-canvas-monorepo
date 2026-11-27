@@ -1,7 +1,7 @@
 ---
 title: Formularios
 navOrder: 6
-translatedFrom: 7be100679bdaafd2a2780b35a3a13db1d7a8b68e
+translatedFrom: f3bd2cc4df2f2332ceee4c85b15287c3f89540da
 ---
 
 <Definition>
@@ -26,17 +26,62 @@ Los formularios constan de uno o varios campos, que se pueden reordenar para que
 
 <AppOnly app="current">
 
-Escribe el **Título del formulario** y, después, crea un campo para cada uno de los atributos que quieras recoger en este formulario haciendo clic en **Crear nuevo campo de formulario**.
+Un formulario se escribe como un único texto, en el editor **Contenido del formulario** de la sección **Formulario** de la etapa. El texto es lo que lee la persona participante, de arriba abajo: encabezados, párrafos, listas, imágenes y los campos del formulario. Cada campo es un bloque dentro del texto, colocado donde se hace su pregunta. Un campo muestra su pregunta, su texto de ayuda y su control de entrada tal como los verá la persona participante, así que el editor muestra el aspecto que tendrá el formulario.
 
-El cuadro de diálogo del campo se divide en dos partes. A la izquierda están los ajustes del campo. A la derecha hay una **Vista previa interactiva** que muestra la pregunta tal como la verá la persona participante, con el aspecto visual propio de la entrevista. La vista previa refleja lo que escribes y eliges, y puedes responderla: **Comprobar respuesta** aplica a tu respuesta las reglas de validación del atributo, para que veas qué mensaje recibiría una persona participante. Son las reglas que el atributo ya tiene en el libro de códigos. Si el campo crea un atributo nuevo, las reglas que establezcas junto a él solo empiezan a aplicarse cuando guardas el campo, así que hasta entonces **Comprobar respuesta** acepta cualquier respuesta. Responder en la vista previa no cambia nada de tu protocolo. En una pantalla estrecha, las dos partes se apilan en una sola columna.
+### Añadir un campo {#adding-a-field}
 
-Los ajustes aparecen en este orden:
+1. Coloca el cursor donde debe ir el campo.
+2. Elige **Campo** en la barra de herramientas del editor, o pulsa Ctrl+Mayús+F (⌘+Mayús+F en un Mac).
+3. El campo nuevo aparece en el texto con un contorno discontinuo, y se abre una lista de atributos junto al botón **Campo**, o junto al campo nuevo si usas el atajo de teclado. Elige el atributo en el que se guardan las respuestas. Para crear un atributo nuevo, escribe su nombre en el cuadro de búsqueda, elige **Crear «…»** y, después, elige el tipo de respuesta que el atributo registra.
+4. Escribe la pregunta donde el campo dice **Escribe la pregunta**. Si quienes participan necesitan más orientación, escribe un texto de ayuda donde dice **Añade un texto de ayuda (opcional)**.
 
-1. **Selección de atributo**: haz clic en **Selecciona un atributo** y, después, elige un atributo existente de la lista o escribe un nombre para crear uno nuevo.
-2. **Configuración del campo**: el **Texto de la pregunta** (la [pregunta](/es/design-protocols/key-concepts/prompts) que se muestra a la persona participante, que admite formato markdown), un **Texto de ayuda** opcional, el interruptor **Mostrar indicaciones de validación** y, por último, el **Control de entrada**. En un atributo nuevo, el control de entrada que elijas determina el tipo del atributo.
-3. Debajo aparecen las opciones de respuesta del propio atributo, en los tipos de atributo que las tienen, y su sección **Validación**. Si estás creando el atributo en este campo, puedes establecer aquí sus reglas de validación antes de guardar el campo, y se crean junto con él.
+La lista contiene los atributos de la persona participante, del nodo o del vínculo sobre el que pregunta el formulario. Un atributo que no se puede usar en el campo sigue en la lista, atenuado, con el motivo debajo. Por ejemplo, cada atributo solo puede recogerlo un campo de un formulario, así que no se puede elegir un atributo que otro campo ya recoge.
 
-El texto de ayuda es una orientación con formato markdown que se muestra debajo de la pregunta para ayudar a quienes participan a entender cómo responder (por ejemplo, «Selecciona todas las opciones que correspondan…»). Déjalo en blanco si no hace falta ninguna orientación adicional.
+Si cierras la lista sin elegir un atributo, se quita el campo si todavía está vacío. Un campo que ya tiene una pregunta o un texto de ayuda se queda en el texto y muestra **Elige un atributo** en lugar de su atributo: haz clic en **Elige un atributo** para volver a abrir la lista. La etapa no se puede guardar hasta que todos los campos tengan un atributo.
+
+La pregunta y el texto de ayuda se escriben en el propio campo. Pueden ir en negrita o en cursiva, y pueden mostrar [texto dinámico](/es/design-protocols/key-concepts/piped-text), como la etiqueta del nodo sobre el que pregunta el formulario.
+
+### Los ajustes de un campo {#the-settings-of-a-field}
+
+Para seleccionar un campo, haz clic en su contorno o en su control de entrada. Con el teclado, pulsa Esc mientras el cursor está en su pregunta o en su texto de ayuda. Los ajustes de un campo seleccionado se abren a su lado:
+
+- **Atributo**: el atributo en el que se guardan las respuestas.
+- **Control de entrada**: cómo responde la persona participante a la pregunta. La lista contiene los controles de entrada que corresponden al tipo del atributo. Ese tipo se eligió al crear el atributo.
+- **Opciones**: las respuestas entre las que puede elegir la persona participante, si el atributo las tiene. **Editar opciones** abre un cuadro de diálogo en el que puedes cambiarlas. Para un control de entrada que tiene ajustes propios, como las etiquetas de los extremos de una escala, el botón dice **Editar ajustes del control**.
+- **Validación**: las [reglas de validación](/es/design-protocols/key-concepts/field-validation) del atributo.
+- **Mostrar indicaciones de validación**, que muestra a la persona participante, antes de que responda, las reglas que debe cumplir su respuesta, por ejemplo «Debes elegir al menos 1 opción».
+- Una nota que indica que el control de entrada, las opciones y la validación forman parte del atributo, así que los cambios que hagas aquí se aplican a todos los formularios que lo usan. La nota también nombra cualquier otra etapa que use el atributo.
+- **Eliminar campo**, que quita el campo del formulario.
+
+Los cambios en el atributo se guardan con la etapa, cuando la guardas.
+
+### Organizar el formulario {#arranging-the-form}
+
+Para mover un campo, arrástralo por su asa, o selecciónalo y pulsa Ctrl+Mayús+Flecha arriba o Ctrl+Mayús+Flecha abajo (⌘+Mayús en un Mac). Puede haber texto, encabezados, imágenes, audio y vídeo antes de los campos, entre ellos y después de ellos: por ejemplo, un encabezado al principio del formulario y un párrafo que presenta un grupo de preguntas. Un campo no se puede colocar dentro de una lista.
+
+Todos los formularios deben contener al menos un campo. Si no, Architect indica **Añade al menos un campo a este formulario.**
+
+### Mostrar campos solo en algunos casos {#showing-fields-only-in-some-cases}
+
+Un formulario puede contener [bloques de lógica](/es/design-protocols/key-concepts/piped-text#logic-blocks). Un bloque de lógica muestra un contenido distinto en cada caso: por ejemplo, un grupo de preguntas para las personas participantes que estudian y otro grupo para las que no. Elige **Bloque de lógica** en la barra de herramientas, elige su lógica y, después, añade texto y campos a cada una de sus versiones. Durante la entrevista, la persona participante solo ve el contenido de la versión que corresponde, y el formulario cambia a medida que cambian las respuestas de las que depende la lógica.
+
+Cuando la persona participante envía el formulario, se borran las respuestas a los campos que oculta un bloque de lógica. Esto ocurre incluso si la persona participante respondió a un campo antes de que se ocultara.
+
+### Formularios en más de un idioma {#forms-in-more-than-one-language}
+
+Cuando un protocolo tiene [más de un idioma](/es/design-protocols/tutorials/translating-your-protocol), cada idioma tiene su propio texto del formulario. Los formularios de los distintos idiomas pueden organizarse de forma distinta e incluso contener campos distintos. Un campo que está en los formularios de dos idiomas es el mismo campo: guarda sus respuestas en el mismo atributo y tiene los mismos ajustes, y solo se traducen su pregunta y su texto de ayuda.
+
+Para escribir el formulario en otro idioma, elige ese idioma en el menú de idiomas del editor. Si añades un campo en ese idioma y eliges un atributo que ya se recoge en un campo de otro idioma, Architect añade ese mismo campo.
+
+Cuando el formulario del idioma que estás editando contiene campos distintos de los del formulario del idioma predeterminado, una nota encima del editor los nombra. Por ejemplo: «El formulario en español no incluye 1 campo que sí está en el formulario en inglés: employer. Los formularios de distintos idiomas pueden contener campos distintos». La nota es solo informativa. Aun así, el formulario de cada idioma debe contener al menos un campo.
+
+El texto de un formulario también se puede editar en la [tabla de traducciones](/es/design-protocols/tutorials/translating-your-protocol#editing-translations), donde la pregunta y el texto de ayuda de cada campo tienen sus propias filas. Allí solo se puede añadir un campo al texto de un idioma si el formulario ya lo tiene en otro idioma, y no se puede quitar un campo del formulario en todos los idiomas a la vez. Los campos nuevos se añaden, y los campos se quitan de todo el formulario, en el editor de la etapa.
+
+### Formularios de las etapas «Generador de nombres» y «Compositor de redes» {#name-generator-and-network-composer-forms}
+
+El formulario de una etapa «Generador de nombres» también tiene un **Título del cuadro de diálogo**, que la persona participante ve como encabezado del cuadro de diálogo en el que añade a una persona.
+
+Los formularios de una etapa [«Compositor de redes»](/es/design-protocols/interface-documentation/network-composer) no se escriben de esta manera. Sus campos se configuran en el editor de la etapa, como se describe en el apartado [Formularios de atributos](/es/design-protocols/interface-documentation/network-composer#attribute-forms) de esa página.
 
 </AppOnly>
 
@@ -50,13 +95,13 @@ También puedes añadir al campo una indicación (**hint**) opcional. La indicac
 
 Después, debes decidir qué [control de entrada](/es/design-protocols/key-concepts/input-controls) usar. En las variables nuevas, esto determina el tipo de variable.
 
-</AppOnly>
-
 <TipBox danger>
 
 Una vez establecido el tipo de una variable (al elegir su tipo de entrada la primera vez que se usa), ya no se puede cambiar. Sí puedes ajustar más adelante el control de entrada concreto de tu formulario, siempre que ese control de entrada sea compatible con el tipo de variable.
 
 </TipBox>
+
+</AppOnly>
 
 Después de establecer el control de entrada, configura las opciones propias de la variable y las [opciones de validación](/es/design-protocols/key-concepts/field-validation) que necesites. La validación ayuda a garantizar la calidad de los datos, ya que aplica reglas como campos obligatorios, restricciones de formato y rangos de valores. También puedes activar **Mostrar indicaciones de validación** en el campo, que muestra automáticamente indicaciones derivadas de sus reglas de validación y ayuda a quienes participan a entender qué se les pide sin que tengas que escribirlo a mano.
 

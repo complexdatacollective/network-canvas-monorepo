@@ -12,6 +12,7 @@ import {
   type LocalizationDeclaration,
   type LocalizedString,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
@@ -112,17 +113,20 @@ function makeWrapper(
 }
 
 const field = (variable: string, prompt: LocalizedString): FormField => ({
-  id: testId('field-L111'),
+  id: testId(`field ${variable}`),
   variable: asEntityAttributeReference(variable),
   prompt,
 });
 
 function Fields({ fields }: { fields: FormField[] }) {
-  const { fieldComponents } = useProtocolForm({
-    fields,
+  // A document in each language the tests read the form in.
+  const { content } = formOf(fields);
+  const { content: french } = formOf(fields, { locale: 'fr' });
+  const { formContent } = useProtocolForm({
+    form: { content: { ...content, ...french }, fields },
     subject: { entity: 'node', type: NODE_TYPE },
   });
-  return <Form onSubmit={() => ({ success: true })}>{fieldComponents}</Form>;
+  return <Form onSubmit={() => ({ success: true })}>{formContent}</Form>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

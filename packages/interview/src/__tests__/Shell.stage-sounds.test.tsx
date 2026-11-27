@@ -12,6 +12,7 @@ import {
   asEntityAttributeReference,
   getLocaleMetadata,
 } from '@codaco/protocol-validation';
+import { formOf } from '@codaco/protocol-validation/testing';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -69,13 +70,13 @@ const egoForm = {
   id: testId('ego-form'),
   type: 'EgoForm',
   label: { en: 'About you' },
-  introductionPanel: { title: { en: 'About you' } },
-  form: {
-    fields: [
+  form: formOf(
+    [
       { id: 'f1', variable: NICKNAME, prompt: { en: 'Your nickname' } },
       { id: 'f2', variable: CLOSENESS, prompt: { en: 'How close' } },
     ],
-  },
+    { before: '# About you' },
+  ),
 };
 
 const oneToManyCensus = {

@@ -1,7 +1,7 @@
 // Task introductions: Sketch puts an Information screen before the first
 // stage of each kind of task, so the participant learns how a task works
-// before doing it. Schema 9 dropped the introduction panels that used to do
-// this on the stage itself (only an Ego Form keeps one).
+// before doing it. An Ego Form needs no such screen: its introduction is the
+// heading and text at the top of its form.
 //
 // A task counts as introduced only once a stage that surely shows has
 // introduced it: a stage that can be skipped (by its own skip logic, by the

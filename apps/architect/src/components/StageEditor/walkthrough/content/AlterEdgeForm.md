@@ -60,9 +60,9 @@ Use this stage to ask set questions about every edge of a given type.
 
 <!-- section: form-fields -->
 
-The form contains the questions asked about each edge. Each field records one attribute of the edge, and the fields appear in the order listed.
+The form contains the questions asked about each edge. Each field records one attribute of the edge.
 
-Read more about [forms](https://documentation.networkcanvas.com/design-protocols/key-concepts/forms).
+<!-- include: form-document -->
 
 <!-- include: skip-logic -->
 

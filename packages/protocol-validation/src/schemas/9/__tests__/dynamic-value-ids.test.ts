@@ -41,6 +41,35 @@ const FRIEND_ID = testId(
   ]),
 );
 
+const dynamicAttributeName = (id: string) =>
+  dynamicValueNameFor({ kind: 'dynamicAttribute', id });
+
+// A dynamic attribute with a wording for one option of the attribute
+// `value`, and "Who?" for any other answer.
+const wordingForOption = (
+  value: string,
+  optionId: string,
+  wording: string,
+) => ({
+  logic: 'answers',
+  value,
+  missing: { en: 'Who?' },
+  answers: [{ answer: optionCaseKey(optionId), wording: { en: wording } }],
+  other: { en: 'Who?' },
+});
+
+const FRIEND_WORDING_ID = testId('friend wording');
+const STRENGTH_WORDING_ID = testId('strength wording');
+
+// The option ids for which the dynamic attributes of a stage that read
+// `value` have a wording.
+const answerKeysOf = (stage: Stage | undefined, value: string) =>
+  Object.values((stage?.dynamicAttributes ?? {}) as Record<string, Stage>)
+    .filter((definition) => definition.value === value)
+    .flatMap((definition) =>
+      (definition.answers as { answer: string }[]).map(({ answer }) => answer),
+    );
+
 const egoRule = (id: string) => ({
   id: testId(id),
   type: 'ego',
@@ -49,8 +78,9 @@ const egoRule = (id: string) => ({
 
 /**
  * The complete protocol, given its ids, with an Information stage whose
- * text chooses its wording by each of `conditionIds`, and an alter form
- * question that chooses its wording by the first option of an attribute.
+ * text chooses between versions by each of `conditionIds`, and an alter form
+ * question whose dynamic attribute chooses between versions by the first option of
+ * an attribute.
  */
 const protocolWith = (conditionIds: readonly string[]) => {
   const protocol = withFinishStage(completeProtocol());
@@ -71,8 +101,11 @@ const protocolWith = (conditionIds: readonly string[]) => {
       .map((id) => `{${conditionName(id)}, select, true {Yes.} other {No.}}`)
       .join(' '),
   };
+  alterForm.dynamicAttributes = {
+    [FRIEND_WORDING_ID]: wordingForOption(CATEGORY, FRIEND_ID, 'Your friend?'),
+  };
   (alterForm.form as { fields: Stage[] }).fields[0]!.prompt = {
-    en: `{${CATEGORY}, select, missing {Who?} ${optionCaseKey(FRIEND_ID)} {Your friend?} other {Who?}}`,
+    en: `{${dynamicAttributeName(FRIEND_WORDING_ID)}}`,
   };
   return { protocol, information, alterForm };
 };
@@ -159,7 +192,7 @@ describe('freshenProtocolFragmentIds and the text that names conditions and opti
     expect(issuesOf(withStages([firstCopy!, secondCopy!]))).toEqual([]);
   });
 
-  it('gives the options of a copied codebook new ids, and the text that chooses by them their new keys', () => {
+  it('gives the options of a copied codebook new ids, and the dynamic attributes that choose by them their new keys', () => {
     const { protocol } = protocolWith([testId('condition')]);
     expect(issuesOf(protocol)).toEqual([]);
     const destination = collectProtocolObjectIds(protocol).map(({ id }) => id);
@@ -180,10 +213,7 @@ describe('freshenProtocolFragmentIds and the text that names conditions and opti
       (stage) => stage.type === 'AlterForm',
     );
     if (alterForm === undefined) throw new Error('No alter form');
-    const prompt = (alterForm.form as { fields: Stage[] }).fields[0]!
-      .prompt as Record<string, string>;
-    const [category] = dynamicValueReferencesIn(String(prompt.en));
-    expect(category?.caseKeys.map(optionIdFromCaseKey)).toEqual([
+    expect(answerKeysOf(alterForm, CATEGORY).map(optionIdFromCaseKey)).toEqual([
       expect.toSatisfy((id: string) => optionIds.includes(id)),
     ]);
   });
@@ -211,7 +241,7 @@ describe('freshenProtocolFragmentIds and options that share an id', () => {
     ['taken by the destination', true],
     ['free', false],
   ])(
-    'gives each variable’s text the new id of its own option, when the shared id is %s',
+    'gives each variable’s dynamic attribute the new id of its own option, when the shared id is %s',
     (_, taken) => {
       const { protocol, alterForm } = protocolWith([testId('condition')]);
       const strengthOptions = (
@@ -221,7 +251,11 @@ describe('freshenProtocolFragmentIds and options that share an id', () => {
       strengthOptions[0]!.id = FRIEND_ID;
       const prompt = (alterForm.form as { fields: Stage[] }).fields[0]!
         .prompt as Record<string, string>;
-      prompt.en = `${prompt.en} {${STRENGTH}, select, missing {} ${optionCaseKey(FRIEND_ID)} {Weak?} other {}}`;
+      prompt.en = `${prompt.en} {${dynamicAttributeName(STRENGTH_WORDING_ID)}}`;
+      alterForm.dynamicAttributes = {
+        ...(alterForm.dynamicAttributes as Stage),
+        [STRENGTH_WORDING_ID]: wordingForOption(STRENGTH, FRIEND_ID, 'Weak?'),
+      };
 
       const { fragment } = freshenProtocolFragmentIds(
         protocol,
@@ -242,20 +276,12 @@ describe('freshenProtocolFragmentIds and options that share an id', () => {
       const copiedForm = (fragment.stages as Stage[]).find(
         (stage) => stage.type === 'AlterForm',
       );
-      const text = String(
-        (
-          (copiedForm!.form as { fields: Stage[] }).fields[0]!.prompt as Record<
-            string,
-            string
-          >
-        ).en,
-      );
-      const keysOf = (name: string) =>
-        dynamicValueReferencesIn(text).find(
-          (reference) => reference.name === name,
-        )?.caseKeys;
-      expect(keysOf(CATEGORY)).toEqual([optionCaseKey(category)]);
-      expect(keysOf(STRENGTH)).toEqual([optionCaseKey(strength)]);
+      expect(answerKeysOf(copiedForm, CATEGORY)).toEqual([
+        optionCaseKey(category),
+      ]);
+      expect(answerKeysOf(copiedForm, STRENGTH)).toEqual([
+        optionCaseKey(strength),
+      ]);
     },
   );
 });
