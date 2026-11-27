@@ -4,7 +4,6 @@ import { esIntl, readMessage } from '../../testing/i18n.ts';
 import {
   getSortOrderOptionGetter,
   MISSING_SORT_PROPERTY_MESSAGE,
-  UNSORTABLE_SORT_PROPERTY_MESSAGE,
   unusableSortProperties,
 } from '../sortOrderOptions.ts';
 
@@ -21,7 +20,7 @@ import {
 describe('sort-rule options, read in Spanish', () => {
   it('offers the fixed source-order choice and both directions', () => {
     const options = getSortOrderOptionGetter(
-      [{ value: 'age', label: 'Age', type: 'number' }],
+      [{ value: 'age', label: 'Age' }],
       esIntl,
     );
 
@@ -50,33 +49,11 @@ describe('sort-rule options, read in Spanish', () => {
     ]);
   });
 
-  it('explains an attribute nothing can be ordered by in the same place', () => {
-    expect(
-      unusableSortProperties(
-        [{ property: 'position', direction: 'asc' }],
-        [{ value: 'position', label: 'Posición', type: 'layout' }],
-        esIntl,
-      ),
-    ).toEqual([
-      {
-        option: {
-          value: 'position',
-          label: 'Posición: este atributo no se puede usar para ordenar',
-          disabled: true,
-        },
-        message: UNSORTABLE_SORT_PROPERTY_MESSAGE,
-      },
-    ]);
-  });
-
   it('refuses the row holding one in the reader’s language', () => {
     // Encoded where the rule is built and decoded where the form reports it,
     // so this reads it exactly as `FormErrors` would.
     expect(readMessage(MISSING_SORT_PROPERTY_MESSAGE, esIntl)).toBe(
       'Esta regla apunta a un atributo que ya no está en el libro de códigos. Elige otro o elimina la regla.',
-    );
-    expect(readMessage(UNSORTABLE_SORT_PROPERTY_MESSAGE, esIntl)).toBe(
-      'Esta regla apunta a un atributo que no se puede usar para ordenar. Elige otro o elimina la regla.',
     );
   });
 });

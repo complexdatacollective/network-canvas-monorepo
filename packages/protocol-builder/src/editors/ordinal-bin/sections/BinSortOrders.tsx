@@ -57,7 +57,6 @@ export default function BinSortOrders({
             ([value, variable]) => ({
               value,
               label: variable.name,
-              type: variable.type,
             }),
           ),
     [protocolContext, subject],

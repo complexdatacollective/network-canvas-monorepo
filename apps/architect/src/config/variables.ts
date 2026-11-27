@@ -6,7 +6,6 @@ import BooleanVariable from '../images/variables/boolean-variable.svg';
 import CategoricalVariable from '../images/variables/categorical-variable.svg';
 import DateVariable from '../images/variables/date-variable.svg';
 import DefaultVariable from '../images/variables/default-variable.svg';
-import LayoutVariable from '../images/variables/layout-variable.svg';
 import LocationVariable from '../images/variables/location-variable.svg';
 import NumberVariable from '../images/variables/number-variable.svg';
 import OrdinalVariable from '../images/variables/ordinal-variable.svg';
@@ -55,12 +54,6 @@ const configMessages = defineMessages({
     defaultMessage: 'Date',
     description:
       'Name of the date attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
-  },
-  layout: {
-    id: 'architect.config.variables.config.layout',
-    defaultMessage: 'Layout',
-    description:
-      'Name of the layout attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text.',
   },
   location: {
     id: 'architect.config.variables.config.location',
@@ -119,12 +112,6 @@ export const VARIABLE_TYPES = {
     value: 'datetime',
     icon: DateVariable,
     color: 'tomato',
-  },
-  layout: {
-    label: configMessages.layout,
-    value: 'layout',
-    icon: LayoutVariable,
-    color: 'purple-pizazz',
   },
   location: {
     label: configMessages.location,

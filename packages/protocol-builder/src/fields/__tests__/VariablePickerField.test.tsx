@@ -76,16 +76,13 @@ const OPTIONS: readonly VariablePickerOption[] = [
 
 const SCOPE: VariableNameScope = {
   entity: 'node',
-  variables: [
-    ...OPTIONS.map((option) => ({
-      id: option.value,
-      name: option.label,
-      type: option.type ?? 'text',
-    })),
-    // A layout attribute exports `home_x` and `home_y`, and is not offered.
-    { id: 'v-home', name: 'home', type: 'layout' },
-  ],
-  layouts: [],
+  variables: OPTIONS.map((option) => ({
+    id: option.value,
+    name: option.label,
+    type: option.type ?? 'text',
+  })),
+  // A layout of the codebook exports `home_x` and `home_y`, and is not offered.
+  layouts: [{ name: 'home' }],
 };
 
 const POPUP = '[data-attribute-picker-popup][data-open]';
@@ -607,10 +604,10 @@ describe('creating an attribute from the list', () => {
   });
 
   it.each([
-    ['home', 'this type already has an attribute called that'],
+    ['home', 'the codebook already has a layout called that'],
     [
       'home_x',
-      'The export already has a column called “home_x” for the position of the layout attribute “home”. Choose a different name.',
+      'The export already has a column called “home_x” for the positions in the layout “home”. Choose a different name.',
     ],
   ])(
     'turns the row off for %j, with the reason, and creates nothing',

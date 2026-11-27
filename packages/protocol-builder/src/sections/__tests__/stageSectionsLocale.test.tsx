@@ -325,7 +325,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
    * the shared rows SAY, not which properties a family offers.
    */
   const PERSON_PROPERTIES: readonly SortableProperty[] = [
-    { value: NAME, label: 'name', type: 'text' },
+    { value: NAME, label: 'name' },
   ];
 
   /** A rule naming an attribute this subject does not have. */

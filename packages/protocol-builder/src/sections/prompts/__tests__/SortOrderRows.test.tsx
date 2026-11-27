@@ -70,15 +70,11 @@ const personWithout = (dropped: readonly string[]): SectionDoc => {
  * Written out rather than read from the codebook because the question here is
  * what `SortOrderRows` does with the properties it is handed; a family's own
  * section is where "which properties" is decided, and each of the two families
- * that call this component decides it differently. `layout` is included on
- * purpose: it is a real person attribute that nothing can be ordered by, so
- * its absence from the offered options is this component's filtering rather
- * than a shorter list.
+ * that call this component decides it differently.
  */
 const PERSON_PROPERTIES: readonly SortableProperty[] = [
-  { value: NAME, label: 'name', type: 'text' },
-  { value: AGE, label: 'age', type: 'number' },
-  { value: LAYOUT, label: 'layout', type: 'layout' },
+  { value: NAME, label: 'name' },
+  { value: AGE, label: 'age' },
 ];
 
 const SORT_SWITCH = 'Sort unplaced nodes';
@@ -338,7 +334,7 @@ describe('the sort order a prompt carries', () => {
     );
   });
 
-  it('offers the order nodes were added in, and every property but the layout', async () => {
+  it('offers the order nodes were added in, and every property', async () => {
     const harness = renderStageEditor(seededWithARule());
 
     await harness.user.click(
@@ -350,8 +346,6 @@ describe('the sort order a prompt carries', () => {
       [...property.querySelectorAll('option')]
         .map((option) => option.value)
         .filter((value) => value !== ''),
-      // `layout` holds a node's position on the canvas, which is not a value
-      // one node can be ordered ahead of another by.
     ).toEqual(['*', NAME, AGE]);
     // The property this rule already uses stays on offer, disabled, so a
     // second rule cannot repeat it.
@@ -606,9 +600,8 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
       'asc',
     );
 
-    // `*`, `name` and `age` are everything a rule may be pointed at here —
-    // `layout` is filtered out, and the deleted attribute is disabled — so
-    // three rules is the whole prompt.
+    // `*`, `name` and `age` are everything a rule may be pointed at here (the
+    // deleted attribute is disabled), so three rules is the whole prompt.
     await addSortRule(harness, AGE, 'desc');
     await addSortRule(harness, '*', 'asc');
 
@@ -842,97 +835,5 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
-  });
-});
-
-/**
- * A rule naming an attribute the codebook still HAS and nothing can be ordered
- * by — a node's position on the canvas, or an attribute a collaborator has
- * since retyped as one.
- *
- * The same failure as a deleted attribute, reached from the other side: the
- * property is filtered out of what the rule may choose, so the cell renders
- * blank while the value behind it is untouched and saves itself straight back.
- * It is a different thing to tell the researcher, though — the attribute is
- * there, it simply cannot put one node ahead of another.
- */
-describe('a sort rule pointing at an attribute nothing can be ordered by', () => {
-  const UNSORTABLE_OPTION_LABEL =
-    'layout — this attribute cannot be used to sort';
-
-  const UNSORTABLE_ATTRIBUTE_MESSAGE =
-    'This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.';
-
-  const seeded = () => seededWith([sortRule(LAYOUT, 'asc')]);
-
-  it('shows the rule, naming the attribute it cannot sort by', async () => {
-    const harness = renderStageEditor(seeded());
-
-    await openPrompt(harness);
-
-    const property = await screen.findByRole('combobox', { name: 'Property' });
-    expect(property).toHaveValue(LAYOUT);
-    expect(
-      within(property).getByRole('option', { name: UNSORTABLE_OPTION_LABEL }),
-    ).toBeDisabled();
-  });
-
-  it('refuses the save, and says which way out there is', async () => {
-    const harness = renderStageEditor(seeded());
-
-    await openPrompt(harness);
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-
-    // Not the deleted-attribute sentence: the attribute is in the codebook,
-    // and being told to look for something that is there leaves the researcher
-    // nothing to do.
-    await screen.findByText(UNSORTABLE_ATTRIBUTE_MESSAGE);
-    expect(screen.queryByText(MISSING_ATTRIBUTE_MESSAGE)).toBeNull();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  it('saves once the rule has been pointed at something sortable', async () => {
-    const harness = renderStageEditor(seeded());
-
-    await openPrompt(harness);
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Property' }),
-      NAME,
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Direction' }),
-      'asc',
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    expect(savedPrompt(await harness.submit()).sortOrder).toEqual([
-      { ...sortRule(LAYOUT, 'asc'), property: NAME },
-    ]);
-  });
-
-  /**
-   * And it stays unchoosable once the rule points elsewhere, for the reason a
-   * deleted attribute does: the getter only disables the option a rule already
-   * names, so the researcher could otherwise put the unsortable reference back
-   * on purpose.
-   */
-  it('keeps the unsortable attribute unselectable once the rule points elsewhere', async () => {
-    const harness = renderStageEditor(seeded());
-
-    await openPrompt(harness);
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Property' }),
-      NAME,
-    );
-
-    expect(
-      within(screen.getByRole('combobox', { name: 'Property' })).getByRole(
-        'option',
-        { name: UNSORTABLE_OPTION_LABEL },
-      ),
-    ).toBeDisabled();
   });
 });

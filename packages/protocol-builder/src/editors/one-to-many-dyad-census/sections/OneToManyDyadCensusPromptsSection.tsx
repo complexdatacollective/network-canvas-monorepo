@@ -121,7 +121,6 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
             ([value, variable]) => ({
               value,
               label: variable.name,
-              type: variable.type,
             }),
           ),
     [protocolContext, subject],

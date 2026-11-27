@@ -36,15 +36,12 @@ const codebook = {
           type: 'categorical',
           options: [{ label: 'Red', value: 'red' }],
         },
-        [testVariableId('node-pos')]: { name: 'pos', type: 'layout' },
         [testVariableId('node-warm-dark')]: { name: 'warm_dark', type: 'text' },
-        [testVariableId('node-spot-x')]: { name: 'spot_x', type: 'text' },
         [testVariableId('node-shade')]: {
           name: 'shade',
           type: 'categorical',
           options: [{ label: 'Dark', value: 'dark' }],
         },
-        [testVariableId('node-canvas')]: { name: 'canvas', type: 'layout' },
       },
     },
   },
@@ -71,13 +68,6 @@ const variableFixtures = {
     entity: 'node' as const,
     entityType: PERSON,
     type: 'categorical',
-  },
-  [testVariableId('node-canvas')]: {
-    uuid: testVariableId('node-canvas'),
-    name: 'canvas',
-    entity: 'node' as const,
-    entityType: PERSON,
-    type: 'layout',
   },
 };
 
@@ -379,11 +369,11 @@ describe('ConnectedVariablePill', () => {
       );
     });
 
-    it('refuses a name that is a column of a sibling layout attribute', async () => {
+    it('refuses a name that is a position column of a codebook layout', async () => {
       await expectRefused(
         testVariableId('node-subject'),
-        'pos_x',
-        'The export already has a column called “pos_x” for the position of the layout attribute “pos”. Choose a different name.',
+        'seating_x',
+        'The export already has a column called “seating_x” for the positions in the layout “seating”. Choose a different name.',
       );
     });
 
@@ -392,14 +382,6 @@ describe('ConnectedVariablePill', () => {
         testVariableId('node-shade'),
         'warm',
         'Option “dark” of “warm” would be exported to a column called “warm_dark”, but the attribute “warm_dark” already has a column called “warm_dark”. Change the option value or the attribute name.',
-      );
-    });
-
-    it('refuses a name for a layout attribute whose coordinate column a sibling already has', async () => {
-      await expectRefused(
-        testVariableId('node-canvas'),
-        'spot',
-        'A layout attribute named “spot” would be exported to a column called “spot_x”, but the attribute “spot_x” already has a column called “spot_x”. Choose a different name.',
       );
     });
 

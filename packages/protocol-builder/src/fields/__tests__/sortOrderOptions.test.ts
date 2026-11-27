@@ -5,19 +5,17 @@ import {
   getSortOrderOptionGetter,
   MISSING_SORT_PROPERTY_MESSAGE,
   missingSortPropertyLabel,
-  UNSORTABLE_SORT_PROPERTY_MESSAGE,
   unusableSortProperties,
 } from '../sortOrderOptions.ts';
 
 describe('getSortOrderOptionGetter', () => {
-  describe('typed sortable properties (codebook attributes)', () => {
+  describe('codebook attributes', () => {
     const mockVariableOptions = [
-      { label: 'Name', type: 'text', value: '1234-1234-1234-1' },
-      { label: 'Age', type: 'number', value: '1234-1234-1234-2' },
-      { label: 'Location', type: 'layout', value: '1234-1234-1234-3' },
+      { label: 'Name', value: '1234-1234-1234-1' },
+      { label: 'Age', value: '1234-1234-1234-2' },
     ];
 
-    it('options for `property` exclude layout attributes and mark used ones disabled', () => {
+    it('options for `property` offer every attribute and mark used ones disabled', () => {
       const sortOrderOptionGetter = getSortOrderOptionGetter(
         mockVariableOptions,
         enIntl,
@@ -134,14 +132,14 @@ describe('getSortOrderOptionGetter', () => {
     });
   });
 
-  describe('untyped sortable properties (external-data columns)', () => {
+  describe('external-data columns', () => {
     const mockExternalDataPropertyOptions = [
       { label: 'Name', value: '1234-1234-1234-1' },
       { label: 'Age', value: '1234-1234-1234-2' },
       { label: 'Favourite Color', value: '1234-1234-1234-3' },
     ];
 
-    it('options for `property` include every column, since none carry a type', () => {
+    it('options for `property` include every column', () => {
       const sortOrderOptionGetter = getSortOrderOptionGetter(
         mockExternalDataPropertyOptions,
         enIntl,
@@ -198,8 +196,8 @@ describe('getSortOrderOptionGetter', () => {
  */
 describe('unusableSortProperties', () => {
   const properties = [
-    { label: 'Name', type: 'text', value: 'name' },
-    { label: 'Age', type: 'number', value: 'age' },
+    { label: 'Name', value: 'name' },
+    { label: 'Age', value: 'age' },
   ];
 
   it('names the attributes the rules point at and the codebook has lost', () => {
@@ -287,37 +285,6 @@ describe('unusableSortProperties', () => {
           disabled: true,
         },
         message: MISSING_SORT_PROPERTY_MESSAGE,
-      },
-    ]);
-  });
-
-  /**
-   * The other half of "cannot be pointed at", and the half the option getter
-   * decides: an attribute of a type nothing can be ordered by is filtered out
-   * of the offer, so a rule naming it renders blank. Counting it as a property
-   * in good standing left that blank cell with no refusal behind it, and the
-   * hidden rule saved itself straight back.
-   */
-  it('names an attribute the offer filters out, in its own words', () => {
-    expect(
-      unusableSortProperties(
-        [{ property: 'position', direction: 'asc' }],
-        [
-          ...properties,
-          { label: 'Position', type: 'layout', value: 'position' },
-        ],
-        enIntl,
-      ),
-    ).toEqual([
-      {
-        option: {
-          value: 'position',
-          // Named as the codebook names it: the attribute is still there to be
-          // found, unlike a deleted one, whose id is all that is left of it.
-          label: 'Position — this attribute cannot be used to sort',
-          disabled: true,
-        },
-        message: UNSORTABLE_SORT_PROPERTY_MESSAGE,
       },
     ]);
   });

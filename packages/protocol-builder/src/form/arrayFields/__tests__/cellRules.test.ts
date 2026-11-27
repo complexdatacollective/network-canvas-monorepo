@@ -161,11 +161,8 @@ describe('optionExportColumnIssue', () => {
     entity: 'node',
     name: 'foo',
     type: 'categorical',
-    siblings: [
-      { name: 'foo_bar', type: 'text' },
-      { name: 'pos', type: 'layout' },
-    ],
-    layouts: [],
+    siblings: [{ name: 'foo_bar', type: 'text' }],
+    layouts: [{ name: 'pos' }],
   } as const;
 
   it('says nothing where the attribute is not known', () => {

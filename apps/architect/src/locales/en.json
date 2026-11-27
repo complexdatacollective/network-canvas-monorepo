@@ -643,10 +643,6 @@
     "defaultMessage": "Date",
     "description": "Name of the date attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text."
   },
-  "architect.config.variables.config.layout": {
-    "defaultMessage": "Layout",
-    "description": "Name of the layout attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text."
-  },
   "architect.config.variables.config.location": {
     "defaultMessage": "Location",
     "description": "Name of the location attribute (codebook variable) type, shown in the attribute type picker and read aloud in icon alt text."
