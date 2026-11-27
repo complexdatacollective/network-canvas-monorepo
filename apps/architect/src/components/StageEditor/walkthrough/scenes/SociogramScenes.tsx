@@ -24,6 +24,7 @@ import {
 
 const TEXT = {
   place: ['Place people closer to the center', 'the closer you feel to them.'],
+  connect: ['Tap two people who know each other', 'to connect them.'],
   rings: (n: number) => `Concentric circles: ${n}`,
   skew: 'Skew circle sizes: on',
   image: 'Image background',
@@ -255,9 +256,10 @@ function placed(
 }
 
 /**
- * Shows a sociogram where the participant drags three alters from the drawer
- * onto the concentric circles, then taps one node and then another to draw an
- * edge between them.
+ * Shows a sociogram with two prompts. In the first, a position task, the
+ * participant drags three alters from the drawer onto the concentric circles.
+ * The prompt then moves on to a connect task, in which the participant taps
+ * one node and then another to draw an edge between them.
  */
 export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
   const plan: Placement[] = [
@@ -273,6 +275,7 @@ export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
   const sam = plan[0]?.to ?? [0, 0];
   const ana = plan[1]?.to ?? [0, 0];
   const edge = smooth(segment(t, 4.3, 0.3));
+  const connecting = t >= 3.4;
   const stops = [
     ...plan.flatMap((p, i) => [
       { to: drawerSlot(i, plan.length, DRAWER), at: p.at - 0.05, ring: false },
@@ -299,7 +302,11 @@ export const SociogramIntroScene = defineScene(5.4, ({ t }) => {
             }
           />
         ))}
-        <PromptCard lines={TEXT.place} />
+        <PromptCard
+          lines={connecting ? TEXT.connect : TEXT.place}
+          count={2}
+          current={connecting ? 1 : 0}
+        />
         {drawerOpen > 0 ? (
           <g transform={`translate(0 ${(1 - drawerOpen) * 90})`}>
             <Drawer style={DRAWER} />

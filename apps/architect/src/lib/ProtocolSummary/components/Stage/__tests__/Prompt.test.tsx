@@ -39,6 +39,8 @@ describe('Protocol Summary prompt sort order', () => {
 
 const PERSON = testTypeId('person');
 const CLOSE = testVariableId('close');
+const PLACE = testTypeId('place');
+const VISITED = testVariableId('visited');
 
 const protocol: CurrentProtocol = {
   schemaVersion: 9,
@@ -52,13 +54,22 @@ const protocol: CurrentProtocol = {
         shape: { default: 'circle' },
         variables: { [CLOSE]: { name: 'close', type: 'boolean' } },
       },
+      [PLACE]: {
+        name: 'Place',
+        color: 'node-color-seq-2',
+        shape: { default: 'square' },
+        variables: { [VISITED]: { name: 'visited', type: 'boolean' } },
+      },
     },
   },
   assetManifest: {},
   stages: [],
 };
 
-const index = [{ id: CLOSE, name: 'close', type: 'boolean', stages: [] }];
+const index = [
+  { id: CLOSE, name: 'close', type: 'boolean', stages: [] },
+  { id: VISITED, name: 'visited', type: 'boolean', stages: [] },
+];
 
 describe('Protocol Summary Sociogram task', () => {
   it('prints the task and each highlight entry', () => {
@@ -70,7 +81,10 @@ describe('Protocol Summary Sociogram task', () => {
           <Prompt
             text={{ en: 'Who are you close to?' }}
             task="highlight"
-            highlight={[{ id: 'h1', type: PERSON, variable: CLOSE }]}
+            highlight={[
+              { id: 'h1', type: PERSON, variable: CLOSE },
+              { id: 'h2', type: PLACE, variable: VISITED },
+            ]}
           />
         </SummaryContext.Provider>
       </QueryClientProvider>,
@@ -81,9 +95,13 @@ describe('Protocol Summary Sociogram task', () => {
     const highlightRows = screen
       .getAllByText('Highlight attribute')
       .map((label) => label.closest('tr'));
-    expect(highlightRows).toHaveLength(1);
+    expect(highlightRows).toHaveLength(2);
     expect(highlightRows[0]).toHaveTextContent('Person');
     expect(highlightRows[0]).toHaveTextContent('close');
+    expect(highlightRows[0]).not.toHaveTextContent('visited');
+    expect(highlightRows[1]).toHaveTextContent('Place');
+    expect(highlightRows[1]).toHaveTextContent('visited');
+    expect(highlightRows[1]).not.toHaveTextContent('close');
   });
 
   it.each([
