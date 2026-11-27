@@ -246,6 +246,26 @@ describe('ContentDocument', () => {
     expect(screen.queryByText('And working.')).toBeNull();
   });
 
+  it('shows the number where a version of a number block has `#`, formatted for the language', () => {
+    const age = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: AGE,
+    });
+    // A quoted `#` is text, and so is one in a logic block inside the
+    // version, as ICU reads a `#` in a select inside a plural.
+    const message = `{${age}, select, missing {No age.} other {{${age}, plural, one {# year: '#'1} other {# years.\n\n{${status}, select, missing {Unknown, #.} other {Known.}}}}}}`;
+    const { answer, container } = renderDocument(message, { [AGE]: 1 });
+    const paragraphs = () =>
+      [...container.querySelectorAll('p')].map((p) => p.textContent);
+    expect(paragraphs()).toEqual(['1 year: #1']);
+
+    answer({ [AGE]: 1200 });
+    expect(paragraphs()).toEqual(['1,200 years.', 'Unknown, #.']);
+    // Never a heading, which `#` at the start of a line would be.
+    expect(screen.queryByRole('heading')).toBeNull();
+  });
+
   it('shows an asset block inside the version of a logic block that is shown', () => {
     const blockImages: MarkdownBlockImages = {
       matches: (url) => url.startsWith('asset:'),

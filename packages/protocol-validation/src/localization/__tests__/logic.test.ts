@@ -124,8 +124,8 @@ describe('logicVersions', () => {
       ),
     ).toEqual([
       ['missing', undefined, 'None.'],
-      ['number', 'one', '# child'],
-      ['other', undefined, '# children'],
+      ['number', 'one', `{${COUNT}} child`],
+      ['other', undefined, `{${COUNT}} children`],
     ]);
     const plural = '{count, plural, one {# child} other {# children}}';
     expect(

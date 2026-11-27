@@ -10,6 +10,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import type { RuleDraft } from '../rules/rule.ts';
 import type { RuleTargetType } from '../rules/ruleCodebook.ts';
 import {
+  ConditionRulesProvider,
   EdgeCountRulesProvider,
   useRuleCodebook,
 } from '../rules/ruleCodebookSource.ts';
@@ -365,14 +366,16 @@ export function ConditionRuleSetField({
     [aboutEdge, intl],
   );
   return (
-    // Edges are counted for a node, so only its rules may count them.
-    <EdgeCountRulesProvider value={!aboutEdge}>
-      <RuleSetControl
-        {...props}
-        variant="query"
-        targetLabels={targetLabels}
-        addRuleLabel={intl.formatMessage(messages.addConditionRule)}
-      />
-    </EdgeCountRulesProvider>
+    <ConditionRulesProvider value>
+      {/* Edges are counted for a node, so only its rules may count them. */}
+      <EdgeCountRulesProvider value={!aboutEdge}>
+        <RuleSetControl
+          {...props}
+          variant="query"
+          targetLabels={targetLabels}
+          addRuleLabel={intl.formatMessage(messages.addConditionRule)}
+        />
+      </EdgeCountRulesProvider>
+    </ConditionRulesProvider>
   );
 }

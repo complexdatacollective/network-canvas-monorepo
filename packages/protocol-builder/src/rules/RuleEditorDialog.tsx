@@ -75,6 +75,7 @@ import {
 import {
   useHasGivenRuleCodebook,
   useOffersEdgeCountRules,
+  useWritesConditionRules,
   useRuleCodebook,
 } from './ruleCodebookSource.ts';
 import {
@@ -1438,6 +1439,7 @@ function RuleEditorFields({
   const givenCodebook = useHasGivenRuleCodebook();
   const hasProtocolHost = useHasProtocolBuilderHost() && !givenCodebook;
   const offersCounts = useOffersEdgeCountRules();
+  const attributePresence = useWritesConditionRules();
   const intl = useAppIntl();
   const localize = useLocalizedText();
   const values = useFormValue(RULE_CASCADE);
@@ -1507,8 +1509,11 @@ function RuleEditorFields({
   // select's placeholder. Read from the field rather than from the seed, so it
   // goes when the cascade clears it.
   const operatorOptions = useMemo(
-    () => ruleOperatorOptions(derived.operatorSubject, operator, intl),
-    [derived.operatorSubject, intl, operator],
+    () =>
+      ruleOperatorOptions(derived.operatorSubject, operator, intl, {
+        attributePresence,
+      }),
+    [attributePresence, derived.operatorSubject, intl, operator],
   );
 
   // The operator is part of the answer: a categorical attribute empties to an

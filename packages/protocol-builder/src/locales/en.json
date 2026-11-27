@@ -5061,7 +5061,7 @@
   },
   "protocolBuilder.operators.exists": {
     "defaultMessage": "exists",
-    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is present in the interview network at all. Compares no value."
+    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is there at all: a node or edge type that is present in the interview network, or an attribute that has an answer (\"Age exists\"). Compares no value."
   },
   "protocolBuilder.operators.greaterThan": {
     "defaultMessage": "is greater than",
@@ -5089,7 +5089,7 @@
   },
   "protocolBuilder.operators.notExists": {
     "defaultMessage": "does not exist",
-    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is absent from the interview network. Compares no value."
+    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is not there: a node or edge type that is absent from the interview network, or an attribute that has no answer (\"Age does not exist\"). Compares no value."
   },
   "protocolBuilder.operators.optionsEquals": {
     "defaultMessage": "number of selected options is exactly",

@@ -29,6 +29,7 @@ import {
   operandDrawsOnOptions,
   operandIsDate,
   operandNumberRange,
+  type OfferedOperatorsOptions,
   operandRequirement,
   operatorLabel,
   operatorsAsOptions,
@@ -425,9 +426,9 @@ export const ruleOperatorSubject = (
  * The operator the rule ALREADY holds is added to the list when the list does
  * not contain it, in the same way `stageDestinationOptions` keeps an
  * unreachable destination and `VariablePickerControl` keeps a deleted
- * attribute. The list is deliberately narrower than the schema — a stored
- * protocol may hold an attribute-level `EXISTS` that today's editor would not
- * build, and a collaborator's retype can leave an operator its new type does
+ * attribute. The list is deliberately narrower than the schema — skip logic
+ * or a filter may hold an attribute-level `EXISTS` that its editor does not
+ * build (only a condition offers one; see `operatorsForSubject`), and a collaborator's retype can leave an operator its new type does
  * not allow — and a native select falls back to its placeholder when the value
  * matches no option. That fallback is display-only: nothing clears the stored
  * operator, so leaving it out showed the researcher an unanswered control over
@@ -443,12 +444,13 @@ export const ruleOperatorOptions = (
   subject: RuleOperatorSubject,
   operator?: unknown,
   intl: IntlShape = englishIntl,
+  offered: OfferedOperatorsOptions = {},
 ): RuleOperatorOption[] => {
-  const allowed = operatorsForSubject(subject);
-  const offered = operatorsAsOptions(intl).filter((option) =>
+  const allowed = operatorsForSubject(subject, offered);
+  const options = operatorsAsOptions(intl).filter((option) =>
     allowed.has(option.value),
   );
-  if (!isFilterOperator(operator) || allowed.has(operator)) return offered;
+  if (!isFilterOperator(operator) || allowed.has(operator)) return options;
 
   const stillValid =
     subject !== 'encrypted' &&
@@ -457,7 +459,7 @@ export const ruleOperatorOptions = (
       subject === 'exists' ? undefined : subject,
     );
   return [
-    ...offered,
+    ...options,
     {
       value: operator,
       label: intl.formatMessage(

@@ -150,3 +150,76 @@ describe('logicInputsFor', () => {
     expect(inputs.valueOf(undeclaredCondition)).toEqual({ missing: true });
   });
 });
+
+/**
+ * "If: Ego has first_name", otherwise the wording without it: the rule that
+ * gives a piped value a version for when it is missing has to agree with the
+ * piped value about when that is, or the participant reads "Thank you, !".
+ */
+describe('a rule about whether an attribute has an answer', () => {
+  const NAME = '4c5d6e7f-8a9b-4c0d-9e1f-2a3b4c5d6e7f';
+  const HAS_NAME = '5d6e7f8a-9b0c-4d1e-8f2a-3b4c5d6e7f8a';
+  const NO_NAME = '6e7f8a9b-0c1d-4e2f-9a3b-4c5d6e7f8a9b';
+  const NODE_HAS_NAME = '7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c';
+  const presence = {
+    [HAS_NAME]: {
+      join: 'AND',
+      rules: [
+        {
+          id: 'has-name',
+          type: 'ego',
+          options: { attribute: NAME, operator: 'EXISTS' },
+        },
+      ],
+    },
+    [NO_NAME]: {
+      join: 'AND',
+      rules: [
+        {
+          id: 'no-name',
+          type: 'ego',
+          options: { attribute: NAME, operator: 'NOT_EXISTS' },
+        },
+      ],
+    },
+    [NODE_HAS_NAME]: {
+      about: 'node',
+      join: 'AND',
+      rules: [
+        {
+          id: 'node-has-name',
+          type: 'node',
+          options: { type: 'person', attribute: NAME, operator: 'EXISTS' },
+        },
+      ],
+    },
+  } as unknown as Conditions;
+  const egoName = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'ego',
+    variableId: NAME,
+  });
+
+  it.each([
+    ['nothing', undefined],
+    ['null', null],
+    ['empty text', ''],
+    ['text of only spaces', '   '],
+    ['no options selected', []],
+    ['a partial number', Number.NaN],
+    ['text', 'Sam'],
+    ['zero', 0],
+    ['no', false],
+    ['an option', ['a']],
+  ])('agrees with the piped value for %s', (_name, value) => {
+    const read: LogicSources = {
+      attributes: { ego: { [NAME]: value }, node: { [NAME]: value } },
+      conditions: presence,
+    };
+    const shown = !logicInputsFor(read, 'en').valueOf(egoName).missing;
+
+    expect(conditionMet(HAS_NAME, read)).toBe(shown);
+    expect(conditionMet(NO_NAME, read)).toBe(!shown);
+    expect(conditionMet(NODE_HAS_NAME, read)).toBe(shown);
+  });
+});

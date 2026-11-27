@@ -2,7 +2,7 @@
 title: Texto dinámico
 navOrder: 14
 toc: true
-translatedFrom: 865e3b7132f31d7833e712be22c311055d5b1f1d
+translatedFrom: ac0a9192994cac508e19a6e5300ca6de9f6fc2a1
 ---
 
 <Definition>
@@ -94,10 +94,10 @@ Un valor que falta no muestra nada: la persona participante ve el resto del text
 
 Por ejemplo, el encabezado de una etapa «Información» podría dar las gracias a la persona participante llamándola por su nombre. Un bloque de lógica con la regla de que el atributo **first_name** de la persona participante **existe** contiene dos versiones del encabezado:
 
-| Versión               | Texto escrito                   | Lo que ve la persona participante |
-| --------------------- | ------------------------------- | --------------------------------- |
-| Si: first_name existe | «¡Gracias, » **first_name** «!» | ¡Gracias, Sam!                    |
-| En caso contrario     | ¡Gracias!                       | ¡Gracias!                         |
+| Versión                  | Texto escrito                   | Lo que ve la persona participante |
+| ------------------------ | ------------------------------- | --------------------------------- |
+| Si: Ego tiene first_name | «¡Gracias, » **first_name** «!» | ¡Gracias, Sam!                    |
+| En caso contrario        | ¡Gracias!                       | ¡Gracias!                         |
 
 El cero y el «no» son respuestas, no valores que faltan: un número igual a 0 se muestra como 0, y una respuesta de sí o no que sea «no» se muestra con la etiqueta de la respuesta «no». Una respuesta de texto vacía o que solo contiene espacios, y una respuesta categórica sin ninguna opción seleccionada, cuentan como valores que faltan.
 

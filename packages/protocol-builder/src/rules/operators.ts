@@ -37,13 +37,13 @@ const OPERATOR_LABELS = defineMessages({
     id: 'protocolBuilder.operators.exists',
     defaultMessage: 'exists',
     description:
-      'Researcher-facing name for the rule operator that matches when the thing being asked about is present in the interview network at all. Compares no value.',
+      'Researcher-facing name for the rule operator that matches when the thing being asked about is there at all: a node or edge type that is present in the interview network, or an attribute that has an answer ("Age exists"). Compares no value.',
   },
   NOT_EXISTS: {
     id: 'protocolBuilder.operators.notExists',
     defaultMessage: 'does not exist',
     description:
-      'Researcher-facing name for the rule operator that matches when the thing being asked about is absent from the interview network. Compares no value.',
+      'Researcher-facing name for the rule operator that matches when the thing being asked about is not there: a node or edge type that is absent from the interview network, or an attribute that has no answer ("Age does not exist"). Compares no value.',
   },
   NOT: {
     id: 'protocolBuilder.operators.not',
@@ -759,29 +759,43 @@ export const rangeSatisfiesComparison = (
  * Three narrowings of the schema's own `OperatorsByVariableType`, in order:
  *
  * 1. the schema's list for the type, which is what a stored protocol may hold;
- * 2. minus the presence operators, which an ATTRIBUTE rule does not offer — an
- *    attribute a participant has not answered is already covered by the
- *    presence rule above it, and a protocol authored before may still hold one;
- * 3. minus every operator the protocol has no operand for, which is what keeps
+ * 2. minus every operator the protocol has no operand for, which is what keeps
  *    a layout attribute from being offered a comparison no entry could satisfy
- *    and a date from being offered one the validator refuses.
+ *    and a date from being offered one the validator refuses;
+ * 3. outside a condition, minus the presence operators.
+ *
+ * A presence rule about an attribute asks whether it has an answer. Only a
+ * condition (the rules of a logic block, a dynamic attribute or a dynamic
+ * label) offers it, because only a condition reads an answer the way piped
+ * text does: blank text and an empty list are no answer there (see
+ * `attributeComparison` in `@codaco/network-query`), which is what lets a
+ * logic block give a piped value a version for when it is missing. Skip logic
+ * and filters read the same operator as "not null", the meaning that released
+ * protocols depend on, so they keep the list they have always offered; a
+ * stored one is still shown there as one the editor no longer offers.
+ *
+ * The presence operators are offered beside a type's comparisons, never
+ * instead of them: a type with no comparison to offer (layout) is offered
+ * nothing anywhere, so it stays out of the attribute picker.
  *
  * `exists` is not a variable type. It is the set offered when no attribute has
  * been chosen — a presence rule about the entity itself.
  */
 const offeredOperators = (
   variableType: VariableType,
+  attributePresence: boolean,
 ): ReadonlySet<FilterOperator> => {
   const allowed = OperatorsByVariableType[variableType];
   if (allowed === undefined) return new Set<FilterOperator>();
-  return new Set(
-    AllOperators.options.filter(
-      (operator) =>
-        allowed.includes(operator) &&
-        !PRESENCE_OPERATORS.has(operator) &&
-        operandRequirement(variableType, operator) !== undefined,
-    ),
+  const offered = AllOperators.options.filter(
+    (operator) =>
+      allowed.includes(operator) &&
+      operandRequirement(variableType, operator) !== undefined &&
+      (attributePresence || !PRESENCE_OPERATORS.has(operator)),
   );
+  return offered.some((operator) => !PRESENCE_OPERATORS.has(operator))
+    ? new Set(offered)
+    : new Set<FilterOperator>();
 };
 
 /**
@@ -796,21 +810,37 @@ const offeredOperators = (
  */
 export type RuleOperatorSubject = VariableType | 'exists' | 'encrypted';
 
-const OFFERED_OPERATORS: ReadonlyMap<
-  RuleOperatorSubject,
-  ReadonlySet<FilterOperator>
-> = new Map<RuleOperatorSubject, ReadonlySet<FilterOperator>>([
-  ...VariableTypesKeys.map((type) => [type, offeredOperators(type)] as const),
-  ['exists', PRESENCE_OPERATORS],
-  ['encrypted', PRESENCE_OPERATORS],
-]);
+const offeredBySubject = (
+  attributePresence: boolean,
+): ReadonlyMap<RuleOperatorSubject, ReadonlySet<FilterOperator>> =>
+  new Map<RuleOperatorSubject, ReadonlySet<FilterOperator>>([
+    ...VariableTypesKeys.map(
+      (type) => [type, offeredOperators(type, attributePresence)] as const,
+    ),
+    ['exists', PRESENCE_OPERATORS],
+    ['encrypted', PRESENCE_OPERATORS],
+  ]);
+
+const OFFERED_OPERATORS = offeredBySubject(false);
+const OFFERED_CONDITION_OPERATORS = offeredBySubject(true);
 
 const NO_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>();
 
+export type OfferedOperatorsOptions = Readonly<{
+  /**
+   * Whether a rule about an attribute may ask whether it has an answer: true
+   * only for the rules of a condition (`ConditionRulesProvider`).
+   */
+  attributePresence?: boolean;
+}>;
+
 export const operatorsForSubject = (
   subject: RuleOperatorSubject,
+  { attributePresence = false }: OfferedOperatorsOptions = {},
 ): ReadonlySet<FilterOperator> =>
-  OFFERED_OPERATORS.get(subject) ?? NO_OPERATORS;
+  (attributePresence ? OFFERED_CONDITION_OPERATORS : OFFERED_OPERATORS).get(
+    subject,
+  ) ?? NO_OPERATORS;
 
 /**
  * Whether the chosen operator needs an operand entered beside it.

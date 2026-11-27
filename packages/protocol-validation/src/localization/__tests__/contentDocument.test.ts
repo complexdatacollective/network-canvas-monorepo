@@ -186,9 +186,31 @@ describe('readContentDocument', () => {
     expect(
       block.logic.counted.versions.map(({ category }) => category),
     ).toEqual(['one']);
-    expect(texts(block.logic.counted.other)).toEqual(['# children']);
-    // The count is shown where the version has `#`.
-    expect(printContentDocument([block])).toBe(message);
+    // `#` shows the number: the value the block is on.
+    expect(texts(block.logic.counted.other)).toEqual([`{${COUNT}} children`]);
+    expect(printContentDocument([block])).toBe(
+      `{${COUNT}, select, missing {No children.} other {{${COUNT}, plural, one {{${COUNT}} child} other {{${COUNT}} children}}}}`,
+    );
+  });
+
+  it('reads only the `#` of a number block’s own plural as its number', () => {
+    // A quoted `#` is text; in a logic block inside the version, `#` is the
+    // number of that block's own plural, or text in a select (as ICU reads
+    // a `#` in a select inside a plural).
+    const inner = `{${NAME}, select, missing {} other {{${NAME}, plural, other {# inner}}}}`;
+    const message = `{${COUNT}, select, missing {} other {{${COUNT}, plural, other {# outer, '#'1\n\n${inner}\n\n{${A}, select, true {# met} other {}}}}}}`;
+    const { nodes, problems } = readContentDocument(message);
+    expect(problems).toEqual([]);
+    const [block] = nodes;
+    if (block?.kind !== 'logic' || block.logic.kind !== 'number') {
+      throw new Error('Not a number block');
+    }
+    const [outer, nested, select] = block.logic.counted.other;
+    expect(textOf(outer)).toBe(`{${COUNT}} outer, #1`);
+    expect(textOf(nested)).toBe(
+      `{${NAME}, select, missing {} other {{${NAME}, plural, other {{${NAME}} inner}}}}`,
+    );
+    expect(textOf(select)).toBe(`{${A}, select, true {# met} other {}}`);
   });
 
   it('reads a participant block, with a version for the participant and one for anyone else', () => {
@@ -374,8 +396,8 @@ describe('printContentDocument', () => {
       `{${KIND}, select, missing {} ${FRIEND} {Friend.} true {Yes.} other {Other.}}`,
     ],
     [
-      'a number block whose versions show the count',
-      `{${COUNT}, select, missing {None.} other {{${COUNT}, plural, one {# child} few {# kids} other {# children}}}}`,
+      'a number block whose versions show the number',
+      `{${COUNT}, select, missing {None.} other {{${COUNT}, plural, one {{${COUNT}} child} few {{${COUNT}} kids} other {{${COUNT}} children}}}}`,
     ],
     [
       'a participant block',

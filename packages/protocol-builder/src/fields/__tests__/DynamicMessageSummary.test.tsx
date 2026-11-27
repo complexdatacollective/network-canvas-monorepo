@@ -262,4 +262,23 @@ describe('DynamicMessageSummary of a page with a logic block', () => {
     ]);
     expect(summary).toHaveTextContent(/^Before.*After$/);
   });
+
+  it('shows the `#` of a number block’s version as the value it counts', () => {
+    const { getByTestId } = renderSummary(
+      `{${TEAM}, select, missing {None.} other {{${TEAM}, plural, one {# team} other {# teams}}}}`,
+      true,
+      true,
+    );
+    const summary = getByTestId('summary');
+
+    const branches = summary.querySelectorAll('[data-branch-summary]');
+    expect(branches).toHaveLength(3);
+    for (const branch of [...branches].slice(1)) {
+      expect(
+        branch.querySelector('data[data-variable-pill-size]'),
+      ).toBeTruthy();
+    }
+    expect(summary.textContent).not.toContain('#');
+    expect(summary.querySelector('h1')).toBeNull();
+  });
 });

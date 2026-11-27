@@ -132,10 +132,12 @@ describe('chooseVersion: logic blocks', () => {
         logicOf(number),
         inputs({ values: { [COUNT]: { missing: false, value } }, locale }),
       ).content;
-    expect(printContentDocument(counted(1))).toBe('# child');
-    expect(printContentDocument(counted(3))).toBe('# children');
+    // Each `#` shows the number, as the value the block is on: the version
+    // is shown outside the plural, where `#` would be only text.
+    expect(printContentDocument(counted(1))).toBe(`{${COUNT}} child`);
+    expect(printContentDocument(counted(3))).toBe(`{${COUNT}} children`);
     // Czech has a category for a few; English does not.
-    expect(printContentDocument(counted(3, 'cs'))).toBe('# kids');
+    expect(printContentDocument(counted(3, 'cs'))).toBe(`{${COUNT}} kids`);
     expect(printContentDocument(counted('three'))).toBe('No number.');
     expect(shown(number, inputs({}))).toBe('No number.');
   });

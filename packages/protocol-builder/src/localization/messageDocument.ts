@@ -576,15 +576,10 @@ const levelOf = (
       continue;
     }
     if (node.kind === 'count') {
-      // In supplied wording, the number a plural shows; in a number logic
-      // block's branch, the value it is on, shown as itself.
-      pieces.push(
-        inlineValue(
-          reading.options.versions === undefined
-            ? (plural ?? '')
-            : countTokenId(plural ?? ''),
-        ),
-      );
+      // The number a plural of supplied wording shows. In a number logic
+      // block's version, `#` is read as the value the block is on
+      // (`readContentDocument`), so it never reaches here.
+      pieces.push(inlineValue(countTokenId(plural ?? '')));
       continue;
     }
     const labels = reading.options.versions;
@@ -710,10 +705,9 @@ const fieldBlockOf = (fieldId: string, reading: Reading): RichTextContent => {
 /** The blocks of markdown that a run of a document is. */
 const markdownBlocksOf = (
   nodes: readonly MessageNode[],
-  plural: string | undefined,
   reading: Reading,
 ): RichTextContent[] => {
-  const level = levelOf(nodes, plural, reading);
+  const level = levelOf(nodes, undefined, reading);
   if (reading.format.assetBlocks === true && misplacesFile(level.text)) {
     throw new MessageDocumentProblem('misplacedFile');
   }
@@ -734,14 +728,10 @@ const markdownBlocksOf = (
 };
 
 /** The editor's blocks for a document's nodes. */
-const blocksOf = (
-  nodes: ContentNodes,
-  plural: string | undefined,
-  reading: Reading,
-): RichTextContent[] =>
+const blocksOf = (nodes: ContentNodes, reading: Reading): RichTextContent[] =>
   nodes.flatMap((node): RichTextContent[] => {
     if (node.kind === 'markdown') {
-      return markdownBlocksOf(node.nodes, plural, reading);
+      return markdownBlocksOf(node.nodes, reading);
     }
     if (node.kind === 'field') return [fieldBlockOf(node.fieldId, reading)];
     return [logicBlockOf(node.logic, reading)];
@@ -760,16 +750,7 @@ const logicBlockOf = (
   content: branchesOfLogic(logic).map((branch) => ({
     type: LOGIC_BRANCH,
     attrs: { key: branch.key, meta: branch.meta },
-    content: branchBlocks(
-      blocksOf(
-        branch.content,
-        // A number's forms are versions of a plural on its value.
-        logic.kind === 'number' && branch.key !== MISSING_VERSION
-          ? logic.value
-          : undefined,
-        reading,
-      ),
-    ),
+    content: branchBlocks(blocksOf(branch.content, reading)),
   })),
 });
 
@@ -798,7 +779,7 @@ export const messageToDocument = (
           : 'unreadableDocument',
       );
     }
-    const blocks = blocksOf(document.nodes, undefined, reading);
+    const blocks = blocksOf(document.nodes, reading);
     return {
       type: 'doc',
       content: blocks.length === 0 ? [{ type: 'paragraph' }] : blocks,
@@ -1013,24 +994,20 @@ type Writing = Readonly<{
 /** A document's nodes from the editor's blocks. */
 const contentOfBlocks = (
   blocks: readonly RichTextContent[],
-  plural: string | undefined,
   writing: Writing,
 ): ContentNode[] => {
   const nodes: ContentNode[] = [];
   let run: RichTextContent[] = [];
   const endRun = () => {
     if (run.length === 0) return;
+    // A run is written outside any plural, so a value is never written as
+    // `#`: in a branch of a number block, the number is written as the value
+    // the block is on, which reads the same in every branch.
     const written = messageNodesOf(
       { type: 'doc', content: run },
       writing.format,
       false,
       undefined,
-    ).map((node): MessageNode =>
-      // A value on the number a branch is a form of shows that number: it
-      // is written as the value, which reads the same in every branch.
-      node.kind === 'count' && plural !== undefined
-        ? { kind: 'argument', name: plural }
-        : node,
     );
     if (!isBlankStructure(written))
       nodes.push({ kind: 'markdown', nodes: written });
@@ -1069,13 +1046,7 @@ const contentLogicOf = (
       return {
         key,
         meta: child.attrs?.meta,
-        content: contentOfBlocks(
-          child.content ?? [],
-          meta.kind === 'number' && key !== MISSING_VERSION
-            ? meta.value
-            : undefined,
-          writing,
-        ),
+        content: contentOfBlocks(child.content ?? [], writing),
       };
     });
   return logicOfBranches(meta, branches);
@@ -1108,7 +1079,7 @@ export const documentToMessage = (
 }> => {
   const fieldTexts = new Map<string, FieldText>();
   if (format.markdown && !format.singleLine) {
-    const nodes = contentOfBlocks(document.content ?? [], undefined, {
+    const nodes = contentOfBlocks(document.content ?? [], {
       format,
       fieldTexts,
     });

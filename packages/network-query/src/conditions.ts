@@ -7,6 +7,7 @@ import {
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  isUnanswered,
   readOwnProperty,
 } from '@codaco/shared-consts';
 
@@ -64,6 +65,23 @@ const compareCount = (
   }
 };
 
+/**
+ * A comparison of one attribute's value. A presence rule asks whether the
+ * attribute has an answer in the sense that text reads one (`isUnanswered`:
+ * blank text and an empty list are no answer), so that the rule which gives a
+ * piped value a version for when it is missing agrees with the piped value
+ * about when that is. Every other operator is the comparison that skip logic
+ * and filters make (`predicate`); their presence rules keep `predicate`'s own
+ * reading, which released protocols depend on.
+ */
+const attributeComparison = (
+  operator: Parameters<typeof predicate>[0],
+): ((args: Readonly<{ value: unknown; other: unknown }>) => boolean) => {
+  if (operator === 'EXISTS') return ({ value }) => !isUnanswered(value);
+  if (operator === 'NOT_EXISTS') return ({ value }) => isUnanswered(value);
+  return predicate(operator);
+};
+
 const ruleHolds = (
   rule: ConditionRule,
   about: DynamicValueRole | undefined,
@@ -73,7 +91,7 @@ const ruleHolds = (
   if (rule.type === 'ego') {
     if (isEdgeCountRule(rule) || !('attribute' in rule.options)) return false;
     const ego = subjects.attributes.ego;
-    return predicate(rule.options.operator)({
+    return attributeComparison(rule.options.operator)({
       value:
         ego === undefined
           ? undefined
@@ -102,7 +120,7 @@ const ruleHolds = (
   const { options } = rule;
   const attribute =
     'attribute' in options && options.attribute ? options.attribute : undefined;
-  const matches = predicate(options.operator);
+  const matches = attributeComparison(options.operator);
 
   if (rule.type === 'node') {
     // The node is of the type the rule names: the protocol's validation
@@ -143,7 +161,9 @@ const ruleHolds = (
 
 /**
  * Whether `condition` is met by what its text is shown with. Each comparison
- * is the one skip logic and filters make (`predicate`).
+ * is the one skip logic and filters make (`predicate`), except that a
+ * presence rule about an attribute reads a blank answer as none
+ * (`attributeComparison`).
  */
 export const conditionHolds = (
   condition: Condition,

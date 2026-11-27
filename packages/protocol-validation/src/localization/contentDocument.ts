@@ -42,9 +42,11 @@ export type ContentNodes = readonly ContentNode[];
 
 export type ContentNode =
   /**
-   * Whole markdown blocks: text, the values it shows and, in a plural's
-   * version, the count. Only text with a problem (`inlineChoice`,
-   * `unrecognisedLogic`) keeps a switch here, so that it is not lost.
+   * Whole markdown blocks: text and the values it shows. A `#` in a version
+   * of a number block is read as the value the block is on, which is the
+   * number it shows (`withCountAsValue`). Only text with a problem
+   * (`inlineChoice`, `unrecognisedLogic`) keeps a switch here, so that it is
+   * not lost, and with it any `#` of a plural inside that switch.
    */
   | Readonly<{ kind: 'markdown'; nodes: readonly MessageNode[] }>
   | Readonly<{ kind: 'field'; fieldId: string }>
@@ -298,6 +300,23 @@ type Reader = (
 ) => ContentNodes;
 
 /**
+ * A plural version's nodes with each `#` of that plural read as the value
+ * the plural is on: `#` shows the number, and a version of a number block
+ * is shown on its own, outside the plural, where `#` would be only text.
+ * The value is the same number, formatted as any number the text shows,
+ * and the editor writes it this way. A `#` in a switch inside the version
+ * is not this plural's: in a nested plural it is that plural's number, and
+ * in a select ICU reads it as text (it is a text node already).
+ */
+const withCountAsValue = (
+  nodes: readonly MessageNode[],
+  argument: string,
+): MessageNode[] =>
+  nodes.map((node) =>
+    node.kind === 'count' ? { kind: 'argument', name: argument } : node,
+  );
+
+/**
  * The logic block a whole-block switch is, or undefined when its shape is
  * none of the four.
  */
@@ -377,6 +396,8 @@ const logicOf = (
     ) {
       return undefined;
     }
+    const readCounted = (nodes: readonly MessageNode[], key: string) =>
+      read(withCountAsValue(nodes, node.argument), [...at, OTHER_CASE, key]);
     return {
       kind: 'number',
       value: node.argument,
@@ -385,19 +406,13 @@ const logicOf = (
         by: 'category',
         versions: plural.versions.flatMap(({ key, nodes }) =>
           isPluralCategory(key) && key !== OTHER_CASE
-            ? [
-                {
-                  category: key,
-                  content: read(nodes, [...at, OTHER_CASE, key]),
-                },
-              ]
+            ? [{ category: key, content: readCounted(nodes, key) }]
             : [],
         ),
-        other: read(versionOf(plural, OTHER_CASE)?.nodes ?? [], [
-          ...at,
+        other: readCounted(
+          versionOf(plural, OTHER_CASE)?.nodes ?? [],
           OTHER_CASE,
-          OTHER_CASE,
-        ]),
+        ),
       },
     };
   }

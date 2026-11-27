@@ -93,10 +93,10 @@ A missing value shows nothing: the participant sees the rest of the text without
 
 For example, the heading of an Information stage could thank the participant by name. A logic block with the rule that the participant's **first_name** attribute **exists** contains two versions of the heading:
 
-| Version               | Text written                     | Participant sees |
-| --------------------- | -------------------------------- | ---------------- |
-| If: first_name exists | "Thank you, " **first_name** "!" | Thank you, Sam!  |
-| Otherwise             | Thank you!                       | Thank you!       |
+| Version                | Text written                     | Participant sees |
+| ---------------------- | -------------------------------- | ---------------- |
+| If: Ego has first_name | "Thank you, " **first_name** "!" | Thank you, Sam!  |
+| Otherwise              | Thank you!                       | Thank you!       |
 
 Zero and "no" are answers, not missing values: a number equal to 0 is shown as 0, and a yes-or-no answer of no is shown by the label of the no answer. A text answer that is empty or contains only spaces, and a categorical answer with no options selected, count as missing.
 
