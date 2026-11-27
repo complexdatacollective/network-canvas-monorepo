@@ -124,6 +124,38 @@ describe('layout usage', () => {
     ).toEqual(['NetworkComposer sets']);
   });
 
+  it('getLayoutUsage gives a layout set by several stages the node types of all of them, each once', () => {
+    const protocol = protocolWithNarrative();
+    const person = nodeTypeKeyNamed(protocol, 'Person');
+    const colleague = nodeTypeKeyNamed(protocol, 'Colleague');
+    const shared = layoutKeyNamed(protocol, 'Layout_Position');
+    const stages = protocol.stages.flatMap((stage) => {
+      if (stage.type === 'NetworkComposer') {
+        return [{ ...stage, layout: shared }];
+      }
+      if (stage.type === 'Sociogram') {
+        return [
+          stage,
+          {
+            ...stage,
+            id: 'colleague-sociogram',
+            subject: { entity: 'node' as const, types: [colleague] },
+            layout: shared,
+          },
+        ];
+      }
+      return [stage];
+    });
+
+    const usage = getLayoutUsage({ ...protocol, stages })[shared];
+    expect(usage?.nodeTypes).toEqual([person, colleague]);
+    expect(usage?.setBy.map(({ stageId }) => stageId)).toEqual([
+      protocol.stages.find(({ type }) => type === 'Sociogram')?.id,
+      'colleague-sociogram',
+      protocol.stages.find(({ type }) => type === 'NetworkComposer')?.id,
+    ]);
+  });
+
   it('getLayoutUsage lists every layout of the codebook with its node types', () => {
     const protocol = protocolWithNarrative();
     expect(
