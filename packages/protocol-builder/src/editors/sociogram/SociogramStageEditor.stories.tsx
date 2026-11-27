@@ -5,12 +5,17 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   fixtureTypeId,
+  fixtureVariableId,
 } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { testId } from '../../testing/testId.ts';
 import { sociogramStageEditor } from './SociogramStageEditor.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Sociogram',
@@ -116,7 +121,7 @@ export const FirstPromptIsNotAPositioningTask: Story = {
       type: 'Sociogram',
       fields: {
         label: { 'en-US': 'Who knows whom' },
-        subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
+        subject: { entity: 'node', types: [PERSON] },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: {},
         layout: testId('who-knows-whom'),
@@ -156,6 +161,90 @@ export const FirstPromptIsNotAPositioningTask: Story = {
         canvas.queryByText('Nodes are not placed before this task'),
       ).toBeNull();
     });
+  },
+};
+
+/**
+ * A stage that shows two node types. The subject is a set of tick boxes, and
+ * each prompt sets a highlight attribute and sort rules for each type, and the
+ * order the types are handed over in.
+ */
+export const SeveralNodeTypes: Story = {
+  args: {
+    stageId: testId('several-types-sociogram'),
+    stage: {
+      type: 'Sociogram',
+      fields: {
+        label: { 'en-US': 'People and family' },
+        subject: { entity: 'node', types: [PERSON, FAMILY_MEMBER] },
+        background: { concentricCircles: 4, skewedTowardCenter: true },
+        behaviours: { automaticLayout: true },
+        layout: fixtureLayoutId('layout'),
+        prompts: [
+          {
+            id: testId('several-types-prompt'),
+            task: 'highlight',
+            text: { 'en-US': 'Tap everyone you trust.' },
+            highlight: [
+              {
+                id: testId('several-types-highlight'),
+                type: PERSON,
+                variable: fixtureVariableId(
+                  { entity: 'node', typeName: 'person' },
+                  'highlighted',
+                ),
+              },
+            ],
+            sortOrder: [
+              {
+                id: testId('several-types-sort'),
+                type: FAMILY_MEMBER,
+                property: fixtureVariableId(
+                  { entity: 'node', typeName: 'family member' },
+                  'fm_name',
+                ),
+                direction: 'asc',
+              },
+            ],
+            nodeTypeOrder: [FAMILY_MEMBER, PERSON],
+          },
+        ],
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      canvas.getByRole('checkbox', { name: 'person' }),
+    ).toBeChecked();
+    await expect(
+      canvas.getByRole('checkbox', { name: 'family member' }),
+    ).toBeChecked();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Edit prompt' }));
+    const dialog = within(await screen.findByRole('dialog'));
+
+    await waitFor(async () => {
+      await expect(
+        dialog.getByText('Boolean attribute for person'),
+      ).toBeVisible();
+    });
+    await expect(
+      dialog.getByText('Boolean attribute for family member'),
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole('switch', {
+        name: 'Sort unplaced nodes of type person',
+      }),
+    ).not.toBeChecked();
+    await expect(
+      dialog.getByRole('switch', {
+        name: 'Sort unplaced nodes of type family member',
+      }),
+    ).toBeChecked();
+    await expect(dialog.getByText('Order of node types')).toBeVisible();
   },
 };
 

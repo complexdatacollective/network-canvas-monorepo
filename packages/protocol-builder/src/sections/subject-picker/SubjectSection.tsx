@@ -4,6 +4,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { nodeTypeCapabilityOf } from '@codaco/protocol-validation';
 
 import {
   type EntitySubject,
@@ -11,10 +12,15 @@ import {
   type EntityTypeChangeConfirmation,
 } from '../../fields/EntityTypePickerField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
-import { useAskStageHasAnyValue } from '../../form/stageFormHooks.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import {
+  stageAnswerAt,
+  useAskStageHasAnyValue,
+} from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import type { SectionKey } from '../sectionKeys.ts';
+import { promptsDescribeNodeType } from './subjectReset.ts';
 import {
   useResetStageOnSubjectChange,
   useSubjectChangeDiscards,
@@ -84,6 +90,38 @@ const messages = defineMessages({
     defaultMessage: 'Choose the node type',
     description:
       'Button that goes ahead with choosing the first kind of network member a stage works with, throwing away the configuration entered before it.',
+  },
+  nodesDescription: {
+    id: 'protocolBuilder.subjectSection.nodesDescription',
+    defaultMessage: 'Choose the node types this stage shows.',
+    description:
+      'Description of the node-type section on a stage that can show more than one kind of network member, such as people and places together. A stage is one step of an interview.',
+  },
+  nodesFieldHint: {
+    id: 'protocolBuilder.subjectSection.nodesFieldHint',
+    defaultMessage:
+      'Select each type of node that this stage shows. Its prompts can sort and highlight each type separately.',
+    description:
+      'Guidance under the control choosing which kinds of network member a stage shows, on a stage that can show more than one. Prompts are the questions or tasks the stage sets the participant.',
+  },
+  nodeRemoveTitle: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveTitle',
+    defaultMessage: 'Remove this node type?',
+    description:
+      'Title of the confirmation raised when a researcher removes one of several kinds of network member a stage shows, and the stage has settings about that kind.',
+  },
+  nodeRemoveDescription: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveDescription',
+    defaultMessage:
+      'Prompts on this stage highlight or sort this node type. Removing it from the stage removes those settings. The settings for the other node types are kept.',
+    description:
+      'Body of the confirmation raised when a researcher removes one of several kinds of network member a stage shows. Prompts are the questions or tasks the stage sets the participant; to highlight is to mark the people or places a participant taps, and to sort is to set the order in which they are listed.',
+  },
+  nodeRemoveConfirm: {
+    id: 'protocolBuilder.subjectSection.nodeRemoveConfirm',
+    defaultMessage: 'Remove the node type',
+    description:
+      'Button that goes ahead with removing one of several kinds of network member a stage shows, along with the settings its prompts have about that kind.',
   },
   edgeTitle: {
     id: 'protocolBuilder.subjectSection.edgeTitle',
@@ -299,16 +337,38 @@ export default function SubjectSection({
 }: SubjectSectionProps) {
   const intl = useAppIntl();
   const words = WORDS[entity];
+  const { identity, storeApi, committedFields } = useStageEditorForm();
+  const multiple =
+    entity === 'node' && nodeTypeCapabilityOf(identity.type) === 'several';
   useResetStageOnSubjectChange();
 
   const confirmChange = useSubjectChangeQuestion(words, intl);
+  // Asked only when the stage's prompts say something about the type, since
+  // that is all removing one of several types costs.
+  const confirmRemoval = useCallback(
+    (typeId: string) =>
+      promptsDescribeNodeType(
+        stageAnswerAt(storeApi.getState(), committedFields, 'prompts'),
+        typeId,
+      )
+        ? {
+            title: intl.formatMessage(messages.nodeRemoveTitle),
+            description: intl.formatMessage(messages.nodeRemoveDescription),
+            confirmLabel: intl.formatMessage(messages.nodeRemoveConfirm),
+          }
+        : undefined,
+    [committedFields, intl, storeApi],
+  );
+  const fieldHint = multiple ? messages.nodesFieldHint : words.fieldHint;
 
   return (
     <>
       <BuilderSection
         sectionKey={words.sectionKey}
         title={intl.formatMessage(words.title)}
-        description={intl.formatMessage(words.description)}
+        description={intl.formatMessage(
+          multiple ? messages.nodesDescription : words.description,
+        )}
       >
         {notice}
         <Field<typeof EntitySubjectPickerField>
@@ -316,9 +376,10 @@ export default function SubjectSection({
           component={EntitySubjectPickerField}
           entityType={entity}
           confirmChange={confirmChange}
+          {...(multiple ? { multiple, confirmRemoval } : {})}
           {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
           label={intl.formatMessage(words.fieldLabel)}
-          hint={words.fieldHint && intl.formatMessage(words.fieldHint)}
+          hint={fieldHint && intl.formatMessage(fieldHint)}
           required={REQUIRED}
         />
       </BuilderSection>

@@ -44,10 +44,11 @@ const columnMessages = defineMessages({
 export type SortOrderRowsProps = Readonly<{
   /**
    * The prompt key these rules are held at. A bin or census prompt holds two
-   * orders and names each one; a sociogram prompt holds a single `sortOrder`,
-   * the order the nodes still to be placed are handed over in.
+   * orders and names each one; a sociogram prompt holds a `sortOrder` for
+   * each node type its stage shows (`sortOrder`, `sortOrder2`, …), the order
+   * the nodes of that type still to be placed are handed over in.
    */
-  name: 'binSortOrder' | 'bucketSortOrder' | 'sortOrder';
+  name: 'binSortOrder' | 'bucketSortOrder' | 'sortOrder' | `sortOrder${number}`;
   title: string;
   description: string;
   label: string;

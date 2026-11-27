@@ -51,7 +51,7 @@ import { stageDraftValue, useStageValue } from '../form/stageFormHooks.ts';
  */
 export function useOnResearcherChange(
   path: string | undefined,
-  onChange: (value: unknown) => void,
+  onChange: (value: unknown, previous: unknown) => void,
 ): void {
   const { committedFields } = useStageEditorForm();
   const value = useStageValue(path);
@@ -109,6 +109,6 @@ export function useOnResearcherChange(
     awaitingReseedTo.current = null;
     if (expected !== null && isEqual(expected.value, value)) return;
 
-    reset(value);
+    reset(value, previous.value);
   }, [committed, value]);
 }

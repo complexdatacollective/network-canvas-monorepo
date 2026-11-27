@@ -23,7 +23,9 @@ import {
   type StageFormDraft,
 } from '../../stageDocument.ts';
 import { useOnResearcherChange } from '../researcherChange.ts';
+import { draftSubjectNodeTypes } from '../useStageSubject.ts';
 import {
+  pruneRemovedNodeTypes,
   SUBJECT_INDEPENDENT_FIELDS,
   subjectDependentPaths,
   subjectDependentResets,
@@ -161,7 +163,59 @@ export function useResetStageOnSubjectChange(): void {
     useStageEditorForm();
   const clearStageValue = useClearStageValue();
 
-  useOnResearcherChange('subject', (subject) => {
+  /**
+   * Writes `value` at `key` into the form: the key itself, and each registered
+   * or parked field beneath it under the name that field registered.
+   *
+   * A section registers the LEAVES of a container it configures
+   * (`behaviours.removeAfterConsideration`, not `behaviours`), and the store
+   * keys fields by exact name. Writing the container alone parks a dormant
+   * value that never reaches those controls, so each nested value is written
+   * under the name its own field registered.
+   */
+  const writeStageValue = (
+    key: string,
+    value: FieldValue,
+    values: Readonly<Record<string, unknown>>,
+  ) => {
+    storeApi.getState().setFieldValue(key, value);
+    const { fields, dormantValues } = storeApi.getState();
+    for (const name of new Set([...fields.keys(), ...dormantValues.keys()])) {
+      if (!name.startsWith(`${key}.`) && !name.startsWith(`${key}[`)) {
+        continue;
+      }
+      storeApi.getState().setFieldValue(name, asFieldValue(get(values, name)));
+    }
+  };
+
+  useOnResearcherChange('subject', (subject, previous) => {
+    // A stage that keeps one of the types it showed and gains or loses others
+    // still describes the types it keeps: only what is about a removed type
+    // goes.
+    const before = draftSubjectNodeTypes(previous);
+    const after = draftSubjectNodeTypes(subject);
+    if (
+      before !== undefined &&
+      after !== undefined &&
+      after.some((type) => before.includes(type))
+    ) {
+      const pruned = pruneRemovedNodeTypes(
+        stageAnswerAt(storeApi.getState(), committedFields, 'prompts'),
+        before.filter((type) => !after.includes(type)),
+      );
+      applyOwnCommands([
+        { op: 'set', key: 'subject', value: subject },
+        ...(pruned === undefined
+          ? []
+          : [{ op: 'set', key: 'prompts', value: pruned } satisfies Command]),
+      ]);
+      if (pruned !== undefined) {
+        clearStageValue('prompts');
+        writeStageValue('prompts', pruned, { prompts: pruned });
+      }
+      return;
+    }
+
     const template = getInterfaceTemplate(identity.type);
     const resets = subjectDependentResets(
       heldStageKeys(storeApi, committedFields),
@@ -197,26 +251,7 @@ export function useResetStageOnSubjectChange(): void {
       // already said that. Writing `undefined` over it again would say nothing
       // the clear has not.
       if (reset.value === undefined) continue;
-
-      storeApi.getState().setFieldValue(reset.key, reset.value);
-
-      // A section registers the LEAVES of a container it configures
-      // (`behaviours.removeAfterConsideration`, not `behaviours`), and the
-      // store keys fields by exact name. Writing the container alone parks a
-      // dormant value that never reaches those controls, so each nested
-      // default is written under the name its own field registered.
-      const { fields, dormantValues } = storeApi.getState();
-      for (const name of new Set([...fields.keys(), ...dormantValues.keys()])) {
-        if (
-          !name.startsWith(`${reset.key}.`) &&
-          !name.startsWith(`${reset.key}[`)
-        ) {
-          continue;
-        }
-        storeApi
-          .getState()
-          .setFieldValue(name, asFieldValue(get(resetValues, name)));
-      }
+      writeStageValue(reset.key, reset.value, resetValues);
     }
   });
 }

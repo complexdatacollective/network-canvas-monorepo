@@ -514,6 +514,7 @@ export {
 export {
   getSingleStageNodeType,
   getStageNodeTypes,
+  nodeTypeCapabilityOf,
 } from './schemas/9/stage-capabilities.ts';
 export {
   type ResolvedSubject,

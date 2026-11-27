@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, screen, userEvent, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { buttonVariants } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -355,5 +355,72 @@ export const OnAProtocolWithNoTypes: Story = {
     await expect(
       canvas.getByRole('button', { name: 'Create new node type' }),
     ).toBeInTheDocument();
+  },
+};
+
+/**
+ * A stage that may show several node types, such as a Sociogram: a tick box
+ * for each type. Adding a type asks nothing, because nothing the stage says
+ * about its other types is lost.
+ */
+export const SeveralTypes: Story = {
+  args: {
+    stageId: fixtureStageId('sociogram-1'),
+    children: (
+      <Field<typeof EntitySubjectPickerField>
+        name="subject"
+        component={EntitySubjectPickerField}
+        entityType="node"
+        multiple
+        label="Node types"
+        hint="Select each type of node that this stage shows."
+        required={REQUIRED}
+      />
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const person = await canvas.findByRole('checkbox', { name: 'person' });
+    const family = canvas.getByRole('checkbox', { name: 'family member' });
+    await expect(person).toBeChecked();
+    await expect(family).not.toBeChecked();
+
+    await userEvent.click(family);
+    await waitFor(async () => {
+      await expect(family).toBeChecked();
+    });
+    await expect(person).toBeChecked();
+    await expect(screen.queryByRole('dialog')).toBeNull();
+  },
+};
+
+/**
+ * A caller that offers only some of the codebook's types: a Sociogram prompt
+ * offers only the edge types that may join a pair of its stage's node types.
+ * The type the field holds stays on offer even when it no longer fits.
+ */
+export const OfferingSomeTypes: Story = {
+  args: {
+    stageId: fixtureStageId('dyad-census-1'),
+    children: (
+      <Field<typeof EntityTypePickerField>
+        name="createEdge"
+        component={EntityTypePickerField}
+        entityType="edge"
+        offerType={(typeId) => typeId !== fixtureTypeId('edge', 'knows')}
+        label="Type of connection"
+      />
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByRole('radio', { name: 'family_edge' }),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByRole('radio', { name: 'knows' })).toBeNull();
   },
 };

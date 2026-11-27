@@ -139,7 +139,10 @@ describe('a value the researcher changed', () => {
     await pickTheRosterFile(harness.user);
 
     await waitFor(() => {
-      expect(onResearcherChange).toHaveBeenCalledWith('roster-file-1');
+      expect(onResearcherChange).toHaveBeenCalledWith(
+        'roster-file-1',
+        undefined,
+      );
     });
     expect(onResearcherChange).toHaveBeenCalledTimes(1);
   });

@@ -197,12 +197,32 @@ function SortOrderPromptPreview({ item }: RowPreviewProps) {
   return <span>{localize(item.text).text || 'Empty'}</span>;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Each rule of a Sociogram's sort order names the node type it sorts, which
+ * the sociogram family adds when a prompt is saved. This stand-in for the
+ * family does the same for the stage's one type, so what it saves is a stage
+ * the protocol schema accepts.
+ */
+const withRuleTypes = (row: unknown): unknown =>
+  isRecord(row) && Array.isArray(row.sortOrder)
+    ? {
+        ...row,
+        sortOrder: row.sortOrder.map((rule: unknown) =>
+          isRecord(rule) ? { ...rule, type: PERSON } : rule,
+        ),
+      }
+    : row;
+
 const sectionsFor = (
   Editor: Parameters<typeof PromptsSection>[0]['PromptEditor'],
 ) => (
   <PromptsSection
     PromptEditor={Editor}
     PromptPreview={SortOrderPromptPreview}
+    collapseRow={withRuleTypes}
   />
 );
 
@@ -225,6 +245,7 @@ const FIXTURE_PROMPT_ID = (() => {
 /** A sort rule a prompt already holds, under an id of its own. */
 const sortRule = (property: string, direction: 'asc' | 'desc') => ({
   id: testId(`sort-rule-${property}`),
+  type: PERSON,
   property,
   direction,
 });
@@ -392,6 +413,7 @@ describe('the sort order a prompt carries', () => {
     expect(saved.sortOrder).toEqual([
       {
         id: expect.stringMatching(/^[0-9a-f-]{36}$/u),
+        type: PERSON,
         property: NAME,
         direction: 'asc',
       },

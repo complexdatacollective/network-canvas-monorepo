@@ -834,6 +834,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     sortOrder: [
       {
         id: testId('sort-name'),
+        type: PERSON,
         property: personVariable('name'),
         direction: 'asc',
       },
@@ -871,6 +872,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.sortOrder).toEqual([
       {
         id: expect.any(String),
+        type: PERSON,
         property: personVariable('age'),
         direction: 'desc',
       },
@@ -927,6 +929,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
               sortOrder: [
                 {
                   id: testId('sort-nickname'),
+                  type: PERSON,
                   property: NICKNAME,
                   direction: 'asc',
                 },
@@ -956,6 +959,183 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+});
+
+describe('a sociogram that shows several node types', () => {
+  const FAMILY = fixtureTypeId('node', 'family member');
+  const familyVariable = (name: string) =>
+    fixtureVariableId({ entity: 'node', typeName: 'family member' }, name);
+  const HAS_CONDITION = familyVariable('hasConditionX');
+
+  const severalTypes = (prompt: Record<string, unknown>) =>
+    sociogramHolding(prompt, {
+      subject: { entity: 'node', types: [PERSON, FAMILY] },
+    });
+
+  const HIGHLIGHT_PROMPT = {
+    id: testId('several-highlight'),
+    task: 'highlight',
+    text: { 'en-US': 'Tap the people you trust' },
+    highlight: [
+      { id: testId('highlight-person'), type: PERSON, variable: HIGHLIGHTED },
+    ],
+  };
+
+  const SORTED_PROMPT = {
+    id: testId('several-sorted'),
+    task: 'layout',
+    text: { 'en-US': 'Place everyone' },
+    sortOrder: [
+      {
+        id: testId('sort-person'),
+        type: PERSON,
+        property: personVariable('name'),
+        direction: 'asc',
+      },
+      {
+        id: testId('sort-family'),
+        type: FAMILY,
+        property: familyVariable('fm_name'),
+        direction: 'desc',
+      },
+    ],
+    nodeTypeOrder: [FAMILY, PERSON],
+  };
+
+  it('saves a highlight entry for each node type the prompt marks', async () => {
+    const harness = renderStageEditor(severalTypes(HIGHLIGHT_PROMPT));
+
+    await openPrompt(harness);
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Boolean attribute for family member'),
+      HAS_CONDITION,
+    );
+    await saveDialog(harness, within(screen.getByRole('dialog')));
+
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.highlight).toEqual([
+      { id: testId('highlight-person'), type: PERSON, variable: HIGHLIGHTED },
+      { id: expect.any(String), type: FAMILY, variable: HAS_CONDITION },
+    ]);
+  });
+
+  it('refuses a highlight task that marks no node type', async () => {
+    const harness = renderStageEditor(severalTypes(SORTED_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    await chooseTask(harness, prompt, /Highlight nodes/u);
+    // Each type's picker is optional on its own.
+    await promptAttributeField('Boolean attribute for family member');
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await prompt.findByText(
+        enIntl.formatMessage(
+          sociogramPromptMessages.promptHighlightRequiredSeveral,
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('saves a prompt it opened and left alone exactly as it arrived', async () => {
+    const harness = renderStageEditor(severalTypes(SORTED_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    // One sort group for each type, each opened on that type's own rules.
+    expect(
+      prompt.getByRole('switch', {
+        name: 'Sort unplaced nodes of type person',
+      }),
+    ).toBeChecked();
+    expect(
+      prompt.getByRole('switch', {
+        name: 'Sort unplaced nodes of type family member',
+      }),
+    ).toBeChecked();
+    await saveDialog(harness, prompt);
+
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual(SORTED_PROMPT);
+  });
+
+  it('saves the order the researcher moves the node types into', async () => {
+    const harness = renderStageEditor(severalTypes(SORTED_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    const handle = prompt.getByRole('button', { name: 'Reorder item 1 of 2' });
+    handle.focus();
+    await harness.user.keyboard('{ArrowDown}');
+    await saveDialog(harness, prompt);
+
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.nodeTypeOrder).toEqual([
+      PERSON,
+      FAMILY,
+    ]);
+  });
+
+  it('saves a rule added for one type as a rule about that type', async () => {
+    const harness = renderStageEditor(severalTypes(HIGHLIGHT_PROMPT));
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(
+      prompt.getByRole('switch', {
+        name: 'Sort unplaced nodes of type family member',
+      }),
+    );
+    await harness.user.click(
+      await prompt.findByRole('button', { name: 'Add new sort rule' }),
+    );
+    await harness.user.selectOptions(
+      await prompt.findByRole('combobox', { name: 'Property' }),
+      familyVariable('fm_name'),
+    );
+    await harness.user.selectOptions(
+      prompt.getByRole('combobox', { name: 'Direction' }),
+      'asc',
+    );
+    await saveDialog(harness, prompt);
+
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.sortOrder).toEqual([
+      {
+        id: expect.any(String),
+        type: FAMILY,
+        property: familyVariable('fm_name'),
+        direction: 'asc',
+      },
+    ]);
+  });
+
+  it('does not offer an edge type that no pair of the stage’s node types may have', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding({
+        id: testId('connect'),
+        task: 'connect',
+        text: { 'en-US': 'Who knows whom?' },
+        edges: { create: FAMILY_EDGE, display: [FAMILY_EDGE] },
+      }),
+    );
+    harness.receiveCodebookUpdate({
+      edge: {
+        [KNOWS]: {
+          name: 'knows',
+          color: 'edge-color-seq-1',
+          endpointRules: [{ sourceType: FAMILY, targetType: FAMILY }],
+        },
+      },
+    });
+
+    const prompt = await openPrompt(harness);
+    const created = within(
+      prompt.getByRole('radiogroup', { name: 'Created edge type' }),
+    );
+    expect(created.getByRole('radio', { name: 'family_edge' })).toBeChecked();
+    await waitFor(() =>
+      expect(created.queryByRole('radio', { name: 'knows' })).toBeNull(),
     );
   });
 });

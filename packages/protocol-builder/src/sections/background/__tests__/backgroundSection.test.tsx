@@ -328,10 +328,11 @@ describe('what the participant sees behind the nodes', () => {
     await screen.findByRole('button', { name: 'Select an image' });
 
     // Nothing on the stage is the researcher's work yet, so there is no
-    // question to answer: the pick is the change.
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    // question to answer: the pick is the change. A Sociogram may show
+    // several node types, so each type is a tick box.
+    await harness.user.click(screen.getByRole('checkbox', { name: 'person' }));
     await waitFor(() =>
-      expect(screen.getByRole('radio', { name: 'person' })).toBeChecked(),
+      expect(screen.getByRole('checkbox', { name: 'person' })).toBeChecked(),
     );
 
     expect(

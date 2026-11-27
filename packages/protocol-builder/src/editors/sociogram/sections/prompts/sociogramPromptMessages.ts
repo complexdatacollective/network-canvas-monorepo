@@ -253,4 +253,43 @@ export const sociogramPromptMessages = defineMessages({
     description:
       'Stands in for a prompt’s text in the collapsed row of the sociogram prompt list while the researcher has not written any yet.',
   },
+  promptHighlightLabelForType: {
+    id: 'protocolBuilder.networkCanvas.promptHighlightLabelForType',
+    defaultMessage: 'Boolean attribute for {nodeType}',
+    description:
+      'Label of one of the pickers in the sociogram prompt dialog of a stage that shows several kinds of network member, naming which true-or-false attribute tapping a node of one kind turns on and off. {nodeType} is the name the researcher gave that kind, such as "Person" or "Place".',
+  },
+  promptHighlightHintSeveral: {
+    id: 'protocolBuilder.networkCanvas.promptHighlightHintSeveral',
+    defaultMessage:
+      'Select the attribute toggled when a participant taps a node of this type. Leave it empty if nodes of this type cannot be highlighted on this prompt.',
+    description:
+      'Guidance under each attribute picker of a sociogram prompt on a stage that shows several kinds of network member. Nodes of a kind with no attribute chosen cannot be tapped during this prompt.',
+  },
+  promptHighlightRequiredSeveral: {
+    id: 'protocolBuilder.networkCanvas.promptHighlightRequiredSeveral',
+    defaultMessage:
+      'Choose the attribute tapping a node turns on and off for at least one node type.',
+    description:
+      'Refusal shown under the first attribute picker of a sociogram prompt on a stage that shows several kinds of network member, when the researcher saves a prompt that marks nodes without choosing an attribute for any kind.',
+  },
+  promptSortTitleForType: {
+    id: 'protocolBuilder.networkCanvas.promptSortTitleForType',
+    defaultMessage: 'Sort unplaced nodes of type {nodeType}',
+    description:
+      'Heading of one optional group inside the sociogram prompt dialog of a stage that shows several kinds of network member, holding the rules that order the unplaced nodes of one kind. {nodeType} is the name the researcher gave that kind, such as "Person" or "Place".',
+  },
+  promptNodeTypeOrderLabel: {
+    id: 'protocolBuilder.networkCanvas.promptNodeTypeOrderLabel',
+    defaultMessage: 'Order of node types',
+    description:
+      'Label of the reorderable list in the sociogram prompt dialog of a stage that shows several kinds of network member. The participant is handed the unplaced nodes of the first kind in the list first, then those of the next kind.',
+  },
+  promptNodeTypeOrderHint: {
+    id: 'protocolBuilder.networkCanvas.promptNodeTypeOrderHint',
+    defaultMessage:
+      'Unplaced nodes are listed by type in this order, and each type is sorted by its own rules.',
+    description:
+      'Guidance under the reorderable list of kinds of network member in the sociogram prompt dialog.',
+  },
 });

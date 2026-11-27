@@ -23,17 +23,21 @@ import type {
   RowValues,
 } from '../../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
-import { variablesForSubject } from '../../../../protocol-context.ts';
+import {
+  type CodebookSubject,
+  variablesForSubject,
+} from '../../../../protocol-context.ts';
 import { asText } from '../../../../sections/canvas/rowValues.ts';
 import PromptsSection from '../../../../sections/PromptsSection.tsx';
-import { useStageSubject } from '../../../../sections/useStageSubject.ts';
+import { useStageNodeTypes } from '../../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../../state/protocolContext.ts';
 import { useDraftSociogram } from '../useDraftSociogram.ts';
 import {
-  firstHighlightVariable,
-  HIGHLIGHT_VARIABLE_FIELD,
+  highlightFieldName,
+  NODE_TYPE_ORDER_FIELD,
   SociogramPromptFields,
   SociogramPromptPreview,
+  sortFieldName,
   TASK_FIELD,
 } from './SociogramPromptFields.tsx';
 import { sociogramPromptMessages as messages } from './sociogramPromptMessages.ts';
@@ -41,23 +45,43 @@ import { sociogramPromptMessages as messages } from './sociogramPromptMessages.t
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** The highlight entry id a saved prompt already has, kept across saves. */
-const firstHighlightId = (highlight: unknown): string | undefined => {
-  if (!Array.isArray(highlight)) return undefined;
-  const [first]: unknown[] = highlight;
-  return isRecord(first) ? asText(first.id) : undefined;
-};
+const recordsOf = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value) ? value.filter(isRecord) : [];
+
+/** The entry of a saved list that is about `type`, if there is one. */
+const entryForType = (
+  entries: unknown,
+  type: string,
+): Record<string, unknown> | undefined =>
+  recordsOf(entries).find((entry) => entry.type === type);
+
+/** The attribute a saved highlight task marks on nodes of `type`. */
+const savedHighlightFor = (highlight: unknown, type: string): string =>
+  asText(entryForType(highlight, type)?.variable) ?? '';
 
 /**
- * Opens a prompt with its highlight attribute in the dialog's own field, so the
- * picker edits one value rather than the saved list of entries.
+ * Opens a prompt with each node type's highlight attribute and sort rules in
+ * that type's own dialog fields, so each picker edits one value and each sort
+ * group edits one type's rules rather than the saved lists of every type.
  */
-const expandPrompt = (row: RowValues): RowValues => {
-  const variable = firstHighlightVariable(row.highlight);
-  return variable === undefined
-    ? row
-    : { ...row, [HIGHLIGHT_VARIABLE_FIELD]: variable };
-};
+const expandPromptFor =
+  (types: readonly string[]) =>
+  (row: RowValues): RowValues => {
+    // Until the stage has a node type, its rules stay as they are for the
+    // one sort group that waits for it.
+    if (types.length === 0) return row;
+    const { sortOrder, ...rest } = row;
+    const expanded: RowValues = { ...rest };
+    types.forEach((type, index) => {
+      const variable = asText(entryForType(row.highlight, type)?.variable);
+      if (variable !== undefined) {
+        expanded[highlightFieldName(index)] = variable;
+      }
+      const rules = recordsOf(sortOrder).filter((rule) => rule.type === type);
+      if (rules.length > 0) expanded[sortFieldName(index)] = rules;
+    });
+    return expanded;
+  };
 
 /**
  * The stage order with the stage being edited as it stands: an existing stage
@@ -88,8 +112,7 @@ export default function SociogramPromptsSection() {
   const intl = useAppIntl();
   const { savedFields, identity, creation } = useStageEditorForm();
   const protocolContext = useProtocolContext();
-  const subject = useStageSubject('node');
-  const subjectType = subject?.entity === 'node' ? subject.type : undefined;
+  const types = useStageNodeTypes();
   const draft = useDraftSociogram();
 
   // This stage's own committed uses are excluded, exactly as the picker's are:
@@ -99,16 +122,9 @@ export default function SociogramPromptsSection() {
     () => buildVariableRoleMap(protocolContext, identity.id),
     [identity.id, protocolContext],
   );
-  const allVariables = useMemo(
-    () =>
-      subject === undefined
-        ? {}
-        : variablesForSubject(protocolContext, subject),
-    [protocolContext, subject],
-  );
 
   /**
-   * The attribute this row's SAVED highlight task marks.
+   * The attribute this row's SAVED highlight task marks on nodes of `type`.
    *
    * Read from the stage as the protocol last stored it: only a pick that the
    * protocol already contains is a conflict this edit did not introduce, and
@@ -116,54 +132,85 @@ export default function SociogramPromptsSection() {
    * another stage.
    */
   const savedMarkFor = useCallback(
-    (rowId: unknown): string => {
-      const saved: unknown = savedFields.prompts;
-      if (!Array.isArray(saved) || typeof rowId !== 'string') return '';
-      const row = saved.find(
-        (candidate) => isRecord(candidate) && candidate.id === rowId,
+    (rowId: unknown, type: string): string => {
+      if (typeof rowId !== 'string') return '';
+      const row = recordsOf(savedFields.prompts).find(
+        (candidate) => candidate.id === rowId,
       );
-      if (!isRecord(row) || row.task !== 'highlight') return '';
-      return firstHighlightVariable(row.highlight) ?? '';
+      if (row?.task !== 'highlight') return '';
+      return savedHighlightFor(row.highlight, type);
     },
     [savedFields],
   );
 
   const beforeSave = useCallback(
     (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
-      if (subject === undefined) return { row };
+      if (types.length === 0) return { row };
       if (row[TASK_FIELD] !== 'highlight') return { row };
-      const pick = asText(row[HIGHLIGHT_VARIABLE_FIELD]);
-      if (pick === undefined) return { row };
 
-      const issue = crossClassPickIssue({
-        variableId: pick,
-        originalVariableId: savedMarkFor(context.openedOn.id),
-        hasConflictingUse: (variableId) =>
-          hasValidatedUse(roleMap, subject, variableId),
-        allVariables,
-        message: validatedElsewhereMessage,
+      const fieldErrors: Record<string, string> = {};
+      types.forEach((type, index) => {
+        const field = highlightFieldName(index);
+        const pick = asText(row[field]);
+        if (pick === undefined) return;
+        const subject: CodebookSubject = { entity: 'node', type };
+        const issue = crossClassPickIssue({
+          variableId: pick,
+          originalVariableId: savedMarkFor(context.openedOn.id, type),
+          hasConflictingUse: (variableId) =>
+            hasValidatedUse(roleMap, subject, variableId),
+          allVariables: variablesForSubject(protocolContext, subject),
+          message: validatedElsewhereMessage,
+        });
+        if (issue !== undefined) fieldErrors[field] = issue;
       });
-      return issue === undefined
+      // A single type's picker is required by its own field; on a stage that
+      // shows several, each is optional but the prompt must mark something.
+      const picked = types.some(
+        (_type, index) => asText(row[highlightFieldName(index)]) !== undefined,
+      );
+      if (types.length > 1 && !picked) {
+        fieldErrors[highlightFieldName(0)] = intl.formatMessage(
+          messages.promptHighlightRequiredSeveral,
+        );
+      }
+      return Object.keys(fieldErrors).length === 0
         ? { row }
-        : { refused: { fieldErrors: { [HIGHLIGHT_VARIABLE_FIELD]: issue } } };
+        : { refused: { fieldErrors } };
     },
-    [allVariables, roleMap, savedMarkFor, subject],
+    [intl, protocolContext, roleMap, savedMarkFor, types],
   );
+
+  const expand = useMemo(() => expandPromptFor(types), [types]);
 
   /**
    * The saved shape of a prompt: only the fields of its own task. Fields of a
-   * task the researcher switched away from are dropped, and a highlight task
-   * gets its one entry for the stage's node type.
+   * task the researcher switched away from are dropped. A highlight task gets
+   * an entry for each node type it marks, the sort rules of every type are
+   * joined into one list with each rule naming its type, and the order of the
+   * node types is kept only on a stage that shows several.
    */
   const collapseRow = useCallback(
     (row: unknown): unknown => {
       if (!isRecord(row)) return row;
+      // The first highlight field goes whether or not the stage has a type
+      // yet: it is the dialog's, never the saved prompt's.
+      const perTypeFields = new Set([
+        highlightFieldName(0),
+        ...types.flatMap((_type, index) => [
+          highlightFieldName(index),
+          sortFieldName(index),
+        ]),
+      ]);
       const {
-        [HIGHLIGHT_VARIABLE_FIELD]: highlightVariable,
         highlight,
         edges,
-        ...rest
+        [NODE_TYPE_ORDER_FIELD]: nodeTypeOrder,
+        ...others
       } = row;
+      const rest = Object.fromEntries(
+        Object.entries(others).filter(([key]) => !perTypeFields.has(key)),
+      );
       const task = rest[TASK_FIELD];
       const display = isRecord(edges) ? edges.display : undefined;
       const create = isRecord(edges) ? edges.create : undefined;
@@ -171,26 +218,44 @@ export default function SociogramPromptsSection() {
         ...(display === undefined ? {} : { display }),
         ...(task === 'connect' && create !== undefined ? { create } : {}),
       };
-      const variable = asText(highlightVariable);
+      const highlightEntries = types.flatMap((type, index) => {
+        const variable = asText(row[highlightFieldName(index)]);
+        if (variable === undefined) return [];
+        return [
+          {
+            id:
+              asText(entryForType(highlight, type)?.id) ??
+              createProtocolObjectId(),
+            type,
+            variable,
+          },
+        ];
+      });
+      const sortOrder = types.flatMap((type, index) =>
+        recordsOf(row[sortFieldName(index)]).map((rule) => ({
+          id: asText(rule.id) ?? createProtocolObjectId(),
+          type,
+          property: rule.property,
+          direction: rule.direction,
+        })),
+      );
+      const order = Array.isArray(nodeTypeOrder)
+        ? nodeTypeOrder.filter(
+            (type): type is string =>
+              typeof type === 'string' && types.includes(type),
+          )
+        : [];
       return {
         ...rest,
         ...(Object.keys(keptEdges).length === 0 ? {} : { edges: keptEdges }),
-        ...(task === 'highlight' &&
-        variable !== undefined &&
-        subjectType !== undefined
-          ? {
-              highlight: [
-                {
-                  id: firstHighlightId(highlight) ?? createProtocolObjectId(),
-                  type: subjectType,
-                  variable,
-                },
-              ],
-            }
+        ...(task === 'highlight' && highlightEntries.length > 0
+          ? { highlight: highlightEntries }
           : {}),
+        ...(sortOrder.length === 0 ? {} : { sortOrder }),
+        ...(order.length > 1 ? { [NODE_TYPE_ORDER_FIELD]: order } : {}),
       };
     },
-    [subjectType],
+    [types],
   );
 
   const itemTemplate = useCallback(() => ({ [TASK_FIELD]: 'layout' }), []);
@@ -222,7 +287,7 @@ export default function SociogramPromptsSection() {
       PromptEditor={SociogramPromptFields}
       PromptPreview={SociogramPromptPreview}
       beforeSave={beforeSave}
-      expand={expandPrompt}
+      expand={expand}
       collapseRow={collapseRow}
       itemTemplate={itemTemplate}
       description={messages.sociogramPromptsDescription}

@@ -8,8 +8,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { newEntityDraft } from '../../../codebook/components/CodebookEntityEditorDialog.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   fixtureTypeId,
+  fixtureVariableId,
   loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
@@ -1084,5 +1086,180 @@ describe('choosing a type for a stage that has never had one', () => {
       renderWithSubject(subject);
       expect(checkedTypes()).toEqual([]);
     });
+  });
+});
+
+/**
+ * A Sociogram may show several node types, so its subject is a set the
+ * researcher ticks types in and out of. Only the settings about a removed type
+ * go with it.
+ */
+describe('the node types a Sociogram shows', () => {
+  const HIGHLIGHTED = fixtureVariableId(
+    { entity: 'node', typeName: 'person' },
+    'highlighted',
+  );
+  const HAS_CONDITION = fixtureVariableId(
+    { entity: 'node', typeName: 'family member' },
+    'hasConditionX',
+  );
+  const PERSON_NAME = fixtureVariableId(
+    { entity: 'node', typeName: 'person' },
+    'name',
+  );
+  const FAMILY_NAME = fixtureVariableId(
+    { entity: 'node', typeName: 'family member' },
+    'fm_name',
+  );
+  const personRule = {
+    id: testId('sort-person'),
+    type: PERSON,
+    property: PERSON_NAME,
+    direction: 'asc',
+  };
+  const personEntry = {
+    id: testId('highlight-person'),
+    type: PERSON,
+    variable: HIGHLIGHTED,
+  };
+
+  const sociogram = (
+    types: readonly string[],
+    prompts: readonly Record<string, unknown>[],
+  ) => ({
+    stage: {
+      id: testId('several-types-sociogram'),
+      type: 'Sociogram' as const,
+      fields: {
+        label: en('Sociogram'),
+        subject: { entity: 'node', types },
+        background: { concentricCircles: 4, skewedTowardCenter: true },
+        behaviours: { automaticLayout: true },
+        layout: fixtureLayoutId('layout'),
+        prompts,
+      },
+    },
+    sections: nodeSubjectAndPrompts,
+  });
+
+  const savedFields = async (harness: Harness) =>
+    (await harness.submit())?.stageDocument ?? {};
+
+  it('adding a type keeps the prompts', async () => {
+    const prompt = {
+      id: testId('layout-prompt'),
+      task: 'layout',
+      text: en('Place everyone'),
+      sortOrder: [personRule],
+    };
+    const harness = renderStageEditor(sociogram([PERSON], [prompt]));
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'family member' }),
+      ).toBeChecked(),
+    );
+    // Nothing the stage says about its other type is lost, so nothing asks.
+    expect(
+      screen.queryByRole('button', { name: 'Change the node type' }),
+    ).not.toBeInTheDocument();
+
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({
+      entity: 'node',
+      types: [PERSON, FAMILY_MEMBER],
+    });
+    expect(saved.prompts).toEqual([prompt]);
+  });
+
+  it('removing a type prunes only its rows', async () => {
+    const harness = renderStageEditor(
+      sociogram(
+        [PERSON, FAMILY_MEMBER],
+        [
+          {
+            id: testId('highlight-prompt'),
+            task: 'highlight',
+            text: en('Tap everyone you trust'),
+            highlight: [
+              personEntry,
+              {
+                id: testId('highlight-family'),
+                type: FAMILY_MEMBER,
+                variable: HAS_CONDITION,
+              },
+            ],
+            sortOrder: [
+              personRule,
+              {
+                id: testId('sort-family'),
+                type: FAMILY_MEMBER,
+                property: FAMILY_NAME,
+                direction: 'desc',
+              },
+            ],
+            nodeTypeOrder: [FAMILY_MEMBER, PERSON],
+          },
+        ],
+      ),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    expect(
+      await screen.findByText('Remove this node type?'),
+    ).toBeInTheDocument();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Remove the node type' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'family member' }),
+      ).not.toBeChecked(),
+    );
+
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({ entity: 'node', types: [PERSON] });
+    expect(saved.prompts).toEqual([
+      {
+        id: testId('highlight-prompt'),
+        task: 'highlight',
+        text: en('Tap everyone you trust'),
+        highlight: [personEntry],
+        sortOrder: [personRule],
+      },
+    ]);
+  });
+
+  it('removing a type the prompts say nothing about asks nothing', async () => {
+    const prompt = {
+      id: testId('layout-prompt'),
+      task: 'layout',
+      text: en('Place everyone'),
+      sortOrder: [personRule],
+    };
+    const harness = renderStageEditor(
+      sociogram([PERSON, FAMILY_MEMBER], [prompt]),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'family member' }),
+      ).not.toBeChecked(),
+    );
+    expect(
+      screen.queryByText('Remove this node type?'),
+    ).not.toBeInTheDocument();
+
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({ entity: 'node', types: [PERSON] });
+    expect(saved.prompts).toEqual([prompt]);
   });
 });

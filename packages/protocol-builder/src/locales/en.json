@@ -4455,17 +4455,37 @@
     "defaultMessage": "Select the attribute toggled when a participant taps a node.",
     "description": "Guidance under the attribute-marked picker."
   },
+  "protocolBuilder.networkCanvas.promptHighlightHintSeveral": {
+    "defaultMessage": "Select the attribute toggled when a participant taps a node of this type. Leave it empty if nodes of this type cannot be highlighted on this prompt.",
+    "description": "Guidance under each attribute picker of a sociogram prompt on a stage that shows several kinds of network member. Nodes of a kind with no attribute chosen cannot be tapped during this prompt."
+  },
   "protocolBuilder.networkCanvas.promptHighlightLabel": {
     "defaultMessage": "Boolean attribute",
     "description": "Label of the picker naming which true-or-false codebook attribute tapping a node turns on and off."
+  },
+  "protocolBuilder.networkCanvas.promptHighlightLabelForType": {
+    "defaultMessage": "Boolean attribute for {nodeType}",
+    "description": "Label of one of the pickers in the sociogram prompt dialog of a stage that shows several kinds of network member, naming which true-or-false attribute tapping a node of one kind turns on and off. {nodeType} is the name the researcher gave that kind, such as \"Person\" or \"Place\"."
   },
   "protocolBuilder.networkCanvas.promptHighlightRequired": {
     "defaultMessage": "Choose the attribute tapping a node turns on and off.",
     "description": "Refusal shown under the attribute-marked picker when the researcher saves a prompt that marks nodes without saying which attribute it marks."
   },
+  "protocolBuilder.networkCanvas.promptHighlightRequiredSeveral": {
+    "defaultMessage": "Choose the attribute tapping a node turns on and off for at least one node type.",
+    "description": "Refusal shown under the first attribute picker of a sociogram prompt on a stage that shows several kinds of network member, when the researcher saves a prompt that marks nodes without choosing an attribute for any kind."
+  },
   "protocolBuilder.networkCanvas.promptMissingEdgeType": {
     "defaultMessage": "{edgeTypeId} — this edge type is no longer in the codebook",
     "description": "Name of the tick-list choice standing for an edge type a stage still names — a sociogram prompt displays it, a network composer draws it, a narrative preset draws it — and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members."
+  },
+  "protocolBuilder.networkCanvas.promptNodeTypeOrderHint": {
+    "defaultMessage": "Unplaced nodes are listed by type in this order, and each type is sorted by its own rules.",
+    "description": "Guidance under the reorderable list of kinds of network member in the sociogram prompt dialog."
+  },
+  "protocolBuilder.networkCanvas.promptNodeTypeOrderLabel": {
+    "defaultMessage": "Order of node types",
+    "description": "Label of the reorderable list in the sociogram prompt dialog of a stage that shows several kinds of network member. The participant is handed the unplaced nodes of the first kind in the list first, then those of the next kind."
   },
   "protocolBuilder.networkCanvas.promptPositionsDescription": {
     "defaultMessage": "Configure the initial order of unplaced nodes.",
@@ -4494,6 +4514,10 @@
   "protocolBuilder.networkCanvas.promptSortTitle": {
     "defaultMessage": "Sort unplaced nodes",
     "description": "Heading of the optional group inside the sociogram prompt dialog holding the rules that order the nodes the participant has not placed yet."
+  },
+  "protocolBuilder.networkCanvas.promptSortTitleForType": {
+    "defaultMessage": "Sort unplaced nodes of type {nodeType}",
+    "description": "Heading of one optional group inside the sociogram prompt dialog of a stage that shows several kinds of network member, holding the rules that order the unplaced nodes of one kind. {nodeType} is the name the researcher gave that kind, such as \"Person\" or \"Place\"."
   },
   "protocolBuilder.networkCanvas.promptTextLabel": {
     "defaultMessage": "Prompt text",
@@ -8207,9 +8231,29 @@
     "defaultMessage": "Choose the node type?",
     "description": "Title of the confirmation raised when a researcher picks the first kind of network member for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
   },
+  "protocolBuilder.subjectSection.nodeRemoveConfirm": {
+    "defaultMessage": "Remove the node type",
+    "description": "Button that goes ahead with removing one of several kinds of network member a stage shows, along with the settings its prompts have about that kind."
+  },
+  "protocolBuilder.subjectSection.nodeRemoveDescription": {
+    "defaultMessage": "Prompts on this stage highlight or sort this node type. Removing it from the stage removes those settings. The settings for the other node types are kept.",
+    "description": "Body of the confirmation raised when a researcher removes one of several kinds of network member a stage shows. Prompts are the questions or tasks the stage sets the participant; to highlight is to mark the people or places a participant taps, and to sort is to set the order in which they are listed."
+  },
+  "protocolBuilder.subjectSection.nodeRemoveTitle": {
+    "defaultMessage": "Remove this node type?",
+    "description": "Title of the confirmation raised when a researcher removes one of several kinds of network member a stage shows, and the stage has settings about that kind."
+  },
   "protocolBuilder.subjectSection.nodeTitle": {
     "defaultMessage": "Node setup",
     "description": "Heading of the section where a researcher says which kind of network member this step of the interview is about. A node is one member of the network a participant describes."
+  },
+  "protocolBuilder.subjectSection.nodesDescription": {
+    "defaultMessage": "Choose the node types this stage shows.",
+    "description": "Description of the node-type section on a stage that can show more than one kind of network member, such as people and places together. A stage is one step of an interview."
+  },
+  "protocolBuilder.subjectSection.nodesFieldHint": {
+    "defaultMessage": "Select each type of node that this stage shows. Its prompts can sort and highlight each type separately.",
+    "description": "Guidance under the control choosing which kinds of network member a stage shows, on a stage that can show more than one. Prompts are the questions or tasks the stage sets the participant."
   },
   "protocolBuilder.unreachableLayout.description": {
     "defaultMessage": "No stage places {count, plural, one {{nodeTypes} nodes} other {nodes of the types {nodeTypes}}} in the layout “{layout}”, so they are shown here only if a roster gives them positions in this layout. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.",

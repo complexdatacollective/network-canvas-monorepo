@@ -116,6 +116,12 @@ export type EntityTypePickerFieldProps = CreateFormFieldProps<
      * described: the rule is about what the protocol already collects.
      */
     allowCodebookEditing?: boolean;
+    /**
+     * Whether a type of the codebook is offered here. The type the control
+     * holds is shown whatever this answers, so a choice that no longer fits
+     * is visible rather than silently unselected.
+     */
+    offerType?: (typeId: string) => boolean;
   }
 >;
 
@@ -426,6 +432,7 @@ function EntityOption({
   option,
   entityType,
   groupName,
+  multiple = false,
   checked,
   disabled,
   readOnly,
@@ -433,12 +440,19 @@ function EntityOption({
 }: Readonly<{
   option: RuleEntityTypeOption;
   entityType: RuleEntityTarget;
-  groupName: string;
+  /** Absent for a chip that is one of several the researcher may tick. */
+  groupName?: string;
+  /** A tick box among several rather than one radio of a group. */
+  multiple?: boolean;
   checked: boolean;
   disabled: boolean;
   readOnly: boolean;
   onSelect: () => void;
 }>) {
+  const change = () => {
+    if (disabled || readOnly) return;
+    onSelect();
+  };
   return (
     // A native radio inside its own label. The browser then owns the group's
     // roving arrow-key behaviour, the checked state it reports, and the
@@ -452,24 +466,34 @@ function EntityOption({
         readOnly && 'opacity-70',
       )}
     >
-      <input
-        type="radio"
-        className="peer sr-only"
-        name={groupName}
-        value={option.value}
-        // The type's own name, stated on the control rather than left to be
-        // computed from the chip beside it: the chip is a drawing of a node or
-        // an edge, and what a screen reader recovers from its layers is not
-        // something this option's name should depend on.
-        aria-label={option.label}
-        checked={checked}
-        disabled={disabled}
-        aria-disabled={readOnly || undefined}
-        onChange={() => {
-          if (disabled || readOnly) return;
-          onSelect();
-        }}
-      />
+      {multiple ? (
+        <input
+          type="checkbox"
+          className="peer sr-only"
+          value={option.value}
+          aria-label={option.label}
+          checked={checked}
+          disabled={disabled}
+          aria-disabled={readOnly || undefined}
+          onChange={change}
+        />
+      ) : (
+        <input
+          type="radio"
+          className="peer sr-only"
+          name={groupName}
+          value={option.value}
+          // The type's own name, stated on the control rather than left to be
+          // computed from the chip beside it: the chip is a drawing of a node
+          // or an edge, and what a screen reader recovers from its layers is
+          // not something this option's name should depend on.
+          aria-label={option.label}
+          checked={checked}
+          disabled={disabled}
+          aria-disabled={readOnly || undefined}
+          onChange={change}
+        />
+      )}
       <span className="peer-focus-visible:outline-primary rounded-full peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4">
         {entityType === 'edge' ? (
           <EdgeChip
@@ -650,6 +674,7 @@ export default function EntityTypePickerField({
   confirmChange,
   blockChangeReason,
   allowCodebookEditing = true,
+  offerType,
   disabled = false,
   'readOnly': readOnlyProp = false,
   className,
@@ -783,16 +808,25 @@ export default function EntityTypePickerField({
   const shapeSvgs = useNodeShapeSvgs(
     summaries.flatMap((summary) => shapeAssetIds(summary.customShapes)),
   );
-  const codebookOptions = useMemo(
+  const definedOptions = useMemo(
     () =>
       summaries.map((summary) => typeOption(summary, entityType, shapeSvgs)),
     [entityType, shapeSvgs, summaries],
+  );
+  const codebookOptions = useMemo(
+    () =>
+      offerType === undefined
+        ? definedOptions
+        : definedOptions.filter(
+            (option) => option.value === value || offerType(option.value),
+          ),
+    [definedOptions, offerType, value],
   );
 
   const isMissing =
     value !== undefined &&
     value !== '' &&
-    !codebookOptions.some((option) => option.value === value);
+    !definedOptions.some((option) => option.value === value);
 
   const options = useMemo(
     () =>
@@ -930,6 +964,198 @@ function pickedSubjectType(
   return types?.length === 1 ? types[0] : undefined;
 }
 
+/**
+ * The node types a stage that may show several is about, in the order they
+ * were ticked.
+ *
+ * A tick box per type rather than a radio: adding a type keeps everything
+ * the stage already says about the others, so it asks nothing, and removing
+ * one asks first only when the stage describes that type (`confirmRemoval`).
+ * The first type of a stage that has none, and the removal of its last, are
+ * the change a single-type picker makes, and ask what it asks
+ * (`confirmChange`).
+ */
+function NodeTypesPicker({
+  id,
+  name,
+  types,
+  onChange,
+  onBlur,
+  onFocus,
+  confirmChange,
+  confirmRemoval,
+  blockChangeReason,
+  disabled,
+  readOnly: readOnlyProp,
+  className,
+  ariaDescribedBy,
+  ariaInvalid,
+  ariaLabelledBy,
+}: Readonly<{
+  id?: string;
+  name?: string;
+  types: readonly string[];
+  onChange: (types: readonly string[]) => void;
+  onBlur?: EntitySubjectPickerFieldProps['onBlur'];
+  onFocus?: EntitySubjectPickerFieldProps['onFocus'];
+  confirmChange?: () => EntityTypeChangeConfirmation | undefined;
+  confirmRemoval?: (typeId: string) => EntityTypeChangeConfirmation | undefined;
+  blockChangeReason?: string;
+  disabled: boolean;
+  readOnly: boolean;
+  className?: string;
+  ariaDescribedBy?: string;
+  ariaInvalid?: boolean;
+  ariaLabelledBy?: string;
+}>) {
+  const { readOnly: sessionReadOnly } = useStageEditorForm();
+  const intl = useAppIntl();
+  const { confirm, openDialog } = useDialog();
+  const refuseUneditableChange = useRefuseUneditableChange();
+  const readOnly = readOnlyProp || sessionReadOnly;
+  const live = useLatest({ types, readOnly, disabled, blockChangeReason });
+
+  const summaries = useEntityTypes('node');
+  const shapeSvgs = useNodeShapeSvgs(
+    summaries.flatMap((summary) => shapeAssetIds(summary.customShapes)),
+  );
+  const definedOptions = useMemo(
+    () => summaries.map((summary) => typeOption(summary, 'node', shapeSvgs)),
+    [shapeSvgs, summaries],
+  );
+  const missing = types.filter(
+    (type) => !definedOptions.some((option) => option.value === type),
+  );
+  const options = [
+    ...definedOptions,
+    ...missing.map((type) => ({
+      value: type,
+      label: intl.formatMessage(messages.missingOptionLabel, { typeId: type }),
+      color: DEFAULT_NODE_COLOR,
+    })),
+  ];
+
+  const refuseBlockedChange = (): boolean => {
+    const { blockChangeReason: reason, types: current } = live();
+    if (reason === undefined || current.length === 0) return false;
+    void openDialog({
+      type: 'acknowledge',
+      intent: 'warning',
+      title: intl.formatMessage(BLOCKED_TITLES.node),
+      description: reason,
+      actions: {
+        primary: {
+          label: intl.formatMessage(commonMessages.continue),
+          value: true,
+        },
+      },
+    });
+    return true;
+  };
+
+  // Asked, and the answer judged, against the stage as it stands when the
+  // question is answered.
+  const askFirst = async (
+    question: EntityTypeChangeConfirmation | undefined,
+  ): Promise<boolean> => {
+    if (question === undefined) return true;
+    const confirmed = await confirm({
+      title: question.title,
+      description: question.description,
+      confirmLabel: question.confirmLabel,
+      intent: 'warning',
+      onConfirm: () => undefined,
+    });
+    if (confirmed !== true) return false;
+    const latest = live();
+    return !refuseUneditableChange(latest.readOnly || latest.disabled);
+  };
+
+  const add = async (typeId: string): Promise<void> => {
+    if (refuseBlockedChange()) return;
+    if (live().types.length === 0 && !(await askFirst(confirmChange?.()))) {
+      return;
+    }
+    const current = live().types;
+    if (!current.includes(typeId)) onChange([...current, typeId]);
+  };
+
+  const remove = async (typeId: string): Promise<void> => {
+    if (refuseBlockedChange()) return;
+    const question =
+      live().types.length === 1 ? confirmChange?.() : confirmRemoval?.(typeId);
+    if (!(await askFirst(question))) return;
+    onChange(live().types.filter((type) => type !== typeId));
+  };
+
+  return (
+    <div
+      data-name={name}
+      onBlur={onBlur}
+      onFocus={onFocus}
+      className={cx('flex w-full flex-col items-start gap-4', className)}
+    >
+      {/*
+        A `<fieldset>` is `role="group"`, which allows neither `aria-readonly`
+        nor `aria-required`: each tick box carries the read-only state, and
+        the field's required marker and description say the answer is needed.
+      */}
+      <fieldset
+        id={id}
+        aria-label={
+          ariaLabelledBy === undefined ? GROUP_LABELS.node : undefined
+        }
+        aria-labelledby={ariaLabelledBy}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
+        disabled={disabled}
+        className={cx(
+          'bg-input text-input-contrast flex w-full min-w-0 flex-col items-start rounded border-2 p-4',
+          ariaInvalid === true && 'border-destructive',
+          disabled && 'opacity-50',
+        )}
+      >
+        {options.length === 0 ? (
+          <p className="w-full py-6 text-center text-sm text-current/70 italic">
+            {intl.formatMessage(EMPTY_MESSAGES.node)}
+          </p>
+        ) : (
+          <div className="flex flex-row flex-wrap justify-start gap-3">
+            {options.map((option) => {
+              const checked = types.includes(option.value);
+              return (
+                <EntityOption
+                  key={option.value}
+                  option={option}
+                  entityType="node"
+                  multiple
+                  checked={checked}
+                  disabled={disabled}
+                  readOnly={readOnly}
+                  onSelect={() =>
+                    void (checked ? remove(option.value) : add(option.value))
+                  }
+                />
+              );
+            })}
+          </div>
+        )}
+      </fieldset>
+      {missing.length > 0 && (
+        <p className="text-destructive-ink text-sm">
+          {intl.formatMessage(messages.missingType)}
+        </p>
+      )}
+      <EntityTypeCodebookControls
+        entityType="node"
+        disabled={disabled}
+        readOnly={readOnly}
+        select={add}
+      />
+    </div>
+  );
+}
+
 export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
   EntitySubject,
   'div',
@@ -939,6 +1165,18 @@ export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
     confirmChange?: () => EntityTypeChangeConfirmation | undefined;
     /** See `EntityTypePickerFieldProps`. */
     blockChangeReason?: string;
+    /**
+     * Several node types may be ticked, for a stage that can show more than
+     * one. Only a node subject lists several.
+     */
+    multiple?: boolean;
+    /**
+     * What to ask before one of several ticked types is removed, or
+     * `undefined` to remove it without asking.
+     */
+    confirmRemoval?: (
+      typeId: string,
+    ) => EntityTypeChangeConfirmation | undefined;
   }
 >;
 
@@ -955,8 +1193,37 @@ export function EntitySubjectPickerField({
   value,
   onChange,
   entityType,
+  multiple = false,
+  confirmRemoval,
   ...props
 }: EntitySubjectPickerFieldProps) {
+  if (multiple && entityType === 'node') {
+    return (
+      <NodeTypesPicker
+        {...(props.id === undefined ? {} : { id: props.id })}
+        {...(props.name === undefined ? {} : { name: props.name })}
+        types={draftSubjectNodeTypes(value) ?? []}
+        onChange={(types) =>
+          onChange?.(
+            types.length === 0
+              ? undefined
+              : { entity: 'node', types: [...types] },
+          )
+        }
+        onBlur={props.onBlur}
+        onFocus={props.onFocus}
+        confirmChange={props.confirmChange}
+        confirmRemoval={confirmRemoval}
+        blockChangeReason={props.blockChangeReason}
+        disabled={props.disabled ?? false}
+        readOnly={props.readOnly ?? false}
+        className={props.className}
+        ariaDescribedBy={props['aria-describedby']}
+        ariaInvalid={props['aria-invalid'] === true}
+        ariaLabelledBy={props['aria-labelledby']}
+      />
+    );
+  }
   return (
     <EntityTypePickerField
       {...props}
