@@ -163,18 +163,20 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
      */
     wording?: PickerWording;
     /**
-     * What a screen reader calls the search box, which stays English in every
-     * language, for a picker of something other than attributes.
+     * What a screen reader calls the search box and the list (and the popup,
+     * when nothing labels it), which stay English in every language, for a
+     * picker of something other than attributes.
      */
-    searchNames?: SearchNames;
+    accessibleNames?: AccessibleNames;
   }
 >;
 
-type SearchNames = Readonly<{ create: string; only: string }>;
+type AccessibleNames = Readonly<{ create: string; only: string; list: string }>;
 
-const ATTRIBUTE_SEARCH_NAMES: SearchNames = {
+const ATTRIBUTE_ACCESSIBLE_NAMES: AccessibleNames = {
   create: 'Find or create an attribute',
   only: 'Find an attribute',
+  list: 'Attributes',
 };
 
 const messages = defineMessages({
@@ -593,7 +595,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     onSelectExisting,
     nameRefusal,
     wording,
-    searchNames = ATTRIBUTE_SEARCH_NAMES,
+    accessibleNames = ATTRIBUTE_ACCESSIBLE_NAMES,
     disabled = false,
     readOnly = false,
     className,
@@ -1250,7 +1252,9 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
                   {...{ [POPUP_MARKER]: '' }}
                   aria-labelledby={ariaLabelledBy}
                   aria-label={
-                    ariaLabelledBy === undefined ? 'Attributes' : undefined
+                    ariaLabelledBy === undefined
+                      ? accessibleNames.list
+                      : undefined
                   }
                   render={
                     <Surface
@@ -1273,8 +1277,8 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
                       // list can create an attribute.
                       aria-label={
                         onCreateOption === undefined
-                          ? searchNames.only
-                          : searchNames.create
+                          ? accessibleNames.only
+                          : accessibleNames.create
                       }
                       placeholder={intl.formatMessage(
                         onCreateOption === undefined
@@ -1316,7 +1320,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
                       */}
                       <ScrollArea
                         role="group"
-                        aria-label="Attributes"
+                        aria-label={accessibleNames.list}
                         className="max-h-80 min-h-0"
                         viewportClassName="flex flex-col px-2 pt-0 pb-2"
                       >

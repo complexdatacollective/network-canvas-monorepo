@@ -68,6 +68,13 @@ describe('the layout picker', () => {
       'layout',
     );
     const popup = await openAttributePicker(harness.user, field);
+    // A screen reader calls the list what it lists.
+    expect(
+      within(popup).getByRole('group', { name: 'Layouts' }),
+    ).toBeInTheDocument();
+    expect(
+      within(popup).queryByRole('group', { name: 'Attributes' }),
+    ).toBeNull();
     const rows = within(popup).getAllByRole('option');
     const layoutRows = rows.filter(
       (row) => row.dataset.attributeId !== undefined,

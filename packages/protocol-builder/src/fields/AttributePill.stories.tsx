@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
-import type { VariableType } from '@codaco/protocol-validation';
-
+import type { RuleAttributeType } from '../rules/operators.ts';
 import AttributePill, { AttributeTypeMark } from './AttributePill.tsx';
 
-const EVERY_TYPE: readonly VariableType[] = [
+// The eight kinds of answer, and a layout, which a rule can name as it names
+// an attribute.
+const EVERY_TYPE: readonly RuleAttributeType[] = [
   'boolean',
   'categorical',
   'datetime',
@@ -14,6 +15,7 @@ const EVERY_TYPE: readonly VariableType[] = [
   'ordinal',
   'scalar',
   'text',
+  'layout',
 ];
 
 const meta = {
@@ -38,9 +40,10 @@ type Story = StoryObj<typeof meta>;
 export const OneAttribute: Story = {};
 
 /**
- * The nine kinds of answer the protocol schema defines, in the colours and
+ * The eight kinds of answer the protocol schema defines, in the colours and
  * icons Architect has shown them in since its codebook editor was written — so
- * a researcher moving between the two apps reads one vocabulary.
+ * a researcher moving between the two apps reads one vocabulary — and a
+ * layout, which the layout picker and a rule show in a pill of its own.
  */
 export const EveryKindOfAnswer: Story = {
   render: () => (
@@ -84,7 +87,7 @@ export const EveryKindOfAnswer: Story = {
  * is still inventing, before the researcher has said what it holds, or a
  * stored reference no definition reached the control for — takes Architect's
  * fallback mark: charcoal and a question mark, neither of which claims one of
- * the nine kinds.
+ * the eight kinds or a layout.
  */
 export const SomethingWithNoKindOfAnswerYet: Story = {
   args: { name: 'nickname', type: undefined },

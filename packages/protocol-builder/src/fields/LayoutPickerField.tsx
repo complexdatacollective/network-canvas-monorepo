@@ -97,9 +97,10 @@ const wording = defineMessages({
   },
 }) satisfies PickerWording;
 
-const SEARCH_NAMES = {
+const ACCESSIBLE_NAMES = {
   create: 'Find or create a layout',
   only: 'Find a layout',
+  list: 'Layouts',
 };
 
 export type LayoutPickerFieldProps = CreateFormFieldProps<string, 'div'>;
@@ -155,7 +156,7 @@ export default function LayoutPickerField(props: LayoutPickerFieldProps) {
       nameRefusal={nameRefusal}
       onCreateOption={onCreateOption}
       wording={wording}
-      searchNames={SEARCH_NAMES}
+      accessibleNames={ACCESSIBLE_NAMES}
     />
   );
 }

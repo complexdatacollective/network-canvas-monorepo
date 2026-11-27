@@ -58,11 +58,27 @@ const openAndType = async (canvasElement: HTMLElement, query: string) => {
   return search;
 };
 
-/** The stage's layout, shown by its name. */
+/**
+ * The stage's layout, shown by its name. The layout is renamed `seating` so
+ * that the name cannot be confused with the picker's own wording.
+ */
 export const Chosen: Story = {
+  args: {
+    seedEdit: (host) => {
+      host.store.applyAsCollaborator(
+        sectionId({
+          kind: 'codebookLayout',
+          layoutId: fixtureLayoutId('layout'),
+        }),
+        { name: 'seating' },
+      );
+    },
+  },
   play: async ({ canvasElement }) => {
     await awaitPassiveEffects();
-    await expect(await trigger(canvasElement)).toHaveTextContent('layout');
+    const held = (await trigger(canvasElement)).querySelector('data');
+    await expect(held).toHaveAttribute('data-attribute-type', 'layout');
+    await expect(held).toHaveTextContent(/^seating$/u);
   },
 };
 
