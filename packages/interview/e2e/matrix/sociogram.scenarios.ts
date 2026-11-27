@@ -7,6 +7,7 @@ import {
   edgeSourceProperty,
   edgeTargetProperty,
   entityAttributesProperty,
+  entityPrimaryKeyProperty,
   type NcNetwork,
 } from '@codaco/shared-consts';
 
@@ -1467,59 +1468,398 @@ function buildSubjectFiltersToNodeType(): ScenarioDefinition {
         type: 'text',
         name: 'name',
       });
-      const personLayoutVar = synth.addLayout({ name: 'personLayout' });
       const venueType = synth.addNodeType({ name: 'Venue' });
       const venueName = venueType.addVariable({ type: 'text', name: 'name' });
-      const venueLayoutVar = synth.addLayout({ name: 'venueLayout' });
+      const groupType = synth.addNodeType({ name: 'Group' });
+      const groupName = groupType.addVariable({ type: 'text', name: 'name' });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
 
+      // The stage shows people and venues, but not groups.
       const stage = synth.addStage('Sociogram', {
-        layout: personLayoutVar.id,
-        subject: { entity: 'node', types: [personType.id] },
-        initialNodes: { count: 0 },
+        layout: layoutVar.id,
+        subject: { entity: 'node', types: [personType.id, venueType.id] },
       });
-      const people: [string, string, { x: number; y: number }][] = [
-        ['person-0', 'Ash', { x: 0.3, y: 0.3 }],
-        ['person-1', 'Bea', { x: 0.6, y: 0.3 }],
-        ['person-2', 'Cy', { x: 0.45, y: 0.6 }],
+      const nodes: [string, string, string, { x: number; y: number }][] = [
+        [personType.id, personName.id, 'Ash', { x: 0.3, y: 0.3 }],
+        [personType.id, personName.id, 'Bea', { x: 0.6, y: 0.3 }],
+        [personType.id, personName.id, 'Cy', { x: 0.45, y: 0.6 }],
+        [venueType.id, venueName.id, 'Cafe', { x: 0.2, y: 0.8 }],
+        [venueType.id, venueName.id, 'Park', { x: 0.8, y: 0.8 }],
+        [groupType.id, groupName.id, 'Choir', { x: 0.5, y: 0.5 }],
       ];
-      for (const [uid, name, layout] of people) {
-        synth.addManualNode(stage.id, personType.id, uid, {
-          [personName.id]: name,
-          [personLayoutVar.id]: layout,
+      nodes.forEach(([typeId, nameId, name, layout], index) => {
+        synth.addManualNode(stage.id, typeId, `node-${index}`, {
+          [nameId]: name,
+          [layoutVar.id]: layout,
         });
-      }
-      const venues: [string, string, { x: number; y: number }][] = [
-        ['venue-0', 'Cafe', { x: 0.2, y: 0.8 }],
-        ['venue-1', 'Park', { x: 0.8, y: 0.8 }],
-      ];
-      for (const [uid, name, layout] of venues) {
-        synth.addManualNode(stage.id, venueType.id, uid, {
-          [venueName.id]: name,
-          [venueLayoutVar.id]: layout,
-        });
-      }
+      });
+      // A group in the drawer's position is not counted either.
+      synth.addManualNode(stage.id, groupType.id, 'node-unplaced-group', {
+        [groupName.id]: 'Band',
+        [layoutVar.id]: null,
+      });
       stage.addPrompt();
       return synth;
     },
     run: async ({ page, protocol, interview }) => {
-      const sociogram = page.getByTestId('sociogram');
-      // Only the 3 Person nodes render on the canvas.
-      await expect(
-        sociogram.locator(
-          '[data-zone-id="sociogram-canvas"] button[aria-label]',
-        ),
-      ).toHaveCount(3);
-      // Pinned observed behaviour: the drawer always renders in MANUAL mode
-      // (the plan's "drawer absent" is incorrect). All 3 Person nodes are
-      // placed and the 2 Venue nodes are off-type, so the drawer shows
-      // "0 unplaced" — filtering is by subject type, not node existence.
+      const canvasLabels = () =>
+        page
+          .locator('[data-zone-id="sociogram-canvas"] button[aria-label]')
+          .evaluateAll((buttons) =>
+            buttons.map((b) => b.getAttribute('aria-label') ?? '').toSorted(),
+          );
+      // Both types the stage shows are on the canvas; the group is not.
+      await expect
+        .poll(canvasLabels)
+        .toEqual(['Ash', 'Bea', 'Cafe', 'Cy', 'Park']);
+      // Every person and venue is placed, and the unplaced group is not
+      // the stage's, so the drawer is empty.
       await expect(
         page.getByRole('button', { name: /^0 unplaced\b/ }),
       ).toBeVisible();
 
-      // All 5 nodes are retained in the network — filtering is display-only.
+      // All 7 nodes are retained in the network; filtering is display-only.
       const state = await protocol.getNetworkState(interview.interviewId);
-      expect(state?.nodes).toHaveLength(5);
+      expect(state?.nodes).toHaveLength(7);
+    },
+  };
+}
+
+// --- two-type stages with a directed edge type ------------------------------
+
+/**
+ * A stage showing people (Ash, Bea) and venues (Cafe), placed, with a
+ * directed "Goes to" edge type that `endpointRules` may restrict, and a
+ * connect prompt for it.
+ */
+function buildTwoTypeConnectStage(
+  ids: { nameVarIds: string[] },
+  endpointRules?: (types: {
+    person: string;
+    venue: string;
+  }) => { sourceType: string; targetType: string }[],
+): SyntheticInterview {
+  const synth = new SyntheticInterview();
+  const personType = synth.addNodeType({ name: 'Person' });
+  const personName = personType.addVariable({ type: 'text', name: 'name' });
+  const venueType = synth.addNodeType({
+    name: 'Venue',
+    shape: { default: 'square' },
+  });
+  const venueName = venueType.addVariable({ type: 'text', name: 'name' });
+  ids.nameVarIds = [personName.id, venueName.id];
+  const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
+  const rules = endpointRules?.({ person: personType.id, venue: venueType.id });
+  const goesTo = synth.addEdgeType({
+    name: 'Goes to',
+    directed: true,
+    ...(rules ? { endpointRules: rules } : {}),
+  });
+  const stage = synth.addStage('Sociogram', {
+    layout: layoutVar.id,
+    subject: { entity: 'node', types: [personType.id, venueType.id] },
+  });
+  synth.addManualNode(stage.id, personType.id, 'ash', {
+    [personName.id]: 'Ash',
+    [layoutVar.id]: { x: 0.25, y: 0.3 },
+  });
+  synth.addManualNode(stage.id, personType.id, 'bea', {
+    [personName.id]: 'Bea',
+    [layoutVar.id]: { x: 0.75, y: 0.3 },
+  });
+  synth.addManualNode(stage.id, venueType.id, 'cafe', {
+    [venueName.id]: 'Cafe',
+    [layoutVar.id]: { x: 0.5, y: 0.75 },
+  });
+  stage.addPrompt({
+    task: 'connect',
+    text: 'Tap someone, then who or where they go to.',
+    edges: { create: goesTo.id, display: [goesTo.id] },
+  });
+  return synth;
+}
+
+/** The network's edges as "from>to", by node name. */
+function edgesByName(
+  network: NcNetwork | undefined,
+  nameVarIds: readonly string[],
+): string[] {
+  const nameOf = (id: string): string => {
+    const node = network?.nodes.find((n) => n[entityPrimaryKeyProperty] === id);
+    const attributes = node?.[entityAttributesProperty] ?? {};
+    for (const nameId of nameVarIds) {
+      const name = attributes[nameId];
+      if (typeof name === 'string') return name;
+    }
+    return id;
+  };
+  return (network?.edges ?? [])
+    .map(
+      (edge) =>
+        `${nameOf(edge[edgeSourceProperty])}>${nameOf(edge[edgeTargetProperty])}`,
+    )
+    .toSorted();
+}
+
+/** Tap `first`, wait for it to be the pending source, then tap `second`. */
+async function tapInOrder(
+  page: Page,
+  first: string,
+  second: string,
+): Promise<void> {
+  const source = sociogramNode(page, first);
+  await source.click();
+  await expect(source).toHaveAttribute('data-node-linking', 'true');
+  await sociogramNode(page, second).click();
+  await expect(source).not.toHaveAttribute('data-node-linking');
+}
+
+const visibleArrowheads = (page: Page) =>
+  page.locator('polygon[data-edge-arrowhead][visibility="visible"]');
+
+// --- several-node-types ----------------------------------------------------
+
+function buildSeveralNodeTypes(): ScenarioDefinition {
+  const ids = { personName: '', venueName: '', trusted: '', favourite: '' };
+  return {
+    id: 'several-node-types',
+    covers: [
+      'subject=several-types',
+      'prompts[].highlight[].type',
+      'prompts[].highlight[].variable',
+    ],
+    seedNetwork: true,
+    build: () => {
+      const synth = new SyntheticInterview();
+      const personType = synth.addNodeType({ name: 'Person' });
+      const personName = personType.addVariable({ type: 'text', name: 'name' });
+      const trusted = personType.addVariable({
+        type: 'boolean',
+        name: 'trusted',
+      });
+      const venueType = synth.addNodeType({
+        name: 'Venue',
+        shape: { default: 'square' },
+      });
+      const venueName = venueType.addVariable({ type: 'text', name: 'name' });
+      const favourite = venueType.addVariable({
+        type: 'boolean',
+        name: 'favourite',
+      });
+      Object.assign(ids, {
+        personName: personName.id,
+        venueName: venueName.id,
+        trusted: trusted.id,
+        favourite: favourite.id,
+      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
+      const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
+        subject: { entity: 'node', types: [personType.id, venueType.id] },
+      });
+      synth.addManualNode(stage.id, personType.id, 'ash', {
+        [personName.id]: 'Ash',
+        [trusted.id]: false,
+        [layoutVar.id]: { x: 0.3, y: 0.4 },
+      });
+      synth.addManualNode(stage.id, venueType.id, 'cafe', {
+        [venueName.id]: 'Cafe',
+        [favourite.id]: false,
+        [layoutVar.id]: { x: 0.7, y: 0.4 },
+      });
+      // Each type has its own highlight variable.
+      stage.addPrompt({
+        task: 'highlight',
+        text: 'Tap the people you trust and the places you like best.',
+        highlight: [
+          { type: personType.id, variable: trusted.id },
+          { type: venueType.id, variable: favourite.id },
+        ],
+      });
+      // Only people are highlighted here, so the venue is disabled.
+      stage.addPrompt({
+        task: 'highlight',
+        text: 'Tap the people you trust.',
+        highlight: [{ type: personType.id, variable: trusted.id }],
+      });
+      return synth;
+    },
+    run: async ({ page, protocol, interview }) => {
+      await sociogramNode(page, 'Ash').click();
+      await sociogramNode(page, 'Cafe').click();
+      await expect(sociogramNode(page, 'Ash')).toHaveAttribute(
+        'data-node-highlighted',
+        'true',
+      );
+      await expect(sociogramNode(page, 'Cafe')).toHaveAttribute(
+        'data-node-highlighted',
+        'true',
+      );
+      const state = await protocol.getNetworkState(interview.interviewId);
+      expect(nodeAttribute(state, ids.personName, 'Ash', ids.trusted)).toBe(
+        true,
+      );
+      expect(nodeAttribute(state, ids.venueName, 'Cafe', ids.favourite)).toBe(
+        true,
+      );
+      // Each node is written only through its own type's variable.
+      expect(
+        nodeAttribute(state, ids.personName, 'Ash', ids.favourite),
+      ).toBeUndefined();
+
+      await interview.nextButton.click();
+      await expect(
+        page.getByText('Tap the people you trust.', { exact: true }),
+      ).toBeVisible();
+      await expect(sociogramNode(page, 'Cafe')).toBeDisabled();
+      await expect(sociogramNode(page, 'Ash')).toBeEnabled();
+    },
+  };
+}
+
+// --- directed-connect-reverse ----------------------------------------------
+
+function buildDirectedConnectReverse(): ScenarioDefinition {
+  const ids: { nameVarIds: string[] } = { nameVarIds: [] };
+  return {
+    id: 'directed-connect-reverse',
+    covers: ['codebook.edge.directed', 'prompts[].edges.create'],
+    seedNetwork: true,
+    build: () => buildTwoTypeConnectStage(ids),
+    run: async ({ page, protocol, interview }) => {
+      const edges = async () =>
+        edgesByName(
+          await protocol.getNetworkState(interview.interviewId),
+          ids.nameVarIds,
+        );
+
+      await tapInOrder(page, 'Ash', 'Bea');
+      await expect.poll(edges).toEqual(['Ash>Bea']);
+      await expect(visibleArrowheads(page)).toHaveCount(1);
+
+      // The reverse order adds the opposite edge, drawn on the same line.
+      await tapInOrder(page, 'Bea', 'Ash');
+      await expect.poll(edges).toEqual(['Ash>Bea', 'Bea>Ash']);
+      await expect(page.locator('line[data-edge-id]')).toHaveCount(1);
+      await expect(visibleArrowheads(page)).toHaveCount(2);
+
+      // The same order again removes that edge only.
+      await tapInOrder(page, 'Ash', 'Bea');
+      await expect.poll(edges).toEqual(['Bea>Ash']);
+      await expect(visibleArrowheads(page)).toHaveCount(1);
+    },
+  };
+}
+
+// --- endpoint-rules-disable ------------------------------------------------
+
+function buildEndpointRulesDisable(): ScenarioDefinition {
+  const ids: { nameVarIds: string[] } = { nameVarIds: [] };
+  return {
+    id: 'endpoint-rules-disable',
+    covers: ['codebook.edge.endpointRules'],
+    seedNetwork: true,
+    // People go to venues, and nothing else.
+    build: () =>
+      buildTwoTypeConnectStage(ids, ({ person, venue }) => [
+        { sourceType: person, targetType: venue },
+      ]),
+    run: async ({ page, protocol, interview }) => {
+      // A venue cannot be a source, so it is disabled before the first tap.
+      await expect(sociogramNode(page, 'Cafe')).toBeDisabled();
+      await expect(sociogramNode(page, 'Ash')).toBeEnabled();
+
+      // After Ash is tapped, another person is not a valid target.
+      const ash = sociogramNode(page, 'Ash');
+      await ash.click();
+      await expect(ash).toHaveAttribute('data-node-linking', 'true');
+      await expect(sociogramNode(page, 'Bea')).toBeDisabled();
+      await expect(sociogramNode(page, 'Cafe')).toBeEnabled();
+      await sociogramNode(page, 'Cafe').click();
+
+      await expect
+        .poll(async () =>
+          edgesByName(
+            await protocol.getNetworkState(interview.interviewId),
+            ids.nameVarIds,
+          ),
+        )
+        .toEqual(['Ash>Cafe']);
+    },
+  };
+}
+
+// --- sort-by-node-type -----------------------------------------------------
+
+function buildSortByNodeType(): ScenarioDefinition {
+  return {
+    id: 'sort-by-node-type',
+    covers: ['prompts[].sortOrder[].type', 'prompts[].nodeTypeOrder'],
+    seedNetwork: true,
+    build: () => {
+      const synth = new SyntheticInterview();
+      const personType = synth.addNodeType({ name: 'Person' });
+      const personName = personType.addVariable({ type: 'text', name: 'name' });
+      const venueType = synth.addNodeType({ name: 'Venue' });
+      const venueName = venueType.addVariable({ type: 'text', name: 'name' });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
+      const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
+        subject: { entity: 'node', types: [personType.id, venueType.id] },
+      });
+      const nodes: [string, string, string][] = [
+        [personType.id, personName.id, 'Dave'],
+        [personType.id, personName.id, 'Alice'],
+        [venueType.id, venueName.id, 'Cafe'],
+        [venueType.id, venueName.id, 'Park'],
+      ];
+      nodes.forEach(([typeId, nameId, name], index) => {
+        synth.addManualNode(stage.id, typeId, `node-${index}`, {
+          [nameId]: name,
+          [layoutVar.id]: null,
+        });
+      });
+
+      // Venues first, each type sorted by its own rule.
+      stage.addPrompt({
+        text: 'Venues first, then people.',
+        nodeTypeOrder: [venueType.id, personType.id],
+        sortOrder: [
+          { type: personType.id, property: personName.id, direction: 'asc' },
+          { type: venueType.id, property: venueName.id, direction: 'desc' },
+        ],
+      });
+      // No node type order: people first, as the stage lists them, in the
+      // order they were added; venues by name.
+      stage.addPrompt({
+        text: 'People first, then venues by name.',
+        sortOrder: [
+          { type: venueType.id, property: venueName.id, direction: 'asc' },
+        ],
+      });
+      return synth;
+    },
+    run: async ({ page, interview }) => {
+      const drawerLabels = () =>
+        page
+          .locator('[data-zone-id="node-drawer"] button[aria-label]')
+          .evaluateAll((buttons) =>
+            buttons
+              .map((b) => b.getAttribute('aria-label') ?? '')
+              .filter((l) => l !== 'Expand drawer' && l !== 'Collapse drawer'),
+          );
+
+      await expect
+        .poll(drawerLabels)
+        .toEqual(['Park', 'Cafe', 'Alice', 'Dave']);
+
+      await interview.nextButton.click();
+      await expect(
+        page.getByText('People first, then venues by name.'),
+      ).toBeVisible();
+      await expect
+        .poll(drawerLabels)
+        .toEqual(['Dave', 'Alice', 'Cafe', 'Park']);
     },
   };
 }
@@ -1544,5 +1884,9 @@ export const sociogramScenarios: InterfaceScenarios = {
     buildMultiPromptNavigationAndCollapse(),
     buildSortOrderDrawer(),
     buildSubjectFiltersToNodeType(),
+    buildSeveralNodeTypes(),
+    buildDirectedConnectReverse(),
+    buildEndpointRulesDisable(),
+    buildSortByNodeType(),
   ],
 };

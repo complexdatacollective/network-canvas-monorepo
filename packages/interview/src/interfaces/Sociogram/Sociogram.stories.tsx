@@ -681,3 +681,254 @@ export const CollapsiblePromptPanel: Story = {
     });
   },
 };
+
+// Sets each node's name, in node order, through its type's name variable
+// (the one `addNodeType` seeds first).
+function nameNodes(
+  si: SyntheticInterview,
+  nodes: readonly { typeId: string; name: string }[],
+) {
+  nodes.forEach(({ typeId, name }, index) => {
+    const [nameVariable] = si.getVariableIds(typeId);
+    si.setNodeAttribute(index, nameVariable!, name);
+  });
+}
+
+const labelsOf = (buttons: readonly HTMLButtonElement[]) =>
+  buttons.map((button) => button.getAttribute('aria-label'));
+
+const canvasButton = (canvasElement: HTMLElement, name: string) =>
+  waitFor(() => {
+    const button = canvasElement.querySelector<HTMLButtonElement>(
+      `[data-testid="sociogram"] [role="application"] button[aria-label="${name}"]`,
+    );
+    expect(button).not.toBeNull();
+    return button!;
+  });
+
+const lineCount = (canvasElement: HTMLElement) =>
+  canvasElement.querySelectorAll('line[data-edge-id]').length;
+
+const arrowheadCount = (canvasElement: HTMLElement) =>
+  [
+    ...canvasElement.querySelectorAll<SVGPolygonElement>(
+      'polygon[data-edge-arrowhead]',
+    ),
+  ].filter((arrow) => arrow.getAttribute('visibility') === 'visible').length;
+
+// Taps `first` and then `second`, waiting for `first` to be the pending
+// source in between.
+async function tapPair(first: HTMLButtonElement, second: HTMLButtonElement) {
+  await userEvent.click(first);
+  await waitFor(() => expect(first).toHaveAttribute('data-node-linking'));
+  await userEvent.click(second);
+  await waitFor(() => expect(first).not.toHaveAttribute('data-node-linking'));
+}
+
+const buildSeveralNodeTypes = () => {
+  const si = new SyntheticInterview(16);
+  const person = si.addNodeType({ name: 'Person' });
+  const place = si.addNodeType({ name: 'Place', shape: { default: 'square' } });
+  const layoutVar = si.addLayout({ name: 'Sociogram_Layout' });
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('Sociogram', {
+    subject: { entity: 'node', types: [person.id, place.id] },
+    layout: layoutVar.id,
+    initialNodes: { count: { [person.id]: 3, [place.id]: 2 } },
+  });
+  const [personName] = si.getVariableIds(person.id);
+  stage.addPrompt({
+    text: 'Place the people you know and the places you go.',
+    sortOrder: [{ type: person.id, property: personName!, direction: 'asc' }],
+    nodeTypeOrder: [place.id, person.id],
+  });
+  nameNodes(si, [
+    { typeId: person.id, name: 'Casey' },
+    { typeId: person.id, name: 'Blake' },
+    { typeId: person.id, name: 'Alex' },
+    { typeId: place.id, name: 'Park' },
+    { typeId: place.id, name: 'Museum' },
+  ]);
+  // Casey and the museum are placed; the rest wait in the drawer.
+  for (const index of [1, 2, 3]) si.unsetNodeAttribute(index, layoutVar.id);
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+  return si;
+};
+
+// A Sociogram showing people and places. Both types are on the canvas and in
+// the drawer, which lists places first, as the prompt's node type order says,
+// and people by name.
+export const SeveralNodeTypes: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildSeveralNodeTypes} />,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const canvas = canvasElement.querySelector<HTMLElement>(
+        '[data-testid="sociogram"] [role="application"]',
+      );
+      const drawer = canvasElement.querySelector<HTMLElement>(
+        '[data-testid="node-drawer-nodes"]',
+      );
+      expect(canvas).not.toBeNull();
+      expect(drawer).not.toBeNull();
+      expect(
+        labelsOf([...canvas!.querySelectorAll('button')]).toSorted((a, b) =>
+          (a ?? '').localeCompare(b ?? ''),
+        ),
+      ).toEqual(['Casey', 'Museum']);
+      expect(labelsOf([...drawer!.querySelectorAll('button')])).toEqual([
+        'Park',
+        'Alex',
+        'Blake',
+      ]);
+    });
+  },
+};
+
+const buildDirected = (reciprocal: boolean) => () => {
+  const si = new SyntheticInterview(17);
+  const person = si.addNodeType({ name: 'Person' });
+  const place = si.addNodeType({ name: 'Place', shape: { default: 'square' } });
+  const layoutVar = si.addLayout({ name: 'Sociogram_Layout' });
+  // People can go to people for advice, and to places; a place goes to
+  // nobody.
+  const advice = si.addEdgeType({
+    name: 'Asks for advice',
+    directed: true,
+    endpointRules: [
+      { sourceType: person.id, targetType: person.id },
+      { sourceType: person.id, targetType: place.id },
+    ],
+  });
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('Sociogram', {
+    subject: { entity: 'node', types: [person.id, place.id] },
+    layout: layoutVar.id,
+    initialNodes: { count: { [person.id]: 3, [place.id]: 1 } },
+  });
+  stage.addPrompt({
+    text: 'Tap a person, then someone or somewhere they go to for advice.',
+    edges: { create: advice.id, display: [advice.id] },
+  });
+  nameNodes(si, [
+    { typeId: person.id, name: 'Alex' },
+    { typeId: person.id, name: 'Blake' },
+    { typeId: person.id, name: 'Casey' },
+    { typeId: place.id, name: 'Library' },
+  ]);
+  const positions = [
+    { x: 0.25, y: 0.35 },
+    { x: 0.7, y: 0.3 },
+    { x: 0.35, y: 0.75 },
+    { x: 0.75, y: 0.7 },
+  ];
+  positions.forEach((position, index) => {
+    si.setNodeAttribute(index, layoutVar.id, position);
+  });
+  if (reciprocal) {
+    si.addEdges(
+      [
+        [0, 1],
+        [1, 0],
+        [2, 0],
+        [2, 3],
+      ],
+      advice.id,
+    );
+  }
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+  return si;
+};
+
+const buildDirectedConnect = buildDirected(false);
+const buildReciprocalEdges = buildDirected(true);
+
+// A directed connect task: tapping Alex then Blake adds Alex to Blake, tapping
+// Blake then Alex adds the opposite edge, drawn on the same line with an
+// arrowhead at each end, and tapping Alex then Blake again removes the first.
+// The library can be a target but never a source, so it starts disabled.
+export const DirectedConnect: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildDirectedConnect} />,
+  play: async ({ canvasElement }) => {
+    const alex = await canvasButton(canvasElement, 'Alex');
+    const blake = await canvasButton(canvasElement, 'Blake');
+    const library = await canvasButton(canvasElement, 'Library');
+    await expect(library).toBeDisabled();
+
+    await tapPair(alex, blake);
+    await waitFor(() => {
+      expect(lineCount(canvasElement)).toBe(1);
+      expect(arrowheadCount(canvasElement)).toBe(1);
+    });
+
+    await tapPair(blake, alex);
+    await waitFor(() => {
+      expect(lineCount(canvasElement)).toBe(1);
+      expect(arrowheadCount(canvasElement)).toBe(2);
+    });
+
+    await tapPair(alex, blake);
+    await waitFor(() => {
+      expect(lineCount(canvasElement)).toBe(1);
+      expect(arrowheadCount(canvasElement)).toBe(1);
+    });
+
+    await userEvent.click(alex);
+    await waitFor(() => expect(library).toBeEnabled());
+  },
+};
+
+// Alex and Blake go to each other for advice, drawn as one line with an
+// arrowhead at each end; Casey goes to Alex and to the library. Each
+// arrowhead's tip touches the edge of the node it points to.
+export const ReciprocalEdges: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildReciprocalEdges} />,
+  play: async ({ canvasElement }) => {
+    const svg = await waitFor(() => {
+      const found = canvasElement.querySelector<SVGSVGElement>(
+        '[data-testid="sociogram"] svg[viewBox="0 0 1 1"]',
+      );
+      expect(found).not.toBeNull();
+      expect(lineCount(canvasElement)).toBe(3);
+      expect(arrowheadCount(canvasElement)).toBe(4);
+      return found!;
+    });
+    const reciprocal = canvasElement.querySelectorAll('line[data-edge-ids]');
+    expect(reciprocal).toHaveLength(1);
+
+    const nodes = await Promise.all(
+      ['Alex', 'Blake', 'Casey', 'Library'].map((name) =>
+        canvasButton(canvasElement, name),
+      ),
+    );
+    const svgRect = svg.getBoundingClientRect();
+    for (const arrow of svg.querySelectorAll('polygon[data-edge-arrowhead]')) {
+      const [tip = ''] = (arrow.getAttribute('points') ?? '').split(' ');
+      const [x = 0, y = 0] = tip.split(',').map(Number);
+      const tipX = svgRect.left + x * svgRect.width;
+      const tipY = svgRect.top + y * svgRect.height;
+      // The tip lies on the boundary of a node: about one radius from the
+      // nearest centre, not at the centre.
+      const nearest = nodes
+        .map((node) => {
+          const rect = node.getBoundingClientRect();
+          return {
+            distance: Math.hypot(
+              rect.left + rect.width / 2 - tipX,
+              rect.top + rect.height / 2 - tipY,
+            ),
+            radius: rect.width / 2,
+          };
+        })
+        .toSorted((a, b) => a.distance - b.distance)[0];
+      expect(nearest).toBeDefined();
+      const { distance, radius } = nearest!;
+      expect(Math.abs(distance - radius)).toBeLessThan(radius * 0.25);
+    }
+  },
+};

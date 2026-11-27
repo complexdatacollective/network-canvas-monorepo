@@ -15,7 +15,7 @@ const build = () => {
   const si = new SyntheticInterview(1);
   si.addNodeType({ name: 'Person' });
   const layoutVar = si.addLayout({ name: 'Sociogram_Layout' });
-  const et = si.addEdgeType({ name: 'Friendship' });
+  const et = si.addEdgeType({ name: 'Asks for advice', directed: true });
 
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('Sociogram', {
@@ -24,11 +24,11 @@ const build = () => {
   });
   stage.addPrompt({
     task: 'connect',
-    text: 'Please connect any two people who know each other.',
+    text: 'Tap a person, then someone they go to for advice.',
     edges: { create: et.id, display: [et.id] },
   });
 
-  // Hand-placed positions: two friendship clusters set on a balanced diagonal
+  // Hand-placed positions: two advice clusters set on a balanced diagonal
   // and joined through a single broker (8), with triadic closure inside each
   // cluster. A deterministic, natural-looking social network for the published
   // screenshot (the layout is authored here rather than simulated so the
@@ -50,19 +50,21 @@ const build = () => {
 
   si.addEdges(
     [
-      // Cluster A (left)
+      // Cluster A (left), where 0 and 1 go to each other
       [0, 1],
+      [1, 0],
       [0, 2],
       [1, 2],
       [1, 3],
       [2, 3],
-      // Cluster B (right)
+      // Cluster B (right), where 4 and 5 go to each other
       [4, 5],
+      [5, 4],
       [4, 6],
       [5, 6],
       [5, 7],
       [6, 7],
-      // Broker bridging the clusters
+      // Both hubs go to the broker bridging the clusters
       [1, 8],
       [4, 8],
     ],
