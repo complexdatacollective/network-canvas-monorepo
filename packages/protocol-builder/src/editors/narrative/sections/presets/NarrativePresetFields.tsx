@@ -1,10 +1,14 @@
-import { type ComponentType, useMemo } from 'react';
+import { Plus, X } from 'lucide-react';
+import { type ComponentType, type ReactNode, useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Button } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { formatObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import Section from '@codaco/fresco-ui/Section';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   createProtocolObjectId,
   isProtocolObjectId,
@@ -12,7 +16,6 @@ import {
   type Stage,
 } from '@codaco/protocol-validation';
 
-import { availableOnly } from '../../../../codebook/attributeAvailability.ts';
 import LayoutPickerField from '../../../../fields/LayoutPickerField.tsx';
 import { LocalizedInputField } from '../../../../fields/LocalizedStringField.tsx';
 import { FilterRuleSetField } from '../../../../fields/RuleSetField.tsx';
@@ -34,6 +37,7 @@ import {
   useLocalizedText,
   useProtocolLocalization,
 } from '../../../../localization/ProtocolLocalization.tsx';
+import type { CodebookSubject } from '../../../../protocol-context.ts';
 import {
   type RowFilterClearWords,
   useRowFilterCapability,
@@ -55,10 +59,8 @@ import {
   useStableIdList,
 } from '../../../../sections/canvas/rowValues.ts';
 import { useLostReferences } from '../../../../sections/canvas/useLostReferences.ts';
-import {
-  useStageNodeTypes,
-  useStageSubject,
-} from '../../../../sections/useStageSubject.ts';
+import { useStageNodeTypes } from '../../../../sections/useStageSubject.ts';
+import { useProtocolContext } from '../../../../state/protocolContext.ts';
 import { narrativePresetMessages as messages } from './narrativePresetMessages.ts';
 
 const LABEL_FIELD = 'label';
@@ -68,11 +70,21 @@ const DISPLAY_EDGES_FIELD = 'edges.display';
 const HIGHLIGHT_FIELD = 'highlight';
 const FILTER_FIELD = 'filter';
 const HIGHLIGHT_LABELS_FIELD = 'highlightLabels';
+const HIGHLIGHT_ATTRIBUTES_FIELD = 'highlightAttributes';
+const HIGHLIGHT_ATTRIBUTE_IDS_FIELD = 'highlightAttributeIds';
 const DISPLAY_LABELS_FIELD = 'displayLabels';
-const HIGHLIGHT_IDS_FIELD = 'highlightIds';
 const DISPLAY_IDS_FIELD = 'displayIds';
 
-type Highlight = Readonly<{ id: unknown; variable: string; label: unknown }>;
+type HighlightAttribute = Readonly<{
+  id: unknown;
+  type: string;
+  variable: string;
+}>;
+type HighlightEntry = Readonly<{
+  id: string;
+  label: unknown;
+  attributes: HighlightAttribute[];
+}>;
 type DisplayedEdge = Readonly<{ id: unknown; type: string; label: unknown }>;
 
 const displayedEdgesOf = (edges: unknown): DisplayedEdge[] => {
@@ -95,28 +107,40 @@ const displayedEdgesOf = (edges: unknown): DisplayedEdge[] => {
     : [];
 };
 
-const highlightsOf = (value: unknown): Highlight[] =>
+const highlightAttributesOf = (value: unknown): HighlightAttribute[] =>
   Array.isArray(value)
-    ? value.flatMap((entry: unknown) => {
-        if (typeof entry !== 'object' || entry === null) return [];
-        const variable = asText(Reflect.get(entry, 'variable'));
-        return variable === undefined
+    ? value.flatMap((attribute: unknown) => {
+        if (typeof attribute !== 'object' || attribute === null) return [];
+        const type = asText(Reflect.get(attribute, 'type'));
+        const variable = asText(Reflect.get(attribute, 'variable'));
+        return type === undefined || variable === undefined
           ? []
-          : [
-              {
-                id: Reflect.get(entry, 'id'),
-                variable,
-                label: Reflect.get(entry, 'label'),
-              },
-            ];
+          : [{ id: Reflect.get(attribute, 'id'), type, variable }];
       })
     : [];
 
-const labelIn = (labels: unknown, variable: string): unknown =>
-  typeof labels === 'object' &&
-  labels !== null &&
-  Object.hasOwn(labels, variable)
-    ? Reflect.get(labels, variable)
+const highlightEntriesOf = (value: unknown): HighlightEntry[] =>
+  Array.isArray(value)
+    ? value.flatMap((entry: unknown) => {
+        if (typeof entry !== 'object' || entry === null) return [];
+        const id: unknown = Reflect.get(entry, 'id');
+        return typeof id === 'string' && id !== ''
+          ? [
+              {
+                id,
+                label: Reflect.get(entry, 'label'),
+                attributes: highlightAttributesOf(
+                  Reflect.get(entry, 'attributes'),
+                ),
+              },
+            ]
+          : [];
+      })
+    : [];
+
+const labelIn = (labels: unknown, key: string): unknown =>
+  typeof labels === 'object' && labels !== null && Object.hasOwn(labels, key)
+    ? Reflect.get(labels, key)
     : undefined;
 
 /** The id a ticked entry was opened with, or a new one for a fresh tick. */
@@ -125,27 +149,66 @@ const idIn = (ids: unknown, key: string): string => {
   return isProtocolObjectId(id) ? id : createProtocolObjectId();
 };
 
+/** The dialog field holding one highlight entry's attribute for one type. */
+export const highlightAttributeName = (entryId: string, type: string): string =>
+  formatObjectPath([HIGHLIGHT_ATTRIBUTES_FIELD, entryId, type]);
+
+/** The dialog field holding one highlight entry's label. */
+const highlightLabelName = (entryId: string): string =>
+  formatObjectPath([HIGHLIGHT_LABELS_FIELD, entryId]);
+
+/** The attribute one highlight entry of the expanded row names for `type`. */
+export const highlightAttributeIn = (
+  row: RowValues,
+  entryId: string,
+  type: string,
+): string | undefined =>
+  asText(labelIn(labelIn(row[HIGHLIGHT_ATTRIBUTES_FIELD], entryId), type));
+
+/** The highlight entry ids of the expanded row, in order. */
+export const highlightEntryIdsIn = (row: RowValues): string[] =>
+  asIdList(row[HIGHLIGHT_FIELD]) ?? [];
+
 /**
- * Opens a preset with its highlights and its drawn edge types each held in two
- * slots: the tick list holds the ids, and each one's legend label sits under
- * its id. A label field then comes and goes with its tick, and keeps what was
- * typed into it while the box is unticked. Keyed by id rather than by
- * position, because a tick anywhere in the list would otherwise move every
- * label after it. Each entry's own id is kept under its id the same way, so
- * an entry that stays ticked keeps its id when the preset is saved.
+ * Opens a preset with its highlight entries and its drawn edge types spread
+ * over slots of their own.
+ *
+ * The highlight list holds the entry ids. Each entry's label sits under its
+ * id, and its attribute for each node type sits under its id and the type, so
+ * every node type has a picker of its own. The ids of the attribute rows are
+ * kept the same way, so an attribute that stays chosen keeps its id.
+ *
+ * The drawn edge types are held in two slots: the tick list holds the type
+ * ids, and each one's legend label sits under its id. A label field then
+ * comes and goes with its tick, and keeps what was typed into it while the box
+ * is unticked. Keyed by id rather than by position, because a tick anywhere in
+ * the list would otherwise move every label after it.
  */
 export function expandNarrativePreset(row: RowValues): RowValues {
   let expanded = row;
   if (Object.hasOwn(row, HIGHLIGHT_FIELD)) {
-    const highlights = highlightsOf(row[HIGHLIGHT_FIELD]);
+    const entries = highlightEntriesOf(row[HIGHLIGHT_FIELD]);
     expanded = {
       ...expanded,
-      [HIGHLIGHT_FIELD]: highlights.map(({ variable }) => variable),
+      [HIGHLIGHT_FIELD]: entries.map(({ id }) => id),
       [HIGHLIGHT_LABELS_FIELD]: Object.fromEntries(
-        highlights.map(({ variable, label }) => [variable, label]),
+        entries.map(({ id, label }) => [id, label]),
       ),
-      [HIGHLIGHT_IDS_FIELD]: Object.fromEntries(
-        highlights.map(({ variable, id }) => [variable, id]),
+      [HIGHLIGHT_ATTRIBUTES_FIELD]: Object.fromEntries(
+        entries.map(({ id, attributes }) => [
+          id,
+          Object.fromEntries(
+            attributes.map(({ type, variable }) => [type, variable]),
+          ),
+        ]),
+      ),
+      [HIGHLIGHT_ATTRIBUTE_IDS_FIELD]: Object.fromEntries(
+        entries.map(({ id, attributes }) => [
+          id,
+          Object.fromEntries(
+            attributes.map(({ type, id: attributeId }) => [type, attributeId]),
+          ),
+        ]),
       ),
     };
   }
@@ -169,44 +232,67 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * The preset as the protocol holds it: one highlight per ticked attribute and
- * one drawn edge type per ticked type, in tick order, each carrying its legend
- * label and its id. A label left behind by an id that was unticked is dropped
- * with it, and a newly ticked entry gets an id of its own.
+ * The preset as the protocol stores it, for a stage that shows `types`: one
+ * highlight entry per entry in the list, each with its label and one attribute
+ * for each type that has one chosen, in the stage's type order; and one drawn
+ * edge type per ticked type, in tick order, with its legend label. An entry
+ * with no attribute chosen is dropped, and so is a label left behind by an id
+ * that was unticked. A new entry or attribute gets an id of its own.
  */
-export function collapseNarrativePreset(row: RowValues): RowValues {
-  const {
-    [HIGHLIGHT_FIELD]: ticked,
-    [HIGHLIGHT_LABELS_FIELD]: labels,
-    [DISPLAY_LABELS_FIELD]: edgeLabels,
-    [HIGHLIGHT_IDS_FIELD]: highlightIds,
-    [DISPLAY_IDS_FIELD]: displayIds,
-    ...preset
-  } = row;
-  const highlight = (asIdList(ticked) ?? []).map((variable) => ({
-    id: idIn(highlightIds, variable),
-    variable,
-    label: labelIn(labels, variable),
-  }));
-  const withHighlight =
-    highlight.length === 0
-      ? preset
-      : { ...preset, [HIGHLIGHT_FIELD]: highlight };
-  const edges = preset.edges;
-  if (!isRecord(edges)) return withHighlight;
-  const display = (asNestedIdList(edges, 'display') ?? []).map((type) => ({
-    id: idIn(displayIds, type),
-    type,
-    label: labelIn(edgeLabels, type),
-  }));
-  const { display: _display, ...otherEdges } = edges;
-  const nextEdges =
-    display.length === 0 ? otherEdges : { ...otherEdges, display };
-  const { edges: _edges, ...withoutEdges } = withHighlight;
-  return Object.keys(nextEdges).length === 0
-    ? withoutEdges
-    : { ...withoutEdges, edges: nextEdges };
-}
+export const collapseNarrativePresetFor =
+  (types: readonly string[]) =>
+  (row: RowValues): RowValues => {
+    const {
+      [HIGHLIGHT_FIELD]: entryIds,
+      [HIGHLIGHT_LABELS_FIELD]: labels,
+      [HIGHLIGHT_ATTRIBUTES_FIELD]: attributes,
+      [HIGHLIGHT_ATTRIBUTE_IDS_FIELD]: attributeIds,
+      [DISPLAY_LABELS_FIELD]: edgeLabels,
+      [DISPLAY_IDS_FIELD]: displayIds,
+      ...preset
+    } = row;
+    const highlight = (asIdList(entryIds) ?? []).flatMap((entryId) => {
+      const chosen = types.flatMap((type) => {
+        const variable = asText(labelIn(labelIn(attributes, entryId), type));
+        return variable === undefined
+          ? []
+          : [
+              {
+                id: idIn(labelIn(attributeIds, entryId), type),
+                type,
+                variable,
+              },
+            ];
+      });
+      return chosen.length === 0
+        ? []
+        : [
+            {
+              id: entryId,
+              label: labelIn(labels, entryId),
+              attributes: chosen,
+            },
+          ];
+    });
+    const withHighlight =
+      highlight.length === 0
+        ? preset
+        : { ...preset, [HIGHLIGHT_FIELD]: highlight };
+    const edges = preset.edges;
+    if (!isRecord(edges)) return withHighlight;
+    const display = (asNestedIdList(edges, 'display') ?? []).map((type) => ({
+      id: idIn(displayIds, type),
+      type,
+      label: labelIn(edgeLabels, type),
+    }));
+    const { display: _display, ...otherEdges } = edges;
+    const nextEdges =
+      display.length === 0 ? otherEdges : { ...otherEdges, display };
+    const { edges: _edges, ...withoutEdges } = withHighlight;
+    return Object.keys(nextEdges).length === 0
+      ? withoutEdges
+      : { ...withoutEdges, edges: nextEdges };
+  };
 
 /** What switching a preset's filter off destroys, in its own words. */
 const PRESET_FILTER_CLEAR_WORDS: RowFilterClearWords = {
@@ -223,24 +309,24 @@ const VariablePicker = VariablePickerField as ComponentType<
 /** A tick list's choices, in the shape the control registers with. */
 type TickChoice = Readonly<{ value: string; label: string }>;
 
+type NodeTypeChoice = Readonly<{ id: string; label: string }>;
+
 /**
- * What the interview's legend calls one highlighted attribute or one drawn
- * edge type. Codebook names are the researcher's and are never shown to
- * participants, so the preset carries translatable words; a new tick starts
- * them at the codebook name, as text in the protocol's default language.
+ * What the interview's legend calls one drawn edge type or one highlight.
+ * Codebook names are the researcher's and are never shown to participants, so
+ * the preset carries translatable words; a new edge type tick starts them at
+ * the codebook name, as text in the protocol's default language.
  */
 function LegendLabelField({
-  labelsField,
-  id,
+  name,
   codebookName,
   label,
   hint,
   required,
   committed,
 }: Readonly<{
-  labelsField: string;
-  id: string;
-  codebookName: string;
+  name: string;
+  codebookName: string | undefined;
   label: string;
   hint: string;
   required: string;
@@ -252,14 +338,14 @@ function LegendLabelField({
   const initialValue = useMemo(
     () =>
       committed ??
-      (localization === undefined
+      (localization === undefined || codebookName === undefined
         ? undefined
         : localizedFromText(localization, codebookName)),
     [codebookName, committed, localization],
   );
   return (
     <Field<typeof LocalizedInputField>
-      name={formatObjectPath([labelsField, id])}
+      name={name}
       nameMode="path"
       label={label}
       hint={hint}
@@ -267,6 +353,186 @@ function LegendLabelField({
       initialValue={initialValue}
       required={required}
     />
+  );
+}
+
+/**
+ * The attribute one highlight entry reads on nodes of one of the stage's node
+ * types. On a stage that shows several types each is optional, and the
+ * presets section refuses an entry that names no attribute at all.
+ */
+function HighlightAttributeField({
+  item,
+  entryId,
+  nodeType,
+  several,
+}: Readonly<{
+  item: RowValues;
+  entryId: string;
+  nodeType: NodeTypeChoice;
+  several: boolean;
+}>) {
+  const intl = useAppIntl();
+  const name = highlightAttributeName(entryId, nodeType.id);
+  const setRowValue = useFormStore((store) => store.setFieldValue);
+  const subject = useMemo<CodebookSubject>(
+    () => ({ entity: 'node', type: nodeType.id }),
+    [nodeType.id],
+  );
+  const committed = highlightAttributeIn(item, entryId, nodeType.id);
+  const chosen = asText(useFormValue([name])[name]);
+  const options = useVariableChoices({
+    subject,
+    types: BOOLEAN_TYPES,
+    ...(committed === undefined ? {} : { currentValue: committed }),
+  });
+
+  return (
+    <>
+      <Field<typeof VariablePicker>
+        name={name}
+        nameMode="path"
+        label={
+          several
+            ? intl.formatMessage(messages.presetHighlightAttributeForType, {
+                nodeType: nodeType.label,
+              })
+            : intl.formatMessage(messages.presetHighlightAttribute)
+        }
+        {...(several
+          ? {
+              hint: intl.formatMessage(
+                messages.presetHighlightAttributeHintSeveral,
+              ),
+            }
+          : {
+              required: intl.formatMessage(
+                messages.presetHighlightAttributeRequired,
+              ),
+            })}
+        component={VariablePicker}
+        options={options}
+        emptyMessage={intl.formatMessage(
+          messages.presetHighlightAttributeEmpty,
+        )}
+        initialValue={committed}
+      />
+      {/*
+        The picker cannot be emptied once an attribute is chosen, and on a
+        stage that shows several types an empty picker is how a type is left
+        out of the highlight.
+      */}
+      {several && chosen !== undefined && (
+        <Button
+          type="button"
+          size="sm"
+          variant="text"
+          icon={<X aria-hidden="true" />}
+          className="-mt-4 mb-8"
+          onClick={() => setRowValue(name, undefined)}
+        >
+          {intl.formatMessage(messages.presetHighlightAttributeClear, {
+            nodeType: nodeType.label,
+          })}
+        </Button>
+      )}
+    </>
+  );
+}
+
+/**
+ * The list of a preset's highlight entries: the entries the parent draws, and
+ * a button that adds one. Its value is the entries' ids in order.
+ */
+function HighlightEntryList({
+  value,
+  onChange,
+  renderEntry,
+  addLabel,
+  emptyMessage,
+}: Readonly<{
+  value?: string[];
+  onChange?: (value: string[] | undefined) => void;
+  renderEntry: (entryId: string, index: number) => ReactNode;
+  addLabel: string;
+  emptyMessage: string;
+}>) {
+  const ids = value ?? [];
+  return (
+    <div className="flex w-full flex-col items-start gap-4">
+      {ids.length === 0 ? (
+        <Paragraph className="text-current/70 italic">{emptyMessage}</Paragraph>
+      ) : (
+        ids.map((entryId, index) => renderEntry(entryId, index))
+      )}
+      <Button
+        type="button"
+        size="sm"
+        icon={<Plus aria-hidden="true" />}
+        onClick={() => onChange?.([...ids, createProtocolObjectId()])}
+      >
+        {addLabel}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * One highlight entry: its legend label, an attribute picker for each of the
+ * stage's node types, and a button that removes it.
+ */
+function HighlightEntryFields({
+  item,
+  entryId,
+  number,
+  nodeTypes,
+  onRemove,
+}: Readonly<{
+  item: RowValues;
+  entryId: string;
+  number: number;
+  nodeTypes: readonly NodeTypeChoice[];
+  onRemove: () => void;
+}>) {
+  const intl = useAppIntl();
+  const several = nodeTypes.length > 1;
+  const legend = intl.formatMessage(messages.presetHighlightEntryLegend, {
+    number,
+  });
+  return (
+    <fieldset className="w-full rounded border-2 p-4">
+      <legend className="px-2 font-semibold">{legend}</legend>
+      <LegendLabelField
+        name={highlightLabelName(entryId)}
+        codebookName={undefined}
+        label={intl.formatMessage(messages.presetHighlightLegendLabel)}
+        hint={intl.formatMessage(messages.presetHighlightLegendHint)}
+        required={intl.formatMessage(messages.presetHighlightLegendRequired)}
+        committed={asLocalizedString(
+          labelIn(item[HIGHLIGHT_LABELS_FIELD], entryId),
+        )}
+      />
+      {nodeTypes.map((nodeType) => (
+        <HighlightAttributeField
+          key={nodeType.id}
+          item={item}
+          entryId={entryId}
+          nodeType={nodeType}
+          several={several}
+        />
+      ))}
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          size="sm"
+          variant="text"
+          icon={<X aria-hidden="true" />}
+          onClick={onRemove}
+        >
+          {intl.formatMessage(messages.presetHighlightEntryRemove, { number })}
+        </Button>
+      </div>
+    </fieldset>
   );
 }
 
@@ -315,9 +581,14 @@ function PresetLayoutAdvisory({ presetId }: Readonly<{ presetId: unknown }>) {
  * are outlined together, which connections are drawn, and which stand out.
  * The filter is the preset's own — a narrative stage has none — so two
  * presets can show different parts of the network. Every other part names a
- * codebook layout, attribute or edge type, all read live from the protocol here, so
- * a collaborator's change to the codebook changes what this dialog offers
- * without the dialog asking for it.
+ * codebook layout, attribute or edge type, all read live from the protocol
+ * here, so a collaborator's change to the codebook changes what this dialog
+ * offers without the dialog asking for it.
+ *
+ * On a stage that shows several node types, each highlight entry names an
+ * attribute of each type, so one switch in the interview lights nodes of every
+ * type; and nodes are not grouped, because groups are drawn from one type's
+ * attribute.
  *
  * No writer class is claimed on either attribute control, and that is what a
  * preset IS. The narrative runtime restores positions from the preset's
@@ -331,7 +602,9 @@ function PresetLayoutAdvisory({ presetId }: Readonly<{ presetId: unknown }>) {
  */
 export function NarrativePresetFields({ item }: RowEditorProps) {
   const intl = useAppIntl();
-  const subject = useStageSubject('node');
+  const nodeTypeIds = useStageNodeTypes();
+  const protocolContext = useProtocolContext();
+  const setRowValue = useFormStore((store) => store.setFieldValue);
   const edgeChoicesOffered = useEdgeTypeChoices();
   // The same rules a stage's own filter may hold, judged the same way: a
   // preset's filter narrows the nodes and edges it shows.
@@ -339,6 +612,23 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   const { hasRules, requestFilterOpenChange } = useRowFilterCapability(
     item[FILTER_FIELD],
     PRESET_FILTER_CLEAR_WORDS,
+  );
+
+  const nodeTypes = useMemo<NodeTypeChoice[]>(
+    () =>
+      nodeTypeIds.map((id) => ({
+        id,
+        label: protocolContext.codebook.node?.[id]?.name ?? id,
+      })),
+    [nodeTypeIds, protocolContext],
+  );
+  const [onlyType] = nodeTypeIds;
+  const groupSubject = useMemo<CodebookSubject | undefined>(
+    () =>
+      nodeTypeIds.length === 1 && onlyType !== undefined
+        ? { entity: 'node', type: onlyType }
+        : undefined,
+    [nodeTypeIds.length, onlyType],
   );
 
   const committedLayout = asText(item[LAYOUT_FIELD]);
@@ -350,32 +640,19 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   const committedDisplay = useStableIdList(
     asNestedIdList(item.edges, 'display'),
   );
-  const committedHighlight = useStableIdList(asIdList(item[HIGHLIGHT_FIELD]));
+  const committedEntries = useStableIdList(asIdList(item[HIGHLIGHT_FIELD]));
 
   const groupOptions = useVariableChoices({
-    subject,
+    subject: groupSubject,
     types: CATEGORICAL_TYPES,
     ...(committedGroup === undefined ? {} : { currentValue: committedGroup }),
   });
-  const highlightAttributes = useVariableChoices({
-    subject,
-    types: BOOLEAN_TYPES,
-    ...(committedHighlight === undefined
-      ? {}
-      : { currentValue: committedHighlight }),
-  });
-  // The highlight control is a tick list, not a picker: it has no place to
-  // list an attribute it cannot use, so it shows only the ones it can.
-  const highlightOptions = useMemo(
-    () => availableOnly(highlightAttributes),
-    [highlightAttributes],
-  );
 
   /**
-   * What this preset NAMES on the two tick lists, read from the field rather
-   * than from the committed row.
+   * The edge types this preset NAMES on its tick list, read from the field
+   * rather than from the committed row.
    *
-   * Both lists render their boxes from the codebook, so a reference a
+   * The list renders its boxes from the codebook, so a reference a
    * collaborator deletes simply stops being a box while its id stays in the
    * value: the control writes the whole list back on any tick, so the dangling
    * id survives every gesture and the only way out is deleting the preset. The
@@ -388,10 +665,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     () => asIdList(live[DISPLAY_EDGES_FIELD]) ?? [],
     [live],
   );
-  const highlightedAttributes = useMemo(
-    () => asIdList(live[HIGHLIGHT_FIELD]) ?? [],
-    [live],
-  );
+  const entryIds = useMemo(() => asIdList(live[HIGHLIGHT_FIELD]) ?? [], [live]);
 
   const knownEdgeTypes = useMemo(
     () => new Set(edgeChoicesOffered.map((option) => option.value)),
@@ -401,30 +675,6 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   const edgeTypeNames = useMemo(
     () => new Map(edgeChoicesOffered.map(({ value, label }) => [value, label])),
     [edgeChoicesOffered],
-  );
-
-  /**
-   * Judged against what the list OFFERS rather than against the codebook, so
-   * an attribute retyped away from Boolean is recoverable too. It is
-   * still in the codebook and still cannot be a highlight, and read against
-   * the codebook alone it would be neither offered nor restored — a tick
-   * nothing could untick. Which of the two it is, is not something this list
-   * can tell, so it says the one thing that is true of both.
-   */
-  const knownHighlights = useMemo(
-    () => new Set(highlightOptions.map((option) => option.value)),
-    [highlightOptions],
-  );
-  // Named from every attribute, so a highlight retyped away from Boolean is
-  // still called by its name.
-  const attributeNames = useMemo(
-    () =>
-      new Map(highlightAttributes.map(({ value, label }) => [value, label])),
-    [highlightAttributes],
-  );
-  const lostHighlights = useLostReferences(
-    highlightedAttributes,
-    knownHighlights,
   );
 
   const edgeChoices = useMemo<TickChoice[]>(
@@ -438,19 +688,6 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
       })),
     ],
     [edgeChoicesOffered, intl, lostEdgeTypes],
-  );
-  const highlightChoices = useMemo<TickChoice[]>(
-    () => [
-      ...highlightOptions.map(({ value, label }) => ({ value, label })),
-      ...lostHighlights.map((id) => ({
-        value: id,
-        label: intl.formatMessage(
-          messages.presetUnavailableHighlightAttribute,
-          { attributeId: id },
-        ),
-      })),
-    ],
-    [highlightOptions, intl, lostHighlights],
   );
 
   return (
@@ -506,15 +743,21 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
         title={intl.formatMessage(messages.presetGroupingTitle)}
         description={intl.formatMessage(messages.presetGroupingDescription)}
       >
-        <Field<typeof VariablePicker>
-          name={GROUP_VARIABLE_FIELD}
-          label={intl.formatMessage(messages.presetGroupLabel)}
-          hint={intl.formatMessage(messages.presetGroupHint)}
-          component={VariablePicker}
-          options={groupOptions}
-          emptyMessage={intl.formatMessage(messages.presetGroupEmpty)}
-          initialValue={committedGroup}
-        />
+        {nodeTypes.length > 1 ? (
+          <Paragraph>
+            {intl.formatMessage(messages.presetGroupNeedsOneType)}
+          </Paragraph>
+        ) : (
+          <Field<typeof VariablePicker>
+            name={GROUP_VARIABLE_FIELD}
+            label={intl.formatMessage(messages.presetGroupLabel)}
+            hint={intl.formatMessage(messages.presetGroupHint)}
+            component={VariablePicker}
+            options={groupOptions}
+            emptyMessage={intl.formatMessage(messages.presetGroupEmpty)}
+            initialValue={committedGroup}
+          />
+        )}
       </Section>
 
       <Section
@@ -534,8 +777,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
           return (
             <LegendLabelField
               key={type}
-              labelsField={DISPLAY_LABELS_FIELD}
-              id={type}
+              name={formatObjectPath([DISPLAY_LABELS_FIELD, type])}
               codebookName={typeName}
               label={intl.formatMessage(messages.presetEdgeLegendLabel, {
                 edgeType: typeName,
@@ -552,33 +794,35 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
 
       <Section
         title={intl.formatMessage(messages.presetHighlightTitle)}
-        description={intl.formatMessage(messages.presetHighlightDescription)}
+        description={intl.formatMessage(
+          nodeTypes.length > 1
+            ? messages.presetHighlightDescriptionSeveral
+            : messages.presetHighlightDescription,
+        )}
       >
-        <Field<typeof OptionalTickList>
+        <Field<typeof HighlightEntryList>
           name={HIGHLIGHT_FIELD}
           label={intl.formatMessage(messages.presetHighlightLabel)}
-          component={OptionalTickList}
-          options={highlightChoices}
-          initialValue={committedHighlight}
+          component={HighlightEntryList}
+          initialValue={committedEntries}
+          addLabel={intl.formatMessage(messages.presetHighlightAdd)}
+          emptyMessage={intl.formatMessage(messages.presetHighlightEmptyState)}
+          renderEntry={(entryId: string, index: number) => (
+            <HighlightEntryFields
+              key={entryId}
+              item={item}
+              entryId={entryId}
+              number={index + 1}
+              nodeTypes={nodeTypes}
+              onRemove={() =>
+                setRowValue(
+                  HIGHLIGHT_FIELD,
+                  entryIds.filter((id) => id !== entryId),
+                )
+              }
+            />
+          )}
         />
-        {highlightedAttributes.map((variable) => (
-          <LegendLabelField
-            key={variable}
-            labelsField={HIGHLIGHT_LABELS_FIELD}
-            id={variable}
-            codebookName={attributeNames.get(variable) ?? variable}
-            label={intl.formatMessage(messages.presetHighlightLegendLabel, {
-              attribute: attributeNames.get(variable) ?? variable,
-            })}
-            hint={intl.formatMessage(messages.presetHighlightLegendHint)}
-            required={intl.formatMessage(
-              messages.presetHighlightLegendRequired,
-            )}
-            committed={asLocalizedString(
-              labelIn(item[HIGHLIGHT_LABELS_FIELD], variable),
-            )}
-          />
-        ))}
       </Section>
     </>
   );

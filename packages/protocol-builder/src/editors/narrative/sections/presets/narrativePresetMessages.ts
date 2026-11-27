@@ -265,40 +265,118 @@ export const narrativePresetMessages = defineMessages({
       'Heading of the group inside the preset dialog deciding which nodes are drawn so as to stand out.',
   },
   presetHighlightDescription: {
-    id: 'protocolBuilder.networkCanvas.presetHighlightDescription',
+    id: 'protocolBuilder.networkCanvas.presetHighlightEntriesDescription',
     defaultMessage:
-      'Highlight nodes whose selected boolean attributes are true.',
-    description: 'Description of the preset highlighted-nodes group.',
+      'Add a highlight for each boolean attribute that the interviewer can use to make nodes stand out. Nodes stand out while their attribute is true.',
+    description:
+      'Description of the node-highlighting group in the dialog for one narrative preset, on a stage that shows one node type. Read by the researcher designing the stage. A boolean attribute is a true-or-false codebook variable; the interviewer is the person running the interview.',
+  },
+  presetHighlightDescriptionSeveral: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightDescriptionSeveral',
+    defaultMessage:
+      'Add a highlight for each set of boolean attributes that the interviewer can use to make nodes stand out. Choose an attribute for each node type that the highlight covers. Nodes stand out while the attribute for their type is true.',
+    description:
+      'Description of the node-highlighting group in the dialog for one narrative preset, on a stage that shows several node types. One highlight names one true-or-false attribute of each node type, so one switch in the interview makes nodes of every type stand out. Read by the researcher designing the stage.',
   },
   presetHighlightLabel: {
-    id: 'protocolBuilder.networkCanvas.presetHighlightLabel',
-    defaultMessage: 'Highlight attributes',
+    id: 'protocolBuilder.networkCanvas.presetHighlightEntriesLabel',
+    defaultMessage: 'Highlights',
     description:
-      'Label of the tick list choosing which true-or-false codebook attributes make a node stand out.',
+      'Label of the list of highlights in the dialog for one narrative preset. A highlight is one way the interviewer can make some nodes stand out during the interview.',
+  },
+  presetHighlightEmptyState: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightEmptyState',
+    defaultMessage: 'This preset has no highlights.',
+    description:
+      'Shown in place of the list of highlights in the dialog for one narrative preset while the preset has none. Not a problem to fix: a preset may highlight nothing.',
+  },
+  presetHighlightAdd: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightAdd',
+    defaultMessage: 'Add a highlight',
+    description:
+      'Button in the dialog for one narrative preset that adds one more highlight to the preset. A highlight is one way the interviewer can make some nodes stand out during the interview.',
+  },
+  presetHighlightEntryLegend: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightEntryLegend',
+    defaultMessage: 'Highlight {number}',
+    description:
+      'Heading of the group of controls for one highlight in the dialog for one narrative preset. number is the position of the highlight in the list, starting at 1.',
+  },
+  presetHighlightEntryRemove: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightEntryRemove',
+    defaultMessage: 'Remove highlight {number}',
+    description:
+      'Button in the dialog for one narrative preset that removes one highlight from the preset. number is the position of the highlight in the list, starting at 1.',
   },
   presetHighlightLegendLabel: {
     id: 'protocolBuilder.networkCanvas.presetHighlightLegendLabel',
-    defaultMessage: 'Label for “{attribute}”',
+    defaultMessage: 'Highlight label',
     description:
-      'Label of the text box naming one highlighted attribute in the interview. attribute is the attribute’s name in the protocol’s codebook, which is not translated.',
+      'Label of the text box for the name of one highlight in the dialog for one narrative preset. The name is shown during the interview.',
   },
   presetHighlightLegendHint: {
     id: 'protocolBuilder.networkCanvas.presetHighlightLegendHint',
     defaultMessage:
-      'Shown during the interview, in the list of attributes this preset can highlight.',
+      'Shown during the interview, in the list of highlights this preset offers.',
     description:
-      'Guidance under the text box naming one highlighted attribute, saying where the label appears.',
+      'Guidance under the text box for the name of one highlight, saying where the name appears.',
   },
   presetHighlightLegendRequired: {
     id: 'protocolBuilder.networkCanvas.presetHighlightLegendRequired',
-    defaultMessage: 'Enter a label for this attribute.',
+    defaultMessage: 'Enter a label for this highlight.',
     description:
-      'Shown when the label of a highlighted attribute is left empty.',
+      'Shown under the text box for the name of one highlight in the dialog for one narrative preset, when the researcher saves the preset with that box empty.',
   },
-  presetUnavailableHighlightAttribute: {
-    id: 'protocolBuilder.networkCanvas.presetUnavailableHighlightAttribute',
-    defaultMessage: '{attributeId} — this attribute is not available here',
+  presetHighlightAttribute: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightAttribute',
+    defaultMessage: 'Attribute',
     description:
-      'Name of the tick-list choice standing for an attribute a preset still highlights by and the list can no longer offer — it may have been deleted from the protocol’s codebook, or changed to a kind of attribute that is not true-or-false. Worded for what the list knows: it is handed the true-or-false attributes and a stored choice, and cannot tell those two cases apart. attributeId is the raw stored identifier, which is not translated.',
+      'Label of the picker for the true-or-false codebook attribute that one highlight of a narrative preset reads, on a stage that shows one node type.',
+  },
+  presetHighlightAttributeForType: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightAttributeForType',
+    defaultMessage: 'Attribute for {nodeType}',
+    description:
+      'Label of the picker for the true-or-false codebook attribute that one highlight of a narrative preset reads on nodes of one type, on a stage that shows several node types. nodeType is the name of the node type in the codebook, which is not translated.',
+  },
+  presetHighlightAttributeHintSeveral: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightAttributeHintSeveral',
+    defaultMessage:
+      'Optional. Leave this empty if nodes of this type should not stand out for this highlight.',
+    description:
+      'Guidance under the picker for the attribute that one highlight of a narrative preset reads on nodes of one type, on a stage that shows several node types.',
+  },
+  presetHighlightAttributeRequired: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightAttributeRequired',
+    defaultMessage: 'Choose the attribute for this highlight.',
+    description:
+      'Shown under the attribute picker of one highlight in the dialog for one narrative preset, when the researcher saves the preset without choosing an attribute.',
+  },
+  presetHighlightAttributeRequiredSeveral: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightAttributeRequiredSeveral',
+    defaultMessage:
+      'Choose an attribute for at least one node type, or remove this highlight.',
+    description:
+      'Shown under the first attribute picker of one highlight in the dialog for one narrative preset, on a stage that shows several node types, when the researcher saves the preset with no attribute chosen for that highlight.',
+  },
+  presetHighlightAttributeEmpty: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightAttributeEmpty',
+    defaultMessage:
+      'This type has no boolean attributes, so there is nothing to highlight by.',
+    description:
+      'Shown in place of the attribute picker of one highlight in a narrative preset when the node type has no true-or-false attribute in the codebook. "This type" is that node type.',
+  },
+  presetHighlightAttributeClear: {
+    id: 'protocolBuilder.networkCanvas.presetHighlightAttributeClear',
+    defaultMessage: 'Do not highlight {nodeType}',
+    description:
+      'Button under the attribute picker of one highlight in a narrative preset, on a stage that shows several node types. It empties the picker, so nodes of that type do not stand out for this highlight. nodeType is the name of the node type in the codebook, which is not translated.',
+  },
+  presetGroupNeedsOneType: {
+    id: 'protocolBuilder.networkCanvas.presetGroupNeedsOneType',
+    defaultMessage:
+      'Groups need one node type. This stage shows several node types, so its presets cannot group nodes.',
+    description:
+      'Shown in place of the grouping-attribute picker in the dialog for one narrative preset, when the stage shows more than one node type. Groups are outlines drawn around nodes that share a value of one attribute of one node type.',
   },
 });

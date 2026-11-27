@@ -1,12 +1,9 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { fixtureLayoutId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testVariableId } from '../../../testing/testId.ts';
 import {
   narrativeEditor,
-  narrativeHolding,
   narrativeSections,
   openPreset,
 } from './narrativeFixtures.tsx';
@@ -83,33 +80,5 @@ describe('the narrative sections, read in Spanish', () => {
     ).toHaveAccessibleDescription(
       /^Coloca los nodos automáticamente mediante una disposición dirigida por fuerzas\s*$/,
     );
-  });
-
-  /**
-   * An attribute the codebook has lost is named by the id it left behind,
-   * spliced into the Spanish sentence rather than into the English one.
-   */
-  it('splices a lost highlight attribute’s id into the Spanish tick list', async () => {
-    const LOST_HIGHLIGHT = testVariableId('former_flag');
-    const harness = renderStageEditor({
-      ...narrativeHolding({
-        id: 'narrative-preset-1',
-        label: { 'en-US': 'Vista por defecto' },
-        layout: fixtureLayoutId('layout'),
-        highlight: [
-          { variable: LOST_HIGHLIGHT, label: { 'en-US': 'Antes marcado' } },
-        ],
-      }),
-      locale: 'es',
-    });
-
-    const preset = await openPreset(harness, 0, 'Edit vista predefinida');
-    // Asserted on the whole rendered name, so a placeholder left out of the
-    // Spanish fails here rather than rendering as `{attributeId}`.
-    expect(
-      preset.getByRole('checkbox', {
-        name: `${LOST_HIGHLIGHT}: este atributo no está disponible aquí`,
-      }),
-    ).toBeChecked();
   });
 });

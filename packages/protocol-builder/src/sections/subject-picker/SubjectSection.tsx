@@ -23,6 +23,7 @@ import BuilderSection from '../BuilderSection.tsx';
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import type { SectionKey } from '../sectionKeys.ts';
 import {
+  presetsDescribeNodeType,
   promptsDescribeNodeType,
   promptsNeedingNodeType,
 } from './subjectReset.ts';
@@ -127,6 +128,13 @@ const messages = defineMessages({
       'Prompts on this stage highlight or sort this node type. Removing it from the stage removes those settings. The settings for the other node types are kept.',
     description:
       'Body of the confirmation raised when a researcher removes one of several kinds of network member a stage shows. Prompts are the questions or tasks the stage sets the participant; to highlight is to mark the people or places a participant taps, and to sort is to set the order in which they are listed.',
+  },
+  nodeRemovePresetsDescription: {
+    id: 'protocolBuilder.subjectSection.nodeRemovePresetsDescription',
+    defaultMessage:
+      'Presets on this stage highlight this node type. Removing it from the stage removes those settings. The settings for the other node types are kept.',
+    description:
+      'Body of the confirmation that the researcher sees in the stage editor when they remove one of several kinds of network member a Narrative stage shows. A preset is one saved view of the network that the interviewer can switch to; to highlight is to make some people or places stand out in that view.',
   },
   nodeRemoveConfirm: {
     id: 'protocolBuilder.subjectSection.nodeRemoveConfirm',
@@ -393,20 +401,25 @@ export default function SubjectSection({
   useResetStageOnSubjectChange();
 
   const confirmChange = useSubjectChangeQuestion(words, intl);
-  // Asked only when the stage's prompts say something about the type, since
-  // that is all removing one of several types costs.
+  // Asked only when the stage's prompts or presets say something about the
+  // type, since that is all removing one of several types costs.
   const confirmRemoval = useCallback(
-    (typeId: string) =>
-      promptsDescribeNodeType(
-        stageAnswerAt(storeApi.getState(), committedFields, 'prompts'),
-        typeId,
-      )
-        ? {
+    (typeId: string) => {
+      const answerAt = (key: string) =>
+        stageAnswerAt(storeApi.getState(), committedFields, key);
+      const description = promptsDescribeNodeType(answerAt('prompts'), typeId)
+        ? messages.nodeRemoveDescription
+        : presetsDescribeNodeType(answerAt('presets'), typeId)
+          ? messages.nodeRemovePresetsDescription
+          : undefined;
+      return description === undefined
+        ? undefined
+        : {
             title: intl.formatMessage(messages.nodeRemoveTitle),
-            description: intl.formatMessage(messages.nodeRemoveDescription),
+            description: intl.formatMessage(description),
             confirmLabel: intl.formatMessage(messages.nodeRemoveConfirm),
-          }
-        : undefined,
+          };
+    },
     [committedFields, intl, storeApi],
   );
   // Unticking the last type resets the stage as a change does, but there is

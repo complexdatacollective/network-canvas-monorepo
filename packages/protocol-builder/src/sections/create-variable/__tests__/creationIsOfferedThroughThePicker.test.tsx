@@ -245,7 +245,7 @@ const PICKERS_REACHED: Readonly<Record<string, number>> = {
   [fixtureStageId('name-generator-1')]: 1,
   [fixtureStageId('name-generator-quick-add-1')]: 1,
   [fixtureStageId('name-generator-roster-1')]: 0,
-  [fixtureStageId('narrative-1')]: 2,
+  [fixtureStageId('narrative-1')]: 3,
   [fixtureStageId('narrative-pedigree-1')]: 1,
   [fixtureStageId('network-composer-1')]: 3,
   [fixtureStageId('one-to-many-dyad-census-1')]: 0,

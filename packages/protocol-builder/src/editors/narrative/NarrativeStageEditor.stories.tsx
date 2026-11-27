@@ -4,9 +4,15 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
-import { fixtureStageId } from '../../testing/protocolFixture.ts';
+import {
+  fixtureLayoutId,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { storyDialogVisible } from '../../testing/storyDialogVisible.ts';
+import { testId } from '../../testing/testId.ts';
 import { narrativeStageEditor } from './NarrativeStageEditor.ts';
 
 const meta = {
@@ -63,9 +69,9 @@ export const Editing: Story = {
 };
 
 /**
- * Each attribute a preset highlights carries the label a participant reads for
- * it, written in every language the protocol is in. A newly ticked attribute's
- * label starts as the attribute's name.
+ * Each highlight of a preset carries the label the interview shows for it,
+ * written in every language the protocol is in, and names the attribute it
+ * reads.
  */
 export const HighlightLabels: Story = {
   play: async ({ canvasElement }) => {
@@ -81,9 +87,97 @@ export const HighlightLabels: Story = {
     );
     await storyDialogVisible(panel);
     const preset = within(panel);
+    const highlight = within(
+      preset.getByRole('group', { name: 'Highlight 1' }),
+    );
     await expect(
-      preset.getByRole('textbox', { name: 'Label for “flagged”' }),
+      highlight.getByRole('textbox', { name: 'Highlight label' }),
     ).toHaveValue('Flagged');
+    await expect(highlight.getByText('Attribute')).toBeVisible();
+  },
+};
+
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+
+/**
+ * A stage that shows two node types. Each highlight of a preset has an
+ * attribute picker for each type, and the grouping picker is replaced by a
+ * sentence saying that groups need one node type.
+ */
+export const SeveralNodeTypes: Story = {
+  args: {
+    stageId: testId('several-types-narrative'),
+    stage: {
+      type: 'Narrative',
+      fields: {
+        label: { 'en-US': 'People and family' },
+        subject: { entity: 'node', types: [PERSON, FAMILY_MEMBER] },
+        background: { concentricCircles: 4, skewedTowardCenter: true },
+        behaviours: { freeDraw: true, allowRepositioning: true },
+        presets: [
+          {
+            id: testId('several-types-preset'),
+            label: { 'en-US': 'Everyone' },
+            layout: fixtureLayoutId('layout'),
+            highlight: [
+              {
+                id: testId('several-types-highlight'),
+                label: { 'en-US': 'Stands out' },
+                attributes: [
+                  {
+                    id: testId('several-types-person'),
+                    type: PERSON,
+                    variable: fixtureVariableId(
+                      { entity: 'node', typeName: 'person' },
+                      'highlighted',
+                    ),
+                  },
+                  {
+                    id: testId('several-types-family'),
+                    type: FAMILY_MEMBER,
+                    variable: fixtureVariableId(
+                      { entity: 'node', typeName: 'family member' },
+                      'hasConditionX',
+                    ),
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      canvas.getByRole('checkbox', { name: 'family member' }),
+    ).toBeChecked();
+    await userEvent.click(canvas.getByRole('button', { name: 'Edit preset' }));
+
+    const panel = await within(canvasElement.ownerDocument.body).findByRole(
+      'dialog',
+    );
+    await storyDialogVisible(panel);
+    const preset = within(panel);
+    await expect(
+      preset.getByText(
+        'Groups need one node type. This stage shows several node types, so its presets cannot group nodes.',
+      ),
+    ).toBeVisible();
+    const highlight = within(
+      preset.getByRole('group', { name: 'Highlight 1' }),
+    );
+    await expect(highlight.getByText('Attribute for person')).toBeVisible();
+    await expect(
+      highlight.getByText('Attribute for family member'),
+    ).toBeVisible();
+    await expect(
+      highlight.getByRole('button', { name: 'Do not highlight family member' }),
+    ).toBeVisible();
   },
 };
 

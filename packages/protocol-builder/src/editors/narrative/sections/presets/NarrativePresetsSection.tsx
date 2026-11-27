@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -13,13 +13,17 @@ import {
   rowId,
   rowTemplate,
   type RowListConfig,
+  type RowSaveOutcome,
   type RowValues,
 } from '../../../../form/rowDialog.tsx';
 import BuilderSection from '../../../../sections/BuilderSection.tsx';
-import { useStageSubject } from '../../../../sections/useStageSubject.ts';
+import { useStageNodeTypes } from '../../../../sections/useStageSubject.ts';
 import {
-  collapseNarrativePreset,
+  collapseNarrativePresetFor,
   expandNarrativePreset,
+  highlightAttributeIn,
+  highlightAttributeName,
+  highlightEntryIdsIn,
   NarrativePresetFields,
   NarrativePresetPreview,
 } from './NarrativePresetFields.tsx';
@@ -38,9 +42,8 @@ const AT_LEAST_ONE_PRESET = createMessageError(messages.presetsAtLeastOne);
  * The ways of looking at the network this stage offers.
  *
  * The stage's `presets` and nothing else. Every preset describes the stage's
- * own subject — which of its attributes position the nodes, group them and
- * make them stand out — so there is nothing to build until a node type is
- * chosen, and the section says so rather than offering pickers with nothing in
+ * own node types — which of their attributes group the nodes and make them
+ * stand out — so there is nothing to build until a node type is chosen, and the section says so rather than offering pickers with nothing in
  * them.
  *
  * Not the shared `PromptsSection`, which is the same shape: a narrative stage
@@ -51,11 +54,40 @@ const AT_LEAST_ONE_PRESET = createMessageError(messages.presetsAtLeastOne);
  */
 export default function NarrativePresetsSection() {
   const intl = useAppIntl();
-  const subject = useStageSubject('node');
-  const waiting = subject === undefined;
+  const types = useStageNodeTypes();
+  const waiting = types.length === 0;
 
-  const rowList = useMemo<RowListConfig>(
-    () => ({
+  // A single type's attribute picker is required by its own field; on a stage
+  // that shows several, each is optional but a highlight must name something.
+  const beforeSave = useCallback(
+    (row: RowValues): RowSaveOutcome => {
+      if (types.length < 2) return { row };
+      const [firstType] = types;
+      if (firstType === undefined) return { row };
+      const fieldErrors = Object.fromEntries(
+        highlightEntryIdsIn(row)
+          .filter((entryId) =>
+            types.every(
+              (type) => highlightAttributeIn(row, entryId, type) === undefined,
+            ),
+          )
+          .map((entryId) => [
+            highlightAttributeName(entryId, firstType),
+            intl.formatMessage(
+              messages.presetHighlightAttributeRequiredSeveral,
+            ),
+          ]),
+      );
+      return Object.keys(fieldErrors).length === 0
+        ? { row }
+        : { refused: { fieldErrors } };
+    },
+    [intl, types],
+  );
+
+  const rowList = useMemo<RowListConfig>(() => {
+    const collapse = collapseNarrativePresetFor(types);
+    return {
       Preview: NarrativePresetPreview,
       Editor: NarrativePresetFields,
       addTitle: messages.presetsAddTitle,
@@ -63,10 +95,10 @@ export default function NarrativePresetsSection() {
       formId: 'narrative-preset-editor',
       name: PRESETS_FIELD,
       expand: expandNarrativePreset,
-      normalize: (row) => withoutAbsentEntries(collapseNarrativePreset(row)),
-    }),
-    [],
-  );
+      beforeSave,
+      normalize: (row) => withoutAbsentEntries(collapse(row)),
+    };
+  }, [beforeSave, types]);
 
   return (
     <BuilderSection

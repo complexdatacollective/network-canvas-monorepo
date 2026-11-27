@@ -194,6 +194,68 @@ export function fitPromptsToNodeTypes(
   return changed ? fitted : undefined;
 }
 
+/**
+ * A Narrative stage's presets once the node types in `removed` are no longer
+ * shown and the stage shows `after`: each highlight entry loses its attributes
+ * about a removed type, an entry left with none goes, and a highlight list
+ * left empty goes. A grouping attribute goes once the stage shows several
+ * types, because groups are drawn from one type's attribute. An added type
+ * needs nothing stored: the preset editor offers each entry an empty picker
+ * for every type the stage shows.
+ *
+ * `undefined` when nothing in the presets changes, so a caller writes nothing.
+ */
+export function fitPresetsToNodeTypes(
+  presets: unknown,
+  removed: readonly string[],
+  after: readonly string[],
+): Record<string, FieldValue>[] | undefined {
+  if (!Array.isArray(presets)) return undefined;
+  const records = presets.filter(isRecord);
+  if (records.length !== presets.length) return undefined;
+  let changed = false;
+  const fitted = records.map((preset) => {
+    const next: Record<string, FieldValue> = { ...preset };
+    if (after.length > 1 && 'groupVariable' in preset) {
+      changed = true;
+      delete next.groupVariable;
+    }
+    const entries = preset.highlight;
+    if (!Array.isArray(entries)) return next;
+    const kept = entries.flatMap((entry) => {
+      if (!isRecord(entry) || !Array.isArray(entry.attributes)) return [entry];
+      const attributes = entry.attributes.filter(
+        (attribute) => !isAboutOneOf(attribute, removed),
+      );
+      if (attributes.length === entry.attributes.length) return [entry];
+      changed = true;
+      return attributes.length === 0 ? [] : [{ ...entry, attributes }];
+    });
+    if (kept.length === 0) delete next.highlight;
+    else next.highlight = kept;
+    return next;
+  });
+  return changed ? fitted : undefined;
+}
+
+/** Whether the presets say anything about `type` that removing it would lose. */
+export const presetsDescribeNodeType = (
+  presets: unknown,
+  type: string,
+): boolean =>
+  Array.isArray(presets) &&
+  presets.some(
+    (preset) =>
+      isRecord(preset) &&
+      Array.isArray(preset.highlight) &&
+      preset.highlight.some(
+        (entry) =>
+          isRecord(entry) &&
+          Array.isArray(entry.attributes) &&
+          entry.attributes.some((attribute) => isAboutOneOf(attribute, [type])),
+      ),
+  );
+
 /** Whether the prompts say anything about `type` that removing it would lose. */
 export const promptsDescribeNodeType = (
   prompts: unknown,

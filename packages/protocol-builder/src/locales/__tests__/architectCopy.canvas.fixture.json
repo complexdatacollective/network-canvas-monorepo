@@ -400,16 +400,6 @@
     "es": "Agrupación de nodos",
     "from": "74a07e626 architect.sections.narrativePresets.presetFields.nodeGrouping"
   },
-  "protocolBuilder.networkCanvas.presetHighlightDescription": {
-    "en": "Highlight nodes whose selected boolean attributes are true.",
-    "es": "Resalta los nodos cuyos atributos booleanos seleccionados sean verdaderos.",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.highlightNodesWhoseSelectedBooleanAttributes; es revised in the 2026-09-17 Spanish translation pass"
-  },
-  "protocolBuilder.networkCanvas.presetHighlightLabel": {
-    "en": "Highlight attributes",
-    "es": "Atributos para resaltar",
-    "from": "74a07e626 architect.sections.narrativePresets.presetFields.highlightAttributes"
-  },
   "protocolBuilder.networkCanvas.presetHighlightTitle": {
     "en": "Node highlighting",
     "es": "Resaltado de nodos",

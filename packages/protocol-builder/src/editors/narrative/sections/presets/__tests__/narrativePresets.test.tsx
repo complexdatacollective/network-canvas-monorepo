@@ -9,6 +9,7 @@ import {
   attributeField,
   chooseAttributeById,
   closeAttributePicker,
+  offeredAttributes,
   openAttributePicker,
 } from '../../../../../testing/attributePicker.ts';
 import {
@@ -69,6 +70,9 @@ const fixturePresetIds = () => {
       ),
     ),
     highlightId: idOf(firstOf(rows('highlight'))),
+    highlightAttributeId: idOf(
+      firstOf(Reflect.get(Object(firstOf(rows('highlight'))), 'attributes')),
+    ),
   };
 };
 
@@ -130,8 +134,14 @@ describe('the ways of looking at the network a narrative stage offers', () => {
         highlight: [
           {
             id: fixturePreset.highlightId,
-            variable: FLAGGED,
             label: { 'en-US': 'Flagged' },
+            attributes: [
+              {
+                id: fixturePreset.highlightAttributeId,
+                type: PERSON,
+                variable: FLAGGED,
+              },
+            ],
           },
         ],
       },
@@ -203,14 +213,25 @@ describe('the ways of looking at the network a narrative stage offers', () => {
   });
 });
 
-/**
- * What the interview calls each highlighted attribute. An attribute's codebook
- * label is not translated, so every highlight carries a label of its own.
- */
-describe('the label of a highlighted attribute', () => {
-  const highlightLabel = 'Label for “highlighted”';
+/** Adds a highlight to an open preset dialog and answers with its group. */
+const addHighlight = async (
+  harness: StageEditorHarness,
+  preset: ReturnType<typeof within>,
+  number: number,
+): Promise<HTMLElement> => {
+  await harness.user.click(
+    preset.getByRole('button', { name: 'Add a highlight' }),
+  );
+  return preset.findByRole('group', { name: `Highlight ${number}` });
+};
 
-  it('starts at the attribute’s name, and saves what the researcher writes', async () => {
+/**
+ * What the interview calls each highlight, and the attribute it reads. An
+ * attribute's codebook name is not translated, so every highlight carries a
+ * label of its own.
+ */
+describe('a highlight of a preset', () => {
+  it('saves a new highlight with its label and its attribute', async () => {
     const harness = renderStageEditor(openEditor());
 
     const preset = await addPreset(harness);
@@ -219,14 +240,16 @@ describe('the label of a highlighted attribute', () => {
       'Standing out',
     );
     await chooseAttributeById(harness.user, attributeField('Layout'), LAYOUT);
-    await harness.user.click(
-      preset.getByRole('checkbox', { name: 'highlighted' }),
+    const highlight = await addHighlight(harness, preset, 1);
+    await harness.user.type(
+      within(highlight).getByRole('textbox', { name: 'Highlight label' }),
+      'Close ties',
     );
-    const label = await preset.findByRole('textbox', { name: highlightLabel });
-    expect(label).toHaveValue('highlighted');
-
-    await harness.user.clear(label);
-    await harness.user.type(label, 'Close ties');
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute', highlight),
+      HIGHLIGHTED,
+    );
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -235,27 +258,226 @@ describe('the label of a highlighted attribute', () => {
     const saved = await harness.submit();
     const added = presetsOf(saved?.stageDocument ?? {})[1];
     expect(added).toMatchObject({
-      highlight: [{ variable: HIGHLIGHTED, label: { 'en-US': 'Close ties' } }],
+      highlight: [
+        {
+          label: { 'en-US': 'Close ties' },
+          attributes: [{ type: PERSON, variable: HIGHLIGHTED }],
+        },
+      ],
     });
-    expect(isProtocolObjectId(idOf(firstOf(added?.highlight)))).toBe(true);
+    const entry = firstOf(added?.highlight);
+    expect(isProtocolObjectId(idOf(entry))).toBe(true);
+    expect(
+      isProtocolObjectId(
+        idOf(firstOf(Reflect.get(Object(entry), 'attributes'))),
+      ),
+    ).toBe(true);
   });
 
-  it('refuses a highlighted attribute with no label', async () => {
+  it('refuses a highlight with no label', async () => {
     const harness = renderStageEditor(openEditor());
 
     const preset = await openPreset(harness);
     await harness.user.clear(
-      preset.getByRole('textbox', { name: 'Label for “flagged”' }),
+      preset.getByRole('textbox', { name: 'Highlight label' }),
     );
     await harness.user.click(preset.getByRole('button', { name: 'Save' }));
 
     expect(
-      await preset.findByText('Enter a label for this attribute.'),
+      await preset.findByText('Enter a label for this highlight.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('refuses a highlight with no attribute', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const preset = await openPreset(harness);
+    const highlight = await addHighlight(harness, preset, 2);
+    await harness.user.type(
+      within(highlight).getByRole('textbox', { name: 'Highlight label' }),
+      'Nothing yet',
+    );
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+
     expect(
-      preset.queryByRole('textbox', { name: highlightLabel }),
+      await preset.findByText('Choose the attribute for this highlight.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('removes a highlight from the preset', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const preset = await openPreset(harness);
+    await harness.user.click(
+      preset.getByRole('button', { name: 'Remove highlight 1' }),
+    );
+    expect(
+      preset.queryByRole('group', { name: 'Highlight 1' }),
     ).not.toBeInTheDocument();
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(presetsOf(saved?.stageDocument ?? {})[0]).not.toHaveProperty(
+      'highlight',
+    );
+  });
+});
+
+const FAMILY_CONDITION = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'hasConditionX',
+);
+
+/** A narrative stage that shows people and family members together. */
+const narrativeOverTwoTypes = (presets: Record<string, unknown>[] = []) => ({
+  stage: {
+    id: testId('Narrative-two-types'),
+    type: 'Narrative' as const,
+    fields: {
+      label: { 'en-US': 'Two types' },
+      subject: { entity: 'node', types: [PERSON, FAMILY_MEMBER] },
+      background: { concentricCircles: 4, skewedTowardCenter: true },
+      behaviours: { freeDraw: true, allowRepositioning: true },
+      presets,
+    },
+  },
+  sections: narrativeSections,
+});
+
+/**
+ * On a stage that shows several node types, one highlight names an attribute
+ * of each type, so one switch in the interview lights nodes of every type.
+ */
+describe('a preset on a stage that shows several node types', () => {
+  it('writes one attribute row per stage type', async () => {
+    const harness = renderStageEditor(narrativeOverTwoTypes());
+
+    const preset = await addPreset(harness);
+    await harness.user.type(
+      preset.getByRole('textbox', { name: 'Preset label' }),
+      'Both',
+    );
+    await chooseAttributeById(harness.user, attributeField('Layout'), LAYOUT);
+    const highlight = await addHighlight(harness, preset, 1);
+    await harness.user.type(
+      within(highlight).getByRole('textbox', { name: 'Highlight label' }),
+      'Stands out',
+    );
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute for person', highlight),
+      HIGHLIGHTED,
+    );
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute for family member', highlight),
+      FAMILY_CONDITION,
+    );
+    await harness.user.click(preset.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(presetsOf(saved?.stageDocument ?? {})[0]).toMatchObject({
+      highlight: [
+        {
+          label: { 'en-US': 'Stands out' },
+          attributes: [
+            { type: PERSON, variable: HIGHLIGHTED },
+            { type: FAMILY_MEMBER, variable: FAMILY_CONDITION },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('saves a highlight that names an attribute of one type only', async () => {
+    const harness = renderStageEditor(narrativeOverTwoTypes());
+
+    const preset = await addPreset(harness);
+    await harness.user.type(
+      preset.getByRole('textbox', { name: 'Preset label' }),
+      'People',
+    );
+    await chooseAttributeById(harness.user, attributeField('Layout'), LAYOUT);
+    const highlight = await addHighlight(harness, preset, 1);
+    await harness.user.type(
+      within(highlight).getByRole('textbox', { name: 'Highlight label' }),
+      'Close',
+    );
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute for family member', highlight),
+      FAMILY_CONDITION,
+    );
+    await harness.user.click(
+      within(highlight).getByRole('button', {
+        name: 'Do not highlight family member',
+      }),
+    );
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute for person', highlight),
+      HIGHLIGHTED,
+    );
+    await harness.user.click(preset.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(presetsOf(saved?.stageDocument ?? {})[0]).toMatchObject({
+      highlight: [{ attributes: [{ type: PERSON, variable: HIGHLIGHTED }] }],
+    });
+    expect(
+      Reflect.get(
+        Object(firstOf(presetsOf(saved?.stageDocument ?? {})[0]?.highlight)),
+        'attributes',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('refuses a highlight that names no attribute for any type', async () => {
+    const harness = renderStageEditor(narrativeOverTwoTypes());
+
+    const preset = await addPreset(harness);
+    await harness.user.type(
+      preset.getByRole('textbox', { name: 'Preset label' }),
+      'None',
+    );
+    await chooseAttributeById(harness.user, attributeField('Layout'), LAYOUT);
+    const highlight = await addHighlight(harness, preset, 1);
+    await harness.user.type(
+      within(highlight).getByRole('textbox', { name: 'Highlight label' }),
+      'Empty',
+    );
+    await harness.user.click(preset.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await preset.findByText(
+        'Choose an attribute for at least one node type, or remove this highlight.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('explains that groups need one node type in place of the grouping picker', async () => {
+    const harness = renderStageEditor(narrativeOverTwoTypes());
+
+    const preset = await addPreset(harness);
+
+    expect(
+      preset.getByText(
+        'Groups need one node type. This stage shows several node types, so its presets cannot group nodes.',
+      ),
+    ).toBeInTheDocument();
+    expect(preset.queryByText('Grouping attribute')).not.toBeInTheDocument();
   });
 });
 
@@ -280,16 +502,17 @@ describe('an attribute something else already collects', () => {
     const harness = renderStageEditor(openEditor());
 
     const preset = await addPreset(harness);
+    const highlight = await addHighlight(harness, preset, 1);
 
     // The alter form collects this one; nothing collects the other. Both are
-    // asserted, so a tick list that rendered nothing at all cannot pass as a
-    // list that correctly left one out.
+    // asserted, so a picker that listed nothing at all cannot pass as one
+    // that correctly left one out.
     expect(
-      await preset.findByRole('checkbox', { name: 'flagged' }),
-    ).toBeInTheDocument();
-    expect(
-      preset.getByRole('checkbox', { name: 'highlighted' }),
-    ).toBeInTheDocument();
+      await offeredAttributes(
+        harness.user,
+        attributeField('Attribute', highlight),
+      ),
+    ).toEqual(expect.arrayContaining([FLAGGED, HIGHLIGHTED]));
   });
 });
 
@@ -323,58 +546,71 @@ describe('an attribute another interface owns', () => {
     const harness = renderStageEditor(narrativeOverFamilyMembers());
 
     const preset = await addPreset(harness);
+    const highlight = await addHighlight(harness, preset, 1);
 
     // `is_ego` is the pedigree's own slot; `hasConditionX` is an ordinary
-    // true/false attribute of the same type. Both are asserted, so a tick
-    // list that rendered nothing cannot pass as one that correctly left the
-    // owned attribute out.
+    // true/false attribute of the same type. Both are asserted, so a picker
+    // that listed nothing cannot pass as one that correctly left the owned
+    // attribute out.
     expect(
-      await preset.findByRole('checkbox', { name: 'is_ego' }),
-    ).toBeInTheDocument();
-    expect(
-      preset.getByRole('checkbox', { name: 'hasConditionX' }),
-    ).toBeInTheDocument();
+      await offeredAttributes(
+        harness.user,
+        attributeField('Attribute', highlight),
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        fixtureVariableId(
+          { entity: 'node', typeName: 'family member' },
+          'is_ego',
+        ),
+        FAMILY_CONDITION,
+      ]),
+    );
   });
 });
 
 /**
- * Both of a preset's tick lists take everything they offer from the codebook,
- * so both can be empty — and a fieldset with no boxes in it reads as an editor
- * that failed to draw rather than as a codebook with nothing to offer. The
- * released Architect disabled the whole section instead; the package says why,
- * in one sentence that serves every canvas tick list.
+ * A preset's edge type list and its highlight pickers take everything they
+ * offer from the codebook, so both can be empty — and a fieldset with no boxes
+ * in it reads as an editor that failed to draw rather than as a codebook with
+ * nothing to offer. The released Architect disabled the whole section instead;
+ * the package says why.
  */
-describe('a preset’s tick lists with nothing in them', () => {
+describe('a preset’s lists with nothing in them', () => {
   const EMPTY_LIST =
     'Nothing to choose from yet. Create what this list offers in the codebook first.';
 
-  it('say why, rather than rendering empty fieldsets', async () => {
+  it('say why, rather than rendering empty controls', async () => {
     const harness = renderStageEditor(openEditor());
 
     // Every edge type and every attribute a preset could highlight by, gone.
-    // A preset being ADDED holds no reference of its own, so neither list has
-    // a lost reference to report in place of a choice.
+    // A preset being ADDED holds no reference of its own, so neither control
+    // has a lost reference to report in place of a choice.
     harness.receiveCodebookUpdate({
       edge: { [KNOWS]: null, [FAMILY_EDGE]: null },
       node: { [PERSON]: personWithoutHighlights(harness) },
     });
 
     const preset = await addPreset(harness);
+    const highlight = await addHighlight(harness, preset, 1);
 
+    // Inside the field's own group, so the list still answers to its label.
     await waitFor(() =>
-      expect(preset.getAllByText(EMPTY_LIST)).toHaveLength(2),
+      expect(
+        within(preset.getByRole('group', { name: 'Edge types' })).getByText(
+          EMPTY_LIST,
+        ),
+      ).toBeInTheDocument(),
     );
     expect(preset.queryByRole('checkbox')).toBeNull();
-
-    // Each sentence inside its own field's group, so both lists still answer
-    // to the labels that tell them apart. Said in place of the group instead,
-    // neither field has an accessible name — and these two are exactly the
-    // case where the name is the only thing separating "no edge types" from
-    // "no attributes to highlight by".
-    for (const name of ['Edge types', 'Highlight attributes']) {
-      const list = preset.getByRole('group', { name });
-      expect(within(list).getByText(EMPTY_LIST)).toBeInTheDocument();
-    }
+    // The picker lists the other attributes as not available here, and
+    // offers none.
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Attribute', highlight),
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -405,7 +641,6 @@ const personWithoutHighlights = (harness: StageEditorHarness): SectionDoc => {
 const LOST_EDGE = testTypeId('former_edge');
 const LOST_HIGHLIGHT = testVariableId('former_flag');
 const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
-const LOST_HIGHLIGHT_CHOICE = `${LOST_HIGHLIGHT} — this attribute is not available here`;
 
 /**
  * A preset naming things this protocol does not define.
@@ -441,13 +676,25 @@ describe('a preset naming what the codebook no longer has', () => {
         highlight: [
           {
             id: testId('highlight-flagged'),
-            variable: FLAGGED,
             label: { 'en-US': 'Flagged' },
+            attributes: [
+              {
+                id: testId('attribute-flagged'),
+                type: PERSON,
+                variable: FLAGGED,
+              },
+            ],
           },
           {
             id: testId('highlight-lost'),
-            variable: LOST_HIGHLIGHT,
             label: { 'en-US': 'Formerly flagged' },
+            attributes: [
+              {
+                id: testId('attribute-lost'),
+                type: PERSON,
+                variable: LOST_HIGHLIGHT,
+              },
+            ],
           },
         ],
       }),
@@ -461,19 +708,23 @@ describe('a preset naming what the codebook no longer has', () => {
     expect(
       preset.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
     ).toBeChecked();
+    // The picker of the second highlight still names what it holds.
     expect(
-      preset.getByRole('checkbox', { name: LOST_HIGHLIGHT_CHOICE }),
-    ).toBeChecked();
+      within(preset.getByRole('group', { name: 'Highlight 2' })).getByText(
+        LOST_HIGHLIGHT,
+        { exact: false },
+      ),
+    ).toBeInTheDocument();
   });
 
-  it('lets the researcher untick them, which repairs the preset', async () => {
+  it('lets the researcher untick and remove them, which repairs the preset', async () => {
     const { harness, preset } = await openLostPreset();
 
     await harness.user.click(
       preset.getByRole('checkbox', { name: LOST_EDGE_CHOICE }),
     );
     await harness.user.click(
-      preset.getByRole('checkbox', { name: LOST_HIGHLIGHT_CHOICE }),
+      preset.getByRole('button', { name: 'Remove highlight 2' }),
     );
     // Unticking must not take the box away mid-gesture: the researcher has to
     // be able to see what they have just done.
@@ -502,8 +753,14 @@ describe('a preset naming what the codebook no longer has', () => {
       highlight: [
         {
           id: testId('highlight-flagged'),
-          variable: FLAGGED,
           label: { 'en-US': 'Flagged' },
+          attributes: [
+            {
+              id: testId('attribute-flagged'),
+              type: PERSON,
+              variable: FLAGGED,
+            },
+          ],
         },
       ],
     });

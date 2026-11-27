@@ -83,7 +83,7 @@ describe('the narrative stage editor', () => {
     const name = await screen.findByRole('textbox', { name: 'Stage name' });
     await harness.user.clear(name);
     await harness.user.type(name, 'Story');
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(screen.getByRole('checkbox', { name: 'person' }));
 
     const preset = await addPreset(harness);
     await harness.user.type(

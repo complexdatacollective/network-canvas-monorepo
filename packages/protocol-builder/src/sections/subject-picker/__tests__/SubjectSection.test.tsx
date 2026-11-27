@@ -6,6 +6,7 @@ import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { newEntityDraft } from '../../../codebook/components/CodebookEntityEditorDialog.tsx';
+import { narrativePresets } from '../../../editors/narrative/sections/presets/narrativePresets.tsx';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import {
   fixtureLayoutId,
@@ -1577,5 +1578,156 @@ describe('the node types a Sociogram shows', () => {
     const saved = await savedFields(harness);
     expect(saved.subject).toEqual({ entity: 'node', types: [PERSON] });
     expect(saved.prompts).toEqual([prompt]);
+  });
+});
+
+describe('the node types a Narrative shows', () => {
+  const FLAGGED = fixtureVariableId(
+    { entity: 'node', typeName: 'person' },
+    'flagged',
+  );
+  const CONTACT_TYPE = fixtureVariableId(
+    { entity: 'node', typeName: 'person' },
+    'contactType',
+  );
+  const HAS_CONDITION = fixtureVariableId(
+    { entity: 'node', typeName: 'family member' },
+    'hasConditionX',
+  );
+  const personAttribute = {
+    id: testId('attribute-person'),
+    type: PERSON,
+    variable: FLAGGED,
+  };
+  const familyAttribute = {
+    id: testId('attribute-family'),
+    type: FAMILY_MEMBER,
+    variable: HAS_CONDITION,
+  };
+  const Presets = narrativePresets();
+
+  const narrative = (
+    types: readonly string[],
+    presets: readonly Record<string, unknown>[],
+  ) => ({
+    stage: {
+      id: testId('several-types-narrative'),
+      type: 'Narrative' as const,
+      fields: {
+        label: en('Narrative'),
+        subject: { entity: 'node', types },
+        background: { concentricCircles: 4, skewedTowardCenter: true },
+        behaviours: { freeDraw: true, allowRepositioning: true },
+        presets,
+      },
+    },
+    sections: (
+      <>
+        <SubjectSection entity="node" />
+        <Presets />
+      </>
+    ),
+  });
+
+  const savedFields = async (harness: Harness) =>
+    (await harness.submit())?.stageDocument ?? {};
+
+  it('adding a type keeps the presets', async () => {
+    const preset = {
+      id: testId('preset-one'),
+      label: en('Everyone'),
+      layout: fixtureLayoutId('layout'),
+      groupVariable: CONTACT_TYPE,
+      highlight: [
+        {
+          id: testId('highlight-flagged'),
+          label: en('Flagged'),
+          attributes: [personAttribute],
+        },
+      ],
+    };
+    const harness = renderStageEditor(narrative([PERSON], [preset]));
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'family member' }),
+      ).toBeChecked(),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Change the node type' }),
+    ).not.toBeInTheDocument();
+
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({
+      entity: 'node',
+      types: [PERSON, FAMILY_MEMBER],
+    });
+    // Groups are drawn from one type's attribute, so the grouping goes.
+    const { groupVariable: _groupVariable, ...kept } = preset;
+    expect(saved.presets).toEqual([kept]);
+  });
+
+  it('removing a type prunes only its highlight attributes', async () => {
+    const harness = renderStageEditor(
+      narrative(
+        [PERSON, FAMILY_MEMBER],
+        [
+          {
+            id: testId('preset-one'),
+            label: en('Everyone'),
+            layout: fixtureLayoutId('layout'),
+            highlight: [
+              {
+                id: testId('highlight-both'),
+                label: en('Stands out'),
+                attributes: [personAttribute, familyAttribute],
+              },
+              {
+                id: testId('highlight-family'),
+                label: en('Family only'),
+                attributes: [familyAttribute],
+              },
+            ],
+          },
+        ],
+      ),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    expect(
+      await screen.findByText(
+        'Presets on this stage highlight this node type. Removing it from the stage removes those settings. The settings for the other node types are kept.',
+      ),
+    ).toBeInTheDocument();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Remove the node type' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'family member' }),
+      ).not.toBeChecked(),
+    );
+
+    const saved = await savedFields(harness);
+    expect(saved.subject).toEqual({ entity: 'node', types: [PERSON] });
+    expect(saved.presets).toEqual([
+      {
+        id: testId('preset-one'),
+        label: en('Everyone'),
+        layout: fixtureLayoutId('layout'),
+        highlight: [
+          {
+            id: testId('highlight-both'),
+            label: en('Stands out'),
+            attributes: [personAttribute],
+          },
+        ],
+      },
+    ]);
   });
 });

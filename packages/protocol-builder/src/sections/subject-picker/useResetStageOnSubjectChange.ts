@@ -25,6 +25,7 @@ import {
 import { useOnResearcherChange } from '../researcherChange.ts';
 import { draftSubjectNodeTypes } from '../useStageSubject.ts';
 import {
+  fitPresetsToNodeTypes,
   fitPromptsToNodeTypes,
   SUBJECT_INDEPENDENT_FIELDS,
   subjectDependentPaths,
@@ -191,7 +192,8 @@ export function useResetStageOnSubjectChange(): void {
   useOnResearcherChange('subject', (subject, previous) => {
     // A stage that keeps one of the types it showed and gains or loses others
     // still describes the types it keeps: only what is about a removed type
-    // goes, and a node type order a prompt has gains each added type.
+    // goes, a node type order a prompt has gains each added type, and a
+    // Narrative preset stops grouping once the stage shows several types.
     const before = draftSubjectNodeTypes(previous);
     const after = draftSubjectNodeTypes(subject);
     if (
@@ -199,20 +201,34 @@ export function useResetStageOnSubjectChange(): void {
       after !== undefined &&
       after.some((type) => before.includes(type))
     ) {
-      const pruned = fitPromptsToNodeTypes(
-        stageAnswerAt(storeApi.getState(), committedFields, 'prompts'),
-        before.filter((type) => !after.includes(type)),
-        after.filter((type) => !before.includes(type)),
+      const removed = before.filter((type) => !after.includes(type));
+      const fitted = [
+        {
+          key: 'prompts',
+          value: fitPromptsToNodeTypes(
+            stageAnswerAt(storeApi.getState(), committedFields, 'prompts'),
+            removed,
+            after.filter((type) => !before.includes(type)),
+          ),
+        },
+        {
+          key: 'presets',
+          value: fitPresetsToNodeTypes(
+            stageAnswerAt(storeApi.getState(), committedFields, 'presets'),
+            removed,
+            after,
+          ),
+        },
+      ].flatMap(({ key, value }) =>
+        value === undefined ? [] : [{ key, value }],
       );
       applyOwnCommands([
         { op: 'set', key: 'subject', value: subject },
-        ...(pruned === undefined
-          ? []
-          : [{ op: 'set', key: 'prompts', value: pruned } satisfies Command]),
+        ...fitted.map(({ key, value }): Command => ({ op: 'set', key, value })),
       ]);
-      if (pruned !== undefined) {
-        clearStageValue('prompts');
-        writeStageValue('prompts', pruned, { prompts: pruned });
+      for (const { key, value } of fitted) {
+        clearStageValue(key);
+        writeStageValue(key, value, { [key]: value });
       }
       return;
     }
