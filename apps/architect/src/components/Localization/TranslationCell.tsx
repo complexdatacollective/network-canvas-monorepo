@@ -463,7 +463,7 @@ const PlainTextCell = ({
   const fallbackShown = empty && error === undefined;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Escape' && draft.changed) {
+    if (event.key === 'Escape' && draft.revertible) {
       event.preventDefault();
       event.stopPropagation();
       draft.revert();
@@ -680,7 +680,7 @@ const useEditedCell = ({
     if (event.key === 'Escape') {
       // In one version's line, Escape first folds the versions back into
       // their pill; only Escape in the text around them puts the cell back.
-      if (!draft.changed || editable.matches('[data-version]')) return;
+      if (!draft.revertible || editable.matches('[data-version]')) return;
       event.preventDefault();
       event.stopPropagation();
       holdFocus();

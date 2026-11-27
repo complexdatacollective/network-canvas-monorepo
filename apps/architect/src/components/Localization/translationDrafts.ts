@@ -40,11 +40,14 @@ import { getProtocol } from '~/selectors/protocol';
 import {
   type CellValue,
   cellValue,
+  hasWordingBy,
   pathKey,
   readCellValue,
   type TextPath,
   translationFieldName,
   useStablePath,
+  withoutWordingBy,
+  withWordingBy,
 } from './cellNames';
 import { fieldsLeftOut, formFieldsAt, formVariables } from './formTranslations';
 import {
@@ -437,6 +440,18 @@ const recheckLeftCells = (formStore: FormStoreApi, except?: string) => {
 };
 
 /**
+ * The fields of the cells of versions' wording into which the popover of the
+ * cell whose field is `writer` wrote wording that they still keep as its.
+ */
+const cellsWordedBy = (
+  state: ReturnType<FormStoreApi['getState']>,
+  writer: string,
+): string[] =>
+  [...state.fields.keys()].filter((fieldName) =>
+    hasWordingBy(readCellValue(state.getFieldState(fieldName)?.value), writer),
+  );
+
+/**
  * One cell, held in the translation table's form until the table is saved:
  * the translation it shows, whether it differs from what the protocol has
  * (its translation, or the logic its editor changed), and why it cannot be
@@ -465,6 +480,11 @@ export const useTranslationDraft = ({
   const text = field === undefined ? stored : readCellValue(field.value).text;
   const changed =
     field !== undefined && !isEqual(field.value, field.initialValue);
+  // Wording this cell's popovers wrote into versions' rows, which those rows
+  // show as unsaved, is this cell's to take back too.
+  const wroteWording = useFormStore(
+    (state) => cellsWordedBy(state, name).length > 0,
+  );
   const error =
     field?.meta.isBlurred === true && !field.meta.isValidating
       ? firstError
@@ -524,10 +544,15 @@ export const useTranslationDraft = ({
     }
   };
 
-  /** Writes `next` as the cell's text, keeping the logic it changed. */
+  /**
+   * Writes `next` as the cell's text, keeping the logic it changed. Text
+   * typed in a version's row replaces the wording that popovers wrote there,
+   * so it is the row's own (see `WordingWrites`).
+   */
   const writeText = (next: string) => {
     const state = formStore.getState();
     const held = readCellValue(state.getFieldState(name)?.value);
+    if (next === held.text) return;
     state.setFieldValue(name, cellValue(next, held.logic));
   };
 
@@ -569,15 +594,37 @@ export const useTranslationDraft = ({
     recheckLeftCells(formStore, name);
   };
 
-  /** Puts back what the protocol has: the text, and the logic it changed. */
+  /**
+   * Puts back what the protocol has: the text, the logic it changed, and the
+   * wording its popovers wrote into versions' rows. A row typed in after a
+   * popover wrote it keeps what was typed.
+   */
   const revert = () => {
     const state = formStore.getState();
-    if (!state.fields.has(name)) return;
-    state.resetField(name);
+    for (const worded of cellsWordedBy(state, name)) {
+      state.setFieldValue(
+        worded,
+        withoutWordingBy(
+          readCellValue(state.getFieldState(worded)?.value),
+          name,
+        ),
+      );
+    }
+    if (state.fields.has(name)) state.resetField(name);
     recheckLeftCells(formStore);
   };
 
-  return { name, text, changed, error, change, leave, revert };
+  return {
+    name,
+    text,
+    changed,
+    /** Whether Escape in the cell has anything to put back. */
+    revertible: changed || wroteWording,
+    error,
+    change,
+    leave,
+    revert,
+  };
 };
 
 /**
@@ -735,9 +782,12 @@ export const useDefinitionsInTable = (
           change(readCellValue(state.getFieldState(name)?.value)),
         );
       };
+      // Kept as the wording of the cell whose popover wrote it, so Escape
+      // there takes it back.
+      const writer = translationFieldName(cellPath, cellLocale);
       for (const wording of wordings) {
         writeCell(wording.path, wording.locale, (was) =>
-          cellValue(wording.text, was.logic),
+          withWordingBy(was, writer, wording.text),
         );
       }
       writeCell(cellPath, cellLocale, (was) => cellValue(was.text, logic));

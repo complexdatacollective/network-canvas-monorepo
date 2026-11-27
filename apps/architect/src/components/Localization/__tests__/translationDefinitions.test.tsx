@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { act, render, waitFor } from '@testing-library/react';
+import { isEqual } from 'es-toolkit';
 import { useContext, useEffect } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
@@ -19,6 +20,7 @@ import {
   fieldBlockMarkdown,
 } from '@codaco/protocol-validation';
 import { formOf } from '@codaco/protocol-validation/testing';
+import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getTranslationGroups } from '~/selectors/issues';
@@ -217,7 +219,17 @@ const renderTableDefinitions = (
     if (saved?.type !== 'EgoForm') throw new Error('The stage is a form.');
     return saved;
   };
-  return { definitions, form, logic, type, save, stage };
+  /** What the cell of `path` in `locale` shows, and whether it is unsaved. */
+  const cell = (path: readonly (string | number)[], locale = 'en') => {
+    const field = form()
+      .getState()
+      .getFieldState(translationFieldName(path, locale));
+    return {
+      text: readCellValue(field?.value).text,
+      changed: field !== undefined && !isEqual(field.value, field.initialValue),
+    };
+  };
+  return { definitions, form, logic, type, save, stage, cell, store };
 };
 
 const ASKED = testId('condition/asked');
@@ -325,13 +337,9 @@ describe('the logic that a cell of the translation table writes', () => {
       });
     });
 
-    const missing = translationFieldName(
-      [...STAGE, 'dynamicAttributes', SMOKING_WORDING, 'missing'],
-      'en',
-    );
     expect(
-      readCellValue(table.form().getState().getFieldState(missing)?.value),
-    ).toEqual({ text: 'someone' });
+      table.cell([...STAGE, 'dynamicAttributes', SMOKING_WORDING, 'missing']),
+    ).toEqual({ text: 'someone', changed: true });
   });
 
   it("is not the cell's own change when only a version's wording changes: the version's row has it, and Escape there puts it back", async () => {
@@ -614,6 +622,189 @@ describe('the logic that a cell changed, put back with Escape', () => {
       await act(() => table.save());
       expect(table.stage().conditions).toEqual({ [ASKED]: ASKED_CONDITION });
     });
+  });
+});
+
+describe("a version's wording changed in the popover of a dynamic attribute opened from a cell", () => {
+  /** The cell of the stage's name, whose owner is the stage too. */
+  const LABEL_EN: Cell = { path: [...STAGE, 'label'], locale: 'en' };
+  const CONTENT_ES: Cell = { path: CONTENT, locale: 'es' };
+  const FIRST = 0;
+  const SECOND = 1;
+  const MISSING = [...STAGE, 'dynamicAttributes', SMOKING_WORDING, 'missing'];
+
+  /**
+   * Writes `wording` in `locale` as the wording of the version for a
+   * missing answer, through the popover of the cell at `index`.
+   */
+  const word = (
+    table: ReturnType<typeof renderTableDefinitions>,
+    index: number,
+    wording: string,
+    locale = 'en',
+  ) =>
+    act(() => {
+      const { values, set } = table.definitions(index).dynamicAttributes;
+      const smoking = values[SMOKING_WORDING] as {
+        missing: Record<string, string>;
+      };
+      set({
+        ...values,
+        [SMOKING_WORDING]: {
+          ...smoking,
+          missing: { ...smoking.missing, [locale]: wording },
+        },
+      });
+    });
+
+  /** The wording for a missing answer, as the cell at `index` sees it. */
+  const missingWording = (
+    table: ReturnType<typeof renderTableDefinitions>,
+    index = 0,
+  ) =>
+    (
+      table.definitions(index).dynamicAttributes.values[SMOKING_WORDING] as {
+        missing: Record<string, string>;
+      }
+    ).missing;
+
+  it("is put back by Escape in that cell, though it is not the cell's own text or logic, and the version's row is unsaved until then", async () => {
+    const table = renderTableDefinitions();
+    word(table, FIRST, 'someone');
+
+    await waitFor(() => expect(table.logic().revertible).toBe(true));
+    expect(table.logic().changed).toBe(false);
+    expect(table.cell(MISSING)).toEqual({ text: 'someone', changed: true });
+
+    act(() => table.logic().revert());
+
+    expect(table.cell(MISSING)).toEqual({ text: 'you', changed: false });
+    await waitFor(() => expect(table.logic().revertible).toBe(false));
+    expect(missingWording(table)).toEqual({ en: 'you' });
+  });
+
+  it('is not a change once the popover writes back what the row had', async () => {
+    const table = renderTableDefinitions();
+    word(table, FIRST, 'someone');
+    await waitFor(() => expect(table.logic().revertible).toBe(true));
+
+    word(table, FIRST, 'you');
+
+    expect(table.cell(MISSING)).toEqual({ text: 'you', changed: false });
+    await waitFor(() => expect(table.logic().revertible).toBe(false));
+  });
+
+  describe('when the popovers of two cells changed the same wording, one after the other', () => {
+    const changeInBoth = async () => {
+      const table = renderTableDefinitions(protocol, [LABEL_EN]);
+      word(table, FIRST, 'someone');
+      word(table, SECOND, 'anyone');
+      await waitFor(() => expect(table.logic(SECOND).revertible).toBe(true));
+      expect(table.logic(FIRST).revertible).toBe(true);
+      expect(table.cell(MISSING).text).toBe('anyone');
+      return table;
+    };
+
+    it("shows the first cell's wording after Escape in the second, and the protocol's after Escape in the first", async () => {
+      const table = await changeInBoth();
+
+      act(() => table.logic(SECOND).revert());
+      expect(table.cell(MISSING)).toEqual({ text: 'someone', changed: true });
+      await waitFor(() => expect(table.logic(SECOND).revertible).toBe(false));
+
+      act(() => table.logic(FIRST).revert());
+      expect(table.cell(MISSING)).toEqual({ text: 'you', changed: false });
+    });
+
+    it("keeps the second cell's wording after Escape in the first, and shows the protocol's after Escape in the second", async () => {
+      const table = await changeInBoth();
+
+      act(() => table.logic(FIRST).revert());
+      expect(table.cell(MISSING)).toEqual({ text: 'anyone', changed: true });
+      await waitFor(() => expect(table.logic(FIRST).revertible).toBe(false));
+      expect(table.logic(SECOND).revertible).toBe(true);
+
+      act(() => table.logic(SECOND).revert());
+      expect(table.cell(MISSING)).toEqual({ text: 'you', changed: false });
+    });
+
+    it('saves what is left after Escape in one of them, as one change that one undo takes back', async () => {
+      const table = await changeInBoth();
+      const before = table.stage();
+      act(() => table.logic(SECOND).revert());
+
+      const result = await act(() => table.save());
+
+      expect(result).toEqual({ success: true });
+      expect(table.stage().dynamicAttributes?.[SMOKING_WORDING]).toMatchObject({
+        missing: { en: 'someone' },
+      });
+      act(() => {
+        table.store.dispatch(timelineActions.undo());
+      });
+      expect(table.stage()).toEqual(before);
+    });
+  });
+
+  it("keeps what was typed in the version's row afterwards when Escape is pressed in the cell, and Escape in the row puts back the protocol's", async () => {
+    const table = renderTableDefinitions();
+    word(table, FIRST, 'someone');
+    act(() => table.type(MISSING, 'a person'));
+
+    // The row's own text replaces the popover's wording, so the cell has
+    // nothing of it left to put back.
+    await waitFor(() => expect(table.logic().revertible).toBe(false));
+    act(() => table.logic().revert());
+    expect(table.cell(MISSING)).toEqual({ text: 'a person', changed: true });
+
+    act(() =>
+      table.form().getState().resetField(translationFieldName(MISSING, 'en')),
+    );
+    expect(table.cell(MISSING)).toEqual({ text: 'you', changed: false });
+  });
+
+  it('puts back what was typed in the row before the popover changed it, with Escape in the cell', async () => {
+    const table = renderTableDefinitions();
+    act(() => table.type(MISSING, 'a person'));
+    word(table, FIRST, 'someone');
+    expect(table.cell(MISSING).text).toBe('someone');
+
+    act(() => table.logic().revert());
+
+    expect(table.cell(MISSING)).toEqual({ text: 'a person', changed: true });
+  });
+
+  it("leaves the row as the protocol has it when Escape was pressed in the row first, and Escape in the cell then puts back only the cell's own changes", async () => {
+    const table = renderTableDefinitions();
+    act(() => table.type(CONTENT, 'Changed text'));
+    word(table, FIRST, 'someone');
+
+    act(() =>
+      table.form().getState().resetField(translationFieldName(MISSING, 'en')),
+    );
+    expect(table.cell(MISSING)).toEqual({ text: 'you', changed: false });
+    expect(table.logic().changed).toBe(true);
+
+    act(() => table.logic().revert());
+
+    expect(table.cell(MISSING)).toEqual({ text: 'you', changed: false });
+    expect(table.cell(CONTENT).changed).toBe(false);
+  });
+
+  it("puts back with Escape in a cell only the wording in that cell's language", async () => {
+    const table = renderTableDefinitions(inSpanishToo, [CONTENT_ES]);
+    word(table, FIRST, 'someone', 'en');
+    word(table, SECOND, 'alguien', 'es');
+    expect(table.cell(MISSING, 'es').text).toBe('alguien');
+
+    act(() => table.logic(SECOND).revert());
+
+    expect(table.cell(MISSING, 'es')).toEqual({ text: '', changed: false });
+    expect(table.cell(MISSING, 'en')).toEqual({
+      text: 'someone',
+      changed: true,
+    });
+    expect(missingWording(table)).toEqual({ en: 'someone' });
   });
 });
 

@@ -269,6 +269,72 @@ test.describe('the translation table, for text that differs between languages', 
     expect(saved?.content.es).toBe(saved?.content.en);
   });
 
+  test("puts back a version's wording changed in a dynamic attribute's popover with Escape in the cell the popover was opened from", async ({
+    architectPage: page,
+    seed,
+  }) => {
+    await seed(protocolWithFormLogic());
+    const table = await openTable(page);
+    const rows = stageRows(table, /^Stage 1 · About you/);
+    const text = row(rows, 'Form');
+    const formText = text.getByRole('textbox', { name: /Form English$/ });
+    const openFormText = async () => {
+      await text.getByRole('button', { name: /Form English$/ }).click();
+      await expect(formText).toBeFocused();
+    };
+    // The English wording of the version for a happy participant, in its own
+    // row.
+    const happy = rows
+      .getByRole('row')
+      .filter({
+        has: page.getByRole('rowheader', {
+          name: /^Dynamic attributes › .* › Happy$/,
+        }),
+      })
+      .getByRole('textbox', { name: /English$/ });
+    await expect(happy).toHaveValue('happy friend');
+
+    await openFormText();
+    await formText
+      .locator('data.variable-pill[data-attribute-type="dynamic"]')
+      .click();
+    const popover = new TextAttributes(page).popover();
+    await expect(popover).toBeVisible();
+    const wording = popover.getByRole('textbox', {
+      name: 'Happy',
+      exact: true,
+    });
+    await expect(wording).toHaveValue('happy friend');
+    await wording.clear();
+    await wording.pressSequentially('glad friend');
+    await page.keyboard.press('Escape');
+    await expect(popover).toBeHidden();
+    // The version's row shows the wording, which is not saved yet.
+    await expect(happy).toHaveValue('glad friend');
+
+    // Another change, so that the save writes the stage.
+    const stageName = row(rows, 'Stage name').getByRole('textbox', {
+      name: /English$/,
+    });
+    await stageName.fill('About you now');
+    await openFormText();
+    await page.keyboard.press('Escape');
+    await expect(happy).toHaveValue('happy friend');
+
+    await translationTable(page)
+      .getByRole('button', { name: 'Save', exact: true })
+      .click();
+    await expect(translationTable(page)).toBeHidden();
+    const stage = await readStageJson(page, 0, (saved) =>
+      JSON.stringify(saved).includes('About you now'),
+    );
+    expect(Object.values(stage.dynamicAttributes ?? {})).toEqual([
+      expect.objectContaining({
+        answers: [expect.objectContaining({ wording: { en: 'happy friend' } })],
+      }),
+    ]);
+  });
+
   test("expects a dynamic attribute's wording in a language once that language's text shows it", async ({
     architectPage: page,
     seed,

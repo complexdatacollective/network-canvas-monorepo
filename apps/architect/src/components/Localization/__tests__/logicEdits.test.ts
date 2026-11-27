@@ -7,6 +7,8 @@ import {
   readCellLogic,
   withPatch,
   withPatches,
+  wordingAfterWrite,
+  wordingWithout,
 } from '../logicEdits';
 
 const STORED = { a: 'stored a', b: 'stored b' };
@@ -168,5 +170,58 @@ describe("what a cell's field holds as its logic", () => {
     expect(latestOrder([undefined, { a: { order: 4, removed: true } }])).toBe(
       4,
     );
+  });
+});
+
+describe("the wording that popovers wrote into a version's row", () => {
+  it('shows the latest, and the rest in order as each is taken back', () => {
+    const first = wordingAfterWrite({
+      text: 'stored',
+      wordings: undefined,
+      writer: 'a',
+      next: 'from a',
+    });
+    const second = wordingAfterWrite({ ...first, writer: 'b', next: 'from b' });
+    // `a` writes again, so it is the latest.
+    const third = wordingAfterWrite({
+      ...second,
+      writer: 'a',
+      next: 'a again',
+    });
+
+    expect(third.text).toBe('a again');
+    const withoutA = wordingWithout({ ...third, writer: 'a' });
+    expect(withoutA.text).toBe('from b');
+    expect(wordingWithout({ ...withoutA, writer: 'b' })).toEqual({
+      text: 'stored',
+    });
+    expect(wordingWithout({ ...second, writer: 'a' }).text).toBe('from b');
+  });
+
+  it("drops a writer's wording that the row would show without it", () => {
+    const written = wordingAfterWrite({
+      text: 'typed',
+      wordings: undefined,
+      writer: 'a',
+      next: 'from a',
+    });
+
+    expect(
+      wordingAfterWrite({ ...written, writer: 'a', next: 'typed' }),
+    ).toEqual({ text: 'typed' });
+  });
+
+  it('leaves the row as it is when the writer wrote nothing into it', () => {
+    const written = wordingAfterWrite({
+      text: 'stored',
+      wordings: undefined,
+      writer: 'a',
+      next: 'from a',
+    });
+
+    expect(wordingWithout({ ...written, writer: 'b' })).toEqual(written);
+    expect(
+      wordingWithout({ text: 'typed', wordings: undefined, writer: 'a' }),
+    ).toEqual({ text: 'typed' });
   });
 });

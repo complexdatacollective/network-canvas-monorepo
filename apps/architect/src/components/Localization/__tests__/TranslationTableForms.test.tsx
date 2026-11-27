@@ -705,6 +705,105 @@ describe('editing the text of a form in the translation table', () => {
     expect(getProtocol(store.getState())?.stages[0]).toEqual(before);
   });
 
+  describe("a version's wording changed in a dynamic attribute's popover", () => {
+    /**
+     * Changes the wording for smokers in the popover of the English text's
+     * dynamic attribute, typed a key at a time, and leaves the cell. The
+     * version's row's English box, and its cell.
+     */
+    const changeSmokerWording = async (user: Rendered['user']) => {
+      const editor = await openFormText(user, 'English');
+      const popover = await openDynamicAttribute(user, editor);
+      const wording = within(popover)
+        .getAllByRole<HTMLInputElement>('textbox')
+        .find((box) => box.value === 'a smoker');
+      if (wording === undefined) throw new Error('No box has the wording.');
+      await user.clear(wording);
+      await user.type(wording, 'someone who smokes');
+      await user.keyboard('{Escape}');
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Dynamic attribute' }),
+        ).not.toBeInTheDocument(),
+      );
+      await leaveCell(user);
+      const [row] = new Set(
+        screen.getAllByText('someone who smokes').map(rowOf),
+      );
+      if (row === undefined) throw new Error('No row has the wording.');
+      const box = within(row).getByRole<HTMLTextAreaElement>('textbox', {
+        name: /English$/,
+      });
+      const cell = box.closest('td');
+      if (cell === null) throw new Error('The wording is not in a cell.');
+      expect(isMarkedUnsaved(cell)).toBe(true);
+      return { box, cell };
+    };
+
+    /** Presses Escape in the English text of the form. */
+    const escapeInFormText = async (user: Rendered['user']) => {
+      await openFormText(user, 'English');
+      await user.keyboard('{Escape}');
+    };
+
+    it('is put back by Escape in the cell the popover was opened from', async () => {
+      const { store, user } = renderTable(protocolWithLogic);
+      const before = getProtocol(store.getState())?.stages[0];
+      const { box, cell } = await changeSmokerWording(user);
+
+      await escapeInFormText(user);
+
+      await waitFor(() => expect(isMarkedUnsaved(cell)).toBe(false));
+      expect(box).toHaveValue('a smoker');
+      await save(user);
+      expect(getProtocol(store.getState())?.stages[0]).toEqual(before);
+    });
+
+    it('is put back by Escape in that cell after its language was hidden and shown again', async () => {
+      const { user } = renderTable(protocolWithLogic);
+      await changeSmokerWording(user);
+      const toggleEnglish = async () => {
+        await user.click(screen.getByRole('button', { name: /^Languages/ }));
+        await user.click(
+          await screen.findByRole('menuitemcheckbox', { name: 'English' }),
+        );
+        await user.keyboard('{Escape}');
+      };
+      await toggleEnglish();
+      expect(
+        screen.queryByRole('button', { name: /Form English$/ }),
+      ).not.toBeInTheDocument();
+      await toggleEnglish();
+      expect(screen.getByDisplayValue('someone who smokes')).toBeVisible();
+
+      await escapeInFormText(user);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByDisplayValue('someone who smokes'),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.getByDisplayValue('a smoker')).toBeVisible();
+    });
+
+    it("keeps what was typed in the version's row afterwards when Escape is pressed in the cell", async () => {
+      const { user } = renderTable(protocolWithLogic);
+      const { box, cell } = await changeSmokerWording(user);
+      await user.clear(box);
+      await user.type(box, 'a person who smokes');
+
+      await escapeInFormText(user);
+      await leaveCell(user);
+
+      expect(box).toHaveValue('a person who smokes');
+      expect(isMarkedUnsaved(cell)).toBe(true);
+      await user.click(box);
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(isMarkedUnsaved(cell)).toBe(false));
+      expect(box).toHaveValue('a smoker');
+    });
+  });
+
   describe('a cell whose text and logic both changed', () => {
     const changeTextAndLogic = async (user: Rendered['user']) => {
       const editor = await openFormText(user, 'English');

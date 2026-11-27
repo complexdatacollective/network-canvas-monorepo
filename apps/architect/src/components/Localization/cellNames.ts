@@ -4,7 +4,14 @@ import type { LocaleTag } from '@codaco/protocol-validation';
 import { isRecord } from '@codaco/shared-consts';
 import type { TranslationRow } from '~/selectors/issues';
 
-import { type CellLogic, readCellLogic } from './logicEdits';
+import {
+  type CellLogic,
+  readCellLogic,
+  readWordingWrites,
+  wordingAfterWrite,
+  wordingWithout,
+  type WordingWrites,
+} from './logicEdits';
 
 export type TextPath = TranslationRow['path'];
 
@@ -14,10 +21,23 @@ export type TextPath = TranslationRow['path'];
  * the text's owner (its stage, or its node label), if it made any. The field
  * is unsaved while it holds anything other than what it was registered with,
  * and Escape in the cell resets it, which puts back both.
+ *
+ * The cell of a version of a dynamic attribute also keeps the wording that
+ * other cells wrote into it through the dynamic attribute's popover, by the
+ * cell that wrote it (see `WordingWrites`): Escape in that cell takes its
+ * wording back out.
  */
-export type CellValue = Readonly<{ text: string; logic?: CellLogic }>;
+export type CellValue = Readonly<{
+  text: string;
+  logic?: CellLogic;
+  wordings?: WordingWrites;
+}>;
 
-/** A cell's value holding `text` and `logic`, with no logic when there is none. */
+/**
+ * A cell's value holding `text` and `logic`, with no logic when there is
+ * none. Text written this way is the cell's own, so it holds no other cell's
+ * wording.
+ */
 export const cellValue = (text: string, logic?: CellLogic): CellValue =>
   logic === undefined ? { text } : { text, logic };
 
@@ -27,8 +47,51 @@ export const cellValue = (text: string, logic?: CellLogic): CellValue =>
  */
 export const readCellValue = (value: unknown): CellValue => {
   if (!isRecord(value) || typeof value.text !== 'string') return { text: '' };
-  return cellValue(value.text, readCellLogic(value.logic));
+  const read = cellValue(value.text, readCellLogic(value.logic));
+  const wordings = readWordingWrites(value.wordings);
+  return wordings === undefined ? read : { ...read, wordings };
 };
+
+const withWording = (
+  was: CellValue,
+  { text, wordings }: Readonly<{ text: string; wordings?: WordingWrites }>,
+): CellValue =>
+  wordings === undefined
+    ? cellValue(text, was.logic)
+    : { ...cellValue(text, was.logic), wordings };
+
+/**
+ * The cell of a version's wording, `was`, once the popover of the cell whose
+ * field is `writer` writes `text` into it.
+ */
+export const withWordingBy = (
+  was: CellValue,
+  writer: string,
+  text: string,
+): CellValue =>
+  withWording(
+    was,
+    wordingAfterWrite({
+      text: was.text,
+      wordings: was.wordings,
+      writer,
+      next: text,
+    }),
+  );
+
+/**
+ * The cell of a version's wording, `was`, once the wording that the popover
+ * of the cell whose field is `writer` wrote into it is taken back.
+ */
+export const withoutWordingBy = (was: CellValue, writer: string): CellValue =>
+  withWording(
+    was,
+    wordingWithout({ text: was.text, wordings: was.wordings, writer }),
+  );
+
+/** Whether the popover of the cell whose field is `writer` wrote `value`'s wording. */
+export const hasWordingBy = (value: CellValue, writer: string) =>
+  value.wordings !== undefined && Object.hasOwn(value.wordings.by, writer);
 
 /**
  * The form field holding one cell: the text's path and the cell's language,
