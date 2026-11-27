@@ -1,4 +1,4 @@
-import { createElement, useMemo } from 'react';
+import { createElement, type RefObject, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 
@@ -130,9 +130,11 @@ const stageItems = (stages: LayoutWithUsage['setBy']) =>
 
 type LayoutEntryProps = {
   layout: LayoutWithUsage;
+  /** Where focus goes once the entry, and its delete button, are gone. */
+  focusAfterDelete: RefObject<HTMLHeadingElement | null>;
 };
 
-const LayoutEntry = ({ layout }: LayoutEntryProps) => {
+const LayoutEntry = ({ layout, focusAfterDelete }: LayoutEntryProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const readOnly = useProtocolReadOnly();
@@ -152,6 +154,7 @@ const LayoutEntry = ({ layout }: LayoutEntryProps) => {
         message: commonMessages.cancel,
       }),
       intent: 'destructive',
+      finalFocus: focusAfterDelete,
       // As in EntityType: `.unwrap()` lets a refusal reach the dialog, and
       // `ensureError` lets the dialog show its message.
       onConfirm: async () => {
@@ -235,13 +238,20 @@ const Layouts = ({ search = '', unusedOnly = false }: LayoutsProps) => {
   const intl = useAppIntl();
   const getLayouts = useMemo(() => makeGetLayoutsWithUsage(intl), [intl]);
   const layouts = useSelector(getLayouts);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const visible = layouts.filter((layout) =>
     layoutMatchesFilter(layout, { search, unusedOnly }),
   );
 
   return (
     <div className="mb-14">
-      <Heading level="h2" margin="none" className="mb-5!">
+      <Heading
+        ref={headingRef}
+        tabIndex={-1}
+        level="h2"
+        margin="none"
+        className="mb-5!"
+      >
         {intl.formatMessage(messages.layouts, { count: layouts.length })}
       </Heading>
       {layouts.length === 0 ? (
@@ -249,7 +259,13 @@ const Layouts = ({ search = '', unusedOnly = false }: LayoutsProps) => {
           {intl.formatMessage(messages.noLayoutsYet)}
         </Paragraph>
       ) : (
-        visible.map((layout) => <LayoutEntry key={layout.id} layout={layout} />)
+        visible.map((layout) => (
+          <LayoutEntry
+            key={layout.id}
+            layout={layout}
+            focusAfterDelete={headingRef}
+          />
+        ))
       )}
     </div>
   );

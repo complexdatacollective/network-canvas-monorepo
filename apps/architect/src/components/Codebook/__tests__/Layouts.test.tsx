@@ -90,15 +90,19 @@ const listed = (entry: HTMLElement, term: string) => {
     .map((item) => item.textContent);
 };
 
-const personEntry = () => {
+const typeEntry = (heading: string) => {
   const entry = screen
-    .getByRole('heading', { name: 'person node type' })
+    .getByRole('heading', { name: heading })
     .closest('section');
   if (!(entry instanceof HTMLElement)) {
-    throw new Error('The person node type has no section.');
+    throw new Error(`The ${heading} has no section.`);
   }
   return entry;
 };
+
+const personEntry = () => typeEntry('person node type');
+
+const LAYOUTS_ROW = 'Layouts that have positions for this type:';
 
 /** The element an in-page link points at, if it is on the page. */
 const linkTarget = (link: HTMLElement) =>
@@ -187,6 +191,47 @@ describe('the layouts on the Codebook page', () => {
     );
   });
 
+  it('moves focus to the layouts heading once a layout is deleted', async () => {
+    renderCodebook();
+
+    fireEvent.click(
+      within(layoutEntry('manualLayout')).getByRole('button', {
+        name: 'Delete layout',
+      }),
+    );
+    await screen.findByRole('dialog');
+    fireEvent.click(screen.getByTestId('dialog-primary'));
+
+    // The button that opened the dialog went with its entry, so focus would
+    // otherwise fall back to the top of the page.
+    const heading = await screen.findByRole('heading', {
+      level: 2,
+      name: 'Layouts (5)',
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+  });
+
+  it('counts the layouts in the heading', () => {
+    renderCodebook();
+
+    // The development protocol's five, and shownOnlyLayout.
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Layouts (6)' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No layouts yet/)).not.toBeInTheDocument();
+  });
+
+  it('says so when the protocol has no layouts', () => {
+    const protocol = structuredClone(FIXTURE);
+    protocol.codebook.layouts = {};
+    renderCodebook(protocol);
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Layouts (0)' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/No layouts yet/)).toBeInTheDocument();
+  });
+
   it('does not offer delete for a layout that only a filter rule names', () => {
     const protocol = structuredClone(FIXTURE);
     const sociogram = protocol.stages.find(
@@ -249,6 +294,25 @@ describe('the layouts on the Codebook page', () => {
     expect(linkTarget(link)).toBe(layoutEntry('closenessLayout'));
   });
 
+  it('lists no layouts on a node type that no stage places, or on an edge type', () => {
+    const VENUE = templateTypeId(developmentProtocol, 'node', 'venue');
+    const protocol = structuredClone(FIXTURE);
+    protocol.stages = protocol.stages.filter(
+      (stage) =>
+        !(stage.type === 'Sociogram' || stage.type === 'NetworkComposer') ||
+        !stage.subject.types.includes(VENUE),
+    );
+    renderCodebook(protocol);
+
+    expect(listed(personEntry(), LAYOUTS_ROW)).toEqual(['closenessLayout']);
+    expect(
+      within(typeEntry('venue node type')).queryByText(LAYOUTS_ROW),
+    ).not.toBeInTheDocument();
+    expect(
+      within(typeEntry('friend edge type')).queryByText(LAYOUTS_ROW),
+    ).not.toBeInTheDocument();
+  });
+
   it('brings a layout entry into view below the navigation bar', () => {
     renderCodebook();
 
@@ -256,10 +320,12 @@ describe('the layouts on the Codebook page', () => {
     const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>();
     target.scrollIntoView = scrollIntoView;
 
-    fireEvent.click(
+    const followed = fireEvent.click(
       within(personEntry()).getByRole('link', { name: 'closenessLayout' }),
     );
 
+    // The browser's own jump to the anchor is replaced, not added to.
+    expect(followed).toBe(false);
     expect(scrollIntoView).toHaveBeenCalledWith({
       behavior: 'smooth',
       block: 'start',
