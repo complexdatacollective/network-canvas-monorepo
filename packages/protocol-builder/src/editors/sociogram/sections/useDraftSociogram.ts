@@ -16,7 +16,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * layout: its id, layout, node types, automatic layout and prompts. Built from
  * the live form values, so a stage that is not saved yet, or one whose prompts
  * were just edited, is judged as it stands. A prompt that is not valid yet is
- * left out.
+ * left out, and a stage with no valid prompt yet is not judged at all: it sets
+ * nothing and reads nothing until the researcher gives it a task.
  */
 export function useDraftSociogram(): Stage | undefined {
   const { identity } = useStageEditorForm();
@@ -41,6 +42,10 @@ export function useDraftSociogram(): Stage | undefined {
           return parsed.success ? [parsed.data] : [];
         })
       : [];
+    const [firstPrompt, ...otherPrompts] = draftPrompts;
+    if (firstPrompt === undefined) {
+      return undefined;
+    }
     const automaticLayout =
       isRecord(behaviours) && behaviours.automaticLayout === true;
     const draft: Extract<Stage, { type: 'Sociogram' }> = {
@@ -52,7 +57,7 @@ export function useDraftSociogram(): Stage | undefined {
       // The background does not decide how the stage uses its layout.
       background: { concentricCircles: 0 },
       behaviours: automaticLayout ? { automaticLayout: true } : {},
-      prompts: draftPrompts,
+      prompts: [firstPrompt, ...otherPrompts],
     };
     return draft;
   }, [behaviours, identity.id, identity.type, layout, nodeTypes, prompts]);

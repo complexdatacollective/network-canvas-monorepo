@@ -77,6 +77,26 @@ describe('the warning about a Sociogram layout with no positions', () => {
     expect(await screen.findByText(WARNING_TITLE)).toBeInTheDocument();
   });
 
+  it('does not warn about a new stage before it has any prompts', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'Sociogram',
+        position: NEW_STAGE_POSITION,
+        fields: {
+          subject: { entity: 'node', types: [PERSON] },
+          background: { concentricCircles: 4 },
+          behaviours: {},
+          layout: UNPLACED,
+          prompts: [],
+        },
+      },
+      sections: sociogramSections,
+    });
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    expect(screen.queryByText(WARNING_TITLE)).not.toBeInTheDocument();
+  });
+
   it('warns as soon as the last layout task is changed to a connect task', async () => {
     const harness = renderStageEditor(
       sociogramHolding(LAYOUT_PROMPT, { layout: UNPLACED, behaviours: {} }),
