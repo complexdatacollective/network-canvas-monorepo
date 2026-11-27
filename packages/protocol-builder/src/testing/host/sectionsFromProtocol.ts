@@ -42,6 +42,7 @@ export function sectionsFromProtocol(
         node: recordsIn(book.node),
         edge: recordsIn(book.edge),
         ...(Predicate.isObject(book.ego) ? { ego: book.ego } : {}),
+        layouts: recordsIn(book.layouts),
       },
       stages: stageDocs,
       assetManifest: recordOf(assetManifest),

@@ -10,6 +10,8 @@ import {
   EgoDefinitionSchema,
   type EgoDefinition,
   type InterfaceText,
+  LayoutDefinitionSchema,
+  type LayoutDefinition,
   NodeDefinitionSchema,
   type NodeDefinition,
   type Stage,
@@ -213,6 +215,7 @@ export function protocolContextFromSections(
   const issues: ProtocolContextIssue[] = [];
   const node = new Map<string, NodeDefinition>();
   const edge = new Map<string, EdgeDefinition>();
+  const layouts = new Map<string, LayoutDefinition>();
   const stages = new Map<string, Stage>();
   // Stages the protocol HAS and this read model could not use: the section is
   // there, it just did not pass the stage schema. Kept apart from the ones
@@ -342,6 +345,12 @@ export function protocolContextFromSections(
         } else issues.push(...sectionIssues(id, result.error.issues));
         break;
       }
+      case 'codebookLayout': {
+        const result = LayoutDefinitionSchema.safeParse(document);
+        if (result.success) layouts.set(ref.layoutId, result.data);
+        else issues.push(...sectionIssues(id, result.error.issues));
+        break;
+      }
       case 'assets': {
         // The assets section IS the manifest — one entry per asset, keyed by
         // id. Each is parsed on its own so one malformed entry is reported
@@ -436,6 +445,9 @@ export function protocolContextFromSections(
     node: Object.freeze(Object.fromEntries(node)),
     edge: Object.freeze(Object.fromEntries(edge)),
     ...(ego === undefined ? {} : { ego }),
+    ...(layouts.size === 0
+      ? {}
+      : { layouts: Object.freeze(Object.fromEntries(layouts)) }),
   };
 
   return Object.freeze({

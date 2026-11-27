@@ -51,7 +51,7 @@ const RESPONSIBILITIES: Readonly<Record<string, string>> = {
   Submit:
     'Accept a section’s new document only from the editor holding its lock and only against the revision that editor read; refuse it otherwise rather than merging.',
   Create:
-    'Add a section the protocol does not hold yet — a stage, an entity type — and place it where the editor asked.',
+    'Add a section the protocol does not hold yet — a stage, an entity type, a layout — and place it where the editor asked.',
   Delete:
     'Remove a section, and refuse while any section the removal would touch is held elsewhere.',
   RefactorDeleteVariable:

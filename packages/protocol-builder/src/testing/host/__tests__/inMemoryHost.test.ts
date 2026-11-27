@@ -1173,6 +1173,54 @@ describe('the in-memory host', () => {
     expect(subject.store.read(EGO)).toEqual(before);
   });
 
+  it('creates a layout under an id of its own, and renames it under its lock', async () => {
+    const subject = host();
+
+    const created = await subject.adapter.rpcCall('Create', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'positions' }),
+    });
+    const layoutId = created.sectionId.slice('codebook:layout:'.length);
+    expect(created.sectionId).toBe(
+      sectionId({ kind: 'codebookLayout', layoutId }),
+    );
+
+    const held = await subject.adapter.rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: created.sectionId,
+    });
+    await subject.adapter.rpcCall('Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: created.sectionId,
+      document: Redacted.make({ name: 'seating' }),
+      revision: held.revision,
+    });
+
+    expect(
+      assembleProtocolSections(sectionsOf(subject)).codebook,
+    ).toMatchObject({ layouts: { [layoutId]: { name: 'seating' } } });
+  });
+
+  it('refuses to create a layout whose document is not shaped like one', async () => {
+    const subject = host();
+
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Create', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'positions', type: 'layout' }),
+    });
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(
+      assembleProtocolSections(sectionsOf(subject)).codebook,
+    ).not.toHaveProperty('layouts');
+  });
+
   it('refuses a refactor that would rewrite a section this session is editing', async () => {
     const subject = host();
     // One tab, two editors: the stage editor and the codebook dialog issuing

@@ -112,7 +112,8 @@ export type CreatableSectionKind =
   | 'stage'
   | 'codebookNode'
   | 'codebookEdge'
-  | 'codebookEgo';
+  | 'codebookEgo'
+  | 'codebookLayout';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -907,9 +908,11 @@ function createdSectionId(
 ): ProtocolSectionId {
   if (kind === 'codebookEgo') return sectionId({ kind: 'codebookEgo' });
   if (id === undefined) throw new Error(`a ${kind} section needs an id`);
-  return kind === 'stage'
-    ? sectionId({ kind: 'stage', stageId: id })
-    : sectionId({ kind, typeId: id });
+  if (kind === 'stage') return sectionId({ kind: 'stage', stageId: id });
+  if (kind === 'codebookLayout') {
+    return sectionId({ kind: 'codebookLayout', layoutId: id });
+  }
+  return sectionId({ kind, typeId: id });
 }
 
 function stageList(order: SectionDoc): string[] {

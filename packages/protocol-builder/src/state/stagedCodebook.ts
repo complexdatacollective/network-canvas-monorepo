@@ -199,11 +199,12 @@ export function overlaySections(
   return overlaid;
 }
 
-/** A codebook as its sections are kept: node and edge types by id, and ego. */
+/** A codebook as its sections are kept: node and edge types and layouts by id, and ego. */
 type CodebookOfSections = Readonly<{
   node?: Readonly<Record<string, SectionDoc>>;
   edge?: Readonly<Record<string, SectionDoc>>;
   ego?: SectionDoc;
+  layouts?: Readonly<Record<string, SectionDoc>>;
 }>;
 
 /**
@@ -230,8 +231,12 @@ export function codebookWithStaged<Codebook extends CodebookOfSections>(
   if (codebook.ego !== undefined) {
     sections[sectionId({ kind: 'codebookEgo' })] = codebook.ego;
   }
+  for (const [layoutId, definition] of Object.entries(codebook.layouts ?? {})) {
+    sections[sectionId({ kind: 'codebookLayout', layoutId })] = definition;
+  }
   const node: Record<string, SectionDoc> = {};
   const edge: Record<string, SectionDoc> = {};
+  const layouts: Record<string, SectionDoc> = {};
   let ego: SectionDoc | undefined;
   for (const [id, document] of Object.entries(
     overlaySections(staged, sections),
@@ -240,9 +245,18 @@ export function codebookWithStaged<Codebook extends CodebookOfSections>(
     if (ref.kind === 'codebookNode') node[ref.typeId] = document;
     else if (ref.kind === 'codebookEdge') edge[ref.typeId] = document;
     else if (ref.kind === 'codebookEgo') ego = document;
+    else if (ref.kind === 'codebookLayout') layouts[ref.layoutId] = document;
   }
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the codebook with sections replaced by documents the editor built; see the doc comment
-  return { ...codebook, node, edge, ego } as Codebook;
+  return {
+    ...codebook,
+    node,
+    edge,
+    ego,
+    ...(codebook.layouts === undefined && Object.keys(layouts).length === 0
+      ? {}
+      : { layouts }),
+  } as Codebook;
 }
 
 /** Why a staged write was not made. */

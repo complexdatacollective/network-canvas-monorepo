@@ -121,6 +121,29 @@ describe('protocolContextFromSections', () => {
     expect(context.issues).toEqual([]);
   });
 
+  it('exposes the codebook layouts, and reports a layout section it cannot read', () => {
+    const sections = protocolSections();
+    const sociogram = testVariableId('sociogram layout');
+    const broken = testVariableId('broken layout');
+    sections[sectionId({ kind: 'codebookLayout', layoutId: sociogram })] = {
+      name: 'sociogram',
+    };
+    const brokenId = sectionId({ kind: 'codebookLayout', layoutId: broken });
+    sections[brokenId] = { name: '' };
+
+    const context = protocolContextFromSections(sections);
+
+    expect(context.codebook.layouts).toEqual({
+      [sociogram]: { name: 'sociogram' },
+    });
+    expect(context.issues).toEqual([
+      expect.objectContaining({ sectionId: brokenId, path: ['name'] }),
+    ]);
+    expect(
+      protocolContextFromSections(protocolSections()).codebook,
+    ).not.toHaveProperty('layouts');
+  });
+
   it('reports and omits one malformed section without hiding valid siblings', () => {
     const sections = protocolSections();
     const nodeId = sectionId({ kind: 'codebookNode', typeId: PERSON });

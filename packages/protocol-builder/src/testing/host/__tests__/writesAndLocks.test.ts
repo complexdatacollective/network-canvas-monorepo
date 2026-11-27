@@ -305,6 +305,17 @@ const CALLS: readonly Call[] = [
   },
   {
     procedure: 'Create',
+    name: 'creating a layout',
+    run: (host) =>
+      host.adapter.rpcCall('Create', {
+        protocolId: host.protocolId,
+        requestId: nextRequestId(),
+        kind: 'codebookLayout',
+        document: Redacted.make({ name: 'positions' }),
+      }),
+  },
+  {
+    procedure: 'Create',
     name: 'creating the ego codebook',
     host: hostWithoutEgo,
     run: (host) =>

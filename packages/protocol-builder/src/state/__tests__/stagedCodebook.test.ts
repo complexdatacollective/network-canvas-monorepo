@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { protocolSections } from '../../host/protocolSections.ts';
 import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import {
+  codebookWithStaged,
   mergeEdit,
   NOTHING_STAGED,
   overlaySection,
@@ -254,5 +256,55 @@ describe('stageSectionChange', () => {
         throw new Error('refused');
       }),
     ).toThrow('refused');
+  });
+});
+
+describe('codebookWithStaged', () => {
+  const SOCIOGRAM = testVariableId('sociogram layout');
+  const MAP = testVariableId('map layout');
+  const layoutSection = (layoutId: string) =>
+    sectionId({ kind: 'codebookLayout', layoutId });
+
+  it('shows a layout the stage created beside the layouts the codebook has', () => {
+    const codebook = {
+      node: { [testTypeId('person')]: person() },
+      layouts: { [SOCIOGRAM]: { name: 'sociogram' } },
+    };
+    expect(
+      codebookWithStaged(codebook, {
+        [layoutSection(MAP)]: { base: null, edited: { name: 'map' } },
+      }).layouts,
+    ).toEqual({ [SOCIOGRAM]: { name: 'sociogram' }, [MAP]: { name: 'map' } });
+  });
+
+  it('shows a layout the stage renamed, and keeps the layouts a stage left alone', () => {
+    const codebook = { layouts: { [SOCIOGRAM]: { name: 'sociogram' } } };
+    expect(
+      codebookWithStaged(codebook, {
+        [layoutSection(SOCIOGRAM)]: {
+          base: { name: 'sociogram' },
+          edited: { name: 'positions' },
+        },
+      }).layouts,
+    ).toEqual({ [SOCIOGRAM]: { name: 'positions' } });
+    expect(
+      codebookWithStaged(
+        { ...codebook, node: { [testTypeId('person')]: person() } },
+        { [PERSON]: { base: person(), edited: person({ required: true }) } },
+      ).layouts,
+    ).toEqual(codebook.layouts);
+  });
+});
+
+describe('protocolSections', () => {
+  it('splits each layout into a section of its own', () => {
+    const layoutId = testVariableId('sociogram layout');
+    const sections = protocolSections({
+      codebook: { layouts: { [layoutId]: { name: 'sociogram' } } },
+      stages: [],
+    });
+    expect(
+      sections.get(sectionId({ kind: 'codebookLayout', layoutId })),
+    ).toEqual({ name: 'sociogram' });
   });
 });

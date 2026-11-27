@@ -376,7 +376,7 @@ const StageInterfaceTextSchema = Schema.NonEmptyArray(
   InterfaceTextUpdateSchema,
 );
 
-/** A section of the codebook: one node type, one edge type, or the ego's. */
+/** A section of the codebook: one node type, one edge type, the ego's, or one layout. */
 export const CodebookSectionIdSchema = SectionIdSchema.check(
   Schema.makeFilter((id) => isCodebookSectionId(id), {
     message: 'not a codebook section id',
@@ -452,6 +452,7 @@ export const CreatableSectionKindSchema = Schema.Literals([
   'codebookNode',
   'codebookEdge',
   'codebookEgo',
+  'codebookLayout',
 ]);
 
 export const CreateInputSchema = Schema.Struct({

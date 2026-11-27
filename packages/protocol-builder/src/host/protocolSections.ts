@@ -15,6 +15,7 @@ export type SplittableProtocol = Readonly<Record<string, unknown>> &
       node?: Readonly<Record<string, SectionDoc>> | undefined;
       edge?: Readonly<Record<string, SectionDoc>> | undefined;
       ego?: SectionDoc | undefined;
+      layouts?: Readonly<Record<string, SectionDoc>> | undefined;
     }>;
     stages: readonly (SectionDoc & Readonly<{ id: string }>)[];
     assetManifest?: SectionDoc | undefined;
@@ -52,6 +53,9 @@ export function protocolSections(
   }
   if (codebook.ego !== undefined) {
     sections.set(sectionId({ kind: 'codebookEgo' }), codebook.ego);
+  }
+  for (const [layoutId, definition] of Object.entries(codebook.layouts ?? {})) {
+    sections.set(sectionId({ kind: 'codebookLayout', layoutId }), definition);
   }
 
   return sections;
