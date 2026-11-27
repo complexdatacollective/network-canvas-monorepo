@@ -54,6 +54,12 @@ const messages = defineMessages({
     description:
       "Sub-heading in the table of contents of the printable protocol summary, above the list of the codebook's edge types. Shown only when the protocol has edge types.",
   },
+  layouts: {
+    id: 'architect.protocolSummary.contents.layouts',
+    defaultMessage: 'Layouts',
+    description:
+      'Sub-heading in the table of contents of the printable protocol summary in Architect, above the list of the layouts of the codebook. A layout is a named set of node positions. Shown only when the protocol has layouts.',
+  },
   interfaceText: {
     id: 'architect.protocolSummary.contents.interfaceText',
     defaultMessage: 'Interview text',
@@ -79,6 +85,7 @@ const Contents = () => {
   const { protocol } = useContext(SummaryContext);
   const nodes = toPairs(protocol.codebook?.node ?? {});
   const edges = toPairs(protocol.codebook?.edge ?? {});
+  const layouts = toPairs(protocol.codebook?.layouts ?? {});
   const assets = groupBy(
     toPairs(protocol.assetManifest ?? {}),
     ([, asset]) => (asset as Asset).type,
@@ -142,6 +149,22 @@ const Contents = () => {
                   {edges.map(([id]) => (
                     <li key={id}>
                       <EntityBadge type={id} entity="edge" link tiny />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {!isEmpty(layouts) && (
+              <>
+                <li className={headingClass}>
+                  {intl.formatMessage(messages.layouts)}
+                </li>
+                <ul>
+                  {layouts.map(([id, layout]) => (
+                    <li key={id}>
+                      <DualLink to={`#layout-${id}`}>
+                        <bdi>{layout.name}</bdi>
+                      </DualLink>
                     </li>
                   ))}
                 </ul>

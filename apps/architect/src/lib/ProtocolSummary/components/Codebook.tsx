@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import type { LocalizedString, Variable } from '@codaco/protocol-validation';
 
 import Entity from './Entity';
+import Layouts from './Layouts';
 import SummaryContext from './SummaryContext';
 
 type NodeOrEdgeType = {
@@ -48,6 +49,7 @@ const Codebook = () => {
           variables={edge.variables}
         />
       ))}
+      <Layouts />
     </div>
   );
 };
