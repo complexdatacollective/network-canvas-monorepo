@@ -36,6 +36,35 @@ vi.mock('../../../hooks/useAssetUrl', () => ({
   useAssetUrl: () => ({ url: null, isLoading: false, error: null }),
 }));
 
+// jsdom cannot run the layout worker. In its place, Automatic mode puts every
+// node on the canvas without storing a position, as the simulation does
+// before it first settles.
+vi.mock('../../../canvas/useAutoLayout', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../canvas/useAutoLayout')
+  >('../../../canvas/useAutoLayout');
+  return {
+    ...actual,
+    useAutoLayout: (
+      options: Parameters<typeof actual.useAutoLayout>[0],
+    ): ReturnType<typeof actual.useAutoLayout> => {
+      const { enabled, nodes, store } = options;
+      useEffect(() => {
+        if (!enabled) return;
+        store
+          .getState()
+          .setBatchPositions(
+            nodes.map((each) => [
+              each[entityPrimaryKeyProperty],
+              { x: 0.5, y: 0.5 },
+            ]),
+          );
+      }, [enabled, nodes, store]);
+      return actual.useAutoLayout({ ...options, enabled: false });
+    },
+  };
+});
+
 beforeAll(() => {
   vi.stubGlobal(
     'IntersectionObserver',
@@ -133,7 +162,13 @@ function CaptureDndStore({
   return null;
 }
 
-function renderSociogram(task: Task) {
+function renderSociogram(
+  task: Task,
+  { automaticLayout = false }: { automaticLayout?: boolean } = {},
+) {
+  const renderedStage = automaticLayout
+    ? { ...stage, behaviours: { automaticLayout: true } }
+    : stage;
   let dndStore: StoreApi<DndStore> | null = null;
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -161,7 +196,7 @@ function renderSociogram(task: Task) {
         schemaVersion: 9,
         localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
-        stages: [stage],
+        stages: [renderedStage],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -200,7 +235,7 @@ function renderSociogram(task: Task) {
 
   render(
     <Sociogram
-      stage={stage}
+      stage={renderedStage}
       getNavigationHelpers={() => ({
         moveForward: vi.fn(),
         moveBackward: vi.fn(),
@@ -271,6 +306,12 @@ describe('Sociogram tasks', () => {
   it('an unplaced node is enabled in a layout task', async () => {
     renderSociogram('layout');
     expect(await unplacedNode()).toBeEnabled();
+  });
+
+  it('in Automatic mode a node with no stored position is enabled in a connect task', async () => {
+    renderSociogram('connect', { automaticLayout: true });
+    expect(await unplacedNode()).toBeEnabled();
+    expect(await placedNode()).toBeEnabled();
   });
 
   it('an unplaced node is disabled in a highlight task', async () => {
