@@ -26,8 +26,10 @@ import { parse } from 'yaml';
  * the fields), the schema 8 to 9 migration (which removes them) and the
  * SyntheticInterview writer. Later work adds only files that read or write
  * the codebook fields themselves. A file that uses either word for something
- * else, such as a GraphML attribute name, needs a narrower exemption than a
- * whole-file entry. Every allow-listed file must still read a field, so a
+ * else, such as a GraphML attribute name, is not allow-listed: its exact
+ * string is listed for that file alone in `PERMITTED_LITERALS`, and every
+ * other read in the file is still flagged. Every allow-listed file must still
+ * read a field, and every permitted string must still be in its file, so a
  * stale entry fails.
  *
  * It lives at the repository root, not in a package, so that a change to any
@@ -43,6 +45,20 @@ const ALLOWED_FILES = new Set([
   // Removes both fields from every edge type a schema 8 file carries.
   'packages/protocol-validation/src/schemas/9/migration.ts',
   'packages/protocol-utilities/src/SyntheticInterview.ts',
+]);
+
+/**
+ * Strings that name a field but mean something else, by file. A string
+ * literal is skipped only when its whole text is listed for the file it is in.
+ */
+const PERMITTED_LITERALS = new Map([
+  [
+    // The GraphML attribute that marks one edge as directed
+    // (`setAttribute('directed', 'true')`). Whether the edge type is directed
+    // is still read through `isDirectedEdgeType`.
+    'packages/network-exporters/src/formatters/graphml/generateDataElements.ts',
+    new Set(['directed']),
+  ],
 ]);
 
 const EXCLUDED_WORKSPACES = new Set([
@@ -176,7 +192,11 @@ const namesFieldInString = (node) => {
   return false;
 };
 
-const readsField = (node) => {
+const isPermittedLiteral = (node, permitted) =>
+  (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+  permitted.has(node.text);
+
+const readsField = (node, permitted) => {
   if (ts.isPropertyAccessExpression(node)) return FIELDS.has(node.name.text);
   if (ts.isBindingElement(node) && ts.isObjectBindingPattern(node.parent)) {
     return FIELDS.has(propertyNameText(node.propertyName ?? node.name));
@@ -187,22 +207,70 @@ const readsField = (node) => {
     );
   }
   if (namesFieldInString(node)) {
-    return !isInTypePosition(node) && !isWrittenName(node);
+    return (
+      !isInTypePosition(node) &&
+      !isWrittenName(node) &&
+      !isPermittedLiteral(node, permitted)
+    );
   }
   return false;
 };
 
-/** Whether this source reads `directed` or `endpointRules`. */
-const readsEdgeTypeField = (source, fileName = 'source.ts') => {
-  const file = ts.createSourceFile(
+const parseSource = (source, fileName) =>
+  ts.createSourceFile(
     fileName,
     source,
     ts.ScriptTarget.Latest,
     true,
     fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
-  const visit = (node) => readsField(node) || ts.forEachChild(node, visit);
-  return visit(file) === true;
+
+/**
+ * Whether this source reads `directed` or `endpointRules`. `repoPath` picks
+ * the strings that `permittedLiterals` permits in this file.
+ */
+const readsEdgeTypeField = (
+  source,
+  repoPath = 'source.ts',
+  permittedLiterals = PERMITTED_LITERALS,
+) => {
+  const permitted = permittedLiterals.get(repoPath) ?? new Set();
+  const visit = (node) =>
+    readsField(node, permitted) || ts.forEachChild(node, visit);
+  return visit(parseSource(source, repoPath)) === true;
+};
+
+/** The text of every string literal in a source. */
+const stringLiteralsIn = (source, fileName) => {
+  const found = new Set();
+  const visit = (node) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      found.add(node.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(parseSource(source, fileName));
+  return found;
+};
+
+/**
+ * Each permitted string that its file no longer contains as a string literal,
+ * as `[repoPath, literal]`. A missing file makes every string listed for it
+ * stale.
+ */
+const stalePermittedLiterals = (permittedLiterals, readSource) =>
+  [...permittedLiterals].flatMap(([repoPath, literals]) => {
+    const source = readSource(repoPath);
+    const present =
+      source === undefined ? new Set() : stringLiteralsIn(source, repoPath);
+    return [...literals]
+      .filter((literal) => !present.has(literal))
+      .map((literal) => [repoPath, literal]);
+  });
+
+const readRepoSource = (repoPath) => {
+  const path = join(repoRoot, repoPath);
+  return existsSync(path) ? readFileSync(path, 'utf8') : undefined;
 };
 
 const toRepoPath = (path) => relative(repoRoot, path).split(sep).join('/');
@@ -247,8 +315,13 @@ const scanned = new Map(
 );
 
 const readers = [...new Set([...scanned.values()].flat())]
-  .filter((path) => readsEdgeTypeField(readFileSync(path, 'utf8'), path))
-  .map(toRepoPath);
+  .map(toRepoPath)
+  .filter((repoPath) =>
+    readsEdgeTypeField(
+      readFileSync(join(repoRoot, repoPath), 'utf8'),
+      repoPath,
+    ),
+  );
 
 describe('edge type field readers', () => {
   it.each([
@@ -307,6 +380,87 @@ describe('edge type field readers', () => {
     'let d; d = { directed: true };',
   ])('does not flag %j', (source) => {
     expect(readsEdgeTypeField(source)).toBe(false);
+  });
+
+  describe('permitted literals', () => {
+    const exporterFile = 'packages/elsewhere/src/graphml.ts';
+    const otherFile = 'packages/elsewhere/src/other.ts';
+    const permitted = new Map([[exporterFile, new Set(['directed'])]]);
+
+    it('a permitted literal is skipped only in its own file', () => {
+      expect(
+        readsEdgeTypeField(
+          "element.setAttribute('directed', 'true');",
+          exporterFile,
+          permitted,
+        ),
+      ).toBe(false);
+    });
+
+    it('the same literal in another file is still a read', () => {
+      expect(
+        readsEdgeTypeField(
+          "element.setAttribute('directed', 'true');",
+          otherFile,
+          permitted,
+        ),
+      ).toBe(true);
+    });
+
+    it.each([
+      'const d = definition.directed;',
+      "const d = definition['endpointRules'];",
+      "const d = get(codebook, 'edge.knows.directed');",
+      'const d = get(codebook, `edge.${type}.directed`);',
+      'const { directed } = definition;',
+    ])(
+      'still flags the read %j in the file that permits a literal',
+      (source) => {
+        expect(readsEdgeTypeField(source, exporterFile, permitted)).toBe(true);
+      },
+    );
+
+    it('a permitted literal the file no longer holds fails as stale', () => {
+      const sources = new Map([
+        [exporterFile, "element.setAttribute('target', id);"],
+      ]);
+      expect(
+        stalePermittedLiterals(
+          new Map([
+            [exporterFile, new Set(['directed'])],
+            ['packages/elsewhere/src/missing.ts', new Set(['directed'])],
+          ]),
+          (repoPath) => sources.get(repoPath),
+        ),
+      ).toEqual([
+        [exporterFile, 'directed'],
+        ['packages/elsewhere/src/missing.ts', 'directed'],
+      ]);
+    });
+
+    it('a permitted literal that appears only in a comment or a longer string is stale', () => {
+      expect(
+        stalePermittedLiterals(
+          permitted,
+          () => "// 'directed'\nconst message = 'directed edge';",
+        ),
+      ).toEqual([[exporterFile, 'directed']]);
+    });
+
+    it('every permitted literal is still in its file', () => {
+      expect(PERMITTED_LITERALS.size).toBeGreaterThan(0);
+      expect(
+        stalePermittedLiterals(PERMITTED_LITERALS, readRepoSource),
+      ).toEqual([]);
+    });
+
+    it('no file is both allow-listed and given permitted literals', () => {
+      expect(
+        [...PERMITTED_LITERALS.keys()].filter((path) =>
+          ALLOWED_FILES.has(path),
+        ),
+      ).toEqual([]);
+    });
   });
 
   it('scans every workspace root', () => {
