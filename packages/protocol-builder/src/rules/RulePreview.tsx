@@ -97,9 +97,13 @@ function RuleEntity({ entity }: { entity: RuleDescriptionEntity }) {
 function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
   // A name followed by a labelled value, rather than a sentence assembled
   // around the type: nothing here has to agree grammatically with a type name.
-  const description = attribute.missing
-    ? `${attribute.label} (attribute is no longer in the codebook)`
-    : `${attribute.label} (attribute type: ${attribute.type ?? 'text'})`;
+  const description = (() => {
+    if (attribute.missing) {
+      return `${attribute.label} (attribute is no longer in the codebook)`;
+    }
+    if (attribute.type === 'layout') return `${attribute.label} (layout)`;
+    return `${attribute.label} (attribute type: ${attribute.type ?? 'text'})`;
+  })();
 
   return (
     <span
@@ -111,9 +115,7 @@ function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
     >
       <AttributePill
         name={attribute.label}
-        {...(attribute.type === undefined || attribute.type === 'layout'
-          ? {}
-          : { type: attribute.type })}
+        {...(attribute.type === undefined ? {} : { type: attribute.type })}
         missing={attribute.missing}
       />
     </span>

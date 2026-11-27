@@ -32,8 +32,16 @@ const EXPECTED: ReadonlyArray<
   ['text', 'text-variable.svg', '--cerulean-blue'],
 ];
 
+/** A layout of the codebook, which a pill also names: in a layout picker and in a rule. */
+const LAYOUT_MARK = [
+  'layout',
+  'layout-variable.svg',
+  '--purple-pizazz',
+] as const;
+
 const ICON_FILES = [
   ...EXPECTED.map(([, iconFile]) => iconFile),
+  LAYOUT_MARK[1],
   'default-variable.svg',
 ];
 
@@ -86,7 +94,7 @@ const iconSourceOf = (container: HTMLElement) => {
 };
 
 describe('AttributePill', () => {
-  it.each(EXPECTED)(
+  it.each([...EXPECTED, LAYOUT_MARK])(
     'shows a %s attribute with its own icon and its own accent',
     (type, iconFile, accentToken) => {
       const { container } = render(
@@ -104,7 +112,7 @@ describe('AttributePill', () => {
     const icons = new Set<string>();
     const accents = new Set<string>();
 
-    for (const [type] of EXPECTED) {
+    for (const [type] of [...EXPECTED, LAYOUT_MARK]) {
       const { container } = render(
         <AttributePill name="an_answer" type={type} />,
       );
@@ -114,8 +122,8 @@ describe('AttributePill', () => {
       );
     }
 
-    expect(icons.size).toBe(EXPECTED.length);
-    expect(accents.size).toBe(EXPECTED.length);
+    expect(icons.size).toBe(EXPECTED.length + 1);
+    expect(accents.size).toBe(EXPECTED.length + 1);
   });
 
   it('takes the neutral mark where the kind of answer is not known', () => {

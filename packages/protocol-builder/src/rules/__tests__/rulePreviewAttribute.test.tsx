@@ -11,6 +11,7 @@ const PERSON = testTypeId('person');
 const AGE = testVariableId('age');
 const MOOD = testVariableId('mood');
 const GONE = testVariableId('gone_from_the_codebook');
+const HOME = testVariableId('home');
 
 /**
  * The attribute in a rule sentence is the builder's own attribute pill.
@@ -82,6 +83,18 @@ describe('the attribute in a rule sentence', () => {
     expect(screen.getByLabelText('Mood (attribute type: categorical)')).toBe(
       attributePart(),
     );
+  });
+
+  it('draws a layout with the layout mark and calls it a layout', () => {
+    previewOf(HOME);
+    const part = attributePart();
+    const pill = pillIn(part);
+
+    expect(pill).toHaveAttribute('data-attribute-type', 'layout');
+    expect(pill.style.getPropertyValue('--variable-pill-accent')).toBe(
+      'oklch(var(--purple-pizazz))',
+    );
+    expect(part).toHaveAttribute('aria-label', 'Home (layout)');
   });
 
   it('wears the destructive accent when the codebook no longer has it', () => {

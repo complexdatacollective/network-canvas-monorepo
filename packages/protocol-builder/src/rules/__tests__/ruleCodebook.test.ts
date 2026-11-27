@@ -605,6 +605,7 @@ describe('reading the codebook for a rule', () => {
       {
         value: HOME,
         label: 'Home',
+        type: 'layout',
         unavailableReason:
           'This attribute cannot be used in a rule. Choose another one.',
         unavailableForType: true,
@@ -623,6 +624,7 @@ describe('reading the codebook for a rule', () => {
       {
         value: HOME,
         label: 'Home',
+        type: 'layout',
         unavailableReason:
           'This attribute cannot be used in a rule. Choose another one.',
         unavailableForType: true,

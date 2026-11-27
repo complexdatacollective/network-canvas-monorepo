@@ -57,8 +57,8 @@ export const isRuleTargetType = (value: unknown): value is RuleTargetType =>
 export type RuleVariableOption = Readonly<{
   value: string;
   label: string;
-  /** Absent for a layout, which is not a variable and has no variable type. */
-  type?: VariableType;
+  /** The variable's type, or `'layout'` for a layout of the codebook. */
+  type?: RuleAttributeType;
   /**
    * Why a rule cannot be built against this attribute, or absent when it
    * can. The sentence the attribute picker shows for it.
@@ -260,6 +260,7 @@ export const ruleLayoutOptions = (
   return listed.map((layoutId) => ({
     value: layoutId,
     label: codebookLabel(layouts[layoutId]?.name, layoutId),
+    type: 'layout',
     unavailableReason: intl.formatMessage(ruleVariableMessages.notForRules),
     unavailableForType: true,
   }));

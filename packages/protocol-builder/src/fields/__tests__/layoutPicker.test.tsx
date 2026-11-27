@@ -58,4 +58,23 @@ describe('the layout picker', () => {
       ).not.toContain('seating');
     }
   });
+
+  it('draws every layout, in its list and as the held choice, with the layout mark', async () => {
+    const harness = openLayoutSection();
+    const field = await waitFor(() => attributeField('Layout'));
+
+    expect(field.querySelector('data')).toHaveAttribute(
+      'data-attribute-type',
+      'layout',
+    );
+    const popup = await openAttributePicker(harness.user, field);
+    const rows = within(popup).getAllByRole('option');
+    const layoutRows = rows.filter(
+      (row) => row.dataset.attributeId !== undefined,
+    );
+    expect(layoutRows.length).toBeGreaterThan(0);
+    for (const row of layoutRows) {
+      expect(row).toHaveAttribute('data-attribute-type', 'layout');
+    }
+  });
 });

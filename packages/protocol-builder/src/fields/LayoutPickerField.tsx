@@ -122,6 +122,7 @@ export default function LayoutPickerField(props: LayoutPickerFieldProps) {
       Object.entries(layouts).map(([value, { name }]) => ({
         value,
         label: name,
+        type: 'layout',
       })),
     [layouts],
   );

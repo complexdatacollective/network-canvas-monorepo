@@ -52,7 +52,7 @@ import {
 import { createVariableRefused } from '../codebook/useCodebookVariableEdits.ts';
 import { variableTypeLabel } from '../codebook/variableTypeLabels.ts';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
-import { isVariableType } from '../rules/operators.ts';
+import { isVariableType, type RuleAttributeType } from '../rules/operators.ts';
 import AttributePill, { AttributeTypeMark } from './AttributePill.tsx';
 import {
   variableNameRefusal,
@@ -62,7 +62,8 @@ import {
 export type VariablePickerOption = Readonly<{
   value: string;
   label: string;
-  type?: VariableType;
+  /** The kind of answer an attribute records, or `'layout'` for a layout. */
+  type?: RuleAttributeType;
   /**
    * Why this attribute cannot be chosen here, as a whole sentence in the
    * reader's language. Absent means it can be chosen.
@@ -440,8 +441,11 @@ const englishTypeName = (type: VariableType): string =>
   ENGLISH_TYPE_NAMES[type] ?? type;
 
 /** What a screen reader is told about the kind of answer an attribute records. */
-const typeDescriptionFor = (type: VariableType | undefined) =>
-  type === undefined ? undefined : `Attribute type: ${englishTypeName(type)}`;
+const typeDescriptionFor = (type: RuleAttributeType | undefined) => {
+  if (type === undefined) return undefined;
+  if (type === 'layout') return 'Layout';
+  return `Attribute type: ${englishTypeName(type)}`;
+};
 
 /** The create that is waiting for the codebook, or that it refused. */
 type CreateState =

@@ -3,6 +3,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableType } from '@codaco/protocol-validation';
 
+import type { RuleAttributeType } from '../rules/operators.ts';
+
 /**
  * One attribute, shown as the researcher's name for it over the colour and
  * icon of the kind of answer it holds.
@@ -38,12 +40,13 @@ export type AttributePillProps = Readonly<{
   /** The researcher's own name for the attribute. Never translated. */
   name: string;
   /**
-   * The kind of answer it holds. Absent for a row that stands for something
-   * other than a codebook attribute — the form-fields list's create sentinel —
-   * which takes Architect's own fallback: the charcoal accent and the
-   * question-mark mark, neither of which claims one of the nine kinds.
+   * The kind of answer it holds, or `'layout'` for a layout of the codebook,
+   * which a layout picker and a rule name with the same pill. Absent for a row
+   * that stands for something other than a codebook attribute or layout — the
+   * form-fields list's create sentinel — which takes Architect's own fallback:
+   * the charcoal accent and the question-mark mark.
    */
-  type?: VariableType;
+  type?: RuleAttributeType;
   /**
    * Whether the codebook no longer describes this attribute.
    *
@@ -78,7 +81,8 @@ const ICON_URLS = {
   ordinal: new URL('./icons/ordinal-variable.svg', import.meta.url).href,
   scalar: new URL('./icons/scalar-variable.svg', import.meta.url).href,
   text: new URL('./icons/text-variable.svg', import.meta.url).href,
-} as const satisfies Record<VariableType, string>;
+  layout: new URL('./icons/layout-variable.svg', import.meta.url).href,
+} as const satisfies Record<RuleAttributeType, string>;
 
 const DEFAULT_ICON_URL = new URL(
   './icons/default-variable.svg',
@@ -102,9 +106,10 @@ const ACCENT_TOKENS = {
   ordinal: '--sea-green',
   scalar: '--kiwi',
   text: '--cerulean-blue',
-} as const satisfies Record<VariableType, string>;
+  layout: '--purple-pizazz',
+} as const satisfies Record<RuleAttributeType, string>;
 
-/** Architect's fallback for anything that is not one of the nine. */
+/** Architect's fallback for anything that is not one of these. */
 const DEFAULT_ACCENT_TOKEN = '--charcoal';
 
 type AttributePillStyle = CSSProperties & {
