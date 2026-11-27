@@ -319,12 +319,6 @@
     "es": "Crear o seleccionar un atributo categórico para agrupar",
     "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.createOrSelectACategoricalAttribute"
   },
-  "protocolBuilder.networkCanvas.layoutModeAutomaticDescription": {
-    "en": "Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.",
-    "es": "Coloca los nodos al abrir la etapa mediante una simulación de fuerzas físicas, como atracción y repulsión. La persona participante puede pausar y reanudar la simulación, y mover los nodos manualmente mientras está en pausa.",
-    "from": "74a07e626 architect.sections.automaticLayout.config.positionsNodesWhenTheStageFirst",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
   "protocolBuilder.networkCanvas.layoutModeAutomaticLabel": {
     "en": "Automatic mode",
     "es": "Modo automático",
