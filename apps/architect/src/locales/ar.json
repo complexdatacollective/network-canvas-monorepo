@@ -942,7 +942,6 @@
   "architect.summary.label.value": "القيمة",
   "architect.summary.label.video": "الفيديو",
   "architect.summary.print.filename": "ملخّص بروتوكول {name} (أُنشئ {date})",
-  "architect.summary.prompt.allowhighlighting": "السماح بالتمييز",
   "architect.summary.prompt.ascending": "تصاعديًا",
   "architect.summary.prompt.attribute": "السمة",
   "architect.summary.prompt.binsortorder": "ترتيب فرز الخانات",

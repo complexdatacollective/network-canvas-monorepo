@@ -942,7 +942,6 @@
   "architect.summary.label.value": "Wert",
   "architect.summary.label.video": "Video",
   "architect.summary.print.filename": "Protokollzusammenfassung {name} (erstellt am {date})",
-  "architect.summary.prompt.allowhighlighting": "Hervorheben erlauben",
   "architect.summary.prompt.ascending": "aufsteigend",
   "architect.summary.prompt.attribute": "Attribut",
   "architect.summary.prompt.binsortorder": "Sortierreihenfolge im Fach",

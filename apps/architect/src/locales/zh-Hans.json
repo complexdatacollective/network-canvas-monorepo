@@ -942,7 +942,6 @@
   "architect.summary.label.value": "值",
   "architect.summary.label.video": "视频",
   "architect.summary.print.filename": "{name} 协议摘要（创建于 {date}）",
-  "architect.summary.prompt.allowhighlighting": "允许突出显示",
   "architect.summary.prompt.ascending": "升序",
   "architect.summary.prompt.attribute": "属性",
   "architect.summary.prompt.binsortorder": "分箱排序顺序",

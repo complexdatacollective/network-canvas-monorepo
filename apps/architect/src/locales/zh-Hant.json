@@ -942,7 +942,6 @@
   "architect.summary.label.value": "值",
   "architect.summary.label.video": "影片",
   "architect.summary.print.filename": "{name} 協定摘要（建立於 {date}）",
-  "architect.summary.prompt.allowhighlighting": "允許醒目提示",
   "architect.summary.prompt.ascending": "遞增",
   "architect.summary.prompt.attribute": "屬性",
   "architect.summary.prompt.binsortorder": "分箱排序方式",

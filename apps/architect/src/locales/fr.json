@@ -942,7 +942,6 @@
   "architect.summary.label.value": "Valeur",
   "architect.summary.label.video": "Vidéo",
   "architect.summary.print.filename": "Résumé du protocole {name} (créé le {date})",
-  "architect.summary.prompt.allowhighlighting": "Autoriser la mise en évidence",
   "architect.summary.prompt.ascending": "croissant",
   "architect.summary.prompt.attribute": "Attribut",
   "architect.summary.prompt.binsortorder": "Ordre de tri des cases",

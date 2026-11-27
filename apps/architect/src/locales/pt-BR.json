@@ -942,7 +942,6 @@
   "architect.summary.label.value": "Valor",
   "architect.summary.label.video": "Vídeo",
   "architect.summary.print.filename": "Resumo do protocolo {name} (criado em {date})",
-  "architect.summary.prompt.allowhighlighting": "Permitir destaque",
   "architect.summary.prompt.ascending": "crescente",
   "architect.summary.prompt.attribute": "Atributo",
   "architect.summary.prompt.binsortorder": "Ordenação no compartimento",

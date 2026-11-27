@@ -942,7 +942,6 @@
   "architect.summary.label.value": "Value",
   "architect.summary.label.video": "Video",
   "architect.summary.print.filename": "{name} Protocol Summary (Created {date})",
-  "architect.summary.prompt.allowhighlighting": "Allow highlighting",
   "architect.summary.prompt.ascending": "ascending",
   "architect.summary.prompt.attribute": "Attribute",
   "architect.summary.prompt.binsortorder": "Bin sort order",

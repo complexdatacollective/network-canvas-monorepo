@@ -942,7 +942,6 @@
   "architect.summary.label.value": "Valore",
   "architect.summary.label.video": "Video",
   "architect.summary.print.filename": "Riepilogo del protocollo {name} (creato in data {date})",
-  "architect.summary.prompt.allowhighlighting": "Consenti l’evidenziazione",
   "architect.summary.prompt.ascending": "crescente",
   "architect.summary.prompt.attribute": "Attributo",
   "architect.summary.prompt.binsortorder": "Ordinamento dei contenitori",
