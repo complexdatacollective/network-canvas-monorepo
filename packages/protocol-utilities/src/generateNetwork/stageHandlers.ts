@@ -18,6 +18,7 @@ import { valueKey } from './constraints/uniqueRegistry.ts';
 import type {
   GenerationContext,
   NetworkDraft,
+  SociogramWrites,
   StageOfType,
 } from './context.ts';
 import { createEdgesForPairs } from './edges.ts';
@@ -115,6 +116,9 @@ export function handleSociogram(
       ? []
       : getStageFilteredNodes(ctx, draft, stage, subjectType).filter(isPlaced);
 
+  const writes: SociogramWrites = { edges: [], attributes: new Map() };
+  draft.sociogramWrites.set(stage.id, writes);
+
   for (const prompt of stage.prompts) {
     if (prompt.task === 'connect') {
       const { created } = createEdgesForPairs(
@@ -129,7 +133,9 @@ export function handleSociogram(
       );
       // Reused pairs need nothing written: `toggleEdge` only adds or deletes,
       // and the Sociogram collects no variable of its own on an edge.
-      draft.edges.push(...created.map(({ edge }) => edge));
+      const createdEdges = created.map(({ edge }) => edge);
+      draft.edges.push(...createdEdges);
+      writes.edges.push(...createdEdges);
     }
     if (prompt.task !== 'highlight') continue;
 
@@ -137,13 +143,39 @@ export function handleSociogram(
     // so the synthetic walk settles each entry's attribute on the nodes of
     // that entry's type.
     for (const entry of prompt.highlight) {
-      highlightNodes(
-        ctx,
-        getStageFilteredNodes(ctx, draft, stage, entry.type).filter(isPlaced),
-        entry.type,
-        entry.variable,
+      const nodes = getStageFilteredNodes(ctx, draft, stage, entry.type).filter(
+        isPlaced,
       );
+      const before = nodes.map((node) => ({
+        ...node[entityAttributesProperty],
+      }));
+      highlightNodes(ctx, nodes, entry.type, entry.variable);
+      nodes.forEach((node, index) => {
+        recordAttributeWrites(writes, node, before[index]!);
+      });
     }
+  }
+}
+
+/** Records each attribute `node` no longer has as it was in `before`. */
+function recordAttributeWrites(
+  writes: SociogramWrites,
+  node: NcNode,
+  before: Record<string, VariableValue>,
+): void {
+  const after = node[entityAttributesProperty];
+  let recorded = writes.attributes.get(node);
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (before[key] === after[key]) continue;
+    if (recorded === undefined) {
+      recorded = new Map();
+      writes.attributes.set(node, recorded);
+    }
+    const earlier = recorded.get(key);
+    recorded.set(key, {
+      before: earlier === undefined ? before[key] : earlier.before,
+      written: after[key],
+    });
   }
 }
 

@@ -104,35 +104,37 @@ export function markStageInProgress(
 
 /**
  * A node returned to the drawer cannot have been connected or highlighted by
- * the stage's later tasks, which act only on placed nodes, so their writes on
- * it are undone.
+ * the stage's later tasks, which act only on placed nodes, so the stage's own
+ * writes on it are undone. What other stages wrote stays.
  */
 function undoSociogramTasksOnUnplaced(
   draft: NetworkDraft,
   stage: Extract<Stage, { type: 'Sociogram' }>,
   unplaced: readonly NetworkDraft['nodes'][number][],
 ): void {
+  const writes = draft.sociogramWrites.get(stage.id);
+  if (writes === undefined) return;
+
   const unplacedIds = new Set(
     unplaced.map((node) => node[entityPrimaryKeyProperty]),
   );
-  const prompts = stage.prompts ?? [];
-  const createdTypes = new Set(
-    prompts.flatMap((prompt) =>
-      prompt.task === 'connect' ? [prompt.edges.create] : [],
+  const undone = new Set(
+    writes.edges.filter(
+      (edge) => unplacedIds.has(edge.from) || unplacedIds.has(edge.to),
     ),
   );
-  draft.edges = draft.edges.filter(
-    (edge) =>
-      !createdTypes.has(edge.type) ||
-      (!unplacedIds.has(edge.from) && !unplacedIds.has(edge.to)),
-  );
-  for (const prompt of prompts) {
-    if (prompt.task !== 'highlight') continue;
-    for (const entry of prompt.highlight) {
-      for (const node of unplaced) {
-        if (node.type === entry.type) {
-          delete node[entityAttributesProperty][entry.variable];
-        }
+  draft.edges = draft.edges.filter((edge) => !undone.has(edge));
+
+  for (const node of unplaced) {
+    const attributes = node[entityAttributesProperty];
+    for (const [key, { before, written }] of writes.attributes.get(node) ??
+      []) {
+      // A later stage that wrote the variable again keeps its value.
+      if (attributes[key] !== written) continue;
+      if (before === undefined) {
+        delete attributes[key];
+      } else {
+        attributes[key] = before;
       }
     }
   }

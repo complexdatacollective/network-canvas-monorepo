@@ -49,4 +49,21 @@ export type NetworkDraft = {
   edges: NcEdge[];
   /** Stage metadata keyed by stage index. */
   stageMetadata: Record<string, unknown>;
+  /**
+   * What each Sociogram's connect and highlight tasks wrote, keyed by stage
+   * id, so that an in-progress Sociogram can undo its own writes on the nodes
+   * it leaves unplaced without touching what other stages wrote.
+   */
+  sociogramWrites: Map<string, SociogramWrites>;
+};
+
+/** A variable's value before a Sociogram wrote it, and the value it wrote. */
+type AttributeWrite = {
+  before: VariableValue | undefined;
+  written: VariableValue | undefined;
+};
+
+export type SociogramWrites = {
+  edges: NcEdge[];
+  attributes: Map<NcNode, Map<string, AttributeWrite>>;
 };

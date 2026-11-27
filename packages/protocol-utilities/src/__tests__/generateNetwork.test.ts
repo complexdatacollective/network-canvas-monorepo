@@ -1910,30 +1910,39 @@ describe('Sociogram placement', () => {
     id: string,
     prompts: Record<string, unknown>[],
     behaviours?: Record<string, unknown>,
+    layout = 'var-layout',
   ) =>
     ({
       id,
       type: 'Sociogram',
       label: en('Sociogram'),
       subject: { entity: 'node', types: ['node-type-1'] },
-      layout: 'var-layout',
+      layout,
       background: { concentricCircles: 3 },
       prompts,
       ...(behaviours ? { behaviours } : {}),
     }) as unknown as Stage;
-  const generate = (stages: Stage[], inProgressStageIndex?: number) =>
+  const run = (
+    stages: Stage[],
+    inProgressStageIndex?: number,
+    sociogramEdgeProbability = always,
+  ) =>
     generateNetwork({
       codebook,
       stages,
       seed: 7,
       ...(inProgressStageIndex === undefined ? {} : { inProgressStageIndex }),
       config: {
-        sociogramEdgeProbability: always,
+        sociogramEdgeProbability,
         sociogramHighlightProbability: 1,
+        censusEdgeProbability: always,
       },
-    }).network;
-  const isPlaced = (node: NcNode) =>
-    node[entityAttributesProperty]['var-layout'] != null;
+    });
+  const generate = (stages: Stage[], inProgressStageIndex?: number) =>
+    run(stages, inProgressStageIndex).network;
+  const isPlacedIn = (layout: string) => (node: NcNode) =>
+    node[entityAttributesProperty][layout] != null;
+  const isPlaced = isPlacedIn('var-layout');
   const uidsOf = (nodes: NcNode[]) =>
     new Set(nodes.map((node) => node[entityPrimaryKeyProperty]));
 
@@ -2021,17 +2030,129 @@ describe('Sociogram placement', () => {
       1,
     );
 
+    // The same interview without the highlight task: the unplaced nodes keep
+    // the values they were created with.
+    const withoutHighlight = generate(
+      [
+        generator('people', 4),
+        sociogram('links', [
+          layoutPrompt('place-prompt'),
+          connectPrompt('link'),
+        ]),
+      ],
+      1,
+    );
+
     const placed = uidsOf(network.nodes.filter(isPlaced));
     expect(placed.size).toBe(2);
+    // The two placed nodes keep the edge and the highlights the stage gave them.
+    expect(network.edges).toHaveLength(1);
     for (const edge of network.edges) {
       expect(placed.has(edge.from)).toBe(true);
       expect(placed.has(edge.to)).toBe(true);
     }
-    for (const node of network.nodes) {
-      if (!isPlaced(node)) {
-        expect(node[entityAttributesProperty]['var-close']).not.toBe(true);
-      }
+    for (const node of network.nodes.filter(isPlaced)) {
+      expect(node[entityAttributesProperty]['var-close']).toBe(true);
     }
+    // Node ids are not seeded, so the unplaced nodes are compared in order.
+    const closeOfUnplaced = (nodes: NcNode[]) =>
+      nodes
+        .filter((node) => !isPlaced(node))
+        .map((node) => node[entityAttributesProperty]['var-close']);
+    const created = closeOfUnplaced(withoutHighlight.nodes);
+    expect(created).toContain(false);
+    expect(closeOfUnplaced(network.nodes)).toEqual(created);
+  });
+
+  it('an in-progress Sociogram keeps the edges an earlier Dyad Census created between nodes it leaves unplaced', () => {
+    const stages = [
+      generator('people', 4),
+      makeDyadCensusStage({
+        prompts: [
+          {
+            id: 'census-prompt',
+            text: en('Do they know each other?'),
+            createEdge: 'edge-type-1',
+          },
+        ],
+      }),
+      sociogram('links', [layoutPrompt('place-prompt'), connectPrompt('link')]),
+    ];
+    // The Sociogram connects nobody, so every edge is the census's.
+    const { network, stageMetadata } = run(stages, 2, { min: 0, max: 0 });
+
+    expect(network.nodes.filter(isPlaced)).toHaveLength(2);
+    const answers = (stageMetadata?.[1] ?? []) as unknown[][];
+    const yes = answers.filter((answer) => answer[3] === true);
+    expect(yes).toHaveLength(6);
+    for (const [, a, b] of yes) {
+      expect(
+        network.edges.some(
+          (edge) =>
+            (edge.from === a && edge.to === b) ||
+            (edge.from === b && edge.to === a),
+        ),
+      ).toBe(true);
+    }
+    expect(network.edges).toHaveLength(6);
+  });
+
+  it('an in-progress Sociogram keeps a highlight value written before it on a node it leaves unplaced', () => {
+    const network = generate(
+      [
+        makeNameGeneratorStage({
+          id: 'people',
+          prompts: [
+            {
+              id: 'people-prompt',
+              text: en('Add people you are close to'),
+              additionalAttributes: [
+                { id: 'people-close', variable: 'var-close', value: true },
+              ],
+            },
+          ],
+          behaviours: { minNodes: 2, maxNodes: 2 },
+        }),
+        generator('others', 2),
+        sociogram(
+          'first',
+          [layoutPrompt('first-place'), highlightPrompt('first-close')],
+          undefined,
+          'layout-a',
+        ),
+        sociogram(
+          'second',
+          [layoutPrompt('second-place'), highlightPrompt('second-close')],
+          undefined,
+          'layout-b',
+        ),
+      ],
+      3,
+    );
+
+    expect(network.nodes.filter(isPlacedIn('layout-b'))).toHaveLength(2);
+    for (const node of network.nodes) {
+      expect(node[entityAttributesProperty]['var-close']).toBe(true);
+    }
+  });
+
+  it('an in-progress Sociogram in Automatic mode leaves nobody unplaced', () => {
+    const network = generate(
+      [
+        generator('people', 4),
+        sociogram(
+          'links',
+          [layoutPrompt('place-prompt'), connectPrompt('link')],
+          {
+            automaticLayout: true,
+          },
+        ),
+      ],
+      1,
+    );
+
+    expect(network.nodes.filter(isPlaced)).toHaveLength(4);
+    expect(network.edges).toHaveLength(6);
   });
 
   it('an in-progress Sociogram that places nodes after an earlier stage placed them unplaces nobody', () => {

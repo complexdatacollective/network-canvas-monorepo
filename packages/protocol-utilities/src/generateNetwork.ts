@@ -220,6 +220,7 @@ export function generateNetwork(
     nodes: [],
     edges: [],
     stageMetadata: {},
+    sociogramWrites: new Map(),
   };
 
   const totalStages = stages.length;
