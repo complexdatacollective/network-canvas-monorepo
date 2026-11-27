@@ -16,13 +16,16 @@ const POSITION = testVariableId('position');
 const PROTO = testVariableId('proto');
 const RATING = testVariableId('rating');
 
+const LAYOUT = testVariableId('layout');
+const layouts = {
+  [LAYOUT]: { name: 'Position map' },
+  [PLACE]: { name: 'Café position' },
+};
+
 const variables: NonNullable<EntityDefinition['variables']> = {
   [NAME]: { name: 'Full name', type: 'text' },
   [DOTTED]: { name: 'a.b', type: 'text' },
-  [POSITION]: {
-    name: 'Position',
-    type: 'layout',
-  },
+  [POSITION]: { name: 'Position', type: 'text' },
   [CJK]: { name: '年龄', type: 'number' },
   [CAFE]: { name: 'Café', type: 'text' },
   [CONTACTS]: {
@@ -144,26 +147,36 @@ describe('getParentKeyByNameValue', () => {
   });
 
   describe('layout columns', () => {
-    it('resolves the _x and _y columns to the variable id', () => {
-      expect(getParentKeyByNameValue(variables, 'Position_x')).toBe(
-        `${POSITION}_x`,
+    it('resolves the _x and _y columns to the layout id', () => {
+      expect(
+        getParentKeyByNameValue(variables, 'Position map_x', layouts),
+      ).toBe(`${LAYOUT}_x`);
+      expect(
+        getParentKeyByNameValue(variables, 'Position map_y', layouts),
+      ).toBe(`${LAYOUT}_y`);
+    });
+
+    it('matches name_x to a layout, never to a variable', () => {
+      expect(getParentKeyByNameValue(variables, 'Position_x', layouts)).toBe(
+        'Position_x',
       );
-      expect(getParentKeyByNameValue(variables, 'Position_y')).toBe(
-        `${POSITION}_y`,
-      );
+      expect(
+        getParentKeyByNameValue(variables, 'Position_x', {
+          [LAYOUT]: { name: 'Position' },
+        }),
+      ).toBe(`${LAYOUT}_x`);
+    });
+
+    it('resolves a layout column for a type with no variables', () => {
+      expect(
+        getParentKeyByNameValue(undefined, 'Position map_x', layouts),
+      ).toBe(`${LAYOUT}_x`);
     });
 
     it('resolves a decomposed name', () => {
-      const named: NonNullable<EntityDefinition['variables']> = {
-        [PLACE]: {
-          name: 'Café position',
-          type: 'layout',
-        },
-      };
-
-      expect(getParentKeyByNameValue(named, 'Café position_x')).toBe(
-        `${PLACE}_x`,
-      );
+      expect(
+        getParentKeyByNameValue(variables, 'Cafe\u0301 position_x', layouts),
+      ).toBe(`${PLACE}_x`);
     });
   });
 

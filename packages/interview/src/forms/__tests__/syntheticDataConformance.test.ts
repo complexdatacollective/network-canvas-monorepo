@@ -309,15 +309,12 @@ async function collectFailures(
 }
 
 /**
- * Form fields for every variable a form can render. Layout and location
- * variables have no participant-facing control, so no form lists them.
+ * Form fields for every variable a form can render. Location variables have
+ * no participant-facing control, so no form lists them.
  */
 function formFields(variables: Variables): { variable: string }[] {
   return Object.entries(variables)
-    .filter(
-      ([, variable]) =>
-        variable.type !== 'layout' && variable.type !== 'location',
-    )
+    .filter(([, variable]) => variable.type !== 'location')
     .map(([variableId]) => ({ variable: variableId }));
 }
 
@@ -839,10 +836,6 @@ const personVariables: Variables = keyedVariables({
     options: THREE_OPTIONS,
     validation: { required: true },
   },
-  personLayout: {
-    name: 'Person layout',
-    type: 'layout',
-  },
   personPlace: {
     name: 'Person place',
     type: 'location',
@@ -952,6 +945,7 @@ const friendVariables: Variables = keyedVariables({
 
 const codebook: Codebook = {
   ego: { variables: egoVariables },
+  layouts: { [testVariableId('personLayout')]: { name: 'Person layout' } },
   node: {
     [PERSON]: {
       name: 'Person',
@@ -1031,6 +1025,7 @@ const stages = [
     type: 'Sociogram',
     label: { en: 'Connections' },
     subject: { entity: 'node', types: [PERSON] },
+    layout: testVariableId('personLayout'),
     // Two edge-creating prompts over the same six people: each prompt draws
     // its own per-pair probability and rolls every pair against it, so a
     // second pass is a second, independent chance for a pair the first pass
@@ -1041,13 +1036,11 @@ const stages = [
       {
         id: 'p3',
         text: { en: 'Connect people' },
-        layout: { layoutVariable: testVariableId('personLayout') },
         edges: { create: FRIEND },
       },
       {
         id: 'p3b',
         text: { en: 'Connect people again' },
-        layout: { layoutVariable: testVariableId('personLayout') },
         edges: { create: FRIEND },
       },
     ],

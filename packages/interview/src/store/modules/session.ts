@@ -30,6 +30,7 @@ import {
 import {
   makeGetCodebookVariablesForEdgeType,
   makeGetCodebookVariablesForNodeType,
+  makeGetWritableAttributeKeysForNodeType,
 } from '../../selectors/protocol';
 import {
   getCurrentStageId,
@@ -181,7 +182,7 @@ async function prepareNode(args: AddNodeArgs, getState: () => RootState) {
   if (!allowUnknownAttributes) {
     const validation = validateAttributePatch(
       { set: initialAttributes, unset: [] },
-      new Set(Object.keys(variablesForType)),
+      makeGetWritableAttributeKeysForNodeType(state)(type),
     );
 
     invariant(
@@ -344,7 +345,7 @@ export const updateNode = createAppAsyncThunk(
 
     const validation = validateAttributePatch(
       attributePatch,
-      new Set(Object.keys(variablesForType)),
+      makeGetWritableAttributeKeysForNodeType(state)(node.type),
     );
 
     invariant(

@@ -27,14 +27,8 @@ function setOptionalNodeAttribute(
 function createNarrativeInterview(seed: number) {
   const si = new SyntheticInterview(seed);
   const nt = si.addNodeType({ name: 'Person' });
-  const layoutVar1 = nt.addVariable({
-    type: 'layout',
-    name: 'Narrative Layout 1',
-  });
-  const layoutVar2 = nt.addVariable({
-    type: 'layout',
-    name: 'Narrative Layout 2',
-  });
+  const layoutVar1 = si.addLayout({ name: 'Narrative_Layout_1' });
+  const layoutVar2 = si.addLayout({ name: 'Narrative_Layout_2' });
   const closeVar = nt.addVariable({
     type: 'boolean',
     name: 'Close Friend',
@@ -147,7 +141,7 @@ const buildFromArgs = (args: NarrativeArgs) => {
 
   stage.addPreset({
     label: 'Social Network',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     ...(args.groups ? { groupVariable: communityVar.id } : {}),
     ...(args.edges ? { edges: { display: [friendshipEt.id] } } : {}),
     ...(args.highlight ? { highlight: [closeVar.id] } : {}),
@@ -211,7 +205,7 @@ const buildConcentricCirclesBackground = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Social Network',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
   });
   si.addInformationStage({
     title: 'Complete',
@@ -230,7 +224,7 @@ const buildBackgroundImage = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Social Network',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
   });
   si.addAsset({
     assetId: backgroundAssetId,
@@ -251,7 +245,7 @@ const buildWithEdges = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Social Network',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id] },
   });
   si.addEdges(
@@ -280,7 +274,7 @@ const buildWithConvexHulls = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Community Groups',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     groupVariable: communityVar.id,
   });
   const groupValues: (string[] | null)[] = [
@@ -314,7 +308,7 @@ const buildWithHighlighting = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Close Friends',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     highlight: [closeVar.id, trustedVar.id],
   });
   const hlValues = [true, false, true, null, true, false, true, false];
@@ -343,7 +337,7 @@ const buildFullFeatured = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Full View',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id, professionalEt.id] },
     groupVariable: communityVar.id,
     highlight: [closeVar.id],
@@ -421,20 +415,20 @@ const buildMultiplePresets = () => {
   });
   stage.addPreset({
     label: 'Social View',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id] },
     groupVariable: communityVar.id,
     highlight: [closeVar.id],
   });
   stage.addPreset({
     label: 'Professional View',
-    layoutVariable: layoutVar2.id,
+    layout: layoutVar2.id,
     edges: { display: [professionalEt.id] },
     highlight: [trustedVar.id],
   });
   stage.addPreset({
     label: 'Community Map',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     groupVariable: communityVar.id,
   });
   const hlValues = [
@@ -507,7 +501,7 @@ const buildWithFreeDraw = () => {
     behaviours: { freeDraw: true, automaticLayout: true },
   }).addPreset({
     label: 'Social Network',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
   });
   si.addInformationStage({
     title: 'Complete',
@@ -524,7 +518,7 @@ const buildPresetFilters = () => {
   const stage = si.addStage('Narrative', { initialNodes: { count: 6 } });
   stage.addPreset({
     label: 'Close friends',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     filter: {
       rules: [
         {
@@ -540,7 +534,7 @@ const buildPresetFilters = () => {
       ],
     },
   });
-  stage.addPreset({ label: 'Everyone', layoutVariable: layoutVar1.id });
+  stage.addPreset({ label: 'Everyone', layout: layoutVar1.id });
   [true, false, true, false, false, false].forEach((close, index) => {
     si.setNodeAttribute(index, closeVar.id, close);
   });
@@ -559,7 +553,7 @@ const buildWithRepositioning = () => {
     behaviours: { allowRepositioning: true, automaticLayout: true },
   }).addPreset({
     label: 'Social Network',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
   });
   si.addInformationStage({
     title: 'Complete',
@@ -587,7 +581,7 @@ const buildAllBehaviours = () => {
     },
   }).addPreset({
     label: 'Full View',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id, professionalEt.id] },
     groupVariable: communityVar.id,
     highlight: [closeVar.id],
@@ -663,7 +657,7 @@ const buildManyNodes = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Full View',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id, professionalEt.id] },
     groupVariable: communityVar.id,
     highlight: [closeVar.id],
@@ -726,7 +720,7 @@ const buildSingleNodeGroups = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Community Groups',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     groupVariable: communityVar.id,
   });
   const groupValues: string[][] = [
@@ -753,7 +747,7 @@ const buildTwoNodeGroup = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Community Groups',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     groupVariable: communityVar.id,
   });
   const groupValues: string[][] = [['family'], ['family'], ['work'], ['work']];
@@ -795,7 +789,7 @@ const buildDyad = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Dyad',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id] },
   });
   setLayout(si, layoutVar1.id, [
@@ -815,7 +809,7 @@ const buildTriad = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Triad',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id] },
   });
   setLayout(si, layoutVar1.id, [
@@ -843,7 +837,7 @@ const buildStar = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Hub and Spoke',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id] },
   });
   // Node 0 is the central hub; nodes 1-6 are leaves arranged around it.
@@ -880,7 +874,7 @@ const buildClique = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Clique',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     groupVariable: communityVar.id,
     edges: { display: [friendshipEt.id] },
   });
@@ -922,7 +916,7 @@ const buildPathChain = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Path',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     edges: { display: [friendshipEt.id] },
   });
   // Six nodes spread along a gentle line so the chain stays legible.
@@ -957,7 +951,7 @@ const buildTwoCommunitiesBroker = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Two Communities + Broker',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     groupVariable: communityVar.id,
     edges: { display: [friendshipEt.id] },
   });
@@ -1024,7 +1018,7 @@ const buildCorePeriphery = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Core-Periphery',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     groupVariable: communityVar.id,
     edges: { display: [friendshipEt.id] },
   });
@@ -1078,7 +1072,7 @@ const buildEgoNetwork = () => {
     behaviours: { automaticLayout: true },
   }).addPreset({
     label: 'Ego Network',
-    layoutVariable: layoutVar1.id,
+    layout: layoutVar1.id,
     groupVariable: communityVar.id,
     edges: { display: [friendshipEt.id] },
   });

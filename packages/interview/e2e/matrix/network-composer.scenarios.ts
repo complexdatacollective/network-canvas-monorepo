@@ -88,7 +88,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         'type',
         'subject',
         'quickAdd',
-        'layoutVariable',
+        'layout',
         'behaviours.automaticLayout.absent',
         'label',
         'interviewScript',
@@ -99,10 +99,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(180);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         // A second node type that is NOT the stage subject — its nodes must
         // never render on the composer canvas.
         synth.addNodeType({ name: 'Place' });
@@ -111,7 +108,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           interviewScript: 'SECRET-SCRIPT',
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
         });
         synth.addInformationStage({ title: 'Complete' });
         gridRefs.quickAdd = quickAdd.id;
@@ -174,19 +171,16 @@ export const networkComposerScenarios: InterfaceScenarios = {
 
     {
       id: 'node-drag-updates-layout-variable',
-      covers: ['layoutVariable'],
+      covers: ['layout'],
       build: () => {
         const synth = new SyntheticInterview(181);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
         });
         synth.addInformationStage({ title: 'Complete' });
         dragRefs.quickAdd = quickAdd.id;
@@ -231,15 +225,12 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(182);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const age = person.addVariable({ type: 'number', name: 'Age' });
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           nodeForm: {
             fields: [{ variable: age.id, component: 'Number', label: 'Age' }],
           },
@@ -297,10 +288,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(197);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const age = person.addVariable({ type: 'number', name: 'Age' });
         const community = person.addVariable({
           type: 'categorical',
@@ -314,7 +302,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           convexHullVariable: community.id,
           nodeForm: {
             fields: [{ variable: age.id, component: 'Number', label: 'Age' }],
@@ -413,14 +401,11 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(183);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
         });
         synth.addInformationStage({ title: 'Complete' });
         return synth;
@@ -484,10 +469,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(184);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const community = person.addVariable({
           type: 'categorical',
           name: 'Community',
@@ -500,7 +482,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           convexHullVariable: community.id,
         });
         synth.addInformationStage({ title: 'Complete' });
@@ -539,10 +521,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(185);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const community = person.addVariable({
           type: 'categorical',
           name: 'Community',
@@ -570,7 +549,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           convexHullVariable: community.id,
         });
         synth.addInformationStage({ title: 'Complete' });
@@ -726,14 +705,11 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(186);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           background: {
             concentricCircles: 6,
             skewedTowardCenter: false,
@@ -773,10 +749,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(188);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         synth.addAsset({
           id: backgroundImageAsset.assetId,
           name: backgroundImageAsset.name,
@@ -786,7 +759,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           background: {
             image: backgroundImageAsset.assetId,
           },
@@ -831,14 +804,11 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(187);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           background: { concentricCircles: 0 },
         });
         synth.addInformationStage({ title: 'Complete' });
@@ -859,15 +829,12 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(190);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           initialNodes: { count: 4 },
           initialEdges: [
             [0, 1],
@@ -928,15 +895,12 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(191);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
         });
         stage.addEdgeType({ type: friendship.id });
         synth.addInformationStage({ title: 'Complete' });
@@ -990,10 +954,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(192);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const advice = synth.addEdgeType({ name: 'Advice' });
         const reciprocated = advice.addVariable({
@@ -1003,7 +964,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
         });
         stage.addEdgeType({ type: friendship.id });
         stage.addEdgeType({
@@ -1106,10 +1067,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(193);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
 
         const fullName = person.addVariable({ type: 'text', name: 'fullName' });
         const bio = person.addVariable({ type: 'text', name: 'Bio' });
@@ -1179,7 +1137,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           nodeForm: {
             fields: [
               // Custom label overrides the codebook variable name.
@@ -1399,10 +1357,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(194);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const textA = person.addVariable({
           type: 'text',
           name: 'bioA',
@@ -1421,7 +1376,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           nodeForm: {
             fields: [
               {
@@ -1499,10 +1454,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(195);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const community = person.addVariable({
           type: 'categorical',
           name: 'Community',
@@ -1515,7 +1467,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
           convexHullVariable: community.id,
         });
         stage.addEdgeType({ type: friendship.id });
@@ -1606,15 +1558,12 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview(196);
         const person = synth.addNodeType({ name: 'Person' });
         const quickAdd = person.addVariable({ type: 'text', name: 'name' });
-        const layoutVar = person.addVariable({
-          type: 'layout',
-          name: 'composerLayout',
-        });
+        const layoutVar = synth.addLayout({ name: 'composerLayout' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('NetworkComposer', {
           subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
-          layoutVariable: layoutVar.id,
+          layout: layoutVar.id,
         });
         stage.addEdgeType({ type: friendship.id });
         synth.addInformationStage({ title: 'Complete' });

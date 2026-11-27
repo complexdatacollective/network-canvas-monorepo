@@ -11,8 +11,6 @@ vi.mock('../../../hooks/useStageSelector', () => ({
   }),
 }));
 
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
-
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PresetSwitcher from '../PresetSwitcher';
 
@@ -22,12 +20,12 @@ const HEADINGS = {
   groups: undefined,
 };
 
-const layoutVariable = asEntityAttributeReference('layout');
+const layout = 'layout';
 
 const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
-  { id: testId('first'), label: { en: 'First' }, layoutVariable },
-  { id: testId('second'), label: { en: 'Second' }, layoutVariable },
-  { id: testId('third'), label: { en: 'Third' }, layoutVariable },
+  { id: testId('first'), label: { en: 'First' }, layout },
+  { id: testId('second'), label: { en: 'Second' }, layout },
+  { id: testId('third'), label: { en: 'Third' }, layout },
 ];
 
 function renderSwitcher(activePreset: number) {

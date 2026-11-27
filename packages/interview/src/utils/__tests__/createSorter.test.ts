@@ -1388,7 +1388,6 @@ describe('processProtocolSortRule', () => {
         ],
       },
       [SCALE]: { type: 'scalar', name: 'scale' },
-      [LAYOUT]: { type: 'layout', name: 'layout' },
     };
 
     it('ignores fifo (*) rules', () => {

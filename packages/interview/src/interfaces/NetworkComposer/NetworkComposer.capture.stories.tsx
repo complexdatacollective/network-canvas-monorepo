@@ -15,16 +15,13 @@ const build = () => {
   const si = new SyntheticInterview(1);
   const nt = si.addNodeType({ name: 'Person' });
   const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
-  const layoutVar = nt.addVariable({
-    type: 'layout',
-    name: 'Composer Layout',
-  });
+  const layoutVar = si.addLayout({ name: 'Composer_Layout' });
   const friendship = si.addEdgeType({ name: 'Friendship' });
 
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     initialNodes: { count: 6 },
     nodeForm: { fields: [{ component: 'Number', label: 'Age' }] },
     // Capture the interface with the force-directed layout running.

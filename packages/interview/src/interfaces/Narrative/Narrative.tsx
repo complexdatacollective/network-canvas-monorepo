@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Node from '@codaco/fresco-ui/Node';
 import { filter as networkFilter } from '@codaco/network-query';
+import { getStageNodeTypes } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -201,7 +202,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
   );
 
   // Display Properties
-  const layoutVariable = currentPreset?.layoutVariable ?? '';
+  const layoutVariable = currentPreset?.layout ?? '';
   const highlight = currentPreset?.highlight ?? [];
   const convexHullVariable = showConvexHulls
     ? (currentPreset?.groupVariable ?? '')
@@ -210,13 +211,20 @@ const Narrative = ({ stage }: NarrativeProps) => {
   // Background Configuration
   const stageBackground = stage.background;
 
-  // Only include nodes that have the layout variable set
+  // Only nodes of the stage's subject types that hold a position in the
+  // preset's layout are shown. Another stage may have placed nodes of other
+  // types in the same layout.
+  const subjectTypes = useMemo(() => getStageNodeTypes(stage), [stage]);
   const nodesWithLayout = useMemo(
     () =>
       layoutVariable
-        ? nodes.filter((node) => node[entityAttributesProperty][layoutVariable])
+        ? nodes.filter(
+            (node) =>
+              subjectTypes.includes(node.type) &&
+              node[entityAttributesProperty][layoutVariable],
+          )
         : [],
-    [nodes, layoutVariable],
+    [nodes, layoutVariable, subjectTypes],
   );
 
   // Filter edges by display types

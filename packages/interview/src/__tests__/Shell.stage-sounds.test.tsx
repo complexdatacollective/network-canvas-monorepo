@@ -112,12 +112,12 @@ const sociogram = {
   type: 'Sociogram',
   label: { en: 'Place people' },
   subject: { entity: 'node', types: [PERSON] },
+  layout: LAYOUT,
   background: { concentricCircles: 4 },
   prompts: [
     {
       id: testId('socio-p1'),
       text: { en: 'Place the people' },
-      layout: { layoutVariable: LAYOUT },
       edges: { create: KNOWS, display: [KNOWS] },
     },
   ],
@@ -269,6 +269,7 @@ function payloadWith(
       schemaVersion: 9,
       localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
+        layouts: { [LAYOUT]: { name: 'layout' } },
         ego: {
           variables: {
             [NICKNAME]: {
@@ -303,7 +304,6 @@ function payloadWith(
             shape: { default: 'circle' },
             variables: {
               [NAME]: { name: 'name', type: 'text' },
-              [LAYOUT]: { name: 'layout', type: 'layout' },
               [RANK]: {
                 name: 'rank',
                 type: 'ordinal',

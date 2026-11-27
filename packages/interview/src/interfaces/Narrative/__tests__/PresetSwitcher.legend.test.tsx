@@ -26,7 +26,7 @@ const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
   {
     id: testId('preset'),
     label: { en: 'Friends', ar: 'الأصدقاء' },
-    layoutVariable: asEntityAttributeReference('layout'),
+    layout: 'layout',
     highlight: [
       {
         id: testId('highlight-close'),

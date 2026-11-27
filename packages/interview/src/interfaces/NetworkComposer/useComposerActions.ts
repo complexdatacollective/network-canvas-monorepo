@@ -36,7 +36,7 @@ type Position = { x: number; y: number };
 type UseComposerActionsArgs = {
   subjectType: string;
   quickAdd: string;
-  layoutVariable: string;
+  layoutId: string;
   /** Whether the quick-add variable is marked encrypted in the codebook. */
   useEncryption: boolean;
   /** Whether the layout is automatic before the participant switches it. */
@@ -159,7 +159,7 @@ function normalizeGroupValues(raw: unknown): string[] {
 export function useComposerActions({
   subjectType,
   quickAdd,
-  layoutVariable,
+  layoutId,
   useEncryption,
   automaticLayoutDefault,
   currentStep,
@@ -182,7 +182,7 @@ export function useComposerActions({
 
   function readOccupiedPositions(): Position[] {
     return readStageNodes()
-      .map((n) => n[entityAttributesProperty][layoutVariable])
+      .map((n) => n[entityAttributesProperty][layoutId])
       .filter(isPosition);
   }
 
@@ -246,7 +246,7 @@ export function useComposerActions({
           type: subjectType,
           attributeData: {
             [quickAdd]: name,
-            [layoutVariable]: position,
+            [layoutId]: position,
           },
           modelData: { [entityPrimaryKeyProperty]: id },
           useEncryption,
@@ -505,14 +505,14 @@ export function useComposerActions({
 
   async function repositionNode(id: string, position: Position): Promise<void> {
     await undoStore.getState().record(async () => {
-      const prior = readNode(id)?.[entityAttributesProperty][layoutVariable];
+      const prior = readNode(id)?.[entityAttributesProperty][layoutId];
       const previous = isPosition(prior) ? prior : null;
 
       await dispatch(
         updateNode({
           nodeId: id,
           attributePatch: {
-            set: { [layoutVariable]: position },
+            set: { [layoutId]: position },
             unset: [],
           },
           currentStep,
@@ -528,7 +528,7 @@ export function useComposerActions({
             updateNode({
               nodeId: id,
               attributePatch: {
-                set: { [layoutVariable]: previous },
+                set: { [layoutId]: previous },
                 unset: [],
               },
               currentStep,
@@ -540,7 +540,7 @@ export function useComposerActions({
             updateNode({
               nodeId: id,
               attributePatch: {
-                set: { [layoutVariable]: position },
+                set: { [layoutId]: position },
                 unset: [],
               },
               currentStep,
@@ -695,7 +695,7 @@ export function useComposerActions({
     await dispatch(
       updateNode({
         nodeId: id,
-        attributePatch: { set: { [layoutVariable]: position }, unset: [] },
+        attributePatch: { set: { [layoutId]: position }, unset: [] },
         currentStep,
       }),
     ).unwrap();
@@ -709,7 +709,7 @@ export function useComposerActions({
     const unsaved = [...readShownPositions()].filter(([id, shown]) => {
       const node = readNode(id);
       if (!node) return false;
-      const saved = node[entityAttributesProperty][layoutVariable];
+      const saved = node[entityAttributesProperty][layoutId];
       return !isPosition(saved) || saved.x !== shown.x || saved.y !== shown.y;
     });
     await Promise.all(unsaved.map(([id, position]) => placeNode(id, position)));
@@ -737,7 +737,7 @@ export function useComposerActions({
 
       const before = readStageNodes().map((node) => ({
         id: node[entityPrimaryKeyProperty],
-        snapshot: snapshotAttributes(node, [layoutVariable]),
+        snapshot: snapshotAttributes(node, [layoutId]),
       }));
       writeAutomaticLayout(true);
 

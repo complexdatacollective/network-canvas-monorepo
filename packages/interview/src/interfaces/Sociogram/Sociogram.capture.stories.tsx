@@ -13,18 +13,17 @@ import CaptureStory, {
  */
 const build = () => {
   const si = new SyntheticInterview(1);
-  const nt = si.addNodeType({ name: 'Person' });
-  const layoutVar = nt.addVariable({
-    type: 'layout',
-    name: 'Sociogram Layout',
-  });
+  si.addNodeType({ name: 'Person' });
+  const layoutVar = si.addLayout({ name: 'Sociogram_Layout' });
   const et = si.addEdgeType({ name: 'Friendship' });
 
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
-  const stage = si.addStage('Sociogram', { initialNodes: { count: 9 } });
+  const stage = si.addStage('Sociogram', {
+    layout: layoutVar.id,
+    initialNodes: { count: 9 },
+  });
   stage.addPrompt({
     text: 'Please connect any two people who know each other.',
-    layout: { layoutVariable: layoutVar.id },
     edges: { create: et.id, display: [et.id] },
   });
 

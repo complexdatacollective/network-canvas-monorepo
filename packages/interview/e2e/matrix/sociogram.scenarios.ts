@@ -200,7 +200,7 @@ function buildManualBaseline(): ScenarioDefinition {
       'prompts',
       'prompts[].id',
       'prompts[].text',
-      'prompts[].layout.layoutVariable',
+      'layout',
       'behaviours.automaticLayout',
       'background.concentricCircles',
       'background.skewedTowardCenter',
@@ -212,11 +212,9 @@ function buildManualBaseline(): ScenarioDefinition {
       const synth = new SyntheticInterview();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         label: 'Friendship map',
         interviewScript: 'Ask about closeness.',
       });
@@ -246,7 +244,6 @@ function buildManualBaseline(): ScenarioDefinition {
       });
       stage.addPrompt({
         text: 'Position each person.',
-        layout: { layoutVariable: layoutVar.id },
       });
       return synth;
     },
@@ -302,29 +299,29 @@ function buildBackgroundConcentricCirclesVariants(): ScenarioDefinition {
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
-      const personType = synth.addNodeType({ name: 'Person' });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      synth.addNodeType({ name: 'Person' });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       // 3 stages sharing one personType/layoutVar. Background rendering
       // doesn't depend on nodes, but a canvas with no one on it is skipped,
       // so the first stage seeds one person that all three stages show.
       const stage0 = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         initialNodes: { count: 1 },
         background: { concentricCircles: 4, skewedTowardCenter: true },
       });
-      stage0.addPrompt({ layout: { layoutVariable: layoutVar.id } });
+      stage0.addPrompt();
       const stage1 = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         initialNodes: { count: 0 },
         background: { concentricCircles: 2, skewedTowardCenter: false },
       });
-      stage1.addPrompt({ layout: { layoutVariable: layoutVar.id } });
+      stage1.addPrompt();
       const stage2 = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         initialNodes: { count: 0 },
         background: { concentricCircles: 0 },
       });
-      stage2.addPrompt({ layout: { layoutVariable: layoutVar.id } });
+      stage2.addPrompt();
       return synth;
     },
     run: async ({ page, interview }) => {
@@ -373,18 +370,16 @@ function buildBackgroundImage(): ScenarioDefinition {
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
-      const personType = synth.addNodeType({ name: 'Person' });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      synth.addNodeType({ name: 'Person' });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         initialNodes: { count: 3 },
         // The image variant excludes concentricCircles (schema XOR); the run()
         // asserts no radar circles render alongside the image.
         background: { image: bgAssetId },
       });
-      stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
+      stage.addPrompt();
       synth.addAsset({
         id: bgAssetId,
         name: 'Background',
@@ -435,23 +430,17 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
   let nameVarId = '';
   return {
     id: 'manual-drag-place-and-reposition',
-    covers: [
-      'prompts[].layout.layoutVariable',
-      'behaviours.allowRepositioning',
-      'behaviours.freeDraw',
-    ],
+    covers: ['layout', 'behaviours.allowRepositioning', 'behaviours.freeDraw'],
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       layoutVarId = layoutVar.id;
       const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         // Both are dead config for Sociogram — asserted in run().
         behaviours: { allowRepositioning: false, freeDraw: true },
       });
@@ -463,7 +452,7 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
         [nameVar.id]: 'Bea',
         [layoutVar.id]: null,
       });
-      stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
+      stage.addPrompt();
       return synth;
     },
     run: async ({ page, protocol, interview }) => {
@@ -598,19 +587,16 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
   let nameVarId = '';
   return {
     id: 'unplace-drag-and-keyboard',
-    covers: ['prompts[].layout.layoutVariable'],
+    covers: ['layout'],
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       layoutVarId = layoutVar.id;
-      const stage = synth.addStage('Sociogram');
+      const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
       synth.addManualNode(stage.id, personType.id, 'p0', {
         [nameVar.id]: 'Ash',
         [layoutVar.id]: { x: 0.3, y: 0.3 },
@@ -623,7 +609,7 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
         [nameVar.id]: 'Cy',
         [layoutVar.id]: { x: 0.45, y: 0.6 },
       });
-      stage.addPrompt({ layout: { layoutVariable: layoutVar.id } });
+      stage.addPrompt();
       return synth;
     },
     run: async ({ page, protocol, interview }) => {
@@ -666,19 +652,16 @@ function buildAutomaticLayoutSettle(): ScenarioDefinition {
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
-      const personType = synth.addNodeType({ name: 'Person' });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      synth.addNodeType({ name: 'Person' });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       layoutVarId = layoutVar.id;
       const friendshipType = synth.addEdgeType({ name: 'Friendship' });
       const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         initialNodes: { count: 6 },
         behaviours: { automaticLayout: true },
       });
       stage.addPrompt({
-        layout: { layoutVariable: layoutVar.id },
         edges: { create: friendshipType.id, display: [friendshipType.id] },
       });
       // Nodes are NOT given explicit layout attrs — the simulation is
@@ -735,12 +718,10 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
       const synth = new SyntheticInterview();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const friendshipType = synth.addEdgeType({ name: 'Friendship' });
       const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         behaviours: { automaticLayout: true },
       });
       synth.setInterfaceText('buttons', 'pauseLayout', PAUSE_LAYOUT);
@@ -753,7 +734,6 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
         });
       });
       stage.addPrompt({
-        layout: { layoutVariable: layoutVar.id },
         edges: { create: friendshipType.id, display: [friendshipType.id] },
       });
       synth.addEdges(
@@ -819,13 +799,11 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       layoutVarId = layoutVar.id;
       const friendshipType = synth.addEdgeType({ name: 'Friendship' });
       const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         behaviours: { automaticLayout: true },
       });
       ['Ash', 'Bea', 'Cy', 'Dee', 'Eve'].forEach((name, i) => {
@@ -835,7 +813,6 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
         });
       });
       stage.addPrompt({
-        layout: { layoutVariable: layoutVar.id },
         edges: { create: friendshipType.id, display: [friendshipType.id] },
       });
       synth.addEdges(
@@ -887,16 +864,13 @@ function buildEdgesFullMatrix(): ScenarioDefinition {
       const synth = new SyntheticInterview();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const friendshipType = synth.addEdgeType({ name: 'Friendship' });
       friendshipTypeId = friendshipType.id;
       const workType = synth.addEdgeType({ name: 'Work' });
       workTypeId = workType.id;
 
-      const stage = synth.addStage('Sociogram');
+      const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
       const placements: [string, string, { x: number; y: number }][] = [
         ['ash', 'Ash', { x: 0.2, y: 0.3 }],
         ['bea', 'Bea', { x: 0.55, y: 0.3 }],
@@ -913,7 +887,6 @@ function buildEdgesFullMatrix(): ScenarioDefinition {
       // prompt0: create + display the same type.
       stage.addPrompt({
         text: 'Connect friends.',
-        layout: { layoutVariable: layoutVar.id },
         edges: {
           create: friendshipType.id,
           display: [friendshipType.id],
@@ -922,14 +895,12 @@ function buildEdgesFullMatrix(): ScenarioDefinition {
       // prompt1: display both existing edge types, no create.
       stage.addPrompt({
         text: 'Review all relationships.',
-        layout: { layoutVariable: layoutVar.id },
         edges: { display: [friendshipType.id, workType.id] },
       });
       // prompt2: create work edges with an explicitly EMPTY display — proves
       // edges.create is not auto-added to edges.display at runtime.
       stage.addPrompt({
         text: 'Connect colleagues.',
-        layout: { layoutVariable: layoutVar.id },
         edges: { create: workType.id, display: [] },
       });
 
@@ -1028,16 +999,13 @@ function buildHighlightToggle(): ScenarioDefinition {
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const closeFriendVar = personType.addVariable({
         type: 'boolean',
         name: 'closeFriend',
       });
       closeFriendVarId = closeFriendVar.id;
-      const stage = synth.addStage('Sociogram');
+      const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
       synth.addManualNode(stage.id, personType.id, 'p0', {
         [nameVar.id]: 'Ash',
         [layoutVar.id]: { x: 0.35, y: 0.4 },
@@ -1050,7 +1018,6 @@ function buildHighlightToggle(): ScenarioDefinition {
       });
       stage.addPrompt({
         text: 'Mark your close friends.',
-        layout: { layoutVariable: layoutVar.id },
         // Builder default: allowHighlighting resolves to true.
         highlight: { variable: closeFriendVar.id },
       });
@@ -1109,10 +1076,7 @@ function buildHighlightDisplayOnlyWithEdgesCreate(): ScenarioDefinition {
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
       nameVarId = nameVar.id;
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const closeFriendVar = personType.addVariable({
         type: 'boolean',
         name: 'closeFriend',
@@ -1121,7 +1085,7 @@ function buildHighlightDisplayOnlyWithEdgesCreate(): ScenarioDefinition {
       const friendshipType = synth.addEdgeType({ name: 'Friendship' });
       friendshipTypeId = friendshipType.id;
 
-      const stage = synth.addStage('Sociogram');
+      const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
       synth.addManualNode(stage.id, personType.id, 'ash', {
         [nameVar.id]: 'Ash',
         [layoutVar.id]: { x: 0.3, y: 0.3 },
@@ -1139,7 +1103,6 @@ function buildHighlightDisplayOnlyWithEdgesCreate(): ScenarioDefinition {
       });
       stage.addPrompt({
         text: 'Draw a line between people who know each other.',
-        layout: { layoutVariable: layoutVar.id },
         edges: { create: friendshipType.id, display: [friendshipType.id] },
       });
       // Schema-legal display-only highlight: the superRefine only forbids
@@ -1195,15 +1158,12 @@ function buildMultiPromptNavigationAndCollapse(): ScenarioDefinition {
       const synth = new SyntheticInterview();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const closeFriendVar = personType.addVariable({
         type: 'boolean',
         name: 'closeFriend',
       });
-      const stage = synth.addStage('Sociogram');
+      const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
       const grid: { x: number; y: number }[] = [
         { x: 0.25, y: 0.3 },
         { x: 0.5, y: 0.3 },
@@ -1220,11 +1180,9 @@ function buildMultiPromptNavigationAndCollapse(): ScenarioDefinition {
       });
       stage.addPrompt({
         text: 'Position each person.',
-        layout: { layoutVariable: layoutVar.id },
       });
       stage.addPrompt({
         text: 'Now mark close friends.',
-        layout: { layoutVariable: layoutVar.id },
         highlight: { variable: closeFriendVar.id },
       });
       return synth;
@@ -1275,11 +1233,8 @@ function buildSortOrderDrawer(): ScenarioDefinition {
       const synth = new SyntheticInterview();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
-      const stage = synth.addStage('Sociogram');
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
+      const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
 
       const names = ['Dave', 'Alice', 'Carol', 'Bob'];
       names.forEach((name, i) => {
@@ -1292,12 +1247,10 @@ function buildSortOrderDrawer(): ScenarioDefinition {
 
       stage.addPrompt({
         text: 'Unplaced people, sorted by name descending.',
-        layout: { layoutVariable: layoutVar.id },
         sortOrder: [{ property: nameVar.id, direction: 'desc' }],
       });
       stage.addPrompt({
         text: 'Unplaced people, sorted by name ascending.',
-        layout: { layoutVariable: layoutVar.id },
         sortOrder: [{ property: nameVar.id, direction: 'asc' }],
       });
       return synth;
@@ -1343,18 +1296,13 @@ function buildSubjectFiltersToNodeType(): ScenarioDefinition {
         type: 'text',
         name: 'name',
       });
-      const personLayoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'personLayout',
-      });
+      const personLayoutVar = synth.addLayout({ name: 'personLayout' });
       const venueType = synth.addNodeType({ name: 'Venue' });
       const venueName = venueType.addVariable({ type: 'text', name: 'name' });
-      const venueLayoutVar = venueType.addVariable({
-        type: 'layout',
-        name: 'venueLayout',
-      });
+      const venueLayoutVar = synth.addLayout({ name: 'venueLayout' });
 
       const stage = synth.addStage('Sociogram', {
+        layout: personLayoutVar.id,
         subject: { entity: 'node', types: [personType.id] },
         initialNodes: { count: 0 },
       });
@@ -1379,7 +1327,7 @@ function buildSubjectFiltersToNodeType(): ScenarioDefinition {
           [venueLayoutVar.id]: layout,
         });
       }
-      stage.addPrompt({ layout: { layoutVariable: personLayoutVar.id } });
+      stage.addPrompt();
       return synth;
     },
     run: async ({ page, protocol, interview }) => {

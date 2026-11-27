@@ -22,10 +22,7 @@ function createComposerInterview(seed: number) {
   const si = new SyntheticInterview(seed);
   const nt = si.addNodeType({ name: 'Person' });
   const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
-  const layoutVar = nt.addVariable({
-    type: 'layout',
-    name: 'Composer Layout',
-  });
+  const layoutVar = si.addLayout({ name: 'Composer_Layout' });
   const friendship = si.addEdgeType({ name: 'Friendship' });
   return { si, nt, quickAddVar, layoutVar, friendship };
 }
@@ -71,7 +68,7 @@ const buildDefault = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     initialNodes: { count: 6 },
     nodeForm: { fields: [{ component: 'Number', label: 'Age' }] },
   });
@@ -105,7 +102,7 @@ const buildEmptyNetwork = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
   });
   stage.addEdgeType({ type: friendship.id });
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
@@ -122,7 +119,7 @@ const buildMultipleEdgeTypes = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     initialNodes: { count: 6 },
   });
   stage.addEdgeType({ type: friendship.id });
@@ -160,7 +157,7 @@ const buildAutomaticLayout = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     initialNodes: { count: 6 },
     behaviours: { automaticLayout: true },
   });
@@ -190,7 +187,7 @@ const buildManyAttributes = () => {
   // attribute list scrolls.
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     initialNodes: { count: 3 },
     nodeForm: {
       fields: [
@@ -229,7 +226,7 @@ const buildConvexHulls = () => {
   const si = new SyntheticInterview(8);
   const nt = si.addNodeType({ name: 'Person' });
   const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
-  const layoutVar = nt.addVariable({ type: 'layout', name: 'Composer Layout' });
+  const layoutVar = si.addLayout({ name: 'Composer_Layout' });
   const community = nt.addVariable({
     type: 'categorical',
     name: 'Community',
@@ -249,7 +246,7 @@ const buildConvexHulls = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     initialNodes: { count: 8 },
     convexHullVariable: community.id,
   });
@@ -275,7 +272,7 @@ const buildBackgroundImage = () => {
   const bgAssetId = 'bg-map-1';
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     initialNodes: { count: 6 },
     background: { image: bgAssetId },
   });
@@ -305,7 +302,7 @@ const validatedAgeInterview = (
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     nodeForm: {
       fields: [
         {
@@ -504,12 +501,12 @@ const buildEncryptedNames = () => {
     name: 'name',
     encrypted: true,
   });
-  const layoutVar = nt.addVariable({ type: 'layout', name: 'Composer Layout' });
+  const layoutVar = si.addLayout({ name: 'Composer_Layout' });
   const friendship = si.addEdgeType({ name: 'Friendship' });
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
   });
   stage.addEdgeType({ type: friendship.id });
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
@@ -563,7 +560,7 @@ const buildUndoInDrawer = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   si.addStage('NetworkComposer', {
     quickAdd: quickAddVar.id,
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     nodeForm: { fields: [{ component: 'Number', label: 'Age' }] },
   });
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });

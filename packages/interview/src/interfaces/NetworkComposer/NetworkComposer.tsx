@@ -124,7 +124,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     groups: intl.formatMessage(interfaceMessages.composerGroups),
   };
 
-  const layoutVariable = stage.layoutVariable;
+  const layoutVariable = stage.layout;
 
   // Background Configuration
   const stageBackground = stage.background;
@@ -262,7 +262,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const actions = useComposerActions({
     subjectType: nodeType,
     quickAdd: stage.quickAdd,
-    layoutVariable: stage.layoutVariable,
+    layoutId: stage.layout,
     useEncryption: quickAddEncrypted,
     automaticLayoutDefault,
     currentStep,

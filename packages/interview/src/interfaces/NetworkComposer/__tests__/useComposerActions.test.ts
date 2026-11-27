@@ -33,7 +33,6 @@ const codebook = {
       shape: { default: 'circle' as const },
       variables: {
         [QUICK_ADD_VAR]: { name: 'name', type: 'text' },
-        [LAYOUT_VAR]: { name: 'position', type: 'layout' },
         [GROUP_VAR]: {
           name: 'Group',
           type: 'categorical',
@@ -52,6 +51,7 @@ const codebook = {
       variables: {},
     },
   },
+  layouts: { [LAYOUT_VAR]: { name: 'position' } },
   ego: { variables: {} },
 };
 
@@ -113,7 +113,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -153,7 +153,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -204,7 +204,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -259,7 +259,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -314,7 +314,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -364,7 +364,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -438,7 +438,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -487,7 +487,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -554,7 +554,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -620,7 +620,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -700,7 +700,7 @@ describe('useComposerActions', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -800,7 +800,7 @@ describe('useComposerActions toggling an edge asked for the other way round', ()
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,
@@ -897,7 +897,7 @@ describe('useComposerActions deleting while another change is being made', () =>
           useComposerActions({
             subjectType: NODE_TYPE,
             quickAdd: QUICK_ADD_VAR,
-            layoutVariable: LAYOUT_VAR,
+            layoutId: LAYOUT_VAR,
             useEncryption: false,
             automaticLayoutDefault: false,
             currentStep: 0,
@@ -949,7 +949,7 @@ describe('useComposerActions reading the network when a change is made', () => {
         useComposerActions({
           subjectType: NODE_TYPE,
           quickAdd: QUICK_ADD_VAR,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           useEncryption: false,
           automaticLayoutDefault: false,
           currentStep: 0,

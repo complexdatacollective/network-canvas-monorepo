@@ -79,7 +79,7 @@ const stage = {
   type: 'NetworkComposer' as const,
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, types: [NODE_TYPE] },
-  layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+  layout: LAYOUT_VAR,
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
   edges: [
     {
@@ -102,10 +102,6 @@ const codebook = {
           name: 'name',
           type: 'text' as const,
         },
-        [LAYOUT_VAR]: {
-          name: 'position',
-          type: 'layout' as const,
-        },
       },
     },
   },
@@ -116,6 +112,7 @@ const codebook = {
       variables: {},
     },
   },
+  layouts: { [LAYOUT_VAR]: { name: 'position' } },
   ego: { variables: {} },
 };
 

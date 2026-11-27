@@ -204,6 +204,47 @@ describe('buildStageAvailabilityMap', () => {
     expect(availability[2]).toEqual({ kind: 'available' });
   });
 
+  it('a skip logic rule naming a layout still counts nodes by stored position', () => {
+    const showWhenPlaced: SkipLogic = {
+      action: 'SHOW',
+      filter: {
+        join: 'AND',
+        rules: [
+          {
+            id: testId('placed-rule'),
+            type: 'node',
+            options: {
+              type: PERSON,
+              attribute: asEntityAttributeReference(CLOSE),
+              operator: 'EXISTS',
+            },
+          },
+        ],
+      },
+    };
+    const stages = [stage('s0'), stage('s1', showWhenPlaced), finishStage()];
+    const person = (
+      attributes: NcNetwork['nodes'][number][typeof entityAttributesProperty],
+    ) => ({
+      [entityPrimaryKeyProperty]: 'a',
+      type: PERSON,
+      [entityAttributesProperty]: attributes,
+    });
+
+    expect(
+      buildStageAvailabilityMap(stages, {
+        ...network,
+        nodes: [person({ [CLOSE]: { x: 0.25, y: 0.75 } })],
+      })[1],
+    ).toEqual({ kind: 'available' });
+    expect(
+      buildStageAvailabilityMap(stages, {
+        ...network,
+        nodes: [person({})],
+      })[1]?.kind,
+    ).toBe('local-skip');
+  });
+
   describe('stages with nothing to ask about', () => {
     const node = (id: string, type = PERSON, attributes = {}) => ({
       [entityPrimaryKeyProperty]: id,
@@ -315,7 +356,7 @@ describe('buildStageAvailabilityMap', () => {
         const stages = [
           {
             ...severalTypeStage('story', 'Narrative'),
-            presets: [{ layoutVariable: CLOSE }],
+            presets: [{ layout: CLOSE }],
           },
           finishStage(),
         ];
@@ -378,7 +419,7 @@ describe('buildStageAvailabilityMap', () => {
       const stages = [
         {
           ...nodeStage('story', 'Narrative'),
-          presets: [{ layoutVariable: CLOSE }, { layoutVariable: WORK }],
+          presets: [{ layout: CLOSE }, { layout: WORK }],
         },
         finishStage(),
       ];
@@ -401,7 +442,7 @@ describe('buildStageAvailabilityMap', () => {
       const stages = [
         {
           ...nodeStage('story', 'Narrative'),
-          presets: [{ layoutVariable: CLOSE }],
+          presets: [{ layout: CLOSE }],
         },
         finishStage(),
       ];
@@ -437,8 +478,8 @@ describe('buildStageAvailabilityMap', () => {
         {
           ...nodeStage('story', 'Narrative'),
           presets: [
-            { layoutVariable: CLOSE, filter: onlyAged(30) },
-            { layoutVariable: WORK, filter: onlyAged(40) },
+            { layout: CLOSE, filter: onlyAged(30) },
+            { layout: WORK, filter: onlyAged(40) },
           ],
         },
         finishStage(),

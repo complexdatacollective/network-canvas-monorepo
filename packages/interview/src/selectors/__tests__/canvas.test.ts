@@ -1,10 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import {
-  asEntityAttributeReference,
-  type CurrentProtocol,
-} from '@codaco/protocol-validation';
+import { type CurrentProtocol } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -22,8 +19,7 @@ const PERSON = testTypeId('person');
 const LAYOUT = testVariableId('layout');
 
 describe('Sociogram placement selectors', () => {
-  it('classifies a node with no layout key as unplaced', () => {
-    const layoutVariable = asEntityAttributeReference(LAYOUT);
+  it('classifies nodes as placed or unplaced by the stage layout', () => {
     const protocolState: ProtocolPayload = {
       id: 'protocol',
       hash: 'hash',
@@ -33,17 +29,13 @@ describe('Sociogram placement selectors', () => {
       schemaVersion: 9,
       localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
+        layouts: { [LAYOUT]: { name: 'Layout' } },
         node: {
           [PERSON]: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
-            variables: {
-              [LAYOUT]: {
-                name: 'Layout',
-                type: 'layout',
-              },
-            },
+            variables: {},
           },
         },
         edge: {},
@@ -56,11 +48,11 @@ describe('Sociogram placement selectors', () => {
           label: { en: 'Sociogram' },
           background: { concentricCircles: 4 },
           subject: { entity: 'node', types: [PERSON] },
+          layout: LAYOUT,
           prompts: [
             {
               id: testId('prompt'),
               text: { en: 'Arrange people' },
-              layout: { layoutVariable },
             },
           ],
         },

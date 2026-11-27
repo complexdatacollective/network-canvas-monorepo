@@ -54,7 +54,7 @@ function buildStage() {
     type: 'NetworkComposer' as const,
     label: { en: 'Network Composer' },
     subject: { entity: 'node' as const, types: [NODE_TYPE] },
-    layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+    layout: LAYOUT_VAR,
     quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
     background: {
       concentricCircles: 4,
@@ -84,14 +84,11 @@ function buildCodebook(
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
           },
-          [LAYOUT_VAR]: {
-            name: 'position',
-            type: 'layout',
-          },
         },
       },
     },
     edge: {},
+    layouts: { [LAYOUT_VAR]: { name: 'position' } },
     ego: { variables: {} },
   };
 }

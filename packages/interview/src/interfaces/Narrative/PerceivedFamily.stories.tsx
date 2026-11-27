@@ -32,8 +32,11 @@ const V = {
   practical_support: variable('practical_support'),
   identity_affirming: variable('identity_affirming'),
   closeness: variable('closeness'),
-  family_layout: variable('family_layout'),
 };
+const FAMILY_LAYOUT = entryNamed(
+  prototype.codebook.layouts,
+  'family_layout',
+)[0];
 
 const people: NcNode[] = [
   {
@@ -48,7 +51,7 @@ const people: NcNode[] = [
       [V.practical_support]: false,
       [V.identity_affirming]: true,
       [V.closeness]: 3,
-      [V.family_layout]: { x: 0.4, y: 0.36 },
+      [FAMILY_LAYOUT]: { x: 0.4, y: 0.36 },
     },
   },
   {
@@ -63,7 +66,7 @@ const people: NcNode[] = [
       [V.practical_support]: true,
       [V.identity_affirming]: true,
       [V.closeness]: 3,
-      [V.family_layout]: { x: 0.61, y: 0.37 },
+      [FAMILY_LAYOUT]: { x: 0.61, y: 0.37 },
     },
   },
   {
@@ -78,7 +81,7 @@ const people: NcNode[] = [
       [V.practical_support]: false,
       [V.identity_affirming]: true,
       [V.closeness]: 3,
-      [V.family_layout]: { x: 0.48, y: 0.62 },
+      [FAMILY_LAYOUT]: { x: 0.48, y: 0.62 },
     },
   },
   {
@@ -93,7 +96,7 @@ const people: NcNode[] = [
       [V.practical_support]: true,
       [V.identity_affirming]: false,
       [V.closeness]: 2,
-      [V.family_layout]: { x: 0.24, y: 0.59 },
+      [FAMILY_LAYOUT]: { x: 0.24, y: 0.59 },
     },
   },
   {
@@ -108,7 +111,7 @@ const people: NcNode[] = [
       [V.practical_support]: false,
       [V.identity_affirming]: true,
       [V.closeness]: 2,
-      [V.family_layout]: { x: 0.74, y: 0.58 },
+      [FAMILY_LAYOUT]: { x: 0.74, y: 0.58 },
     },
   },
 ];

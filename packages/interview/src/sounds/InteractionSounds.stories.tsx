@@ -15,7 +15,7 @@ function buildInterview() {
   const interview = new SyntheticInterview(7);
   const person = interview.addNodeType({ name: 'Person' });
   const name = person.addVariable({ type: 'text', name: 'Name' });
-  const layout = person.addVariable({ type: 'layout', name: 'Layout' });
+  const layout = interview.addLayout({ name: 'Layout' });
   const close = person.addVariable({ type: 'boolean', name: 'Close' });
   const friendship = interview.addEdgeType({ name: 'Friendship' });
   const category = person.addVariable({
@@ -57,17 +57,16 @@ function buildInterview() {
   });
 
   const sociogram = interview.addStage('Sociogram', {
+    layout: layout.id,
     label: 'Connect people',
     subject: { entity: 'node', types: [person.id] },
   });
   sociogram.addPrompt({
     text: 'Tap a person, then another, to connect or disconnect them. A sound loops while the first waits.',
-    layout: { layoutVariable: layout.id },
     edges: { create: friendship.id, display: [friendship.id] },
   });
   sociogram.addPrompt({
     text: 'Tap the people you are close to.',
-    layout: { layoutVariable: layout.id },
     edges: { display: [friendship.id] },
     highlight: { variable: close.id },
   });

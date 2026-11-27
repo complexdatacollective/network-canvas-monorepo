@@ -39,7 +39,6 @@ const variables: Record<string, Variable> = {
     component: 'Text',
     encrypted: true,
   },
-  [LAYOUT_VAR]: { name: 'position', type: 'layout' },
 };
 
 const stage: StageProps<'NetworkComposer'>['stage'] = {
@@ -47,7 +46,7 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
   type: 'NetworkComposer',
   label: { en: 'Network Composer' },
   subject: { entity: 'node', types: [NODE_TYPE] },
-  layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+  layout: LAYOUT_VAR,
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
   background: { concentricCircles: 4, skewedTowardCenter: true },
 };
@@ -88,7 +87,7 @@ function renderActions(store: Store) {
       useComposerActions({
         subjectType: NODE_TYPE,
         quickAdd: QUICK_ADD_VAR,
-        layoutVariable: LAYOUT_VAR,
+        layoutId: LAYOUT_VAR,
         useEncryption: true,
         automaticLayoutDefault: false,
         currentStep: 0,

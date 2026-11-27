@@ -128,6 +128,20 @@ export const makeGetCodebookVariablesForNodeType = createSelector(
   },
 );
 
+/**
+ * The attribute keys a node of a type may hold: its variables, and every
+ * layout of the codebook, since a position is stored on the node under the
+ * layout's id.
+ */
+export const makeGetWritableAttributeKeysForNodeType = createSelector(
+  getCodebook,
+  (codebook) => (type: string) =>
+    new Set([
+      ...Object.keys(codebook.node?.[type]?.variables ?? {}),
+      ...Object.keys(codebook.layouts ?? {}),
+    ]),
+);
+
 export const makeGetCodebookVariablesForEdgeType = createSelector(
   getCodebook,
   (codebook) => (type: string) => {

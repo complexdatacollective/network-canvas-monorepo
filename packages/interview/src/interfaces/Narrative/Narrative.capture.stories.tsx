@@ -14,10 +14,7 @@ import CaptureStory, {
 const build = () => {
   const si = new SyntheticInterview(1);
   const nt = si.addNodeType({ name: 'Person' });
-  const layoutVar = nt.addVariable({
-    type: 'layout',
-    name: 'Narrative Layout',
-  });
+  const layoutVar = si.addLayout({ name: 'Narrative_Layout' });
   const closeVar = nt.addVariable({ type: 'boolean', name: 'Close Friend' });
   const communityVar = nt.addVariable({
     type: 'categorical',
@@ -33,7 +30,7 @@ const build = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   si.addStage('Narrative', { initialNodes: { count: 8 } }).addPreset({
     label: 'Social Network',
-    layoutVariable: layoutVar.id,
+    layout: layoutVar.id,
     edges: { display: [friendshipEt.id] },
     groupVariable: communityVar.id,
     highlight: [closeVar.id],

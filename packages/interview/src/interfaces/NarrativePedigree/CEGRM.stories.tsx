@@ -74,10 +74,7 @@ export function buildCegrmInterview(seed: number, recordedOnly = false) {
   // Disseminator and barrier are independent boolean roles.
   const DISSEMINATOR_VAR = booleanVariable('isDisseminator');
   const BARRIER_VAR = booleanVariable('isBarrier');
-  const LAYOUT_VAR = person.addVariable({
-    name: 'socialLayout',
-    type: 'layout',
-  }).id;
+  const LAYOUT_VAR = si.addLayout({ name: 'socialLayout' }).id;
 
   // --- Social (member-to-member) edge type; the pedigree adds its own --------
   const socialEdge = si.addEdgeType({ name: 'Knows' });
@@ -141,6 +138,7 @@ export function buildCegrmInterview(seed: number, recordedOnly = false) {
   // Edge creation and attribute highlighting cannot share a prompt, so each is a
   // prompt of its own within this one stage.
   const sociogram = si.addStage('Sociogram', {
+    layout: LAYOUT_VAR,
     label: 'Your support network',
     subject: { entity: 'node', types: [person.id] },
     behaviours: { automaticLayout: true },
@@ -148,51 +146,42 @@ export function buildCegrmInterview(seed: number, recordedOnly = false) {
   // Edge creation first: who knows whom.
   sociogram.addPrompt({
     text: 'Connect people who **know one another** by tapping them to create a line',
-    layout: { layoutVariable: LAYOUT_VAR },
     edges: { create: socialEdge.id, display: [socialEdge.id] },
   });
   // Information exchange.
   sociogram.addPrompt({
     text: 'Which of these people provides you with genetic or health information?',
-    layout: { layoutVariable: LAYOUT_VAR },
     highlight: { variable: INFO_IN_VAR },
   });
   sociogram.addPrompt({
     text: 'Which of these people do you provide with genetic or health information?',
-    layout: { layoutVariable: LAYOUT_VAR },
     highlight: { variable: INFO_OUT_VAR },
   });
   // Practical support.
   sociogram.addPrompt({
     text: 'Which of these people provides you with practical help — like coming to an appointment or minding your children?',
-    layout: { layoutVariable: LAYOUT_VAR },
     highlight: { variable: SUPPORT_IN_VAR },
   });
   sociogram.addPrompt({
     text: 'Which of these people do you provide with practical help?',
-    layout: { layoutVariable: LAYOUT_VAR },
     highlight: { variable: SUPPORT_OUT_VAR },
   });
   // Sharing feelings.
   sociogram.addPrompt({
     text: "Which of these people shares their feelings about the family's cancer with you?",
-    layout: { layoutVariable: LAYOUT_VAR },
     highlight: { variable: FEELINGS_IN_VAR },
   });
   sociogram.addPrompt({
     text: "Which of these people do you share your feelings about the family's cancer with?",
-    layout: { layoutVariable: LAYOUT_VAR },
     highlight: { variable: FEELINGS_OUT_VAR },
   });
   // Disseminator / barrier roles.
   sociogram.addPrompt({
     text: 'Which of these people helps the family talk about its cancer risk?',
-    layout: { layoutVariable: LAYOUT_VAR },
     highlight: { variable: DISSEMINATOR_VAR },
   });
   sociogram.addPrompt({
     text: 'Which of these people makes it harder for the family to talk about its cancer risk?',
-    layout: { layoutVariable: LAYOUT_VAR },
     highlight: { variable: BARRIER_VAR },
   });
 

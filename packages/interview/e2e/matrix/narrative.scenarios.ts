@@ -43,10 +43,7 @@ function buildBaseNarrative() {
   const synth = new SyntheticInterview();
   const person = synth.addNodeType({ name: 'Person' });
   const nameVar = person.addVariable({ type: 'text', name: 'name' });
-  const layoutVar = person.addVariable({
-    type: 'layout',
-    name: 'NarrativeLayout',
-  });
+  const layoutVar = synth.addLayout({ name: 'NarrativeLayout' });
   return { synth, person, nameVar, layoutVar };
 }
 
@@ -55,7 +52,7 @@ const layoutVariableNodeInclusion: ScenarioDefinition = {
   covers: [
     'presets',
     'presets[].label',
-    'presets[].layoutVariable',
+    'presets[].layout',
     'presets[].edges',
     'behaviours',
     'label',
@@ -71,7 +68,7 @@ const layoutVariableNodeInclusion: ScenarioDefinition = {
       label: 'SECRET-LABEL-XYZ',
       interviewScript: 'SECRET-SCRIPT-XYZ',
     });
-    stage.addPreset({ label: 'Social View', layoutVariable: layoutVar.id });
+    stage.addPreset({ label: 'Social View', layout: layoutVar.id });
     synth.addManualNode(stage.id, person.id, 'node-alice', {
       [nameVar.id]: 'Alice',
       [layoutVar.id]: { x: 0.25, y: 0.25 },
@@ -144,8 +141,8 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
   seedNetwork: true,
   build: () => {
     const { synth, person, nameVar } = buildBaseNarrative();
-    const layoutA = person.addVariable({ type: 'layout', name: 'LayoutA' });
-    const layoutB = person.addVariable({ type: 'layout', name: 'LayoutB' });
+    const layoutA = synth.addLayout({ name: 'LayoutA' });
+    const layoutB = synth.addLayout({ name: 'LayoutB' });
     const closeVar = person.addVariable({
       type: 'boolean',
       name: 'CloseFriend',
@@ -171,16 +168,16 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
     });
     stage.addPreset({
       label: 'View A',
-      layoutVariable: layoutA.id,
+      layout: layoutA.id,
       edges: { display: [friendship.id] },
       highlight: [closeVar.id, trustedVar.id],
     });
     stage.addPreset({
       label: 'View B',
-      layoutVariable: layoutB.id,
+      layout: layoutB.id,
       groupVariable: community.id,
     });
-    stage.addPreset({ label: 'View C', layoutVariable: layoutA.id });
+    stage.addPreset({ label: 'View C', layout: layoutA.id });
 
     synth.addManualNode(stage.id, person.id, 'node-ada', {
       [nameVar.id]: 'Ada',
@@ -278,12 +275,12 @@ const edgesDisplayAndLinksLegend: ScenarioDefinition = {
     });
     stage.addPreset({
       label: 'Friends',
-      layoutVariable: layoutVar.id,
+      layout: layoutVar.id,
       edges: { display: [friendship.id] },
     });
     stage.addPreset({
       label: 'Colleagues',
-      layoutVariable: layoutVar.id,
+      layout: layoutVar.id,
       edges: { display: [professional.id] },
     });
 
@@ -358,7 +355,7 @@ const convexHullsGroups: ScenarioDefinition = {
       subject: { entity: 'node', types: [person.id] },
     });
     stage.addPreset({
-      layoutVariable: layoutVar.id,
+      layout: layoutVar.id,
       groupVariable: community.id,
     });
 
@@ -438,7 +435,7 @@ const highlightMultiAttribute: ScenarioDefinition = {
       subject: { entity: 'node', types: [person.id] },
     });
     stage.addPreset({
-      layoutVariable: layoutVar.id,
+      layout: layoutVar.id,
       highlight: [closeVar.id, trustedVar.id],
     });
 
@@ -494,7 +491,7 @@ const allowRepositioningTrue: ScenarioDefinition = {
       subject: { entity: 'node', types: [person.id] },
       behaviours: { allowRepositioning: true },
     });
-    stage.addPreset({ layoutVariable: layoutVar.id });
+    stage.addPreset({ layout: layoutVar.id });
     synth.addManualNode(stage.id, person.id, 'node-alice', {
       [nameVar.id]: 'Alice',
       [layoutVar.id]: { x: 0.3, y: 0.3 },
@@ -536,7 +533,7 @@ const allowRepositioningFalse: ScenarioDefinition = {
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', types: [person.id] },
     });
-    stage.addPreset({ layoutVariable: layoutVar.id });
+    stage.addPreset({ layout: layoutVar.id });
     synth.addManualNode(stage.id, person.id, 'node-alice', {
       [nameVar.id]: 'Alice',
       [layoutVar.id]: { x: 0.3, y: 0.3 },
@@ -574,7 +571,7 @@ const automaticLayoutPauseResume: ScenarioDefinition = {
     });
     synth.setInterfaceText('buttons', 'pauseLayout', PAUSE_LAYOUT);
     synth.setInterfaceText('buttons', 'resumeLayout', RESUME_LAYOUT);
-    stage.addPreset({ layoutVariable: layoutVar.id });
+    stage.addPreset({ layout: layoutVar.id });
     const coords = [
       { x: 0.2, y: 0.2 },
       { x: 0.4, y: 0.2 },
@@ -629,7 +626,7 @@ const freeDrawAnnotate: ScenarioDefinition = {
       subject: { entity: 'node', types: [person.id] },
       behaviours: { freeDraw: true },
     });
-    stage.addPreset({ layoutVariable: layoutVar.id });
+    stage.addPreset({ layout: layoutVar.id });
     // Every Narrative stage's drawing tools are worded alike, so the
     // protocol holds their words once.
     synth.setInterfaceText('narrative', 'toggleDrawing', TOGGLE_DRAWING);
@@ -730,19 +727,19 @@ const concentricCirclesBackground: ScenarioDefinition = {
     const stage0 = synth.addStage('Narrative', {
       subject: { entity: 'node', types: [person.id] },
     });
-    stage0.addPreset({ layoutVariable: layoutVar.id });
+    stage0.addPreset({ layout: layoutVar.id });
 
     const stage1 = synth.addStage('Narrative', {
       subject: { entity: 'node', types: [person.id] },
       background: { concentricCircles: 6, skewedTowardCenter: false },
     });
-    stage1.addPreset({ layoutVariable: layoutVar.id });
+    stage1.addPreset({ layout: layoutVar.id });
 
     const stage2 = synth.addStage('Narrative', {
       subject: { entity: 'node', types: [person.id] },
       background: { concentricCircles: 0 },
     });
-    stage2.addPreset({ layoutVariable: layoutVar.id });
+    stage2.addPreset({ layout: layoutVar.id });
 
     [stage0, stage1, stage2].forEach((stage, i) => {
       synth.addManualNode(stage.id, person.id, `node-${i}`, {
@@ -794,7 +791,7 @@ const imageBackground: ScenarioDefinition = {
       subject: { entity: 'node', types: [person.id] },
       background: { image: backgroundImageAsset.assetId },
     });
-    stage.addPreset({ layoutVariable: layoutVar.id });
+    stage.addPreset({ layout: layoutVar.id });
     synth.addManualNode(stage.id, person.id, 'node-0', {
       [nameVar.id]: 'Node0',
       [layoutVar.id]: { x: 0.5, y: 0.5 },
@@ -852,19 +849,19 @@ const presetFilterDisplayScoping: ScenarioDefinition = {
     // Three views of one layout: each preset narrows the network for itself.
     stage.addPreset({
       label: 'Active',
-      layoutVariable: layoutVar.id,
+      layout: layoutVar.id,
       edges: { display: [friendship.id] },
       filter: onlyStatus('active'),
     });
     stage.addPreset({
       label: 'Inactive',
-      layoutVariable: layoutVar.id,
+      layout: layoutVar.id,
       edges: { display: [friendship.id] },
       filter: onlyStatus('inactive'),
     });
     stage.addPreset({
       label: 'Everyone',
-      layoutVariable: layoutVar.id,
+      layout: layoutVar.id,
       edges: { display: [friendship.id] },
     });
 
@@ -935,7 +932,7 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const personName = person.addVariable({ type: 'text', name: 'name' });
-    const personLayout = person.addVariable({ type: 'layout', name: 'Layout' });
+    const personLayout = synth.addLayout({ name: 'PersonLayout' });
     const closeVar = person.addVariable({
       type: 'boolean',
       name: 'CloseFriend',
@@ -957,13 +954,13 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
     // the preset renders against.
     const place = synth.addNodeType({ name: 'Place' });
     const placeName = place.addVariable({ type: 'text', name: 'name' });
-    const placeLayout = place.addVariable({ type: 'layout', name: 'Layout' });
+    const placeLayout = synth.addLayout({ name: 'PlaceLayout' });
 
     const stage = synth.addStage('Narrative', {
       subject: { entity: 'node', types: [person.id] },
     });
     stage.addPreset({
-      layoutVariable: personLayout.id,
+      layout: personLayout.id,
       groupVariable: community.id,
       highlight: [closeVar.id],
     });

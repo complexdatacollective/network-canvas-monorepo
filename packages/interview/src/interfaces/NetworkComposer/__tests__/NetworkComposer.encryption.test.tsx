@@ -168,7 +168,6 @@ const encryptedText = (name: string): Variable => ({
 
 const variables: Record<string, Variable> = {
   [QUICK_ADD_VAR]: encryptedText('name'),
-  [LAYOUT_VAR]: { name: 'position', type: 'layout' },
   [NOTES_VAR]: encryptedText('notes'),
   [PLACE_VAR]: {
     name: 'place',
@@ -193,7 +192,7 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
   type: 'NetworkComposer',
   label: { en: 'Network Composer' },
   subject: { entity: 'node', types: [NODE_TYPE] },
-  layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
+  layout: LAYOUT_VAR,
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
   nodeForm: {
     fields: [

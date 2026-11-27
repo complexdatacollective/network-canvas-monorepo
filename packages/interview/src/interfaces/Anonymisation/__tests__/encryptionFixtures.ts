@@ -220,6 +220,14 @@ export function createEncryptionStore(
           [NODE_TYPE]: { ...personDefinition, variables },
         },
         ...(edgeTypes ? { edge: edgeTypes } : {}),
+        // Each layout a stage places nodes in.
+        layouts: Object.fromEntries(
+          stages.flatMap((stage) =>
+            stage.type === 'Sociogram' || stage.type === 'NetworkComposer'
+              ? [[stage.layout, { name: `layout_${stage.id}` }]]
+              : [],
+          ),
+        ),
       },
       stages,
     },

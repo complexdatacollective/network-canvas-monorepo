@@ -360,13 +360,11 @@ type SortType =
  * - "ordinal",
  * - "scalar",
  * - "categorical",
- * - "layout",
  * - "location"
  */
 export const mapNCType = (type?: VariableType) => {
   switch (type) {
     case 'text':
-    case 'layout':
     case 'location':
     case undefined:
       return 'string' as const;

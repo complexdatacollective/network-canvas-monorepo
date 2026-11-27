@@ -261,6 +261,100 @@ describe('getNetworkNodesForType', () => {
   });
 });
 
+describe('stage filter rules naming a layout', () => {
+  it('a stage filter rule naming a layout keeps nodes that hold a position under it', () => {
+    const LAYOUT = testId('map-layout');
+    const protocolState: ProtocolPayload = {
+      id: 'protocol',
+      hash: 'hash',
+      importedAt: '2026-11-27T00:00:00.000Z',
+      assets: [],
+      name: 'Test protocol',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: {
+        node: {
+          [PERSON]: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: { [NAME]: { name: 'Name', type: 'text' } },
+          },
+        },
+        edge: {},
+        ego: { variables: {} },
+        layouts: { [LAYOUT]: { name: 'map' } },
+      },
+      stages: [
+        {
+          id: testId('placed-form'),
+          type: 'AlterForm',
+          label: { en: 'Placed people' },
+          subject: { entity: 'node', types: [PERSON] },
+          filter: {
+            join: 'AND',
+            rules: [
+              {
+                id: testId('placed-rule'),
+                type: 'node',
+                options: {
+                  type: PERSON,
+                  attribute: asEntityAttributeReference(LAYOUT),
+                  operator: 'EXISTS',
+                },
+              },
+            ],
+          },
+          form: {
+            fields: [
+              {
+                id: testId('name-field'),
+                variable: asEntityAttributeReference(NAME),
+                prompt: { en: 'Name' },
+              },
+            ],
+          },
+        },
+      ] satisfies CurrentProtocol['stages'],
+    };
+    const person = (
+      id: string,
+      attributes: NcNode[typeof entityAttributesProperty],
+    ): NcNode => ({
+      [entityPrimaryKeyProperty]: id,
+      type: PERSON,
+      [entityAttributesProperty]: attributes,
+    });
+    const store = configureStore({
+      reducer: rootReducer,
+      preloadedState: {
+        session: {
+          id: 'session',
+          startTime: '2026-11-27T00:00:00.000Z',
+          finishTime: null,
+          exportTime: null,
+          lastUpdated: '2026-11-27T00:00:00.000Z',
+          promptIndex: 0,
+          network: {
+            ...createInitialNetwork(),
+            nodes: [
+              person('placed', { [LAYOUT]: { x: 0.4, y: 0.6 } }),
+              person('unplaced', {}),
+            ],
+          },
+        },
+        protocol: protocolState,
+      },
+    });
+
+    expect(
+      getNetworkNodesForType(store.getState(), 0).map(
+        (node) => node[entityPrimaryKeyProperty],
+      ),
+    ).toEqual(['placed']);
+  });
+});
+
 describe('resolveNodeShape', () => {
   it('matches an array-valued categorical attribute against a discrete map entry', () => {
     // Categorical (multi-select) variables store their value as an array, e.g.

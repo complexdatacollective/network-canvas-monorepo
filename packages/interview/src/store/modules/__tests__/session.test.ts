@@ -64,6 +64,7 @@ const EGO_REMOVE = testVariableId('egoRemove');
 const EGO_ADDED = testVariableId('egoAdded');
 const IS_CLOSE_TIE = testVariableId('isCloseTie');
 const IS_FAMILY = testVariableId('isFamily');
+const NODE_LAYOUT = testVariableId('nodeLayout');
 
 /**
  * Minimal store setup for testing session thunks.
@@ -573,6 +574,7 @@ function createMutationStore() {
           },
         },
       },
+      layouts: { [NODE_LAYOUT]: { name: 'nodeLayout' } },
       edge: {
         [FRIENDSHIP]: {
           name: 'Friendship',
@@ -767,6 +769,50 @@ describe('attribute patch reducers', () => {
 
     expect(unknown.type).toBe('NETWORK/UPDATE_NODE/rejected');
     expect(overlap.type).toBe('NETWORK/UPDATE_NODE/rejected');
+    expect(store.getState().session.network.nodes).toStrictEqual(before);
+  });
+
+  it('updateNode accepts a layout id that is not a variable of the node type', async () => {
+    const store = createMutationStore();
+
+    const result = await store.dispatch(
+      updateNode({
+        nodeId: 'node-1',
+        attributePatch: {
+          set: { [NODE_LAYOUT]: { x: 0.2, y: 0.4 } },
+          unset: [],
+        },
+        currentStep: 0,
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/UPDATE_NODE/fulfilled');
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        NODE_LAYOUT
+      ],
+    ).toStrictEqual({ x: 0.2, y: 0.4 });
+  });
+
+  it('updateNode still rejects an unknown key', async () => {
+    const store = createMutationStore();
+    const before = structuredClone(store.getState().session.network.nodes);
+
+    const result = await store.dispatch(
+      updateNode({
+        nodeId: 'node-1',
+        attributePatch: { set: { [EDGE_KEEP]: 1 }, unset: [] },
+        currentStep: 0,
+      }),
+    );
+
+    expect(result.type).toBe('NETWORK/UPDATE_NODE/rejected');
+    if (!updateNode.rejected.match(result)) {
+      throw new Error('expected updateNode to be rejected');
+    }
+    expect(result.error.message).toContain(
+      `${EDGE_KEEP} do not exist in protocol codebook`,
+    );
     expect(store.getState().session.network.nodes).toStrictEqual(before);
   });
 

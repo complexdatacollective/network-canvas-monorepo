@@ -165,6 +165,7 @@ export const makeVariableUUIDReplacer =
           const key = getParentKeyByNameValue(
             codebookDefinition?.variables,
             attributeKey,
+            protocolCodebook.layouts,
           );
           const earlier = headingByKey.get(key);
           if (earlier !== undefined) {

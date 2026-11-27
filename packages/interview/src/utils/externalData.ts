@@ -35,7 +35,7 @@ const getCodebookVariable = (
 /**
  * What a roster column holds: a codebook variable type, or a column of the
  * exporter's own making, which belongs to a layout (`layout_x`, `layout_y`) or
- * categorical (`categorical_option`) variable. `''` is a column whose data
+ * to a categorical variable (`categorical_option`). `''` is a column whose data
  * does not say, and one that a variable of any other type has no such column
  * for, which is read as it stands.
  */
@@ -120,23 +120,23 @@ const getAttributeTypes = (
         };
       }
 
-      // Handle possible categorical or layout variables
+      // Handle possible categorical option or layout columns
       if (attributeKey.includes('_')) {
         const uuid = attributeKey.substring(0, attributeKey.indexOf('_'));
         const option = attributeKey.substring(attributeKey.indexOf('_'));
+        if (
+          (option === '_x' || option === '_y') &&
+          getOwn(protocolCodebook.layouts, uuid) !== undefined
+        ) {
+          return { ...acc, [attributeKey]: `layout${option}` as const };
+        }
         const optionCodebookType = getCodebookVariable(
           codebookDefinition,
           uuid,
         )?.type;
         if (optionCodebookType && includes(VariableTypes, optionCodebookType)) {
           if (option === '_x' || option === '_y') {
-            return {
-              ...acc,
-              [attributeKey]:
-                optionCodebookType === VariableTypes.layout
-                  ? (`layout${option}` as const)
-                  : '',
-            };
+            return { ...acc, [attributeKey]: '' };
           }
           return {
             ...acc,
@@ -310,8 +310,7 @@ const getNodeListUsingTypes = (
             };
           }
           case VariableTypes.categorical:
-          case VariableTypes.ordinal:
-          case VariableTypes.layout: {
+          case VariableTypes.ordinal: {
             let value: unknown;
             try {
               value =

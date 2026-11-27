@@ -413,11 +413,9 @@ const filterScenarios: ScenarioDefinition[] = [
         name: 'group',
         options: CAT_OPTIONS,
       });
-      const layoutVar = personType.addVariable({
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
+      const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const stage = synth.addStage('Sociogram', {
+        layout: layoutVar.id,
         label: 'Filtered map',
         // Only group-A people reach this stage's view.
         filter: {
@@ -438,7 +436,6 @@ const filterScenarios: ScenarioDefinition[] = [
       });
       stage.addPrompt({
         text: 'Position each person.',
-        layout: { layoutVariable: layoutVar.id },
       });
       const seed = (uid: string, name: string, group: string, x: number) => {
         synth.addManualNode(stage.id, personType.id, uid, {

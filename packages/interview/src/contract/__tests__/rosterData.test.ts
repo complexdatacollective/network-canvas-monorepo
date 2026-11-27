@@ -30,7 +30,7 @@ const CLOSENESS = testVariableId('closeness');
 const DOTTED = testVariableId('dotted');
 const NAME = testVariableId('name');
 const PLACE_NAME = testVariableId('place-name');
-const POSITION = testVariableId('position');
+const ROLE = testVariableId('role');
 const PROTO = testVariableId('proto');
 
 /** A stage's own words, in the protocol's only language. */
@@ -50,9 +50,12 @@ const codebook: Codebook = {
       variables: {
         [NAME]: { name: 'Name', type: 'text' },
         [AGE]: { name: 'Age', type: 'number' },
-        [POSITION]: {
-          name: 'Position',
-          type: 'layout',
+        [ROLE]: {
+          name: 'Role',
+          type: 'categorical',
+          options: [
+            { id: testId('lead'), label: { en: 'Lead' }, value: 'lead' },
+          ],
         },
       },
     },
@@ -248,7 +251,7 @@ describe('parseExternalNetworkAsset', () => {
   });
 
   it('rejects an arbitrary object created by CSV JSON conversion', async () => {
-    const body = 'Name,Position\nAda,"{""unexpected"":true}"\n';
+    const body = 'Name,Role\nAda,"{""unexpected"":true}"\n';
     stubFetch({ 'stub://roster': body });
 
     await expect(

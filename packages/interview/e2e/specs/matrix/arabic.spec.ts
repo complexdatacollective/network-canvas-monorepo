@@ -75,7 +75,7 @@ function arabicInterview() {
 
   const person = synth.addNodeType({ name: 'شخص' });
   const name = person.addVariable({ id: 'name', type: 'text', name: 'name' });
-  const layout = person.addVariable({ type: 'layout', name: 'layout' });
+  const layout = synth.addLayout({ name: 'layout' });
   const nickname = person.addVariable({
     id: 'nickname',
     name: 'nickname',
@@ -217,9 +217,8 @@ function arabicInterview() {
     shows: 'من تعرف من هذه القائمة؟',
   });
 
-  synth.addStage('Sociogram', { subject }).addPrompt({
+  synth.addStage('Sociogram', { layout: layout.id, subject }).addPrompt({
     text: 'ضع الأشخاص على الخريطة',
-    layout: { layoutVariable: layout.id },
   });
   stages.push({ name: 'Sociogram', shows: 'ضع الأشخاص على الخريطة' });
 
@@ -274,13 +273,13 @@ function arabicInterview() {
 
   synth
     .addStage('Narrative', { subject })
-    .addPreset({ label: 'عرض الصداقات', layoutVariable: layout.id });
+    .addPreset({ label: 'عرض الصداقات', layout: layout.id });
   stages.push({ name: 'Narrative', shows: 'عرض الصداقات' });
 
   synth.addStage('NetworkComposer', {
     subject,
     quickAdd: name.id,
-    layoutVariable: layout.id,
+    layout: layout.id,
   });
   stages.push({ name: 'NetworkComposer', shows: 'team-b!' });
 

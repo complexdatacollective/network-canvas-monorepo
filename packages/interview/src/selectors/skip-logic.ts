@@ -29,7 +29,7 @@ type RoutableStage = {
   subject?: StageSubject;
   filter?: Filter;
   behaviours?: object;
-  presets?: readonly { layoutVariable?: string; filter?: Filter }[];
+  presets?: readonly { layout?: string; filter?: Filter }[];
 };
 
 export type AvailableStage = {
@@ -106,14 +106,14 @@ const narrativeSubjectsShown = (
   needed: number,
 ): number => {
   let most = 0;
-  for (const { layoutVariable, filter } of stage.presets ?? []) {
-    if (layoutVariable === undefined) continue;
+  for (const { layout, filter } of stage.presets ?? []) {
+    if (layout === undefined) continue;
     const visible = filter ? networkFilter(filter)(network) : network;
     let count = 0;
     for (const node of visible.nodes) {
       if (
         subjectTypes.includes(node.type) &&
-        Boolean(node[entityAttributesProperty][layoutVariable])
+        Boolean(node[entityAttributesProperty][layout])
       ) {
         count += 1;
       }

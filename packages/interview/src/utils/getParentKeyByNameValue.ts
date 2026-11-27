@@ -1,15 +1,19 @@
-import type { EntityDefinition } from '@codaco/protocol-validation';
+import type { Codebook, EntityDefinition } from '@codaco/protocol-validation';
 
 import { asOptionName } from './optionName';
 
 type Variables = NonNullable<EntityDefinition['variables']>;
+type Layouts = NonNullable<Codebook['layouts']>;
 
 /**
  * Names are compared in NFC. A researcher's variable name is stored in NFC, but
  * the header of a data file produced elsewhere (a spreadsheet exported on
  * macOS, say) may spell the same text decomposed.
  */
-const findVariableIdByName = (variables: Variables, name: string) => {
+const findVariableIdByName = (
+  variables: Readonly<Record<string, { name: string }>>,
+  name: string,
+) => {
   const target = name.normalize('NFC');
 
   return Object.entries(variables).find(
@@ -68,6 +72,14 @@ const findCategoricalKey = (variables: Variables, toFind: string) => {
   return null;
 };
 
+const findLayoutKey = (layouts: Layouts | undefined, toFind: string) => {
+  if (!layouts || !(toFind.endsWith('_x') || toFind.endsWith('_y'))) {
+    return undefined;
+  }
+  const layoutId = findVariableIdByName(layouts, toFind.slice(0, -2));
+  return layoutId === undefined ? undefined : `${layoutId}${toFind.slice(-2)}`;
+};
+
 /**
  * Utility function that can be used to help with translating external data
  * variable labels to UUIDs, if a match is possible.
@@ -81,6 +93,10 @@ const findCategoricalKey = (variables: Variables, toFind: string) => {
  * codebook.node.uuid.name === toFind. Where this child object is found, its key within
  * the parent object is returned.
  *
+ * A `<layout name>_x` or `<layout name>_y` column, as an export writes a
+ * position, resolves to `<layout id>_x` or `<layout id>_y` against {layouts}
+ * only: a variable is never a layout.
+ *
  * Finally, if neither approach finds a UUID, {toFind} is returned.
  *
  * Names and option values are matched in NFC, and the keys of {variables} are
@@ -90,10 +106,13 @@ const findCategoricalKey = (variables: Variables, toFind: string) => {
 const getParentKeyByNameValue = (
   variables: Variables | undefined,
   toFind: string,
+  layouts?: Layouts,
 ) => {
+  const layoutKey = findLayoutKey(layouts, toFind);
+
   // No entity definition for this type
   if (!variables || Object.keys(variables).length === 0) {
-    return toFind;
+    return layoutKey ?? toFind;
   }
 
   // Immediate match
@@ -106,15 +125,8 @@ const getParentKeyByNameValue = (
     return idByName;
   }
 
-  // possible location
-  if (toFind.endsWith('_x') || toFind.endsWith('_y')) {
-    const locationId = findVariableIdByName(
-      variables,
-      toFind.slice(0, toFind.length - 2),
-    );
-    if (locationId !== undefined) {
-      return `${locationId}${toFind.slice(toFind.length - 2)}`;
-    }
+  if (layoutKey !== undefined) {
+    return layoutKey;
   }
 
   // possible categorical

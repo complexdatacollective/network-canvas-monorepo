@@ -8,14 +8,18 @@ import type { RootState } from '../store/store';
 import { getEntityAttributes } from '../utils/networkEntities';
 import {
   getCurrentPrompt,
+  getCurrentStage,
   getNetworkEdges,
   getNetworkNodes,
   getStageSubject,
 } from './session';
 import { createDeepEqualSelector } from './utils';
 
-const getPromptLayoutVariable = createSelector(getCurrentPrompt, (prompt) =>
-  get(prompt, 'layout.layoutVariable', null),
+/** The layout the current stage places nodes in, or null if it has none. */
+const getStageLayout = createSelector(getCurrentStage, (stage) =>
+  stage.type === 'Sociogram' || stage.type === 'NetworkComposer'
+    ? stage.layout
+    : null,
 );
 
 const getPromptDisplayEdges = createDeepEqualSelector(
@@ -35,20 +39,20 @@ export const getPlacedNodes: Selector<RootState, NcNode[]> =
   createDeepEqualSelector(
     getNetworkNodes,
     getStageSubject,
-    getPromptLayoutVariable,
-    (nodes, subject, layoutVariable) => {
+    getStageLayout,
+    (nodes, subject, layout) => {
       if (
         nodes.length === 0 ||
         !subject ||
         subject.entity === 'ego' ||
-        !layoutVariable
+        !layout
       ) {
         return [];
       }
 
       return nodes.filter((node) => {
         const attributes = getEntityAttributes(node);
-        return subject.type === node.type && !isNil(attributes[layoutVariable]);
+        return subject.type === node.type && !isNil(attributes[layout]);
       });
     },
   );
@@ -69,26 +73,27 @@ export const getEdges: Selector<RootState, NcEdge[]> = createDeepEqualSelector(
 /**
  * Selector for all unplaced nodes (for the drawer).
  *
- * Returns all nodes of the stage subject type that have a nil layout variable.
+ * Returns all nodes of the stage subject type that have no position in the
+ * stage layout.
  */
 export const getUnplacedNodes: Selector<RootState, NcNode[]> =
   createDeepEqualSelector(
     getNetworkNodes,
     getStageSubject,
-    getPromptLayoutVariable,
-    (nodes, subject, layoutVariable) => {
+    getStageLayout,
+    (nodes, subject, layout) => {
       if (
         nodes.length === 0 ||
         !subject ||
         subject.entity === 'ego' ||
-        !layoutVariable
+        !layout
       ) {
         return [];
       }
 
       return nodes.filter((node) => {
         const attributes = getEntityAttributes(node);
-        return subject.type === node.type && isNil(attributes[layoutVariable]);
+        return subject.type === node.type && isNil(attributes[layout]);
       });
     },
   );

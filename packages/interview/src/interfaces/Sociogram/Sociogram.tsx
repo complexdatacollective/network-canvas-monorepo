@@ -70,7 +70,7 @@ const Sociogram = (stageProps: SociogramProps) => {
   const allowHighlighting = prompt.highlight?.allowHighlighting ?? false;
 
   // Display Properties
-  const layoutVariable = prompt.layout.layoutVariable;
+  const layoutVariable = stage.layout;
   // `variable` alone drives highlight display — a display-only highlight sets
   // it with allowHighlighting off, which only gates the tap-to-toggle branch.
   const highlightAttribute = prompt.highlight?.variable;
