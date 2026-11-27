@@ -6,4 +6,4 @@
 'fresco': patch
 ---
 
-When a button appears in or disappears from the interview's navigation bar, it now grows in or shrinks away, and the other buttons and the progress bar move smoothly to their new places, as the buttons on a segmented toolbar do. In `@codaco/fresco-ui`, `SegmentedToolbar` exports `segmentPresenceVariants` and `segmentLayoutSpring`, so that other bars of controls can use the same animation.
+When a button appears in or disappears from the interview's navigation bar, it now grows in or shrinks away, and the other buttons and the progress bar move smoothly to their new places, as the buttons on a segmented toolbar do. When the bar first appears, its buttons come in one after another once the bar is in place, and every button on the bar now has the same small space around it. In `@codaco/fresco-ui`, `SegmentedToolbar` exports `segmentPresenceVariants` and `segmentLayoutSpring`, so that other bars of controls can use the same animation.

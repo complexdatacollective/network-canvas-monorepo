@@ -957,10 +957,11 @@ const ToggledControls = ({
   );
 };
 
-// The bar's direct child that contains the control with this name.
+// The bar's direct child that contains the control whose name starts with
+// this (the language button's name ends with the language).
 const barSlot = (nav: HTMLElement, name: string) =>
   [...nav.children].find((child) =>
-    child.querySelector(`[aria-label="${name}"]`),
+    child.querySelector(`[aria-label^="${name}"]`),
   );
 
 const transformOf = (element: Element | undefined) => {
@@ -969,27 +970,33 @@ const transformOf = (element: Element | undefined) => {
 };
 
 // Reads the bar over the frames that follow a change. Whether the change
-// animates or not, Motion can hold Text size at its old place for the first
-// frame, so a glide is told apart from a jump by a frame on which Text size is
-// part of the way between the two places (`glided`). Eight frames leave room
-// for that even when the frames are slow.
-const sampleFrames = async (nav: HTMLElement, frames = 8) => {
+// animates or not, Motion can hold a control at its old place for the first
+// frame, so a glide is told apart from a jump by a frame on which the control
+// that moves (`mover`) is part of the way between the two places (`glided`).
+// `smallestScale` is the smallest scale of the control that comes or goes
+// (`comer`) while it is on the bar. Eight frames leave room for both even
+// when the frames are slow.
+const sampleFrames = async (
+  nav: HTMLElement,
+  { mover = 'Text size', comer = 'Exit interview' } = {},
+  frames = 8,
+) => {
   const offsets: number[] = [];
-  let smallestExitScale = Number.POSITIVE_INFINITY;
+  let smallestScale = Number.POSITIVE_INFINITY;
   for (let frame = 0; frame < frames; frame++) {
     await new Promise((resolve) => requestAnimationFrame(resolve));
-    const offset = transformOf(barSlot(nav, 'Text size'));
+    const offset = transformOf(barSlot(nav, mover));
     offsets.push(Math.hypot(offset.e, offset.f));
-    const exit = barSlot(nav, 'Exit interview');
-    if (exit) {
-      smallestExitScale = Math.min(smallestExitScale, transformOf(exit).a);
+    const slot = barSlot(nav, comer);
+    if (slot) {
+      smallestScale = Math.min(smallestScale, transformOf(slot).a);
     }
   }
   const distance = Math.max(...offsets);
   const glided = offsets.some(
     (offset) => offset > 0.5 && offset < distance - 0.5,
   );
-  return { glided, smallestExitScale };
+  return { glided, smallestScale };
 };
 
 const toggleExit = (canvasElement: HTMLElement) =>
@@ -997,12 +1004,19 @@ const toggleExit = (canvasElement: HTMLElement) =>
     .getByRole('button', { name: /toggle exit/i })
     .click();
 
+// Waits until the bar has finished arriving, with every control in place
+// and none of them still animating, and the exit button shown or not.
 const settled = async (nav: HTMLElement, exitShown: boolean) => {
   await waitFor(
     () => {
       expect(Boolean(barSlot(nav, 'Exit interview'))).toBe(exitShown);
-      const offset = transformOf(barSlot(nav, 'Text size'));
-      expect(Math.hypot(offset.e, offset.f)).toBeLessThan(0.5);
+      expect(nav.style.opacity).toBe('1');
+      for (const slot of nav.children) {
+        if (!(slot instanceof HTMLElement)) continue;
+        const offset = transformOf(slot);
+        expect(Math.hypot(offset.e, offset.f)).toBeLessThan(0.5);
+        expect(['', 'none']).toContain(slot.style.filter);
+      }
     },
     { timeout: 5_000 },
   );
@@ -1018,14 +1032,14 @@ const expectControlsComeAndGo = async (canvasElement: HTMLElement) => {
   toggleExit(canvasElement);
   await expect(barSlot(nav, 'Exit interview')).toBeDefined();
   const removal = await sampleFrames(nav);
-  await expect(removal.smallestExitScale).toBeLessThan(0.99);
+  await expect(removal.smallestScale).toBeLessThan(0.99);
   await expect(removal.glided).toBe(true);
   await settled(nav, false);
 
   // An added button grows in, and Text size glides aside to make room.
   toggleExit(canvasElement);
   const addition = await sampleFrames(nav);
-  await expect(addition.smallestExitScale).toBeLessThan(0.99);
+  await expect(addition.smallestScale).toBeLessThan(0.99);
   await expect(addition.glided).toBe(true);
   await settled(nav, true);
 };
@@ -1075,8 +1089,78 @@ export const ReducedMotionControlsComeAndGo: Story = {
     toggleExit(canvasElement);
     const addition = await sampleFrames(nav);
     await expect(addition.glided).toBe(false);
-    await expect(addition.smallestExitScale).toBeGreaterThan(0.99);
+    await expect(addition.smallestScale).toBeGreaterThan(0.99);
     await settled(nav, true);
+  },
+};
+
+// A Language Chooser stage, then an information stage, in four languages.
+let languageChooserPayload: string | undefined;
+const getLanguageChooserPayload = () => {
+  if (languageChooserPayload) return languageChooserPayload;
+  const si = new SyntheticInterview();
+  si.setLocalization(SEVERAL_LANGUAGES);
+  si.addStage('LanguageChooser');
+  si.addInformationStage({
+    title: 'Welcome',
+    text: 'Welcome to the interview.',
+  });
+  languageChooserPayload = SuperJSON.stringify(
+    si.getInterviewPayload({ currentStep: 0 }),
+  );
+  return languageChooserPayload;
+};
+
+const LANGUAGE_BUTTON = 'Interview language';
+
+/**
+ * The bar has no language button on a Language Chooser stage, because the
+ * stage offers the same choice. Moving on to the next screen brings the
+ * button in, and going back takes it away again, with the same animation as
+ * the bar's other optional buttons.
+ */
+export const LanguageButtonComesAndGoes: Story = {
+  name: 'Language button comes and goes (vertical rail)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  beforeEach: forgetInterviewLanguage,
+  render: () => (
+    <WithMotion>
+      <div className="flex h-dvh w-full">
+        <StoryInterviewShell
+          rawPayload={getLanguageChooserPayload()}
+          navigationOrientation="vertical"
+          allowUserScaling
+          onExit={() => {}}
+        />
+      </div>
+    </WithMotion>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nav = await canvas.findByRole('navigation');
+    await within(nav).findByRole('button', { name: 'Exit interview' });
+    await expect(barSlot(nav, LANGUAGE_BUTTON)).toBeUndefined();
+
+    // On the next screen the language button grows in, and the progress
+    // bar gives it room.
+    await userEvent.click(canvas.getByRole('button', { name: 'Next Step' }));
+    await waitFor(() => expect(barSlot(nav, LANGUAGE_BUTTON)).toBeDefined(), {
+      timeout: 10_000,
+    });
+    const arrival = await sampleFrames(nav, {
+      mover: 'Progress indicator',
+      comer: LANGUAGE_BUTTON,
+    });
+    await expect(arrival.smallestScale).toBeLessThan(0.99);
+    await expect(arrival.glided).toBe(true);
+
+    // Back on the Language Chooser stage it shrinks away again.
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Previous Step' }),
+    );
+    await waitFor(() => expect(barSlot(nav, LANGUAGE_BUTTON)).toBeUndefined(), {
+      timeout: 10_000,
+    });
   },
 };
 

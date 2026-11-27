@@ -7,10 +7,6 @@ import { useCallback, useId, useState } from 'react';
 import { AppMessage } from '@codaco/app-i18n/react';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
-  segmentLayoutSpring,
-  segmentPresenceVariants,
-} from '@codaco/fresco-ui/SegmentedToolbar';
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -21,27 +17,23 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import type { NavigationOrientation } from '../Shell';
+import { barItemMotion } from './barMotion';
 import PassphraseOverlay from './PassphraseOverlay';
-
-// With reduced motion the button only fades in and out.
-const fadeVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-};
 
 type PassphrasePrompterProps = {
   orientation: NavigationOrientation;
   /** Placement and flex behaviour of the trigger within the navigation bar. */
   className?: string;
-  /** Which optional controls the bar shows, so the button glides when one
-   * of them comes or goes (see Navigation's `barItemMotion`). */
-  layoutDependency?: string;
+  /** Whether the bar has finished arriving (see `barItemMotion`). */
+  arrived: boolean;
+  /** Which optional controls the bar shows (see `barItemMotion`). */
+  layoutDependency: string;
 };
 
 export default function PassphrasePrompter({
   orientation,
   className,
+  arrived,
   layoutDependency,
 }: PassphrasePrompterProps) {
   const isRtl = useDirection() === 'rtl';
@@ -66,7 +58,7 @@ export default function PassphrasePrompter({
         <Tooltip open={showTooltip} onOpenChange={setShowTooltip}>
           {/* Like the bar's other optional controls, the button leaves the
               flow at once while it goes, so the rest of the bar glides
-              over (see Navigation's `barItemMotion`). */}
+              over (see `barItemMotion`). */}
           <AnimatePresence mode="popLayout">
             {showPassphrasePrompter && (
               <TooltipTrigger
@@ -77,8 +69,12 @@ export default function PassphrasePrompter({
                     lang="en"
                     aria-describedby={descriptionId}
                     key="lock"
-                    layout="position"
-                    layoutDependency={layoutDependency}
+                    {...barItemMotion({
+                      reduceMotion,
+                      presence: true,
+                      arrived,
+                      layoutDependency,
+                    })}
                     className={cx(
                       'bg-platinum focusable group flex aspect-square cursor-pointer items-center justify-center rounded-full',
                       // Only the length along the bar is stated, so when the
@@ -91,17 +87,6 @@ export default function PassphrasePrompter({
                         : 'w-[calc(4.8*var(--theme-root-size))]',
                       className,
                     )}
-                    variants={
-                      reduceMotion ? fadeVariants : segmentPresenceVariants
-                    }
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    transition={{
-                      layout: reduceMotion
-                        ? { duration: 0 }
-                        : segmentLayoutSpring,
-                    }}
                     style={{ willChange }}
                     onClick={() =>
                       setOverlay({ show: true, choosing: !passphraseChosen })

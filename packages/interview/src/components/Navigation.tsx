@@ -10,7 +10,7 @@ import {
   Languages,
   LogOut,
 } from 'lucide-react';
-import { AnimatePresence, motion, type MotionProps } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   type ComponentProps,
   type Ref,
@@ -30,10 +30,7 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
-import {
-  segmentLayoutSpring,
-  segmentPresenceVariants,
-} from '@codaco/fresco-ui/SegmentedToolbar';
+import { segmentLayoutSpring } from '@codaco/fresco-ui/SegmentedToolbar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { navigationMessages as messages } from '../i18n/navigationMessages';
@@ -42,69 +39,13 @@ import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { showPassphrasePrompter } from '../store/modules/ui';
 import { useSyncFlush } from '../store/SyncFlushContext';
+import { barItemMotion, fadeVariants } from './barMotion';
 import PassphrasePrompter from './PassphrasePrompter';
 import ReadyToContinueAnnouncer from './ReadyToContinueAnnouncer';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
 import TextSizeControl from './TextSizeControl';
 
 const describeExitError = () => <AppMessage message={messages.exitFailed} />;
-
-const variants = {
-  initial: {
-    opacity: 0,
-  },
-  animate: {
-    opacity: 1,
-  },
-  exit: {
-    opacity: 0,
-  },
-};
-
-/**
- * The bar moves its controls the way the segmented toolbar moves its
- * segments. A control that can come and go (`presence`) grows out of a blur
- * when it appears and shrinks back into one when it goes, while the controls
- * that stay glide to their new places. A control that is always there takes
- * its fade from the bar, which shows its controls once it has arrived.
- *
- * A control that comes and goes names its own variants, because a control
- * that is removed does not take `exit` from the bar. Its `AnimatePresence`
- * has `initial={false}`, as the toolbar's does, so it is simply there when
- * the bar first appears.
- *
- * A control glides only if it renders again when another comes or goes, so
- * that Motion can measure where it was. The React Compiler skips a control
- * whose props did not change, so every control takes `layoutDependency`: a
- * key naming the optional controls the bar shows. When the key changes,
- * every control renders and is measured again.
- *
- * With reduced motion a control only fades, and nothing glides.
- */
-const barItemMotion = (
-  reduceMotion: boolean,
-  presence: boolean,
-  layoutDependency: string,
-): MotionProps => {
-  const layoutTransition = reduceMotion ? { duration: 0 } : segmentLayoutSpring;
-  if (!presence) {
-    return {
-      variants,
-      layout: 'position',
-      layoutDependency,
-      transition: { layout: layoutTransition },
-    };
-  }
-  return {
-    variants: reduceMotion ? variants : segmentPresenceVariants,
-    initial: 'initial',
-    animate: 'animate',
-    exit: 'exit',
-    layout: 'position',
-    layoutDependency,
-    transition: { layout: layoutTransition },
-  };
-};
 
 type ContainerCustom = Readonly<{
   orientation: 'vertical' | 'horizontal';
@@ -129,6 +70,7 @@ const containerVariants = {
     x: 0,
     transition: {
       when: 'beforeChildren',
+      staggerChildren: 0.05,
       type: 'spring' as const,
       stiffness: 100,
       damping: 20,
@@ -187,6 +129,7 @@ const NavigationButton = ({
   wrapperClassName,
   buttonRef,
   presence = false,
+  arrived,
   layoutDependency,
   ...props
 }: WithoutRef<ComponentProps<typeof IconButton>> & {
@@ -196,6 +139,8 @@ const NavigationButton = ({
   wrapperClassName?: string;
   /** The button can come and go while the bar is on screen. */
   presence?: boolean;
+  /** Whether the bar has finished arriving (see `barItemMotion`). */
+  arrived: boolean;
   /** Which optional controls the bar shows (see `barItemMotion`). */
   layoutDependency: string;
 }) => {
@@ -203,7 +148,7 @@ const NavigationButton = ({
   return (
     <motion.div
       ref={ref}
-      {...barItemMotion(reduceMotion, presence, layoutDependency)}
+      {...barItemMotion({ reduceMotion, presence, arrived, layoutDependency })}
       className={wrapperClassName}
     >
       <IconButton
@@ -228,11 +173,13 @@ const LanguageSwitcherControl = ({
   ref,
   orientation,
   isRtl,
+  arrived,
   layoutDependency,
 }: {
   ref?: Ref<HTMLDivElement>;
   orientation: NavigationOrientation;
   isRtl: boolean;
+  arrived: boolean;
   layoutDependency: string;
 }) => {
   const { locale, options, setLocale } = useProtocolLocale();
@@ -242,7 +189,12 @@ const LanguageSwitcherControl = ({
   return (
     <motion.div
       ref={ref}
-      {...barItemMotion(reduceMotion, true, layoutDependency)}
+      {...barItemMotion({
+        reduceMotion,
+        presence: true,
+        arrived,
+        layoutDependency,
+      })}
       className={barControlVariants({ orientation })}
     >
       <LocaleSwitcher
@@ -268,7 +220,7 @@ const LanguageSwitcherControl = ({
 };
 
 const navigationVariants = cva({
-  base: 'flex max-h-none shrink-0 grow-0 items-center justify-between overflow-visible rounded-none shadow-none',
+  base: 'flex max-h-none shrink-0 grow-0 items-center justify-between gap-2 overflow-visible rounded-none shadow-none',
   variants: {
     orientation: {
       vertical: 'w-auto flex-col',
@@ -280,18 +232,9 @@ const navigationVariants = cva({
   },
 });
 
-const progressContainerVariants = cva({
-  base: 'm-6 flex grow',
-  variants: {
-    orientation: {
-      vertical: '',
-      horizontal: 'mx-4',
-    },
-  },
-  defaultVariants: {
-    orientation: 'vertical',
-  },
-});
+// The bar's `gap` spaces the progress bar from its neighbours, as it spaces
+// every other control.
+const progressContainerClassName = 'flex grow';
 
 /**
  * Participant-selectable text-size multipliers. 1 is the Shell's responsive
@@ -415,6 +358,11 @@ const Navigation = ({
   // the panel has finished sliding in; on close we flip it first and let the
   // StagesMenu report back (`handleCardsClosed`) once the cards have animated
   // out, so the panel slides away only after — never over — the stagger.
+  // Until the bar has arrived, its controls take their animation from it, so
+  // that they come in one after another once it is in place (see
+  // `barItemMotion`).
+  const [barArrived, setBarArrived] = useState(false);
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuSettled, setMenuSettled] = useState(false);
   const pendingStageRef = useRef<number | null>(null);
@@ -527,12 +475,16 @@ const Navigation = ({
         initial="initial"
         animate="animate"
         exit="exit"
+        onAnimationComplete={(definition: unknown) => {
+          if (definition === 'animate') setBarArrived(true);
+        }}
       >
         {/* Each control that can come and go has its own presence, so it
             leaves the flow at once (popLayout) and the rest glide over. */}
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence mode="popLayout">
           {onExit && (
             <NavigationButton
+              arrived={barArrived}
               layoutDependency={barLayout}
               key="exit"
               presence
@@ -547,11 +499,16 @@ const Navigation = ({
             />
           )}
         </AnimatePresence>
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence mode="popLayout">
           {userScalingEnabled && (
             <motion.div
               key="text-size"
-              {...barItemMotion(shouldReduceMotion, true, barLayout)}
+              {...barItemMotion({
+                reduceMotion: shouldReduceMotion,
+                presence: true,
+                arrived: barArrived,
+                layoutDependency: barLayout,
+              })}
               className={barControlVariants({ orientation })}
             >
               <TextSizeControl
@@ -574,9 +531,10 @@ const Navigation = ({
             </motion.div>
           )}
         </AnimatePresence>
-        <AnimatePresence initial={false} mode="popLayout">
+        <AnimatePresence mode="popLayout">
           {showLanguageSwitcher && (
             <LanguageSwitcherControl
+              arrived={barArrived}
               layoutDependency={barLayout}
               key="language"
               orientation={orientation}
@@ -587,6 +545,7 @@ const Navigation = ({
         {/* The bar's features come first, then the progress bar, then Back
             and Next together at the end of the bar, in both orientations. */}
         <PassphrasePrompter
+          arrived={barArrived}
           layoutDependency={barLayout}
           orientation={orientation}
           className={barControlVariants({ orientation })}
@@ -599,12 +558,12 @@ const Navigation = ({
             aria-label="Go to another screen"
             lang="en"
             onClick={() => setMenuOpen(true)}
-            variants={variants}
+            variants={fadeVariants}
             layout
             layoutDependency={barLayout}
             transition={progressTransition}
             className={cx(
-              progressContainerVariants({ orientation }),
+              progressContainerClassName,
               // Wrap the bar directly so the focus ring hugs its pill shape
               // rather than a rectangular wrapper.
               'focusable cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0',
@@ -614,8 +573,8 @@ const Navigation = ({
           </motion.button>
         ) : (
           <motion.div
-            className={progressContainerVariants({ orientation })}
-            variants={variants}
+            className={progressContainerClassName}
+            variants={fadeVariants}
             layout
             layoutDependency={barLayout}
             transition={progressTransition}
@@ -624,6 +583,7 @@ const Navigation = ({
           </motion.div>
         )}
         <NavigationButton
+          arrived={barArrived}
           layoutDependency={barLayout}
           wrapperClassName={barControlVariants({ orientation })}
           onClick={moveBackward}
@@ -635,6 +595,7 @@ const Navigation = ({
           data-testid="previous-button"
         />
         <NavigationButton
+          arrived={barArrived}
           layoutDependency={barLayout}
           className={cx(
             pulseNext &&
