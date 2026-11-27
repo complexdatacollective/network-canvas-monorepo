@@ -1,13 +1,15 @@
+import { stagger } from '@codaco/fresco-ui/motion';
+
 export const containerVariants = {
   hidden: {},
   visible: {
     transition: {
       when: 'beforeChildren',
-      staggerChildren: 0.05,
+      staggerChildren: stagger.tight,
     },
   },
   exit: {
-    transition: { when: 'afterChildren', staggerChildren: 0.05 },
+    transition: { when: 'afterChildren', staggerChildren: stagger.tight },
   },
 } as const;
 
@@ -42,7 +44,7 @@ export const protocolsContainerVariants = {
   exit: {
     transition: {
       when: 'afterChildren',
-      staggerChildren: 0.06,
+      staggerChildren: stagger.tight,
       staggerDirection: -1,
     },
   },

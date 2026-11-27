@@ -49,8 +49,27 @@ type MotionMockProps = {
   transition?: unknown;
   variants?: unknown;
   viewport?: unknown;
+  whileHover?: unknown;
   whileInView?: unknown;
 };
+
+function MotionAnchor({
+  animate: _animate,
+  children,
+  exit: _exit,
+  initial: _initial,
+  layout: _layout,
+  layoutId: _layoutId,
+  onViewportEnter: _onViewportEnter,
+  transition: _transition,
+  variants: _variants,
+  viewport: _viewport,
+  whileHover: _whileHover,
+  whileInView: _whileInView,
+  ...props
+}: ComponentPropsWithoutRef<'a'> & MotionMockProps) {
+  return <a {...props}>{children}</a>;
+}
 
 function MotionDiv({
   animate: _animate,
@@ -175,6 +194,7 @@ vi.mock('motion/react', () => ({
   AnimatePresence: ({ children }: { children: ReactNode }) => children,
   LayoutGroup: ({ children }: { children: ReactNode }) => children,
   motion: {
+    a: MotionAnchor,
     circle: MotionCircle,
     create: (Component: ComponentType) => Component,
     div: MotionDiv,

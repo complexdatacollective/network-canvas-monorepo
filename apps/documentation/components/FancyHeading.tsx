@@ -4,6 +4,7 @@ import { useDirection } from '@base-ui/react/direction-provider';
 import { motion, type Variants } from 'motion/react';
 import { Children, type ComponentProps } from 'react';
 
+import { springs, stagger } from '@codaco/fresco-ui/motion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { headingWordUnits } from '~/lib/headingWords';
 
@@ -17,11 +18,8 @@ const FancyHeading = (props: ComponentProps<typeof Heading>) => {
     visible: (custom: number) => ({
       y: 0,
       transition: {
-        type: 'spring',
-        stiffness: 200,
-        damping: 30,
-        mass: 1,
-        delay: 0.1 * custom,
+        ...springs.settle,
+        delay: stagger.loose * custom,
       },
     }),
   };

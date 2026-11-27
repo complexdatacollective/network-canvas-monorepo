@@ -70,6 +70,7 @@
     "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./linkAddress": "./src/linkAddress.ts",
     "./markdownTypedHtml": "./src/markdownTypedHtml.ts",
+    "./motion": "./src/motion.ts",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
     "./RichTextRenderer": "./src/RichTextRenderer.tsx",
@@ -450,6 +451,10 @@
       "./markdownTypedHtml": {
         "types": "./dist/markdownTypedHtml.d.ts",
         "default": "./dist/markdownTypedHtml.js"
+      },
+      "./motion": {
+        "types": "./dist/motion.d.ts",
+        "default": "./dist/motion.js"
       },
       "./RenderMarkdown": {
         "types": "./dist/RenderMarkdown.d.ts",

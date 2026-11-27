@@ -5,6 +5,7 @@ import { RadioGroup, type RadioGroupProps } from '@base-ui/react/radio-group';
 import { motion } from 'motion/react';
 import { type ReactNode, useId } from 'react';
 
+import { springs } from '../../motion';
 import OptionLabel from '../../OptionLabel';
 import {
   isPresentationalText,
@@ -114,11 +115,7 @@ export function RadioItem({
     >
       <motion.div
         whileTap={disabled ? undefined : { scale: 0.85 }}
-        transition={{
-          type: 'spring',
-          duration: 0.3,
-          bounce: 0.3,
-        }}
+        transition={springs.press}
         tabIndex={-1}
       >
         <Radio.Root
@@ -149,11 +146,7 @@ export function RadioItem({
                   r="10"
                   initial={false}
                   animate={{ scale: state.checked ? 1 : 0 }}
-                  transition={{
-                    type: 'spring',
-                    bounce: 0.3,
-                    duration: state.checked ? 0.3 : 0.15,
-                  }}
+                  transition={springs.press}
                 />
               </svg>
             </button>

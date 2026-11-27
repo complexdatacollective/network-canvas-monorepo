@@ -22,11 +22,11 @@ import { focusRouteTarget, hasRouteFocusTarget } from './RouteFocus';
 /**
  * The drawer's slide.
  *
- * Deliberately NOT a spring, and not the shared `spring-medium` preset this
- * first used. Those presets suit small controls that pop; a full-height 320px
- * panel carrying an `elevation-high` shadow overshoots visibly at that
- * preset's bounce, and the settle reads as jank rather than as life — the
- * shadow repainting through the overshoot makes it worse.
+ * Deliberately NOT a spring. The drawer first used a medium spring with a
+ * bounce, which suits small controls that pop; a full-height 320px panel
+ * carrying an `elevation-high` shadow overshoots visibly at that bounce, and
+ * the settle reads as jank rather than as life — the shadow repainting
+ * through the overshoot makes it worse.
  *
  * A drawer is a surface being pushed into place: it decelerates into rest and
  * stops. Short, transform only, no overshoot.

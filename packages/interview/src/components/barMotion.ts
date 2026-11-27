@@ -5,16 +5,14 @@ import type {
   Variants,
 } from 'motion/react';
 
-import {
-  segmentLayoutSpring,
-  segmentPresenceVariants,
-} from '@codaco/fresco-ui/SegmentedToolbar';
+import { growPresence, reduced, springs } from '@codaco/fresco-ui/motion';
 
 /**
- * How long the bar takes to slide in, in seconds. The controls on it when it
- * first appears fade in once it has.
+ * How long the bar takes to slide in, in seconds: the visual duration of the
+ * `glide` spring that moves it. The controls on it when it first appears fade
+ * in once it has.
  */
-export const BAR_ENTRANCE = 0.6;
+const BAR_ENTRANCE = springs.glide.visualDuration;
 
 // How long the controls take to fade in with the bar, in seconds.
 const ENTRANCE_FADE = 0.3;
@@ -22,7 +20,7 @@ const ENTRANCE_FADE = 0.3;
 const target = (variant: Variant | undefined): TargetAndTransition =>
   typeof variant === 'object' ? variant : {};
 
-const grown = target(segmentPresenceVariants.animate);
+const grown = target(growPresence.animate);
 
 // The controls on the bar when it first appears fade in together once it has
 // slid in.
@@ -47,7 +45,7 @@ const barVariants: Variants = {
   initial: (entering: boolean) =>
     entering
       ? { opacity: 0, scale: 1, filter: 'blur(0px) opacity(100%)' }
-      : { ...target(segmentPresenceVariants.initial), opacity: 1 },
+      : { ...target(growPresence.initial), opacity: 1 },
   animate: {
     scale: grown.scale,
     filter: grown.filter,
@@ -55,7 +53,7 @@ const barVariants: Variants = {
     transition: { ...grown.transition, ...entranceFade },
     transitionEnd: { filter: 'none' },
   },
-  exit: target(segmentPresenceVariants.exit),
+  exit: target(growPresence.exit),
 };
 
 /** With reduced motion a control only fades, by the same split. */
@@ -109,6 +107,6 @@ export const barItemMotion = ({
   layout: 'position',
   layoutDependency,
   transition: {
-    layout: reduceMotion ? { duration: 0 } : segmentLayoutSpring,
+    layout: reduced(springs.snap, reduceMotion),
   },
 });

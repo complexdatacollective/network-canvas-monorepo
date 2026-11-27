@@ -14,6 +14,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Pattern } from '@codaco/art';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
+import { springs } from '@codaco/fresco-ui/motion';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { ProtocolCard } from '@codaco/fresco-ui/ProtocolCard';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
@@ -429,7 +430,7 @@ const ProtocolInfoCard = () => {
       gradientClassName="from-rich-black/25 via-platinum/50 to-platinum via-20% to-45%"
       initial={animate ? { scale: 0, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+      transition={springs.bouncy}
       className="mx-auto max-w-3xl shadow-xl"
     >
       <div className="relative z-10 flex flex-col gap-5 p-7">

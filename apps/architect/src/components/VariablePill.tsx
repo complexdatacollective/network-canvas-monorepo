@@ -10,6 +10,7 @@ import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
+import { reduced, springs } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   Tooltip,
@@ -106,12 +107,6 @@ const EDIT_MODE_SCALE = 1.5;
 const EDITOR_FRAME_GUTTER = 32;
 const EDITOR_FRAME_MIN_WIDTH = 320;
 const EDITOR_FRAME_PADDING = 24;
-const EDIT_MODE_LAYOUT_SPRING = {
-  type: 'spring',
-  stiffness: 260,
-  damping: 30,
-  mass: 1.2,
-} as const;
 
 const getRawColorToken = (color: string) =>
   color.endsWith(DARK_COLOR_SUFFIX)
@@ -492,9 +487,7 @@ export const VariablePill = ({
                 scale: 1,
                 width: editorFrame.initialPillWidth,
               }}
-              transition={
-                reduceMotion ? { duration: 0 } : EDIT_MODE_LAYOUT_SPRING
-              }
+              transition={reduced(springs.settle, reduceMotion === true)}
               className={getVariablePillClassName({
                 animated: false,
               })}

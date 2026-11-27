@@ -5,6 +5,7 @@ import { LayoutGroup, motion } from 'motion/react';
 import { type ComponentPropsWithoutRef, forwardRef } from 'react';
 
 import { getInputState } from './form/utils/getInputState';
+import { springs } from './motion';
 import { controlVariants, smallSizeVariants } from './styles/controlVariants';
 import { cva, cx, type VariantProps } from './utils/cva';
 
@@ -175,11 +176,7 @@ const Toggle = forwardRef<HTMLButtonElement, ToggleProps>((props, ref) => {
                 className={toggleThumbVariants({ state })}
                 layout
                 layoutDependency={checked}
-                transition={{
-                  type: 'spring',
-                  stiffness: 500,
-                  damping: 30,
-                }}
+                transition={springs.pop}
               />
             }
           />

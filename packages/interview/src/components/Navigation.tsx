@@ -27,11 +27,11 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { reduced, springs } from '@codaco/fresco-ui/motion';
 import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
-import { segmentLayoutSpring } from '@codaco/fresco-ui/SegmentedToolbar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { navigationMessages as messages } from '../i18n/navigationMessages';
@@ -40,7 +40,7 @@ import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { showPassphrasePrompter } from '../store/modules/ui';
 import { useSyncFlush } from '../store/SyncFlushContext';
-import { BAR_ENTRANCE, barItemMotion } from './barMotion';
+import { barItemMotion } from './barMotion';
 import PassphrasePrompter from './PassphrasePrompter';
 import ReadyToContinueAnnouncer from './ReadyToContinueAnnouncer';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
@@ -69,11 +69,7 @@ const containerVariants = {
     opacity: 1,
     y: 0,
     x: 0,
-    transition: {
-      type: 'spring' as const,
-      visualDuration: BAR_ENTRANCE,
-      bounce: 0,
-    },
+    transition: springs.glide,
   }),
   exit: (custom: ContainerCustom) => ({
     opacity: 0,
@@ -328,7 +324,7 @@ const Navigation = ({
   // The progress bar takes up the length the other controls leave, so it
   // grows and shrinks as they come and go.
   const progressTransition = {
-    layout: shouldReduceMotion ? { duration: 0 } : segmentLayoutSpring,
+    layout: reduced(springs.snap, shouldReduceMotion),
   };
 
   // The text-size control needs both the opt-in flag and a change handler —

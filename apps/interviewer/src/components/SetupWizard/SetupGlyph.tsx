@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import type { Transition } from 'motion/react';
 import { useEffect, useState } from 'react';
 
+import { reduced, springs } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 
 // Inert metal tone the device shows before the wand "activates" it.
@@ -11,7 +12,7 @@ const PLATINUM = '#b9bec9';
 const ACTIVATION_DELAY_MS = 1600;
 
 // High-fidelity spot illustration for the wizard intro. On mount the scene
-// springs in piece by piece (weighty spring feel), the wand waves and casts a
+// springs in piece by piece (the shared bouncy spring), the wand waves and casts a
 // star burst that turns the 3D tablet from platinum to its theme colour, then
 // a check badge springs in. Shading comes from white/black gradient overlays
 // on top of currentColor fills, so the artwork follows the theme's
@@ -30,9 +31,7 @@ export default function SetupGlyph() {
   }, [activated]);
 
   const spring = (delay: number): Transition =>
-    reduceMotion
-      ? { duration: 0 }
-      : { type: 'spring', stiffness: 200, damping: 15, mass: 1.2, delay };
+    reduced({ ...springs.bouncy, delay }, reduceMotion);
 
   const popIn = reduceMotion ? false : { scale: 0, opacity: 0 };
   const settled = { scale: 1, opacity: 1 };
@@ -80,9 +79,7 @@ export default function SetupGlyph() {
       <motion.g
         initial={reduceMotion ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={
-          reduceMotion ? { duration: 0 } : { duration: 0.4, delay: 0.5 }
-        }
+        transition={reduced({ duration: 0.4, delay: 0.5 }, reduceMotion)}
       >
         <ellipse
           cx={56}
@@ -227,11 +224,7 @@ export default function SetupGlyph() {
         <motion.g
           initial={popIn}
           animate={settled}
-          transition={
-            reduceMotion
-              ? { duration: 0 }
-              : { delay: 1.15, type: 'spring', stiffness: 260, damping: 13 }
-          }
+          transition={reduced({ ...springs.bouncy, delay: 1.15 }, reduceMotion)}
           style={fillBox}
         >
           <circle
@@ -271,11 +264,7 @@ export default function SetupGlyph() {
         className="text-accent"
         initial={false}
         animate={{ scale: activated ? 1 : 0, opacity: activated ? 1 : 0 }}
-        transition={
-          reduceMotion
-            ? { duration: 0 }
-            : { delay: 0.3, type: 'spring', stiffness: 300, damping: 15 }
-        }
+        transition={reduced({ ...springs.bouncy, delay: 0.3 }, reduceMotion)}
         style={fillBox}
       >
         <circle cx={186} cy={28} r={10} fill="currentColor" />

@@ -1,9 +1,4 @@
-import {
-  AnimatePresence,
-  motion,
-  type Transition,
-  type Variants,
-} from 'motion/react';
+import { AnimatePresence, motion, type Variants } from 'motion/react';
 import {
   createContext,
   type ReactNode,
@@ -15,6 +10,7 @@ import {
   useState,
 } from 'react';
 
+import { reduced, springs } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
 import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
@@ -127,13 +123,6 @@ export const toolbarEnterExitMotion = {
   },
 } satisfies Variants;
 
-export const toolbarEnterExitSpring = {
-  type: 'spring',
-  stiffness: 360,
-  damping: 24,
-  mass: 0.8,
-} satisfies Transition;
-
 // The toolbar reaches from the bottom of the window to its own top: up past
 // the space it is held off the bottom, by its own height.
 const reachOfToolbar = (toolbar: HTMLElement, height: number): number => {
@@ -163,9 +152,7 @@ const ActionToolbar = ({
     ACTION_TOOLBAR_REACH_VARIABLE,
     reachOfToolbar,
   );
-  const toolbarTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : toolbarEnterExitSpring;
+  const toolbarTransition = reduced(springs.pop, shouldReduceMotion);
 
   return (
     <motion.div

@@ -50,4 +50,3 @@
    precompile step. Paths are relative to this file. */
 @plugin '../shared/plugins/elevation/index.ts';
 @plugin '../shared/plugins/inset-surface/index.ts';
-@plugin '../shared/plugins/motion-spring.ts';

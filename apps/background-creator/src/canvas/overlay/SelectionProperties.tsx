@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
+import { reduced, springs } from '@codaco/fresco-ui/motion';
 import {
   Popover,
   PopoverContent,
@@ -125,11 +126,7 @@ export function SelectionProperties({
             initial={reduce ? false : { opacity: 0, scale: 0.6 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
-            transition={
-              reduce
-                ? { duration: 0 }
-                : { type: 'spring', stiffness: 520, damping: 30, mass: 0.6 }
-            }
+            transition={reduced(springs.pop, reduce === true)}
           >
             <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger

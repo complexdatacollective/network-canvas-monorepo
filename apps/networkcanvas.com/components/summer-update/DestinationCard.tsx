@@ -1,7 +1,9 @@
 import { ExternalLink } from 'lucide-react';
+import { motion } from 'motion/react';
 import Image from 'next/image';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { springs } from '@codaco/fresco-ui/motion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cn } from '~/lib/cn';
@@ -21,12 +23,16 @@ export function DestinationCard({
 }) {
   return (
     <Surface
-      as="a"
+      as={motion.a}
       href={destination.href}
       noContainer
       spacing="lg"
       shadow="sm"
-      className="spring-discrete-medium effect-shadow-sm group hover:effect-shadow-md relative flex h-full flex-col overflow-hidden border transition hover:-translate-y-1"
+      // The card lifts with Motion; CSS eases only the shadow, so that a CSS
+      // transition never fights the transform that Motion writes.
+      whileHover={{ y: -4 }}
+      transition={springs.settle}
+      className="effect-shadow-sm group hover:effect-shadow-md relative flex h-full flex-col overflow-hidden border transition-shadow"
     >
       <div className="flex items-start justify-between gap-6">
         <span

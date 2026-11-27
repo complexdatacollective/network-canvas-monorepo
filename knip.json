@@ -217,8 +217,7 @@
         "shared/plugins/elevation/jwc.ts",
         "shared/plugins/elevation/utils.ts",
         "shared/plugins/inset-surface/index.ts",
-        "shared/plugins/inset-surface/inset-surface.ts",
-        "shared/plugins/motion-spring.ts"
+        "shared/plugins/inset-surface/inset-surface.ts"
       ],
       "project": ["shared/**/*.ts"],
       "ignoreDependencies": [

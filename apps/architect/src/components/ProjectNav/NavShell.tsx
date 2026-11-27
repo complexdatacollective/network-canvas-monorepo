@@ -9,6 +9,7 @@ import { useLocation } from 'wouter';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
+import { springs, stagger } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Brand from '~/components/Brand';
 import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
@@ -35,9 +36,9 @@ const containerVariants: Variants = {
   visible: {
     y: 0,
     transition: {
-      type: 'spring',
+      ...springs.pop,
       delayChildren: 0.5,
-      staggerChildren: 0.1,
+      staggerChildren: stagger.loose,
     },
   },
 };
@@ -47,9 +48,7 @@ const itemVariants: Variants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      type: 'spring',
-    },
+    transition: springs.pop,
   },
 };
 

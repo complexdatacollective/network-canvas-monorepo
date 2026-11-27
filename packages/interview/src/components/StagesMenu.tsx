@@ -10,6 +10,7 @@ import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
 import type { ItemProps, Key } from '@codaco/fresco-ui/collection/types';
+import { reduced, springs } from '@codaco/fresco-ui/motion';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -78,7 +79,7 @@ const FILTER_FUSE_OPTIONS = { includeScore: false };
 const HORIZONTAL_GAP = 6;
 
 // Timeline (line + numbered nodes) reveals as a directional "wipe"; the stage
-// cards rise + fade in on a heavier spring. Keep the whole sequence bounded so a
+// cards rise + fade in on a spring. Keep the whole sequence bounded so a
 // long protocol doesn't turn into a slideshow.
 const WIPE_DURATION = 0.16;
 const NODE_LEAD = 0.05;
@@ -104,7 +105,6 @@ const makeVariants = (
   steps: Steps,
   reduce: boolean,
 ): MenuVariants => {
-  const instant = { duration: 0 };
   const hidden = orientation === 'vertical' ? { scaleY: 0 } : { scaleX: 0 };
   const shown = orientation === 'vertical' ? { scaleY: 1 } : { scaleX: 1 };
 
@@ -114,75 +114,80 @@ const makeVariants = (
     card: {
       open: (i: number) => ({
         opacity: 1,
-        transition: reduce
-          ? instant
-          : {
-              delay: i * steps.content + CONTENT_LEAD,
-              duration: CARD_DURATION,
-              ease: 'easeOut',
-            },
+        transition: reduced(
+          {
+            delay: i * steps.content + CONTENT_LEAD,
+            duration: CARD_DURATION,
+            ease: 'easeOut',
+          },
+          reduce,
+        ),
       }),
       closed: (i: number) => ({
         opacity: 0,
-        transition: reduce
-          ? instant
-          : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+        transition: reduced(
+          { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+          reduce,
+        ),
       }),
     },
     line: {
       open: (i: number) => ({
         ...shown,
-        transition: reduce
-          ? instant
-          : {
-              delay: i * steps.wipe,
-              duration: WIPE_DURATION,
-              ease: 'easeInOut',
-            },
+        transition: reduced(
+          {
+            delay: i * steps.wipe,
+            duration: WIPE_DURATION,
+            ease: 'easeInOut',
+          },
+          reduce,
+        ),
       }),
       closed: (i: number) => ({
         ...hidden,
-        transition: reduce
-          ? instant
-          : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+        transition: reduced(
+          { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+          reduce,
+        ),
       }),
     },
     node: {
       open: (i: number) => ({
         scale: 1,
-        transition: reduce
-          ? instant
-          : {
-              delay: i * steps.wipe + NODE_LEAD,
-              duration: 0.26,
-              ease: 'easeOut',
-            },
+        transition: reduced(
+          {
+            delay: i * steps.wipe + NODE_LEAD,
+            duration: 0.26,
+            ease: 'easeOut',
+          },
+          reduce,
+        ),
       }),
       closed: (i: number) => ({
         scale: 0,
-        transition: reduce
-          ? instant
-          : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+        transition: reduced(
+          { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+          reduce,
+        ),
       }),
     },
     content: {
       open: (i: number) => ({
         y: 0,
-        transition: reduce
-          ? instant
-          : {
-              delay: i * steps.content + CONTENT_LEAD,
-              type: 'spring',
-              stiffness: 220,
-              damping: 20,
-              mass: 1.1,
-            },
+        transition: reduced(
+          {
+            delay: i * steps.content + CONTENT_LEAD,
+            ...springs.pop,
+          },
+          reduce,
+        ),
       }),
       closed: (i: number) => ({
         y: reduce ? 0 : 16,
-        transition: reduce
-          ? instant
-          : { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+        transition: reduced(
+          { delay: i * steps.exit, duration: EXIT_DURATION, ease: 'easeIn' },
+          reduce,
+        ),
       }),
     },
   };

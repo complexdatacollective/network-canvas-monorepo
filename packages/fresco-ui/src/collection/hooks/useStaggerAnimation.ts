@@ -4,6 +4,7 @@ import { stagger } from 'motion/react';
 import { useEffect, useRef } from 'react';
 
 import { useSafeAnimate } from '../../hooks/useSafeAnimate';
+import { springs } from '../../motion';
 
 const TOTAL_STAGGER_DURATION = 0.8;
 const MAX_STAGGER_DELAY = 0.1;
@@ -73,12 +74,7 @@ export function useStaggerAnimation(
       await animate(
         selector,
         { opacity: [0, 1], y: ['20%', '0%'], scale: [0.6, 1] },
-        {
-          type: 'spring',
-          stiffness: 500,
-          damping: 20,
-          delay: stagger(staggerDelay),
-        },
+        { ...springs.bouncy, delay: stagger(staggerDelay) },
       );
     };
 

@@ -3,6 +3,7 @@
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox';
 import { AnimatePresence, motion } from 'motion/react';
 
+import { springs } from '../../motion';
 import OptionLabel, { optionLabelText } from '../../OptionLabel';
 import {
   type PresentationalText,
@@ -111,13 +112,6 @@ const fillIndicatorVariants = cva({
     catColor: 1,
   },
 });
-
-// Spring animation config for selection
-const selectionSpring = {
-  type: 'spring' as const,
-  duration: 0.4,
-  bounce: 0.25,
-};
 
 type ToggleButtonOption = {
   value: string | number;
@@ -232,7 +226,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
                 whileTap={
                   isOptionDisabled || readOnly ? undefined : { scale: 0.95 }
                 }
-                transition={selectionSpring}
+                transition={springs.press}
               />
             }
           >
@@ -244,7 +238,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0, opacity: 0 }}
-                  transition={selectionSpring}
+                  transition={springs.press}
                 />
               )}
             </AnimatePresence>

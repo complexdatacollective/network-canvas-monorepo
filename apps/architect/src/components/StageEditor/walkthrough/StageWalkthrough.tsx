@@ -15,6 +15,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { springs } from '@codaco/fresco-ui/motion';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
@@ -78,7 +79,6 @@ const messages = defineMessages({
 
 const MARKDOWN_TAGS = [...ALLOWED_MARKDOWN_SECTION_TAGS, 'img', 'code'];
 
-const SPRING = { type: 'spring', duration: 0.4, bounce: 0 } as const;
 /** The old step's text fades out over the first half of a step change… */
 const TEXT_OUT = { duration: STEP_SECONDS / 2, ease: 'easeIn' } as const;
 /** …and the new step's over the second half. */
@@ -169,7 +169,7 @@ function StepSegments({
         <span
           key={i}
           className={cx(
-            'spring-short h-1 flex-1 rounded-full',
+            'h-1 flex-1 rounded-full transition-colors duration-200 ease-out',
             i <= index ? 'bg-primary' : 'bg-current/10',
           )}
         />
@@ -293,7 +293,7 @@ function WalkthroughCard({
                 reducedMotion ? false : { opacity: 0, y: 16, scale: 0.98 }
               }
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={SPRING}
+              transition={springs.snap}
             >
               <header
                 ref={header}

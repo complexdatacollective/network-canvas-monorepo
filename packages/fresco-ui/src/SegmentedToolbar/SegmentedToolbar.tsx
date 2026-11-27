@@ -12,7 +12,6 @@ import {
   type Transition,
   useDragControls,
   useMotionValue,
-  type Variants,
 } from 'motion/react';
 import * as React from 'react';
 import { useMergeRefs } from 'react-best-merge-refs';
@@ -25,6 +24,7 @@ import {
 } from '../DropdownMenu';
 import useTokenRadius from '../hooks/useTokenRadius';
 import { MotionSurface } from '../layout/Surface';
+import { growPresence, springs } from '../motion';
 import { Popover, PopoverContent, PopoverTrigger } from '../Popover';
 import { usePrefersReducedMotion } from '../reducedMotion';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
@@ -370,49 +370,6 @@ function useHorizontalOverflow(
   return { laneRef, frameRef };
 }
 
-/**
- * The spring a segment, and the pill around it, use to move when segments
- * are added or removed. Exported so that other bars of controls (the
- * interview's navigation bar) move the same way.
- */
-export const segmentLayoutSpring: Transition = {
-  type: 'spring',
-  stiffness: 420,
-  damping: 34,
-  mass: 0.7,
-};
-
-/**
- * How a segment appears and disappears: it grows out of a blur, and shrinks
- * back into one. Exported with `segmentLayoutSpring` for the same reason.
- */
-export const segmentPresenceVariants: Variants = {
-  initial: {
-    scale: 0.72,
-    filter: 'blur(3px) opacity(0%)',
-  },
-  animate: {
-    scale: 1,
-    filter: 'blur(0px) opacity(100%)',
-    transition: {
-      type: 'spring',
-      stiffness: 520,
-      damping: 30,
-      mass: 0.6,
-    },
-  },
-  exit: {
-    scale: 0.72,
-    filter: 'blur(3px) opacity(0%)',
-    transition: {
-      type: 'spring',
-      stiffness: 620,
-      damping: 42,
-      mass: 0.5,
-    },
-  },
-};
-
 function motionItemProps(reduceMotion: boolean): MotionProps {
   if (reduceMotion) {
     return {
@@ -424,11 +381,11 @@ function motionItemProps(reduceMotion: boolean): MotionProps {
 
   return {
     layout: 'position',
-    variants: segmentPresenceVariants,
+    variants: growPresence,
     initial: 'initial',
     animate: 'animate',
     exit: 'exit',
-    transition: { layout: segmentLayoutSpring },
+    transition: { layout: springs.snap },
   };
 }
 
@@ -1105,7 +1062,7 @@ export function SegmentedToolbar({
 
   const surfaceTransition: Transition = reduceMotion
     ? { duration: 0 }
-    : { layout: segmentLayoutSpring };
+    : { layout: springs.snap };
 
   if (!draggable) {
     return (

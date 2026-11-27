@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { Label } from '../../Label';
+import { springs } from '../../motion';
 import OptionLabel from '../../OptionLabel';
 import {
   type PresentationalText,
@@ -159,12 +160,6 @@ const spacerVariants = cva({
     orientation: 'vertical',
   },
 });
-
-const selectionSpring = {
-  type: 'spring' as const,
-  duration: 0.3,
-  bounce: 0.15,
-};
 
 export type RichSelectOption = {
   value: string | number;
@@ -460,7 +455,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
           onKeyDown={(e) => handleKeyDown(e, index)}
           disabled={isOptionDisabled}
           whileTap={isOptionDisabled || readOnly ? undefined : { scale: 0.98 }}
-          transition={selectionSpring}
+          transition={springs.press}
           data-value={String(option.value)}
           {...ariaProps}
         >
@@ -485,11 +480,7 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
                   r="10"
                   initial={false}
                   animate={{ scale: optionSelected ? 1 : 0 }}
-                  transition={{
-                    type: 'spring',
-                    bounce: 0.3,
-                    duration: optionSelected ? 0.3 : 0.15,
-                  }}
+                  transition={springs.press}
                 />
               </svg>
             ) : (

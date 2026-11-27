@@ -19,6 +19,7 @@ import {
 
 import { useSafeAnimate } from '../hooks/useSafeAnimate';
 import useTokenRadius from '../hooks/useTokenRadius';
+import { springs } from '../motion';
 import {
   holdsFocus,
   isUsableFinalFocusTarget,
@@ -158,12 +159,7 @@ export default function ModalPopup({
             scale: [1.2, 1],
             filter: ['blur(10px)', 'blur(0px)'],
           },
-          {
-            when: 'beforeChildren',
-            type: 'spring',
-            stiffness: 500,
-            damping: 30,
-          },
+          { when: 'beforeChildren', ...springs.pop },
         );
       };
       void enterAnimation();
