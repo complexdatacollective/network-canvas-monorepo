@@ -58,31 +58,31 @@ const extraMessages = defineMessages({
     id: 'architect.summary.prompt.task',
     defaultMessage: 'Task',
     description:
-      "Row label in a Sociogram prompt's table in the printable protocol summary; its value is the task the prompt sets participants: positioning, highlighting or connecting nodes.",
+      "Row label in a Sociogram prompt's table in the printable protocol summary; its value is the task the prompt sets participants: positioning, highlighting or connecting nodes. The researcher reads it in Architect, and so does anyone the researcher gives the printed summary to.",
   },
   taskLayout: {
     id: 'architect.summary.prompt.taskLayout',
     defaultMessage: 'Position nodes',
     description:
-      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants drag nodes to place them on the canvas.",
+      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants drag nodes to place them on the canvas. The researcher reads it in Architect, and so does anyone the researcher gives the printed summary to.",
   },
   taskHighlight: {
     id: 'architect.summary.prompt.taskHighlight',
     defaultMessage: 'Highlight nodes',
     description:
-      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants tap nodes to set a Boolean attribute.",
+      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants tap nodes to set a Boolean attribute. The researcher reads it in Architect, and so does anyone the researcher gives the printed summary to.",
   },
   taskConnect: {
     id: 'architect.summary.prompt.taskConnect',
     defaultMessage: 'Connect nodes',
     description:
-      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants tap two nodes to create an edge between them.",
+      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants tap two nodes to create an edge between them. The researcher reads it in Architect, and so does anyone the researcher gives the printed summary to.",
   },
   highlightattribute: {
     id: 'architect.summary.prompt.highlightattribute',
     defaultMessage: 'Highlight attribute',
     description:
-      "Row label in a Sociogram prompt's table in the printable protocol summary; its value is a node type and the Boolean variable set when a participant highlights a node of that type. The table has one such row for each node type the prompt highlights.",
+      "Row label in a Sociogram prompt's table in the printable protocol summary; its value is a node type and the Boolean variable set when a participant highlights a node of that type. The table has one such row for each node type the prompt highlights. The researcher reads it in Architect, and so does anyone the researcher gives the printed summary to.",
   },
   negativeOptionLabel: {
     id: 'architect.summary.prompt.negativeOptionLabel',

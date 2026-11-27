@@ -107,14 +107,14 @@ export const sociogramPromptMessages = defineMessages({
     id: 'protocolBuilder.networkCanvas.taskTitle',
     defaultMessage: 'Task',
     description:
-      'Heading of the group inside the sociogram prompt dialog that chooses what the participant does while this prompt is shown.',
+      "Heading of the group inside the sociogram prompt dialog that chooses what the participant does while this prompt is shown. It appears in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskDescription: {
     id: 'protocolBuilder.networkCanvas.taskDescription',
     defaultMessage:
       'Choose what participants do on the canvas while this prompt is shown. Nodes can be moved only in a positioning task.',
     description:
-      'Description of the task group in the sociogram prompt dialog. The canvas is the area on which the participant places nodes. A positioning task is the first of the three choices offered.',
+      "Description of the task group in the sociogram prompt dialog. The canvas is the area on which the participant places nodes. A positioning task is the first of the three choices offered. It appears in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskLabel: {
     id: 'protocolBuilder.networkCanvas.taskLabel',
@@ -126,7 +126,7 @@ export const sociogramPromptMessages = defineMessages({
     id: 'protocolBuilder.networkCanvas.taskRequired',
     defaultMessage: 'Choose the task that this prompt sets.',
     description:
-      'Refusal shown under the task control when the researcher saves a sociogram prompt without choosing a task.',
+      "Refusal shown under the task control when the researcher saves a sociogram prompt without choosing a task. It appears in the prompt dialog of a Sociogram stage in Architect's stage editor, and the researcher reads it.",
   },
   taskLayoutLabel: {
     id: 'protocolBuilder.networkCanvas.taskLayoutLabel',
