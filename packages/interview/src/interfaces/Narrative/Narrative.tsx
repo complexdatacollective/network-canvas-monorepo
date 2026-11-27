@@ -294,19 +294,22 @@ const Narrative = ({ stage }: NarrativeProps) => {
     }),
   );
 
-  // A preset's highlight names one attribute, which lights any node of the
-  // stage's types that has it set.
-  const highlightVariable = showHighlightedNodes
-    ? highlight[highlightIndex]?.variable
+  // The selected highlight entry names one boolean attribute per node type;
+  // a node lights when its type's attribute is set.
+  const highlightEntry = showHighlightedNodes
+    ? highlight[highlightIndex]
     : undefined;
   const highlightAttributes = useMemo(
     () =>
-      highlightVariable === undefined
+      highlightEntry === undefined
         ? undefined
         : Object.fromEntries(
-            subjectTypes.map((type) => [type, highlightVariable]),
+            highlightEntry.attributes.map(({ type, variable }) => [
+              type,
+              variable,
+            ]),
           ),
-    [highlightVariable, subjectTypes],
+    [highlightEntry],
   );
 
   const underlays = convexHullVariable ? (

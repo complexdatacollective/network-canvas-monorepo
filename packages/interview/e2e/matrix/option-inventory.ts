@@ -342,6 +342,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'presets[].groupVariable',
     'presets[].edges.display',
     'presets[].highlight',
+    'presets[].highlight[].attributes[]',
     'presets[].filter',
     'background.image',
     'background.concentricCircles',

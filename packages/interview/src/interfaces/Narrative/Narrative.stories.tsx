@@ -144,7 +144,9 @@ const buildFromArgs = (args: NarrativeArgs) => {
     layout: layoutVar1.id,
     ...(args.groups ? { groupVariable: communityVar.id } : {}),
     ...(args.edges ? { edges: { display: [friendshipEt.id] } } : {}),
-    ...(args.highlight ? { highlight: [closeVar.id] } : {}),
+    ...(args.highlight
+      ? { highlight: [{ attributes: [{ variable: closeVar.id }] }] }
+      : {}),
   });
 
   if (args.groups) {
@@ -309,7 +311,10 @@ const buildWithHighlighting = () => {
   }).addPreset({
     label: 'Close Friends',
     layout: layoutVar1.id,
-    highlight: [closeVar.id, trustedVar.id],
+    highlight: [
+      { attributes: [{ variable: closeVar.id }] },
+      { attributes: [{ variable: trustedVar.id }] },
+    ],
   });
   const hlValues = [true, false, true, null, true, false, true, false];
   hlValues.forEach((v, i) => {
@@ -340,7 +345,7 @@ const buildFullFeatured = () => {
     layout: layoutVar1.id,
     edges: { display: [friendshipEt.id, professionalEt.id] },
     groupVariable: communityVar.id,
-    highlight: [closeVar.id],
+    highlight: [{ attributes: [{ variable: closeVar.id }] }],
   });
   const hlValues = [
     true,
@@ -418,13 +423,13 @@ const buildMultiplePresets = () => {
     layout: layoutVar1.id,
     edges: { display: [friendshipEt.id] },
     groupVariable: communityVar.id,
-    highlight: [closeVar.id],
+    highlight: [{ attributes: [{ variable: closeVar.id }] }],
   });
   stage.addPreset({
     label: 'Professional View',
     layout: layoutVar2.id,
     edges: { display: [professionalEt.id] },
-    highlight: [trustedVar.id],
+    highlight: [{ attributes: [{ variable: trustedVar.id }] }],
   });
   stage.addPreset({
     label: 'Community Map',
@@ -584,7 +589,7 @@ const buildAllBehaviours = () => {
     layout: layoutVar1.id,
     edges: { display: [friendshipEt.id, professionalEt.id] },
     groupVariable: communityVar.id,
-    highlight: [closeVar.id],
+    highlight: [{ attributes: [{ variable: closeVar.id }] }],
   });
   const hlValues = [
     true,
@@ -660,7 +665,7 @@ const buildManyNodes = () => {
     layout: layoutVar1.id,
     edges: { display: [friendshipEt.id, professionalEt.id] },
     groupVariable: communityVar.id,
-    highlight: [closeVar.id],
+    highlight: [{ attributes: [{ variable: closeVar.id }] }],
   });
   const hlValues = Array.from({ length: 15 }, (_, i) =>
     i % 3 === 0 ? true : i % 3 === 1 ? false : null,
@@ -1388,5 +1393,170 @@ export const EgoNetwork: Story = {
           'Ego network: an ego connected to seven alters grouped by type (family, work, school), with one alter in two groups and a few alter-alter ties.',
       },
     },
+  },
+};
+
+// Sets each node's name, in node order, through its type's name variable
+// (the one `addNodeType` seeds first).
+function nameNodes(
+  si: SyntheticInterview,
+  nodes: readonly { typeId: string; name: string }[],
+) {
+  nodes.forEach(({ typeId, name }, index) => {
+    const [nameVariable] = si.getVariableIds(typeId);
+    si.setNodeAttribute(index, nameVariable!, name);
+  });
+}
+
+const canvasNode = (canvasElement: HTMLElement, name: string) =>
+  waitFor(() => {
+    const button = canvasElement.querySelector<HTMLElement>(
+      `[data-testid="narrative"] [role="application"] [aria-label="${name}"]`,
+    );
+    expect(button).not.toBeNull();
+    return button!;
+  });
+
+const highlightedNames = (canvasElement: HTMLElement) =>
+  [
+    ...canvasElement.querySelectorAll<HTMLElement>(
+      '[data-testid="narrative"] [data-node-highlighted]',
+    ),
+  ]
+    .map((node) => node.getAttribute('aria-label') ?? '')
+    .toSorted((a, b) => a.localeCompare(b));
+
+const buildSeveralNodeTypes = () => {
+  const si = new SyntheticInterview(18);
+  const person = si.addNodeType({ name: 'Person' });
+  const place = si.addNodeType({ name: 'Place', shape: { default: 'square' } });
+  const layoutVar = si.addLayout({ name: 'Narrative_Layout' });
+  const close = person.addVariable({ type: 'boolean', name: 'Close' });
+  const favourite = place.addVariable({ type: 'boolean', name: 'Favourite' });
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('Narrative', {
+    subject: { entity: 'node', types: [person.id, place.id] },
+    initialNodes: { count: { [person.id]: 3, [place.id]: 2 } },
+  });
+  stage.addPreset({
+    label: 'People and places',
+    layout: layoutVar.id,
+    highlight: [
+      {
+        label: 'Important to you',
+        attributes: [
+          { type: person.id, variable: close.id },
+          { type: place.id, variable: favourite.id },
+        ],
+      },
+      {
+        label: 'Close people',
+        attributes: [{ type: person.id, variable: close.id }],
+      },
+    ],
+  });
+  nameNodes(si, [
+    { typeId: person.id, name: 'Alex' },
+    { typeId: person.id, name: 'Blake' },
+    { typeId: person.id, name: 'Casey' },
+    { typeId: place.id, name: 'Park' },
+    { typeId: place.id, name: 'Museum' },
+  ]);
+  setLayout(si, layoutVar.id, [
+    { x: 0.25, y: 0.3 },
+    { x: 0.5, y: 0.2 },
+    { x: 0.75, y: 0.35 },
+    { x: 0.35, y: 0.75 },
+    { x: 0.7, y: 0.7 },
+  ]);
+  [true, false, false].forEach((value, index) => {
+    si.setNodeAttribute(index, close.id, value);
+  });
+  si.setNodeAttribute(3, favourite.id, true);
+  si.setNodeAttribute(4, favourite.id, false);
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * A Narrative showing people and places. One highlight lights the people who
+ * are close and the places that are favourites; the next lights close people
+ * only.
+ */
+export const SeveralNodeTypes: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildSeveralNodeTypes} />,
+  play: async ({ canvasElement, userEvent }) => {
+    for (const name of ['Alex', 'Blake', 'Casey', 'Park', 'Museum']) {
+      await canvasNode(canvasElement, name);
+    }
+    await waitFor(() =>
+      expect(highlightedNames(canvasElement)).toEqual(['Alex', 'Park']),
+    );
+
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('radio', { name: 'Close people' }));
+    await waitFor(() =>
+      expect(highlightedNames(canvasElement)).toEqual(['Alex']),
+    );
+  },
+};
+
+const buildDirectedEdges = () => {
+  const si = new SyntheticInterview(19);
+  const person = si.addNodeType({ name: 'Person' });
+  const layoutVar = si.addLayout({ name: 'Narrative_Layout' });
+  const advice = si.addEdgeType({ name: 'Asks for advice', directed: true });
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  si.addStage('Narrative', {
+    initialNodes: { count: 3 },
+  }).addPreset({
+    label: 'Advice',
+    layout: layoutVar.id,
+    edges: { display: [advice.id] },
+  });
+  nameNodes(si, [
+    { typeId: person.id, name: 'Alex' },
+    { typeId: person.id, name: 'Blake' },
+    { typeId: person.id, name: 'Casey' },
+  ]);
+  setLayout(si, layoutVar.id, [
+    { x: 0.25, y: 0.35 },
+    { x: 0.7, y: 0.3 },
+    { x: 0.45, y: 0.75 },
+  ]);
+  si.addEdges(
+    [
+      [0, 1],
+      [1, 0],
+      [2, 0],
+    ],
+    advice.id,
+  );
+  si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
+  return si;
+};
+
+/**
+ * Directed edges on a Narrative: Alex and Blake go to each other for advice,
+ * drawn as one line with an arrowhead at each end, and Casey goes to Alex.
+ */
+export const DirectedEdges: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildDirectedEdges} />,
+  play: async ({ canvasElement }) => {
+    await canvasNode(canvasElement, 'Alex');
+    await waitFor(() => {
+      expect(
+        canvasElement.querySelectorAll(
+          '[data-testid="narrative"] line[data-edge-id]',
+        ),
+      ).toHaveLength(2);
+      expect(
+        [
+          ...canvasElement.querySelectorAll(
+            '[data-testid="narrative"] polygon[data-edge-arrowhead]',
+          ),
+        ].filter((arrow) => arrow.getAttribute('visibility') === 'visible'),
+      ).toHaveLength(3);
+    });
   },
 };

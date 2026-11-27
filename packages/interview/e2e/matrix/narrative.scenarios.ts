@@ -170,7 +170,10 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
       label: 'View A',
       layout: layoutA.id,
       edges: { display: [friendship.id] },
-      highlight: [closeVar.id, trustedVar.id],
+      highlight: [
+        { attributes: [{ variable: closeVar.id }] },
+        { attributes: [{ variable: trustedVar.id }] },
+      ],
     });
     stage.addPreset({
       label: 'View B',
@@ -436,7 +439,10 @@ const highlightMultiAttribute: ScenarioDefinition = {
     });
     stage.addPreset({
       layout: layoutVar.id,
-      highlight: [closeVar.id, trustedVar.id],
+      highlight: [
+        { attributes: [{ variable: closeVar.id }] },
+        { attributes: [{ variable: trustedVar.id }] },
+      ],
     });
 
     synth.addManualNode(stage.id, person.id, 'node-alice', {
@@ -932,53 +938,64 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const personName = person.addVariable({ type: 'text', name: 'name' });
-    const personLayout = synth.addLayout({ name: 'PersonLayout' });
+    const sharedLayout = synth.addLayout({ name: 'SharedLayout' });
     const closeVar = person.addVariable({
       type: 'boolean',
       name: 'CloseFriend',
     });
-    const community = person.addVariable({
-      type: 'categorical',
-      name: 'Community',
-      options: [
-        { label: 'Family', value: 'family' },
-        { label: 'Work', value: 'work' },
-      ],
-    });
-
-    // A second, non-subject node type. A layout belongs to the codebook, not
-    // to a node type, so a Place node can hold a position in the layout the
-    // preset shows: a later Sociogram places Places in it.
     const place = synth.addNodeType({ name: 'Place' });
     const placeName = place.addVariable({ type: 'text', name: 'name' });
+    const favouriteVar = place.addVariable({
+      type: 'boolean',
+      name: 'Favourite',
+    });
+
+    // A third, non-subject node type. A layout belongs to the codebook, not
+    // to a node type, so an Organisation node can hold a position in the
+    // layout the preset shows: a later Sociogram places Organisations in it.
+    const organisation = synth.addNodeType({ name: 'Organisation' });
+    const organisationName = organisation.addVariable({
+      type: 'text',
+      name: 'name',
+    });
 
     const stage = synth.addStage('Narrative', {
-      subject: { entity: 'node', types: [person.id] },
+      subject: { entity: 'node', types: [person.id, place.id] },
     });
     stage.addPreset({
-      layout: personLayout.id,
-      groupVariable: community.id,
-      highlight: [closeVar.id],
+      layout: sharedLayout.id,
+      highlight: [
+        {
+          attributes: [
+            { type: person.id, variable: closeVar.id },
+            { type: place.id, variable: favouriteVar.id },
+          ],
+        },
+      ],
     });
 
     synth.addManualNode(stage.id, person.id, 'p-alice', {
       [personName.id]: 'Alice',
-      [personLayout.id]: { x: 0.3, y: 0.3 },
+      [sharedLayout.id]: { x: 0.3, y: 0.3 },
       [closeVar.id]: true,
-      [community.id]: ['family'],
+    });
+    synth.addManualNode(stage.id, place.id, 'pl-park', {
+      [placeName.id]: 'Park',
+      [sharedLayout.id]: { x: 0.7, y: 0.3 },
+      [favouriteVar.id]: false,
     });
     // A node of another type with a position in the preset's layout: it is
     // in the network but does NOT render, because only the stage's subject
     // types are shown.
-    synth.addManualNode(stage.id, place.id, 'pl-library', {
-      [placeName.id]: 'Library',
-      [personLayout.id]: { x: 0.6, y: 0.6 },
+    synth.addManualNode(stage.id, organisation.id, 'o-library', {
+      [organisationName.id]: 'Library',
+      [sharedLayout.id]: { x: 0.6, y: 0.6 },
     });
     synth
       .addStage('Sociogram', {
-        subject: { entity: 'node', types: [place.id] },
-        layout: personLayout.id,
-        label: 'Places map',
+        subject: { entity: 'node', types: [organisation.id] },
+        layout: sharedLayout.id,
+        label: 'Organisations map',
         initialNodes: { count: 0 },
       })
       .addPrompt();
@@ -987,21 +1004,98 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
   run: async ({ page }) => {
     const narrative = new NarrativeFixture(page);
 
-    // Legend labels resolve against the SUBJECT (Person) codebook.
+    // The highlight's label resolves against its first attribute's node
+    // type in the codebook. A stage showing two node types offers no groups.
     await expect(narrative.getHighlightRadio('CloseFriend')).toBeVisible();
-    await expect(narrative.getAccordionTrigger('Groups')).toBeVisible();
-    await expect(page.getByText('Family', { exact: true })).toBeVisible();
-    await expect(page.getByText('Work', { exact: true })).toBeVisible();
+    await expect(narrative.getAccordionTrigger('Groups')).toHaveCount(0);
 
-    // The subject-type Person node renders; the non-subject Place node does
-    // not, although it has a position in the preset's layout.
+    // Nodes of both subject types render; the Organisation node does not,
+    // although it has a position in the preset's layout.
     await expect(narrative.getNode('Alice')).toBeVisible();
+    await expect(narrative.getNode('Park')).toBeVisible();
     await expect(narrative.getNode('Library')).toHaveCount(0);
 
-    // The Place node is still present in the underlying network — display
-    // scoping, not deletion.
+    // The Organisation node is still present in the underlying network:
+    // display scoping, not deletion.
     const network = await page.evaluate(() => window.__test.getNetworkState());
-    expect(network?.nodes).toHaveLength(2);
+    expect(network?.nodes).toHaveLength(3);
+  },
+};
+
+const severalNodeTypesHighlight: ScenarioDefinition = {
+  id: 'several-node-types-highlight',
+  covers: ['presets[].highlight[].attributes[]'],
+  seedNetwork: true,
+  build: () => {
+    const { synth, person, nameVar, layoutVar } = buildBaseNarrative();
+    const closeVar = person.addVariable({
+      type: 'boolean',
+      name: 'CloseFriend',
+    });
+    const place = synth.addNodeType({ name: 'Place' });
+    const placeName = place.addVariable({ type: 'text', name: 'name' });
+    const favouriteVar = place.addVariable({
+      type: 'boolean',
+      name: 'Favourite',
+    });
+
+    const stage = synth.addStage('Narrative', {
+      subject: { entity: 'node', types: [person.id, place.id] },
+    });
+    stage.addPreset({
+      layout: layoutVar.id,
+      highlight: [
+        {
+          label: 'Important',
+          attributes: [
+            { type: person.id, variable: closeVar.id },
+            { type: place.id, variable: favouriteVar.id },
+          ],
+        },
+        {
+          label: 'Close people',
+          attributes: [{ type: person.id, variable: closeVar.id }],
+        },
+      ],
+    });
+
+    synth.addManualNode(stage.id, person.id, 'node-alice', {
+      [nameVar.id]: 'Alice',
+      [layoutVar.id]: { x: 0.25, y: 0.25 },
+      [closeVar.id]: true,
+    });
+    synth.addManualNode(stage.id, person.id, 'node-bob', {
+      [nameVar.id]: 'Bob',
+      [layoutVar.id]: { x: 0.5, y: 0.25 },
+      [closeVar.id]: false,
+    });
+    synth.addManualNode(stage.id, place.id, 'node-park', {
+      [placeName.id]: 'Park',
+      [layoutVar.id]: { x: 0.25, y: 0.75 },
+      [favouriteVar.id]: true,
+    });
+    synth.addManualNode(stage.id, place.id, 'node-museum', {
+      [placeName.id]: 'Museum',
+      [layoutVar.id]: { x: 0.75, y: 0.75 },
+      [favouriteVar.id]: false,
+    });
+    return synth;
+  },
+  run: async ({ page }) => {
+    const narrative = new NarrativeFixture(page);
+
+    // One highlight lights the matching nodes of each type, each through its
+    // own type's attribute.
+    await expect.poll(() => narrative.isNodeHighlighted('Alice')).toBe(true);
+    expect(await narrative.isNodeHighlighted('Park')).toBe(true);
+    expect(await narrative.isNodeHighlighted('Bob')).toBe(false);
+    expect(await narrative.isNodeHighlighted('Museum')).toBe(false);
+
+    // A highlight with an attribute for people only lights no place.
+    await narrative.selectHighlightRadio('Close people');
+    await expect.poll(() => narrative.isNodeHighlighted('Park')).toBe(false);
+    expect(await narrative.isNodeHighlighted('Alice')).toBe(true);
+    expect(await narrative.isNodeHighlighted('Museum')).toBe(false);
   },
 };
 
@@ -1021,5 +1115,6 @@ export const narrativeScenarios: InterfaceScenarios = {
     imageBackground,
     presetFilterDisplayScoping,
     subjectCodebookLookupAndScoping,
+    severalNodeTypesHighlight,
   ],
 };

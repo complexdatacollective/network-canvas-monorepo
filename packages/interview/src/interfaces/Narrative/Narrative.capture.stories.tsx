@@ -25,15 +25,15 @@ const build = () => {
       { label: 'School', value: 'school' },
     ],
   });
-  const friendshipEt = si.addEdgeType({ name: 'Friendship' });
+  const adviceEt = si.addEdgeType({ name: 'Asks for advice', directed: true });
 
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   si.addStage('Narrative', { initialNodes: { count: 8 } }).addPreset({
     label: 'Social Network',
     layout: layoutVar.id,
-    edges: { display: [friendshipEt.id] },
+    edges: { display: [adviceEt.id] },
     groupVariable: communityVar.id,
-    highlight: [closeVar.id],
+    highlight: [{ attributes: [{ variable: closeVar.id }] }],
   });
   const closeValues = [true, false, true, null, true, false, true, false];
   closeValues.forEach((v, i) => {
@@ -59,6 +59,7 @@ const build = () => {
   si.addEdges(
     [
       [0, 1],
+      [1, 0],
       [0, 2],
       [1, 2],
       [2, 4],
@@ -66,7 +67,7 @@ const build = () => {
       [4, 5],
       [6, 7],
     ],
-    friendshipEt.id,
+    adviceEt.id,
   );
   si.addInformationStage({ title: 'Complete', text: 'After the main stage.' });
   return si;
