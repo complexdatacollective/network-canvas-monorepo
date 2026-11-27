@@ -676,7 +676,7 @@ Tests:
 - protocol-validation `codebook-layouts.test.ts`: `rejects two layouts with one name`; `rejects a layout named like a node variable`; `rejects a layout whose derived _x column equals a variable's`; `rejects a layout id reused as a variable id`. `codebook-ids.test.ts`: `rewrites readable layout keys through layoutId`; `assignCodebookIds gives a variable a new id when a layout holds its key`. `prototypeCodebookKeys` test: `finds a prototype key in codebook.layouts`.
 - shared-consts `export-columns.test.ts`: `findLayoutExportColumnConflicts reports each derived column clash`.
 - protocol-builder `variableNameRules.test.ts`: `refuses a node variable named like a layout`; `refuses a node variable whose export column equals a layout's`. `hostResponsibilities` contract cases for `codebookLayout` create and rename.
-- studio-sync `taxonomy.test.ts`, `golden.test.ts`, `property.test.ts`: `round-trips codebook.layouts`. studio-api `sectionize.test.ts`: `sectionizes and reassembles codebook.layouts`.
+- studio-sync `taxonomy.test.ts`: `round-trips codebook.layouts` (section id, section validation and assembly). `golden.test.ts` and `property.test.ts` replay command logs on section documents of any kind and know nothing of section ids, so they gain no layout case. studio-api `sectionize.test.ts`: `sectionizes and reassembles codebook.layouts`.
 
 Stories and e2e: none.
 

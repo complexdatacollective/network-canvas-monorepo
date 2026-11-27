@@ -36,6 +36,7 @@ export function assembleProtocolSections(
   // Null prototypes preserve schema-valid `__proto__` entity ids.
   const node: Record<string, SectionDoc> = Object.create(null);
   const edge: Record<string, SectionDoc> = Object.create(null);
+  const layouts: Record<string, SectionDoc> = Object.create(null);
 
   for (const [id, doc] of Object.entries(sections)) {
     const ref = parseSectionId(id);
@@ -57,6 +58,9 @@ export function assembleProtocolSections(
         break;
       case 'codebookEgo':
         ego = doc;
+        break;
+      case 'codebookLayout':
+        layouts[ref.layoutId] = doc;
         break;
       case 'assets':
         assets = doc;
@@ -91,6 +95,7 @@ export function assembleProtocolSections(
   if (Object.keys(node).length > 0) codebook.node = node;
   if (Object.keys(edge).length > 0) codebook.edge = edge;
   if (ego !== undefined) codebook.ego = ego;
+  if (Object.keys(layouts).length > 0) codebook.layouts = layouts;
 
   const protocol: Record<string, unknown> = { ...settings, codebook, stages };
   if (assets !== undefined && Object.keys(assets).length > 0) {

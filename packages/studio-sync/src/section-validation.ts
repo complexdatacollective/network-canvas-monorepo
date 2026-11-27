@@ -8,9 +8,11 @@ import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
   ExperimentsSchema,
+  LayoutDefinitionSchema,
   NodeDefinitionSchema,
   assetSchema,
   isEntityTypeId,
+  isVariableId,
   type ProtocolObjectId,
   stageSchema,
   withEnclosingObjectIds,
@@ -83,6 +85,8 @@ function schemaFor(id: string): z.ZodType {
       return EdgeDefinitionSchema;
     case 'codebookEgo':
       return EgoDefinitionSchema;
+    case 'codebookLayout':
+      return LayoutDefinitionSchema;
     case 'assets':
       return AssetsSectionSchema;
     default: {
@@ -145,6 +149,10 @@ export function sectionShapeIssues(
     const identity = validateEntityTypeSectionIdentity(ref.typeId);
     if (!identity.success) issues.push(...identity.issues);
   }
+  if (ref.kind === 'codebookLayout') {
+    const identity = validateLayoutSectionIdentity(ref.layoutId);
+    if (!identity.success) issues.push(...identity.issues);
+  }
   return issues;
 }
 
@@ -200,6 +208,9 @@ export function assertSectionValid(
   if (ref.kind === 'codebookNode' || ref.kind === 'codebookEdge') {
     fail(validateEntityTypeSectionIdentity(ref.typeId));
   }
+  if (ref.kind === 'codebookLayout') {
+    fail(validateLayoutSectionIdentity(ref.layoutId));
+  }
   if (ref.kind === 'stageOrder' && sectionIds !== undefined) {
     fail(validateStageOrderMembership(doc, sectionIds));
   }
@@ -235,5 +246,15 @@ function validateEntityTypeSectionIdentity(
         message: `node or edge type id ${typeId} is not a UUID`,
       },
     ],
+  };
+}
+
+function validateLayoutSectionIdentity(
+  layoutId: string,
+): SectionValidationResult {
+  if (isVariableId(layoutId)) return { success: true };
+  return {
+    success: false,
+    issues: [{ path: [], message: `layout id ${layoutId} is not a UUID` }],
   };
 }

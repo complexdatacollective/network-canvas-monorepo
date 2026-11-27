@@ -5,6 +5,7 @@ export type SectionRef =
   | { kind: 'codebookNode'; typeId: string }
   | { kind: 'codebookEdge'; typeId: string }
   | { kind: 'codebookEgo' }
+  | { kind: 'codebookLayout'; layoutId: string }
   | { kind: 'assets' };
 
 declare const protocolSectionIdBrand: unique symbol;
@@ -23,6 +24,7 @@ export class UnknownSectionIdError extends Error {
 const STAGE_PREFIX = 'stage:';
 const NODE_PREFIX = 'codebook:node:';
 const EDGE_PREFIX = 'codebook:edge:';
+const LAYOUT_PREFIX = 'codebook:layout:';
 
 export function sectionId(ref: SectionRef): ProtocolSectionId {
   switch (ref.kind) {
@@ -44,6 +46,10 @@ export function sectionId(ref: SectionRef): ProtocolSectionId {
       );
     case 'codebookEgo':
       return toProtocolSectionId('codebook:ego');
+    case 'codebookLayout':
+      return toProtocolSectionId(
+        `${LAYOUT_PREFIX}${nonEmpty(ref.layoutId, 'layout id')}`,
+      );
     case 'assets':
       return toProtocolSectionId('assets');
   }
@@ -80,13 +86,20 @@ export function parseSectionId(id: string): SectionRef {
     const typeId = id.slice(EDGE_PREFIX.length);
     if (typeId !== '') return { kind: 'codebookEdge', typeId };
   }
+  if (id.startsWith(LAYOUT_PREFIX)) {
+    const layoutId = id.slice(LAYOUT_PREFIX.length);
+    if (layoutId !== '') return { kind: 'codebookLayout', layoutId };
+  }
   throw new UnknownSectionIdError(id);
 }
 
-/** Whether a section is part of the codebook: a node type, an edge type, or the ego's. */
+/** Whether a section is part of the codebook: a node type, an edge type, the ego's, or a layout. */
 export function isCodebookSectionId(id: string): boolean {
   const { kind } = parseSectionId(id);
   return (
-    kind === 'codebookNode' || kind === 'codebookEdge' || kind === 'codebookEgo'
+    kind === 'codebookNode' ||
+    kind === 'codebookEdge' ||
+    kind === 'codebookEgo' ||
+    kind === 'codebookLayout'
   );
 }
