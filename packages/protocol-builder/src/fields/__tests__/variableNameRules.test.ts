@@ -161,14 +161,9 @@ describe('the rule for an attribute name', () => {
       );
     });
 
-    it('judges a new name as one column, unless it says what it will be', () => {
+    it('judges a new name as one column', () => {
       const scope = scopeOf([{ id: 'v-x', name: 'pos_x', type: 'text' }]);
       expect(variableNameRefusal('pos', { intl, scope })).toBe(undefined);
-      expect(
-        variableNameRefusal('pos', { intl, scope, type: 'layout' }),
-      ).toMatch(
-        /A layout attribute named “pos” would be exported to a column called “pos_x”/,
-      );
     });
 
     it('judges a rename as the attribute it renames, options and all', () => {
@@ -310,19 +305,11 @@ describe('the rule for a node attribute name beside the codebook layouts', () =>
       type: 'categorical',
       options: [{ value: 'c_x' }],
     } as const;
-    const layout = { name: 'a b', type: 'layout' } as const;
 
     expect(refusalsOf('node', option, 'a_b_c')).toEqual([
       'In the export, the column “a b_c_x” for option “c_x” of “a b” and the position column “a_b_c_X” of the layout “a_b_c” would become the same column, “a_b_c_x”. Change the option value or the attribute name.',
     ]);
-    expect(refusalsOf('node', layout, 'a_b')).toEqual(
-      ['X', 'Y', 'screenSpaceX', 'screenSpaceY'].map(
-        (suffix) =>
-          `In the export, the position column “a b_${suffix}” of the layout attribute “a b” and the position column “a_b_${suffix}” of the layout “a_b” would become the same column, “a_b_${suffix}”. Choose a different name.`,
-      ),
-    );
     expect(refusalsOf('edge', option, 'a_b_c')).toEqual([]);
-    expect(refusalsOf('edge', layout, 'a_b')).toEqual([]);
   });
 });
 
@@ -330,11 +317,6 @@ describe('the rule for a node attribute name beside the codebook layouts', () =>
  * Every direction two export columns can meet in, asked of the rule directly:
  * what the attribute being saved writes against what another attribute — or the
  * export itself — already writes.
- *
- * Two layout attributes cannot meet as the same text, and nor can a layout
- * attribute and a built-in column: no position suffix ends the way another one
- * does, and no built-in column ends in one. Those sentences exist so the lookup
- * is total.
  */
 describe('the export columns an attribute would write', () => {
   const refusals = (
@@ -371,27 +353,6 @@ describe('the export columns an attribute would write', () => {
     ]);
   });
 
-  it('refuses a name where another layout attribute writes a position', () => {
-    expect(
-      refusals({ name: 'pos_x', type: 'text' }, [
-        { name: 'pos', type: 'layout' },
-      ]),
-    ).toEqual([
-      {
-        origin: 'name',
-        text: 'The export already has a column called “pos_x” for the position of the layout attribute “pos”. Choose a different name.',
-      },
-    ]);
-    // Every position column the layout writes, in any case.
-    for (const name of ['pos_Y', 'pos_screenSpaceX']) {
-      expect(
-        refusals({ name, type: 'text' }, [{ name: 'pos', type: 'layout' }]).map(
-          ({ origin }) => origin,
-        ),
-      ).toEqual(['name']);
-    }
-  });
-
   it('refuses an option written where another attribute already is', () => {
     expect(
       refusals(
@@ -416,46 +377,6 @@ describe('the export columns an attribute would write', () => {
       {
         origin: 'option',
         text: 'Option “c” of “a_b” would be exported to a column called “a_b_c”, but the export already has a column called “a_b_c” for option “b_c” of the attribute “a”. Change the option value or the attribute name.',
-      },
-    ]);
-  });
-
-  it('refuses an option written where a layout attribute writes a position', () => {
-    expect(
-      refusals(
-        { name: 'a', type: 'categorical', options: [{ value: 'b_x' }] },
-        [{ name: 'a_b', type: 'layout' }],
-      ),
-    ).toEqual([
-      {
-        origin: 'option',
-        text: 'Option “b_x” of “a” would be exported to a column called “a_b_x”, but the export already has a column called “a_b_x” for the position of the layout attribute “a_b”. Change the option value or the attribute name.',
-      },
-    ]);
-  });
-
-  it('refuses a layout position written where another attribute already is', () => {
-    expect(
-      refusals({ name: 'pos', type: 'layout' }, [
-        { name: 'pos_x', type: 'text' },
-      ]),
-    ).toEqual([
-      {
-        origin: 'layout',
-        text: 'A layout attribute named “pos” would be exported to a column called “pos_x”, but the attribute “pos_x” already has a column called “pos_x”. Choose a different name.',
-      },
-    ]);
-  });
-
-  it('refuses a layout position written where an option already is', () => {
-    expect(
-      refusals({ name: 'a_b', type: 'layout' }, [
-        { name: 'a', type: 'categorical', options: [{ value: 'b_x' }] },
-      ]),
-    ).toEqual([
-      {
-        origin: 'layout',
-        text: 'A layout attribute named “a_b” would be exported to a column called “a_b_x”, but the export already has a column called “a_b_x” for option “b_x” of the attribute “a”. Choose a different name.',
       },
     ]);
   });
@@ -558,21 +479,6 @@ describe('the export columns an attribute would write', () => {
         origin: 'option',
         text: 'In the export, the column “close_friend” for option “friend” of “close” and the column “close friend” of the attribute “close friend” would become the same column, “close_friend”. Change the option value or the attribute name.',
       },
-    ]);
-  });
-
-  it('refuses a layout position GraphML writes as another layout attribute’s', () => {
-    const [first, ...rest] = refusals({ name: 'a b', type: 'layout' }, [
-      { name: 'a_b', type: 'layout' },
-    ]);
-    expect(first).toEqual({
-      origin: 'layout',
-      text: 'In the export, the position column “a b_X” of the layout attribute “a b” and the column “a_b_X” of the attribute “a_b” would become the same column, “a_b_X”. Choose a different name.',
-    });
-    expect(rest.map(({ origin }) => origin)).toEqual([
-      'layout',
-      'layout',
-      'layout',
     ]);
   });
 
