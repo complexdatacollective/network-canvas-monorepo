@@ -8,7 +8,11 @@ import {
 
 import { DatabaseError, describeExportError } from '../errors';
 import type { ExportEvent } from '../events';
-import type { InterviewExportInput, ProtocolExportInput } from '../input';
+import type {
+  ExportCodebook,
+  InterviewExportInput,
+  ProtocolExportInput,
+} from '../input';
 import type { OutputEntry } from '../output';
 import { exportPipeline } from '../pipeline';
 import { InterviewRepository } from '../services/InterviewRepository';
@@ -307,11 +311,13 @@ describe('exportPipeline', () => {
       protocolHash: 'rules',
       finishOutcome: 'completed',
     };
-    const nodeType = (name: string) => ({
+    const nodeType = (
+      name: string,
+    ): NonNullable<ExportCodebook['node']>[string] => ({
       name,
       color: 'node-color-seq-1',
-      shape: { default: 'circle' as const },
-      variables: { [nameVariable]: { name: 'name', type: 'text' as const } },
+      shape: { default: 'circle' },
+      variables: { [nameVariable]: { name: 'name', type: 'text' } },
     });
 
     mockFormatters.failAttributeList = false;
