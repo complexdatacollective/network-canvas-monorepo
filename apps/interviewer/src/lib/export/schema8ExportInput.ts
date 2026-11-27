@@ -36,6 +36,19 @@ const withoutLayoutVariables = (
   return { ...definition, variables };
 };
 
+// Schema 8 edge types accepted any key, so a hand-edited file could carry the
+// two that make a schema 9 edge type directed or limit what it connects. A
+// schema 8 edge type is undirected, as the schema 9 migration makes it.
+const withoutEdgeTypeRules = (definition: unknown): unknown => {
+  if (!isRecord(definition)) return definition;
+  const {
+    directed: _directed,
+    endpointRules: _endpointRules,
+    ...rest
+  } = definition;
+  return rest;
+};
+
 const mapTypes = (
   types: unknown,
   map: (type: string, definition: unknown) => unknown,
@@ -53,7 +66,9 @@ const mapTypes = (
  * The export input of a schema 8 protocol. It is exported as it was
  * collected, never converted to schema 9: the exporter reads only what the two
  * schemas share (entity types, variable names, types and options), and its own
- * handling of each variable type covers schema 8's. The one difference it
+ * handling of each variable type covers schema 8's. It also reads whether an
+ * edge type is directed, which schema 8 never set, so `directed` and
+ * `endpointRules` are removed from every edge type. The one difference it
  * cannot read is a layout: schema 8 declared one as a variable of type
  * `layout`. A node layout variable is handed over as a layout of the codebook,
  * held by the node types that declared it, so its position columns stay in
@@ -73,7 +88,7 @@ export function schema8ExportInput(
     }),
   );
   const edge = mapTypes(codebook.edge, (_type, definition) =>
-    withoutLayoutVariables(definition),
+    withoutLayoutVariables(withoutEdgeTypeRules(definition)),
   );
   const ego =
     codebook.ego === undefined || codebook.ego === null
@@ -89,7 +104,7 @@ export function schema8ExportInput(
   return {
     hash: protocol.hash,
     name: protocol.name,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the schema 8 and current codebook types differ only in fields the exporter never reads, once layout variables are moved to layouts or dropped
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the schema 8 and current codebook types differ only in fields the exporter never reads, once layout variables are moved to layouts or dropped and edge direction is removed
     codebook: converted as ProtocolExportInput['codebook'],
     layoutNodeTypes,
   };

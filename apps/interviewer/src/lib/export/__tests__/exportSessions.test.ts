@@ -275,6 +275,64 @@ describe('runExport via the export worker', () => {
     });
   });
 
+  it('schema 8 export through Interviewer hands every edge type over as undirected with no endpoint rules', async () => {
+    getSessionsForExport.mockResolvedValue([
+      {
+        id: 's8',
+        caseId: 'case-8',
+        startedAt: 1722772800000,
+        finishedAt: 1722776400000,
+        network: { nodes: [], edges: [], ego: {} },
+        protocolHash: 'hash-8',
+      },
+    ]);
+    // Schema 8 edge types accepted any key, so a hand-edited file can carry
+    // the two that make a schema 9 edge type directed or limit its endpoints.
+    getProtocolsByHashes.mockResolvedValue([
+      {
+        hash: 'hash-8',
+        name: 'Schema 8 Protocol',
+        schemaVersion: 8,
+        codebook: {
+          edge: {
+            follows: {
+              name: 'Follows',
+              color: 'edge-color-seq-1',
+              directed: true,
+              endpointRules: [{ sourceType: 'person', targetType: 'person' }],
+            },
+            likes: { name: 'Likes' },
+          },
+          node: { person: { name: 'Person' } },
+        },
+      },
+    ]);
+    vi.stubGlobal('Worker', FakeWorker);
+
+    void runExport({
+      options: exportOptions,
+      sessionIds: ['s8'],
+    }).catch(() => {});
+    await vi.waitFor(() => {
+      expect(FakeWorker.instances[0]?.posted).toHaveLength(1);
+    });
+
+    expect(
+      FakeWorker.instances[0]?.posted[0]?.data.protocols['hash-8'],
+    ).toEqual({
+      hash: 'hash-8',
+      name: 'Schema 8 Protocol',
+      codebook: {
+        edge: {
+          follows: { name: 'Follows', color: 'edge-color-seq-1' },
+          likes: { name: 'Likes' },
+        },
+        node: { person: { name: 'Person' } },
+      },
+      layoutNodeTypes: {},
+    });
+  });
+
   it('schema 9 export through Interviewer gives each layout the node types its stages place in it', async () => {
     getSessionsForExport.mockResolvedValue([
       {

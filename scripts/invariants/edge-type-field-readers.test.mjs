@@ -23,9 +23,9 @@ import { parse } from 'yaml';
  *
  * The allow-list names the helpers, the codebook check that validates the
  * fields, the stage support table (which reads its own entries, named after
- * the fields), the schema 8 to 9 migration (which removes them) and the
- * SyntheticInterview writer. Later work adds only files that read or write
- * the codebook fields themselves. A file that uses either word for something
+ * the fields), the schema 8 to 9 migration and Interviewer's schema 8 export
+ * input (which both remove them) and the SyntheticInterview writer. Later
+ * work adds only files that read or write the codebook fields themselves. A file that uses either word for something
  * else, such as a GraphML attribute name, is not allow-listed: the exact
  * string and the call it is the first argument of (`setAttribute`) are
  * listed for that file alone in `PERMITTED_LITERALS`. Only a string in that
@@ -47,6 +47,8 @@ const ALLOWED_FILES = new Set([
   // Removes both fields from every edge type a schema 8 file carries.
   'packages/protocol-validation/src/schemas/9/migration.ts',
   'packages/protocol-utilities/src/SyntheticInterview.ts',
+  // Removes both fields from every schema 8 edge type Interviewer exports.
+  'apps/interviewer/src/lib/export/schema8ExportInput.ts',
 ]);
 
 /**
