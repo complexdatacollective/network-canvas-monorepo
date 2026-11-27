@@ -2016,6 +2016,70 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       );
     });
 
+    it('writes a layout the stage carries in the stage’s revision', async () => {
+      const layout = sid(`codebook:layout:${randomUUID()}`);
+      const created = await call(
+        ADA,
+        host.rpc('Create', {
+          protocolId,
+          requestId: randomUUID(),
+          kind: 'stage',
+          document: Redacted.make({
+            type: 'Information',
+            label: inEnglish('Created with a layout'),
+            content: inEnglish('# Created with a layout'),
+          }),
+          codebook: [
+            { sectionId: layout, document: Redacted.make({ name: 'seating' }) },
+          ],
+        }),
+      );
+
+      const written = await read(layout);
+      expect(Redacted.value(written.document)).toEqual({ name: 'seating' });
+      expect(written.revision.sequence).toBe(created.revision.sequence);
+    });
+
+    it.each([
+      ['whose id is not a UUID', 'seating', { name: 'seating' }],
+      ['whose document is not a layout', randomUUID(), { name: 7 }],
+    ])('writes nothing for a carried layout %s', async (_, layoutId, doc) => {
+      const layout = sid(`codebook:layout:${layoutId}`);
+      const sectionId = stageSection(reference.stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId, sectionId }),
+      );
+      if (held.lock !== 'held') throw new Error('the section was taken');
+
+      const refused = await expectRpcFailure(
+        callExit(
+          ADA,
+          host.rpc('Submit', {
+            protocolId,
+            requestId: randomUUID(),
+            sectionId,
+            document: Redacted.make({
+              ...Redacted.value(held.document),
+              label: inEnglish('Refused with its layout'),
+            }),
+            revision: held.revision,
+            codebook: [{ sectionId: layout, document: Redacted.make(doc) }],
+          }),
+        ),
+        'InvalidShape',
+      );
+      await call(ADA, host.rpc('ReleaseLock', { protocolId, sectionId }));
+
+      expect(refused.sectionId).toBe(layout);
+      const listed = await call(ADA, host.rpc('ListSections', { protocolId }));
+      expect(listed.sectionIds).not.toContain(layout);
+      const stage = await read(sectionId);
+      expect(Redacted.value(stage.document).label).not.toEqual(
+        inEnglish('Refused with its layout'),
+      );
+    });
+
     it('refuses a codebook on a section that is not a stage', async () => {
       const sectionId = sid(`codebook:node:${reference.typeId}`);
       const held = await call(
