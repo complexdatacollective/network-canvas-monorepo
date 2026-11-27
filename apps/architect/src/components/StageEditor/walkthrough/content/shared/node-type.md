@@ -12,3 +12,5 @@ Choose the **node type** this stage works with. If the stage creates alters, eac
 If the type you need does not exist yet, you can create it here.
 
 Changing the node type later clears this stage's other settings, because they depend on the node type.
+
+Some stages, such as the Sociogram, can show more than one node type. On those stages, select each type that the stage shows. Adding a type keeps the stage's settings. Removing a type removes only the prompt settings for that type, such as its highlight attribute and its sort rules, and Architect asks before it removes them.

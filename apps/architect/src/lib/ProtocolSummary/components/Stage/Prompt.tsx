@@ -108,6 +108,12 @@ const extraMessages = defineMessages({
     description:
       "Row label in a prompt's table in the printable protocol summary; its value lists how nodes are sorted in the bucket of nodes not yet placed.",
   },
+  nodeTypeOrder: {
+    id: 'architect.summary.prompt.nodeTypeOrder',
+    defaultMessage: 'Order of node types',
+    description:
+      "Row label in a Sociogram prompt's table in the printable protocol summary, on a stage that shows several node types; its value lists the node types in the order their unplaced nodes are handed to participants.",
+  },
   otherattribute: {
     id: 'architect.summary.prompt.otherattribute',
     defaultMessage: 'Other attribute',
@@ -155,6 +161,8 @@ type SortOrderProps = {
   rules: Array<{
     property: string;
     direction: string;
+    /** The node type a Sociogram's rule sorts. */
+    type?: unknown;
   }>;
 };
 
@@ -162,15 +170,23 @@ const SortOrder = ({ rules }: SortOrderProps) => {
   const intl = useAppIntl();
   if (!rules) return null;
 
-  const result = rules.map(({ property, direction }) => (
-    <li key={property}>
-      {intl.formatMessage(extraMessages.sortOrder, {
-        property: renderProperty(property),
-        direction: renderSmall,
-        directionLabel: directionLabel(direction, intl),
-      })}
-    </li>
-  ));
+  const result = rules.map(({ property, direction, type }) => {
+    const rule = intl.formatMessage(extraMessages.sortOrder, {
+      property: renderProperty(property),
+      direction: renderSmall,
+      directionLabel: directionLabel(direction, intl),
+    });
+    return typeof type === 'string' ? (
+      <li key={`${type}-${property}`}>
+        <span className="inline-flex items-center gap-2">
+          <EntityBadge entity="node" type={type} tiny link />
+          {rule}
+        </span>
+      </li>
+    ) : (
+      <li key={property}>{rule}</li>
+    );
+  });
   return <UnorderedList>{result}</UnorderedList>;
 };
 
@@ -188,6 +204,17 @@ const isSortOrderRules = (value: unknown): value is SortOrderProps['rules'] =>
 
 const renderSortOrder = (rules: unknown) =>
   isSortOrderRules(rules) ? <SortOrder rules={rules} /> : null;
+
+const renderNodeTypeOrder = (types: unknown) =>
+  Array.isArray(types) && types.every((type) => typeof type === 'string') ? (
+    <ol className="flex flex-col gap-1">
+      {types.map((type) => (
+        <li key={type}>
+          <EntityBadge entity="node" type={type} tiny link />
+        </li>
+      ))}
+    </ol>
+  ) : null;
 
 const attributes: Array<
   [string, MessageDescriptor, (val: unknown) => ReactNode]
@@ -218,6 +245,7 @@ const attributes: Array<
   ],
   ['negativeLabel', extraMessages.negativeOptionLabel, renderLocalizedText],
   ['sortOrder', extraMessages.sortbyproperty, renderSortOrder],
+  ['nodeTypeOrder', extraMessages.nodeTypeOrder, renderNodeTypeOrder],
   ['binSortOrder', extraMessages.binsortorder, renderSortOrder],
   ['bucketSortOrder', extraMessages.bucketsortorder, renderSortOrder],
   [

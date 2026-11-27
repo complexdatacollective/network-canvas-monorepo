@@ -4456,7 +4456,7 @@
     "description": "Guidance under the attribute-marked picker."
   },
   "protocolBuilder.networkCanvas.promptHighlightHintSeveral": {
-    "defaultMessage": "Select the attribute toggled when a participant taps a node of this type. Leave it empty if nodes of this type cannot be highlighted on this prompt.",
+    "defaultMessage": "Select the attribute that is turned on and off when a participant taps a node of this type. Leave it empty if nodes of this type should not be highlighted during this prompt.",
     "description": "Guidance under each attribute picker of a sociogram prompt on a stage that shows several kinds of network member. Nodes of a kind with no attribute chosen cannot be tapped during this prompt."
   },
   "protocolBuilder.networkCanvas.promptHighlightLabel": {
@@ -4472,7 +4472,7 @@
     "description": "Refusal shown under the attribute-marked picker when the researcher saves a prompt that marks nodes without saying which attribute it marks."
   },
   "protocolBuilder.networkCanvas.promptHighlightRequiredSeveral": {
-    "defaultMessage": "Choose the attribute tapping a node turns on and off for at least one node type.",
+    "defaultMessage": "For at least one node type, choose the attribute that is turned on and off when a participant taps a node.",
     "description": "Refusal shown under the first attribute picker of a sociogram prompt on a stage that shows several kinds of network member, when the researcher saves a prompt that marks nodes without choosing an attribute for any kind."
   },
   "protocolBuilder.networkCanvas.promptMissingEdgeType": {
@@ -8248,11 +8248,11 @@
     "description": "Heading of the section where a researcher says which kind of network member this step of the interview is about. A node is one member of the network a participant describes."
   },
   "protocolBuilder.subjectSection.nodesDescription": {
-    "defaultMessage": "Choose the node types this stage shows.",
+    "defaultMessage": "Choose the node types that this stage shows.",
     "description": "Description of the node-type section on a stage that can show more than one kind of network member, such as people and places together. A stage is one step of an interview."
   },
   "protocolBuilder.subjectSection.nodesFieldHint": {
-    "defaultMessage": "Select each type of node that this stage shows. Its prompts can sort and highlight each type separately.",
+    "defaultMessage": "Select each type of node that this stage shows. The prompts on this stage can sort and highlight each type separately.",
     "description": "Guidance under the control choosing which kinds of network member a stage shows, on a stage that can show more than one. Prompts are the questions or tasks the stage sets the participant."
   },
   "protocolBuilder.unreachableLayout.description": {

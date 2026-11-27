@@ -44,6 +44,8 @@ Read the full [Sociogram documentation](https://documentation.networkcanvas.com/
 
 Use this stage when you want participants to build a visual picture of their network by positioning alters, drawing the ties between them, and marking a yes/no attribute, such as group membership, directly on the canvas.
 
+A Sociogram can show nodes of more than one type on the same canvas, such as people and the places where they meet.
+
 <!-- include: node-type -->
 
 <!-- include: filter-network -->
@@ -67,11 +69,22 @@ Each prompt sets one task:
 - **Highlight nodes**: the participant taps nodes to set a Boolean attribute to true or false.
 - **Connect nodes**: the participant taps two nodes to create an edge of the type you choose.
 
+When the stage shows several node types, you set the highlight attribute for each type separately. Nodes of a type with no highlight attribute cannot be tapped during that prompt. Each type also has its own sort rules, which set the order of its unplaced nodes, and you can set the order in which the types are listed.
+
 The participant works through the prompts one at a time, in the order you set, on the same canvas. The Next and Back buttons control moving between prompts. During a highlight or connect task, only nodes that are already on the canvas can be used, so put a positioning task first unless an earlier stage or automatic layout has already placed the nodes. If the first prompt is not a positioning task and nothing has placed the nodes before it, Architect shows a warning in this section.
 
 Every prompt uses the stage's layout, so positions carry over from one prompt to the next. To show nodes in a different arrangement, add another Sociogram stage that uses a different layout.
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
+
+## Connect nodes with a directed edge type
+
+<!-- section: prompts -->
+<!-- scene: sociogram-directed -->
+
+If the edge type that a connect task creates is directed, the order of the taps matters. Tapping one node and then another creates an edge from the first node to the second, and the canvas draws an arrowhead at the second node. Tapping the same two nodes in the same order again removes the edge. Tapping them in the opposite order creates the edge in the other direction.
+
+If the edge type has rules about which node types it can connect, the participant can only start an edge at a node that the rules allow, and can only finish it at a node that the rules allow for that start. The **Created edge type** picker offers only edge types that can connect at least one pair of the stage's node types.
 
 <!-- include: background -->
 

@@ -262,14 +262,14 @@ export const sociogramPromptMessages = defineMessages({
   promptHighlightHintSeveral: {
     id: 'protocolBuilder.networkCanvas.promptHighlightHintSeveral',
     defaultMessage:
-      'Select the attribute toggled when a participant taps a node of this type. Leave it empty if nodes of this type cannot be highlighted on this prompt.',
+      'Select the attribute that is turned on and off when a participant taps a node of this type. Leave it empty if nodes of this type should not be highlighted during this prompt.',
     description:
       'Guidance under each attribute picker of a sociogram prompt on a stage that shows several kinds of network member. Nodes of a kind with no attribute chosen cannot be tapped during this prompt.',
   },
   promptHighlightRequiredSeveral: {
     id: 'protocolBuilder.networkCanvas.promptHighlightRequiredSeveral',
     defaultMessage:
-      'Choose the attribute tapping a node turns on and off for at least one node type.',
+      'For at least one node type, choose the attribute that is turned on and off when a participant taps a node.',
     description:
       'Refusal shown under the first attribute picker of a sociogram prompt on a stage that shows several kinds of network member, when the researcher saves a prompt that marks nodes without choosing an attribute for any kind.',
   },

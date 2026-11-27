@@ -58,6 +58,7 @@ export const SCENES: Readonly<
   'sociogram-intro': scene(sociogramScenes, 'SociogramIntroScene'),
   'sociogram-background': scene(sociogramScenes, 'SociogramBackgroundScene'),
   'sociogram-layout-mode': scene(sociogramScenes, 'SociogramLayoutModeScene'),
+  'sociogram-directed': scene(sociogramScenes, 'SociogramDirectedScene'),
   'roster-intro': scene(rosterScenes, 'RosterIntroScene'),
   'roster-card-display': scene(rosterScenes, 'RosterCardDisplayScene'),
   'roster-sort': scene(rosterScenes, 'RosterSortScene'),

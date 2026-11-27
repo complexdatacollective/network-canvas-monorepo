@@ -3895,6 +3895,10 @@
     "defaultMessage": "Negative Option Label",
     "description": "Row label in a prompt's table in the printable protocol summary; its value is the text of the answer button that means none of the options apply."
   },
+  "architect.summary.prompt.nodeTypeOrder": {
+    "defaultMessage": "Order of node types",
+    "description": "Row label in a Sociogram prompt's table in the printable protocol summary, on a stage that shows several node types; its value lists the node types in the order their unplaced nodes are handed to participants."
+  },
   "architect.summary.prompt.otherattribute": {
     "defaultMessage": "Other attribute",
     "description": "Row label in a prompt's table in the printable protocol summary; its value is the variable that stores the text a participant types for an \"other\" answer."

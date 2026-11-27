@@ -25,6 +25,7 @@ import {
 const TEXT = {
   place: ['Place people closer to the center', 'the closer you feel to them.'],
   connect: ['Tap two people who know', 'each other to connect them.'],
+  advice: ['Tap someone, then the person', 'they ask for advice.'],
   rings: (n: number) => `Concentric circles: ${n}`,
   skew: 'Skew circle sizes: on',
   image: 'Image background',
@@ -138,29 +139,84 @@ export function CanvasNode({
   );
 }
 
-/** An edge as the interview draws it: a thick round-capped line. */
+const ARROW_LENGTH = 16;
+const ARROW_HALF_WIDTH = 8;
+
+/**
+ * An arrowhead whose tip touches the edge of the node at `at`, pointing along
+ * the line from `away`, as the interview draws one on a directed edge.
+ */
+function Arrowhead({
+  at,
+  away,
+  k,
+  type,
+}: {
+  at: Point;
+  away: Point;
+  k: number;
+  type: 1 | 2;
+}) {
+  const dx = at[0] - away[0];
+  const dy = at[1] - away[1];
+  const length = Math.hypot(dx, dy);
+  if (k <= 0 || length === 0) return null;
+  const ux = dx / length;
+  const uy = dy / length;
+  const tip: Point = [at[0] - ux * NODE_R, at[1] - uy * NODE_R];
+  const base: Point = [tip[0] - ux * ARROW_LENGTH, tip[1] - uy * ARROW_LENGTH];
+  const points = [
+    tip,
+    [base[0] - uy * ARROW_HALF_WIDTH, base[1] + ux * ARROW_HALF_WIDTH],
+    [base[0] + uy * ARROW_HALF_WIDTH, base[1] - ux * ARROW_HALF_WIDTH],
+  ]
+    .map(([x, y]) => `${x},${y}`)
+    .join(' ');
+  return (
+    <polygon
+      points={points}
+      opacity={k}
+      className={type === 1 ? 'fill-edge-1' : 'fill-edge-2'}
+    />
+  );
+}
+
+/**
+ * An edge as the interview draws it: a thick round-capped line, with an
+ * arrowhead at each node that a directed edge points to.
+ */
 export function Edge({
   from,
   to,
   k = 1,
   type = 1,
+  arrowAtTo = 0,
+  arrowAtFrom = 0,
 }: {
   from: Point;
   to: Point;
   k?: number;
   type?: 1 | 2;
+  /** 0 to 1: the arrowhead at `to`, for an edge from `from` to `to`. */
+  arrowAtTo?: number;
+  /** 0 to 1: the arrowhead at `from`, for the edge back from `to`. */
+  arrowAtFrom?: number;
 }) {
   if (k <= 0) return null;
   return (
-    <line
-      x1={from[0]}
-      y1={from[1]}
-      x2={lerp(from[0], to[0], k)}
-      y2={lerp(from[1], to[1], k)}
-      className={type === 1 ? 'stroke-edge-1' : 'stroke-edge-2'}
-      strokeWidth={6}
-      strokeLinecap="round"
-    />
+    <g>
+      <line
+        x1={from[0]}
+        y1={from[1]}
+        x2={lerp(from[0], to[0], k)}
+        y2={lerp(from[1], to[1], k)}
+        className={type === 1 ? 'stroke-edge-1' : 'stroke-edge-2'}
+        strokeWidth={6}
+        strokeLinecap="round"
+      />
+      <Arrowhead at={to} away={from} k={arrowAtTo} type={type} />
+      <Arrowhead at={from} away={to} k={arrowAtFrom} type={type} />
+    </g>
   );
 }
 
@@ -513,5 +569,53 @@ export const SociogramLayoutModeScene = defineScene(6.2, ({ t }) => {
         leave={5.2}
       />
     ),
+  };
+});
+
+/**
+ * Shows a connect task whose edge type is directed. The participant taps Sam
+ * and then Ana, which draws an edge from Sam to Ana with an arrowhead at Ana.
+ * Tapping Ana and then Sam adds the edge in the other direction, so the line
+ * gains a second arrowhead at Sam.
+ */
+export const SociogramDirectedScene = defineScene(5, ({ t }) => {
+  const sam: Point = [CANVAS.x - 90, CANVAS.y - 20];
+  const ana: Point = [CANVAS.x + 80, CANVAS.y - 60];
+  const jo: Point = [CANVAS.x + 10, CANVAS.y + 80];
+  const forward = smooth(segment(t, 1.6, 0.3));
+  const back = smooth(segment(t, 3.4, 0.3));
+  const stops = [
+    { to: sam, at: 1.1 },
+    { to: ana, at: 1.6 },
+    { to: ana, at: 2.9 },
+    { to: sam, at: 3.4 },
+  ];
+  return {
+    rail: { progress: 0.5, press: 0 },
+    body: (
+      <>
+        <Circles n={4} />
+        <Edge
+          from={sam}
+          to={ana}
+          k={forward}
+          arrowAtTo={forward}
+          arrowAtFrom={back}
+        />
+        <CanvasNode
+          at={sam}
+          label={NAMES.sam}
+          pulse={t >= 1.1 && t < 1.6 ? t - 1.1 : undefined}
+        />
+        <CanvasNode
+          at={ana}
+          label={NAMES.ana}
+          pulse={t >= 2.9 && t < 3.4 ? t - 2.9 : undefined}
+        />
+        <CanvasNode at={jo} label={NAMES.jo} />
+        <PromptCard lines={TEXT.advice} />
+      </>
+    ),
+    overlay: <Click t={t} stops={stops} leave={4.2} />,
   };
 });

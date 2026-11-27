@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -112,5 +112,50 @@ describe('Protocol Summary Sociogram task', () => {
 
     expect(screen.getByText('Task').closest('tr')).toHaveTextContent(label);
     expect(screen.queryByText('Highlight attribute')).not.toBeInTheDocument();
+  });
+});
+
+const rowLabelled = (label: string): HTMLElement => {
+  const row = screen.getByText(label).closest('tr');
+  if (row === null) throw new Error(`No row is labelled ${label}.`);
+  return row;
+};
+
+describe('Protocol Summary sort rules on a stage with several node types', () => {
+  it('prints the node type of each sort rule and the order of the types', () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SummaryContext.Provider
+          value={{ protocol, protocolName: protocol.name, index }}
+        >
+          <Prompt
+            text={{ en: 'Place everyone' }}
+            task="layout"
+            sortOrder={[
+              { id: 's1', type: PERSON, property: CLOSE, direction: 'asc' },
+              { id: 's2', type: PLACE, property: VISITED, direction: 'desc' },
+            ]}
+            nodeTypeOrder={[PLACE, PERSON]}
+          />
+        </SummaryContext.Provider>
+      </QueryClientProvider>,
+    );
+
+    const rules = within(rowLabelled('Sort by property')).getAllByRole(
+      'listitem',
+    );
+    expect(rules).toHaveLength(2);
+    expect(rules[0]).toHaveTextContent('Person');
+    expect(rules[0]).toHaveTextContent('close');
+    expect(rules[1]).toHaveTextContent('Place');
+    expect(rules[1]).toHaveTextContent('visited');
+
+    const order = within(rowLabelled('Order of node types')).getAllByRole(
+      'listitem',
+    );
+    expect(order.map((item) => item.textContent)).toEqual([
+      expect.stringContaining('Place'),
+      expect.stringContaining('Person'),
+    ]);
   });
 });

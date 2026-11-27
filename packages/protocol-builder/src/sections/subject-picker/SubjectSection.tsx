@@ -93,14 +93,14 @@ const messages = defineMessages({
   },
   nodesDescription: {
     id: 'protocolBuilder.subjectSection.nodesDescription',
-    defaultMessage: 'Choose the node types this stage shows.',
+    defaultMessage: 'Choose the node types that this stage shows.',
     description:
       'Description of the node-type section on a stage that can show more than one kind of network member, such as people and places together. A stage is one step of an interview.',
   },
   nodesFieldHint: {
     id: 'protocolBuilder.subjectSection.nodesFieldHint',
     defaultMessage:
-      'Select each type of node that this stage shows. Its prompts can sort and highlight each type separately.',
+      'Select each type of node that this stage shows. The prompts on this stage can sort and highlight each type separately.',
     description:
       'Guidance under the control choosing which kinds of network member a stage shows, on a stage that can show more than one. Prompts are the questions or tasks the stage sets the participant.',
   },
