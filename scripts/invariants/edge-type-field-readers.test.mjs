@@ -448,7 +448,7 @@ describe('edge type field readers', () => {
       },
     );
 
-    it('a permitted literal the file no longer uses in its position fails as stale', () => {
+    it('a permitted literal the file no longer holds fails as stale', () => {
       const sources = new Map([
         [exporterFile, "element.setAttribute('target', id);"],
       ]);

@@ -266,7 +266,10 @@ describe('exportPipeline', () => {
     expect(result.successfulExports.length).toBeGreaterThan(0);
   });
 
-  it('exports carry the direction of a directed type and no endpoint rules', async () => {
+  // A directed type with a rule from Person to Place, and an undirected type
+  // with a rule from Person to Person, written with the attribute list
+  // formatter left real.
+  const runEndpointRulesExport = async () => {
     const person = testTypeId('person');
     const place = testTypeId('place');
     const visits = testTypeId('visits');
@@ -323,7 +326,7 @@ describe('exportPipeline', () => {
 
     mockFormatters.failAttributeList = false;
     try {
-      const { files, result } = await runRecordedExport(
+      return await runRecordedExport(
         { ...defaultExportOptions, exportCSV: true },
         [session],
         {
@@ -348,91 +351,101 @@ describe('exportPipeline', () => {
           layoutNodeTypes: {},
         },
       );
-
-      expect(result.status).toBe('success');
-      expect([...files.keys()]).toHaveLength(6);
-      const fileEndingIn = (ending: string) => {
-        const entry = [...files].find(([name]) => name.endsWith(ending));
-        expect({ ending, written: entry !== undefined }).toEqual({
-          ending,
-          written: true,
-        });
-        return entry?.[1] ?? '';
-      };
-      const csv = (...rows: string[]) =>
-        rows.map((row) => `${row}\r\n`).join('');
-
-      expect(fileEndingIn('_attributeList_Person.csv')).toBe(
-        csv(
-          'nodeID,networkCanvasEgoUUID,networkCanvasUUID,name',
-          '1,ego,n1,Dee',
-          '2,ego,n2,Carl',
-        ),
-      );
-      expect(fileEndingIn('_attributeList_Place.csv')).toBe(
-        csv(
-          'nodeID,networkCanvasEgoUUID,networkCanvasUUID,name',
-          '3,ego,n3,Park',
-        ),
-      );
-      const edgeListHeader =
-        'edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID';
-      expect(fileEndingIn('_edgeList_Visits.csv')).toBe(
-        csv(edgeListHeader, '1,1,3,ego,e1,n1,n3'),
-      );
-      expect(fileEndingIn('_edgeList_Knows.csv')).toBe(
-        csv(edgeListHeader, '2,2,1,ego,e2,n2,n1'),
-      );
-      fileEndingIn('_ego.csv');
-
-      const graphML = new DOMParser().parseFromString(
-        fileEndingIn('.graphml'),
-        MIME_TYPE.XML_APPLICATION,
-      );
-      const uuidOf = (element: Element) =>
-        Array.from(element.getElementsByTagName('data')).find(
-          (data) => data.getAttribute('key') === 'networkCanvasUUID',
-        )?.textContent;
-      const nodeIds = new Map(
-        Array.from(graphML.getElementsByTagName('node')).map((element) => [
-          uuidOf(element),
-          element.getAttribute('id'),
-        ]),
-      );
-      expect(
-        graphML.getElementsByTagName('graph')[0]?.getAttribute('edgedefault'),
-      ).toBe('undirected');
-      expect(
-        Array.from(graphML.getElementsByTagName('edge')).map((element) => ({
-          uuid: uuidOf(element),
-          source: element.getAttribute('source'),
-          target: element.getAttribute('target'),
-          directed: element.getAttribute('directed'),
-        })),
-      ).toEqual([
-        {
-          uuid: 'e1',
-          source: nodeIds.get('n1'),
-          target: nodeIds.get('n3'),
-          directed: 'true',
-        },
-        {
-          uuid: 'e2',
-          source: nodeIds.get('n2'),
-          target: nodeIds.get('n1'),
-          directed: null,
-        },
-      ]);
-      expect(nodeIds.get('n1')).toEqual(expect.any(String));
-
-      for (const [name, text] of files) {
-        expect({
-          name,
-          rules: text.match(/endpoint.?rules|source.?type|target.?type/gi),
-        }).toEqual({ name, rules: null });
-      }
     } finally {
       mockFormatters.failAttributeList = true;
     }
+  };
+
+  const fileOf = (files: Map<string, string>, ending: string) => {
+    const entry = [...files].find(([name]) => name.endsWith(ending));
+    expect({ ending, written: entry !== undefined }).toEqual({
+      ending,
+      written: true,
+    });
+    return entry?.[1] ?? '';
+  };
+
+  it('no export file contains endpoint rules', async () => {
+    const { files, result } = await runEndpointRulesExport();
+    const fileEndingIn = (ending: string) => fileOf(files, ending);
+
+    expect(result.status).toBe('success');
+    expect([...files.keys()]).toHaveLength(6);
+    const csv = (...rows: string[]) => rows.map((row) => `${row}\r\n`).join('');
+
+    expect(fileEndingIn('_attributeList_Person.csv')).toBe(
+      csv(
+        'nodeID,networkCanvasEgoUUID,networkCanvasUUID,name',
+        '1,ego,n1,Dee',
+        '2,ego,n2,Carl',
+      ),
+    );
+    expect(fileEndingIn('_attributeList_Place.csv')).toBe(
+      csv(
+        'nodeID,networkCanvasEgoUUID,networkCanvasUUID,name',
+        '3,ego,n3,Park',
+      ),
+    );
+    const edgeListHeader =
+      'edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID';
+    expect(fileEndingIn('_edgeList_Visits.csv')).toBe(
+      csv(edgeListHeader, '1,1,3,ego,e1,n1,n3'),
+    );
+    expect(fileEndingIn('_edgeList_Knows.csv')).toBe(
+      csv(edgeListHeader, '2,2,1,ego,e2,n2,n1'),
+    );
+    fileEndingIn('_ego.csv');
+
+    for (const [name, text] of files) {
+      expect({
+        name,
+        rules: text.match(/endpoint.?rules|source.?type|target.?type/gi),
+      }).toEqual({ name, rules: null });
+    }
+  });
+
+  it('a GraphML file written by the pipeline marks edges of a directed type', async () => {
+    const { files, result } = await runEndpointRulesExport();
+    expect(result.status).toBe('success');
+
+    const graphML = new DOMParser().parseFromString(
+      fileOf(files, '.graphml'),
+      MIME_TYPE.XML_APPLICATION,
+    );
+    const uuidOf = (element: Element) =>
+      Array.from(element.getElementsByTagName('data')).find(
+        (data) => data.getAttribute('key') === 'networkCanvasUUID',
+      )?.textContent;
+    const nodeIds = new Map(
+      Array.from(graphML.getElementsByTagName('node')).map((element) => [
+        uuidOf(element),
+        element.getAttribute('id'),
+      ]),
+    );
+    expect(
+      graphML.getElementsByTagName('graph')[0]?.getAttribute('edgedefault'),
+    ).toBe('undirected');
+    expect(
+      Array.from(graphML.getElementsByTagName('edge')).map((element) => ({
+        uuid: uuidOf(element),
+        source: element.getAttribute('source'),
+        target: element.getAttribute('target'),
+        directed: element.getAttribute('directed'),
+      })),
+    ).toEqual([
+      {
+        uuid: 'e1',
+        source: nodeIds.get('n1'),
+        target: nodeIds.get('n3'),
+        directed: 'true',
+      },
+      {
+        uuid: 'e2',
+        source: nodeIds.get('n2'),
+        target: nodeIds.get('n1'),
+        directed: null,
+      },
+    ]);
+    expect(nodeIds.get('n1')).toEqual(expect.any(String));
   });
 });
