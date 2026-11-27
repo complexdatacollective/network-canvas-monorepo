@@ -306,6 +306,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         prompts: [
           {
             id: createProtocolObjectId(),
+            task: 'layout',
             text: { en: 'Place people' },
           },
         ],

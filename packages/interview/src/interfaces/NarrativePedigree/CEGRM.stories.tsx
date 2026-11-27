@@ -151,38 +151,38 @@ export function buildCegrmInterview(seed: number, recordedOnly = false) {
   // Information exchange.
   sociogram.addPrompt({
     text: 'Which of these people provides you with genetic or health information?',
-    highlight: { variable: INFO_IN_VAR },
+    highlight: [{ variable: INFO_IN_VAR }],
   });
   sociogram.addPrompt({
     text: 'Which of these people do you provide with genetic or health information?',
-    highlight: { variable: INFO_OUT_VAR },
+    highlight: [{ variable: INFO_OUT_VAR }],
   });
   // Practical support.
   sociogram.addPrompt({
     text: 'Which of these people provides you with practical help — like coming to an appointment or minding your children?',
-    highlight: { variable: SUPPORT_IN_VAR },
+    highlight: [{ variable: SUPPORT_IN_VAR }],
   });
   sociogram.addPrompt({
     text: 'Which of these people do you provide with practical help?',
-    highlight: { variable: SUPPORT_OUT_VAR },
+    highlight: [{ variable: SUPPORT_OUT_VAR }],
   });
   // Sharing feelings.
   sociogram.addPrompt({
     text: "Which of these people shares their feelings about the family's cancer with you?",
-    highlight: { variable: FEELINGS_IN_VAR },
+    highlight: [{ variable: FEELINGS_IN_VAR }],
   });
   sociogram.addPrompt({
     text: "Which of these people do you share your feelings about the family's cancer with?",
-    highlight: { variable: FEELINGS_OUT_VAR },
+    highlight: [{ variable: FEELINGS_OUT_VAR }],
   });
   // Disseminator / barrier roles.
   sociogram.addPrompt({
     text: 'Which of these people helps the family talk about its cancer risk?',
-    highlight: { variable: DISSEMINATOR_VAR },
+    highlight: [{ variable: DISSEMINATOR_VAR }],
   });
   sociogram.addPrompt({
     text: 'Which of these people makes it harder for the family to talk about its cancer risk?',
-    highlight: { variable: BARRIER_VAR },
+    highlight: [{ variable: BARRIER_VAR }],
   });
 
   // --- Stage 4: narrative pedigree (the cancer pathway), shown last -----------

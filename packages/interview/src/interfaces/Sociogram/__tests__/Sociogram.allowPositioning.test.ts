@@ -4,23 +4,27 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // Regression guard for #673 (decision #12): `layout.allowPositioning` is
-// vestigial — the schema's `layout` is the id of a codebook layout, so the
-// key is unexpressible and the interview's
-// disable-repositioning path was dead code. Node positioning is the only
-// behaviour the schema supports, so it must stay unconditionally enabled.
+// vestigial, so the Sociogram must never read it. Whether nodes can be moved
+// follows from the prompt's task alone: they move in a layout task and in no
+// other. `Sociogram.tasks.test.tsx` shows the behaviour; this guards that no
+// second setting can decide it.
 const sociogramSource = readFileSync(
   resolve(__dirname, '../Sociogram.tsx'),
   'utf8',
 );
 
-describe('Sociogram layout.allowPositioning removal', () => {
-  it('no longer reads layout.allowPositioning from the prompt', () => {
+describe('Sociogram repositioning', () => {
+  it('never reads layout.allowPositioning', () => {
     expect(sociogramSource).not.toContain('allowPositioning');
   });
 
-  it('does not override the Canvas allowRepositioning default', () => {
-    // Passing allowRepositioning would reintroduce a way to disable
-    // positioning; the Canvas default (true) must own the behaviour.
-    expect(sociogramSource).not.toContain('allowRepositioning');
+  it('derives repositioning from the task alone', () => {
+    const passed = [
+      ...sociogramSource.matchAll(/allowRepositioning=\{([^}]*)\}/g),
+    ].map(([, value]) => value);
+    expect(passed).toEqual(['isLayoutTask']);
+    expect(sociogramSource).toContain(
+      "const isLayoutTask = prompt.task === 'layout';",
+    );
   });
 });

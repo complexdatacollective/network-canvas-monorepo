@@ -10,17 +10,16 @@ import {
 
 // Stand in for the real node so this exercises what Canvas hands down, without
 // pulling in the store and protocol context ConnectedNode needs.
-const received: {
+type ReceivedProps = {
   selected?: boolean;
+  highlighted?: boolean;
+  disabled?: boolean;
   onSelect?: unknown;
   style?: React.CSSProperties;
-}[] = [];
+};
+const received: ReceivedProps[] = [];
 vi.mock('../CanvasNode', () => ({
-  default: (props: {
-    selected?: boolean;
-    onSelect?: unknown;
-    style?: React.CSSProperties;
-  }) => {
+  default: (props: ReceivedProps) => {
     received.push(props);
     return null;
   },
@@ -76,7 +75,7 @@ function renderCanvas(
         nodes={[node(highlighted)]}
         edges={[]}
         store={store}
-        highlightAttribute={HIGHLIGHT_VAR}
+        highlightAttributes={{ [testTypeId('person')]: HIGHLIGHT_VAR }}
         onNodeSelect={vi.fn()}
         {...props}
       />
@@ -105,13 +104,25 @@ describe('Canvas node toggle wiring', () => {
     expect(renderCanvas({ nodeToggle: 'edge' })?.selected).toBe(false);
   });
 
-  it('unwires activation entirely for a display-only prompt', () => {
-    // highlight.variable set for colour, allowHighlighting off: activation
-    // does nothing, so the node must be no kind of toggle — not selectable,
-    // and never announced as pressable.
+  it('unwires activation entirely for a prompt that toggles nothing', () => {
+    // Activation does nothing, so the node must be no kind of toggle — not
+    // selectable, and never announced as pressable.
     const props = renderCanvas({ nodeToggle: null }, true);
     expect(props?.onSelect).toBeUndefined();
     expect(props?.selected).toBe(false);
+  });
+
+  it('highlights a node only by the attribute its type names', () => {
+    expect(renderCanvas({}, true)?.highlighted).toBe(true);
+    expect(
+      renderCanvas({ highlightAttributes: { other: HIGHLIGHT_VAR } }, true)
+        ?.highlighted,
+    ).toBe(false);
+  });
+
+  it('disables only the nodes isNodeDisabled names', () => {
+    expect(renderCanvas({ isNodeDisabled: () => true })?.disabled).toBe(true);
+    expect(renderCanvas({ isNodeDisabled: () => false })?.disabled).toBe(false);
   });
 
   it('wires activation whenever the prompt has a toggle', () => {

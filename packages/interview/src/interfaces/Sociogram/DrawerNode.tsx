@@ -13,6 +13,8 @@ type DrawerNodeProps = {
   /** False shows the person without letting them be dragged. */
   draggable?: boolean;
   selected?: boolean;
+  /** A disabled person is dimmed and can be neither dragged nor tapped. */
+  disabled?: boolean;
   /** Called when a person who cannot be dragged is tapped. */
   onClick?: (node: NcNode) => void;
 };
@@ -23,6 +25,7 @@ export default function DrawerNode({
   onLayoutAnimationComplete,
   draggable = true,
   selected,
+  disabled = false,
   onClick,
 }: DrawerNodeProps) {
   const nodeId = node[entityPrimaryKeyProperty];
@@ -33,7 +36,7 @@ export default function DrawerNode({
     type: itemType,
     metadata: { ...node, nodeId, id: nodeId },
     announcedName: label,
-    disabled: !draggable,
+    disabled: !draggable || disabled,
   });
 
   return (
@@ -42,11 +45,14 @@ export default function DrawerNode({
       onLayoutAnimationComplete={onLayoutAnimationComplete}
       nodeId={nodeId}
       type={node.type}
-      {...(draggable
-        ? dragProps
-        : { onClick: onClick ? () => onClick(node) : undefined })}
+      {...(disabled
+        ? null
+        : draggable
+          ? dragProps
+          : { onClick: onClick ? () => onClick(node) : undefined })}
       size="sm"
       selected={selected}
+      disabled={disabled}
     />
   );
 }

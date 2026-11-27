@@ -462,7 +462,7 @@ class SociogramFixture {
 
   /**
    * Toggle highlighting on a node by clicking it.
-   * Use in highlighting mode (prompt with highlight.allowHighlighting = true).
+   * Use in a highlight task.
    */
   async toggleHighlight(label: string): Promise<void> {
     await this.clickNode(label);

@@ -31,10 +31,8 @@ export type NodeToggle = 'edge' | 'highlight' | null;
 
 /**
  * Mirrors what activating a node actually does. An edge prompt toggles the
- * pending source, a highlight prompt toggles the attribute, and a display-only
- * prompt — one that sets `highlight.variable` for colour but leaves
- * `allowHighlighting` off — toggles nothing, so its nodes are not selectable
- * at all.
+ * pending source, a highlight prompt toggles the attribute, and any other
+ * prompt toggles nothing, so its nodes are not selectable at all.
  */
 export function nodeSelectedForToggle(
   toggle: NodeToggle,
@@ -60,17 +58,21 @@ type CanvasProps = {
   edges: NcEdge[];
   store: CanvasStoreApi;
   selectedNodeId: string | null;
-  highlightAttribute?: string;
-  onNodeSelect?: (nodeId: string, details: NodeActivationDetails) => void;
   /**
-   * Which interaction, if any, makes a node a toggle for this prompt. A
-   * display-only highlight still colours nodes but cannot be operated, so it
-   * must not be announced as something that can be pressed.
+   * The boolean attribute that marks a node as highlighted, by node type. A
+   * node whose type has no entry is never highlighted.
    */
+  highlightAttributes?: Readonly<Record<string, string>>;
+  /** A disabled node is dimmed and can be neither moved nor activated. */
+  isNodeDisabled?: (node: NcNode) => boolean;
+  onNodeSelect?: (nodeId: string, details: NodeActivationDetails) => void;
+  /** Which interaction, if any, makes a node a toggle for this prompt. */
   nodeToggle?: NodeToggle;
   onNodeDragEnd?: CanvasNodeDragEnd;
   /** Places a node dropped from outside; says whether it took it. */
   onDrop?: (nodeId: string, position: { x: number; y: number }) => DropOutcome;
+  /** False refuses nodes dropped from outside the canvas. */
+  allowDrop?: boolean;
   allowRepositioning?: boolean;
   disabled?: boolean;
   simulation?: {
@@ -93,11 +95,13 @@ export default function Canvas({
   edges,
   store,
   selectedNodeId,
-  highlightAttribute,
+  highlightAttributes,
+  isNodeDisabled,
   onNodeSelect,
   nodeToggle = null,
   onNodeDragEnd,
   onDrop,
+  allowDrop = true,
   allowRepositioning = true,
   disabled = false,
   simulation = null,
@@ -164,7 +168,7 @@ export default function Canvas({
     dropFeedback: 'drop-node' satisfies DropSound,
     onDrop: handleDrop,
     focusBehaviorOnDrop: 'follow-item',
-    disabled,
+    disabled: disabled || !allowDrop,
   });
 
   // Extract the stable ref function to avoid recreating merged ref on every render
@@ -209,9 +213,12 @@ export default function Canvas({
       {/* Nodes */}
       {nodes.map((node) => {
         const nodeId = node[entityPrimaryKeyProperty];
-        const highlighted = highlightAttribute
-          ? !!node[entityAttributesProperty][highlightAttribute]
-          : false;
+        const highlightAttribute = highlightAttributes?.[node.type];
+        const highlighted =
+          highlightAttribute === undefined
+            ? false
+            : !!node[entityAttributesProperty][highlightAttribute];
+        const nodeDisabled = disabled || (isNodeDisabled?.(node) ?? false);
         return (
           <CanvasNode
             key={nodeId}
@@ -219,9 +226,9 @@ export default function Canvas({
             canvasRef={canvasRef}
             store={store}
             onDragEnd={onNodeDragEnd}
-            // Activation is only wired when it does something: a display-only
-            // prompt's nodes are not toggles, take no pointer cursor, and
-            // announce no pressed state.
+            // Activation is only wired when it does something: on a prompt
+            // that toggles nothing, nodes are not toggles, take no pointer
+            // cursor, and announce no pressed state.
             onSelect={nodeToggle ? onNodeSelect : undefined}
             selected={nodeSelectedForToggle(nodeToggle, {
               highlighted,
@@ -229,7 +236,7 @@ export default function Canvas({
             })}
             linking={selectedNodeId === nodeId}
             highlighted={highlighted}
-            disabled={disabled}
+            disabled={nodeDisabled}
             allowRepositioning={allowRepositioning}
             simulation={simulation}
             dragItemType={nodeDragItemType}

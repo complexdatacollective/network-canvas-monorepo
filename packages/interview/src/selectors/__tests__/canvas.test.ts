@@ -52,6 +52,7 @@ describe('Sociogram placement selectors', () => {
           prompts: [
             {
               id: testId('prompt'),
+              task: 'layout',
               text: { en: 'Arrange people' },
             },
           ],

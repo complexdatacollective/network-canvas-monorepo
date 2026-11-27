@@ -58,7 +58,13 @@ const protocol: CurrentProtocol = {
       subject: { entity: 'node', types: [PERSON] },
       layout: CLOSENESS,
       background: { concentricCircles: 4, skewedTowardCenter: true },
-      prompts: [{ id: testId('sociogram-prompt'), text: label('Place them') }],
+      prompts: [
+        {
+          id: testId('sociogram-prompt'),
+          task: 'layout',
+          text: label('Place them'),
+        },
+      ],
       filter: {
         join: 'OR',
         rules: [

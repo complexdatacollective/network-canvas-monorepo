@@ -598,7 +598,13 @@ describe('reading the codebook for a rule', () => {
         subject: { entity: 'node', types: [PERSON] },
         layout: HOME,
         background: { concentricCircles: 3 },
-        prompts: [{ id: testId('prompt'), text: { en: 'Place people' } }],
+        prompts: [
+          {
+            id: testId('prompt'),
+            task: 'layout',
+            text: { en: 'Place people' },
+          },
+        ],
       },
     ];
     expect(ruleLayoutOptions(codebook, stages, PERSON, undefined)).toEqual([

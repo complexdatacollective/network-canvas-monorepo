@@ -34,10 +34,12 @@ vi.mock('../../interfaces/Sociogram/DrawerNode', () => ({
   default: ({
     node,
     selected,
+    disabled,
     onLayoutAnimationComplete,
   }: {
     node: NcNode;
     selected?: boolean;
+    disabled?: boolean;
     onLayoutAnimationComplete?: () => void;
   }) => {
     if (onLayoutAnimationComplete) {
@@ -47,6 +49,7 @@ vi.mock('../../interfaces/Sociogram/DrawerNode', () => ({
       <span
         data-testid={`drawer-node-${node[entityPrimaryKeyProperty]}`}
         data-node-selected={selected || undefined}
+        data-node-disabled={disabled || undefined}
       />
     );
   },
@@ -114,6 +117,24 @@ function renderDrawer(props: Partial<React.ComponentProps<typeof NodeDrawer>>) {
 }
 
 describe('NodeDrawer', () => {
+  it('disables only the people isNodeDisabled names', () => {
+    renderDrawer({
+      nodes: ['a', 'b'].map((id) => ({
+        [entityPrimaryKeyProperty]: id,
+        [entityAttributesProperty]: {},
+        type: PERSON,
+      })),
+      isNodeDisabled: (node) => node[entityPrimaryKeyProperty] === 'a',
+    });
+
+    expect(screen.getByTestId('drawer-node-a')).toHaveAttribute(
+      'data-node-disabled',
+    );
+    expect(screen.getByTestId('drawer-node-b')).not.toHaveAttribute(
+      'data-node-disabled',
+    );
+  });
+
   it('names how many people are in the drawer without showing a count', () => {
     renderDrawer({
       nodes: ['a', 'b', 'c'].map((id) => ({

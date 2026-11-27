@@ -430,7 +430,7 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
   let nameVarId = '';
   return {
     id: 'manual-drag-place-and-reposition',
-    covers: ['layout', 'behaviours.allowRepositioning', 'behaviours.freeDraw'],
+    covers: ['layout', 'prompts[].task'],
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
@@ -439,11 +439,7 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
       nameVarId = nameVar.id;
       const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       layoutVarId = layoutVar.id;
-      const stage = synth.addStage('Sociogram', {
-        layout: layoutVar.id,
-        // Both are dead config for Sociogram — asserted in run().
-        behaviours: { allowRepositioning: false, freeDraw: true },
-      });
+      const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
       synth.addManualNode(stage.id, personType.id, 'p0', {
         [nameVar.id]: 'Ash',
         [layoutVar.id]: { x: 0.2, y: 0.2 },
@@ -452,15 +448,14 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
         [nameVar.id]: 'Bea',
         [layoutVar.id]: null,
       });
-      stage.addPrompt();
+      stage.addPrompt({ task: 'layout' });
       return synth;
     },
     run: async ({ page, protocol, interview }) => {
       const sociogram = page.getByTestId('sociogram');
 
-      // freeDraw is read only by Narrative — Sociogram.tsx never passes a
-      // `foreground` prop to Canvas, so the Narrative-only annotation layer
-      // (its distinctive `path[stroke="white"]`) can never mount here.
+      // A Sociogram never offers free-draw, so the Narrative-only annotation
+      // layer (its distinctive `path[stroke="white"]`) can never mount here.
       await expect(sociogram.locator('path[stroke="white"]')).toHaveCount(0);
 
       await dragNodeToCanvasPosition(page, 'Bea', { x: 0.7, y: 0.3 });
@@ -474,10 +469,7 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
       expect(bea!.x).toBeCloseTo(0.7, 1);
       expect(bea!.y).toBeCloseTo(0.3, 1);
 
-      // behaviours.allowRepositioning:false is dead for Sociogram — dragging an
-      // already-placed node still repositions it (Sociogram never passes
-      // `allowRepositioning` through to Canvas, so CanvasNode's own default of
-      // `true` always wins).
+      // In a layout task dragging an already-placed node repositions it.
       const canvas = page.locator('[data-zone-id="sociogram-canvas"]');
       const ashNode = sociogramNode(page, 'Ash');
       const drawer = page.getByLabel('Drawer', { exact: true });
@@ -792,7 +784,7 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
   let nameVarId = '';
   return {
     id: 'automatic-layout-node-drag',
-    covers: ['behaviours.automaticLayout'],
+    covers: ['behaviours.automaticLayout', 'prompts[].task'],
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
@@ -813,6 +805,13 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
         });
       });
       stage.addPrompt({
+        task: 'layout',
+        text: 'Move people where you like.',
+        edges: { display: [friendshipType.id] },
+      });
+      stage.addPrompt({
+        task: 'connect',
+        text: 'Link people who know each other.',
         edges: { create: friendshipType.id, display: [friendshipType.id] },
       });
       synth.addEdges(
@@ -842,11 +841,29 @@ function buildAutomaticLayoutNodeDrag(): ScenarioDefinition {
         nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
       );
       expect(after).not.toBeNull();
-      // The dragged position is persisted (handleNodeDragEnd) even though the
-      // simulation owns positions — Ash moved from its settled grid cell.
+      // In a layout task the dragged position is persisted
+      // (handleNodeDragEnd) even though the simulation owns positions — Ash
+      // moved from its settled grid cell.
       expect(
         Math.abs(after!.x - before!.x) + Math.abs(after!.y - before!.y),
       ).toBeGreaterThan(0.05);
+
+      // In the connect task nobody can be moved: a drag leaves Ash where the
+      // simulation keeps it, nowhere near the drop point.
+      await interview.nextButton.click();
+      await expect(
+        page.getByText('Link people who know each other.'),
+      ).toBeVisible();
+      await dragNodeToCanvasPosition(page, 'Ash', { x: 0.9, y: 0.1 });
+      await stage.sociogram.waitForSimulationSettled();
+      state = await protocol.getNetworkState(interview.interviewId);
+      const afterConnect = asPoint(
+        nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
+      );
+      expect(afterConnect).not.toBeNull();
+      expect(
+        Math.abs(afterConnect!.x - 0.9) + Math.abs(afterConnect!.y - 0.1),
+      ).toBeGreaterThan(0.2);
     },
   };
 }
@@ -858,7 +875,11 @@ function buildEdgesFullMatrix(): ScenarioDefinition {
   let workTypeId = '';
   return {
     id: 'edges-full-matrix',
-    covers: ['prompts[].edges.create', 'prompts[].edges.display'],
+    covers: [
+      'prompts[].task',
+      'prompts[].edges.create',
+      'prompts[].edges.display',
+    ],
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
@@ -886,20 +907,23 @@ function buildEdgesFullMatrix(): ScenarioDefinition {
 
       // prompt0: create + display the same type.
       stage.addPrompt({
+        task: 'connect',
         text: 'Connect friends.',
         edges: {
           create: friendshipType.id,
           display: [friendshipType.id],
         },
       });
-      // prompt1: display both existing edge types, no create.
+      // prompt1: a layout task that displays both existing edge types.
       stage.addPrompt({
+        task: 'layout',
         text: 'Review all relationships.',
         edges: { display: [friendshipType.id, workType.id] },
       });
       // prompt2: create work edges with an explicitly EMPTY display — proves
       // edges.create is not auto-added to edges.display at runtime.
       stage.addPrompt({
+        task: 'connect',
         text: 'Connect colleagues.',
         edges: { create: workType.id, display: [] },
       });
@@ -990,8 +1014,9 @@ function buildHighlightToggle(): ScenarioDefinition {
   return {
     id: 'highlight-toggle',
     covers: [
-      'prompts[].highlight.allowHighlighting',
-      'prompts[].highlight.variable',
+      'prompts[].task',
+      'prompts[].highlight[].type',
+      'prompts[].highlight[].variable',
     ],
     seedNetwork: true,
     build: () => {
@@ -1017,9 +1042,9 @@ function buildHighlightToggle(): ScenarioDefinition {
         [closeFriendVar.id]: false,
       });
       stage.addPrompt({
+        task: 'highlight',
         text: 'Mark your close friends.',
-        // Builder default: allowHighlighting resolves to true.
-        highlight: { variable: closeFriendVar.id },
+        highlight: [{ type: personType.id, variable: closeFriendVar.id }],
       });
       return synth;
     },
@@ -1047,7 +1072,7 @@ function buildHighlightToggle(): ScenarioDefinition {
         false,
       );
 
-      // No edges.create on this prompt, so linking never engages.
+      // A highlight task creates no edges, so linking never engages.
       await expect(stage.sociogram.getNode('Ash')).not.toHaveAttribute(
         'data-node-linking',
       );
@@ -1058,91 +1083,230 @@ function buildHighlightToggle(): ScenarioDefinition {
   };
 }
 
-// --- highlight-display-only-with-edges-create ----------------------------
+// --- the three tasks ------------------------------------------------------
 
-function buildHighlightDisplayOnlyWithEdgesCreate(): ScenarioDefinition {
-  let closeFriendVarId = '';
-  let friendshipTypeId = '';
-  let nameVarId = '';
+/**
+ * Ash and Bea placed, Cy still in the drawer; Ash is marked as a close friend.
+ * The stage has one prompt of the given task.
+ */
+function buildTaskStage(
+  task: 'layout' | 'highlight' | 'connect',
+  ids: { nameVarId: string; layoutVarId: string; closeFriendVarId: string },
+): SyntheticInterview {
+  const synth = new SyntheticInterview();
+  const personType = synth.addNodeType({ name: 'Person' });
+  const nameVar = personType.addVariable({ type: 'text', name: 'name' });
+  ids.nameVarId = nameVar.id;
+  const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
+  ids.layoutVarId = layoutVar.id;
+  const closeFriendVar = personType.addVariable({
+    type: 'boolean',
+    name: 'closeFriend',
+  });
+  ids.closeFriendVarId = closeFriendVar.id;
+  const friendshipType = synth.addEdgeType({ name: 'Friendship' });
+
+  const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
+  synth.addManualNode(stage.id, personType.id, 'ash', {
+    [nameVar.id]: 'Ash',
+    [layoutVar.id]: { x: 0.3, y: 0.3 },
+    [closeFriendVar.id]: true,
+  });
+  synth.addManualNode(stage.id, personType.id, 'bea', {
+    [nameVar.id]: 'Bea',
+    [layoutVar.id]: { x: 0.7, y: 0.3 },
+    [closeFriendVar.id]: false,
+  });
+  synth.addManualNode(stage.id, personType.id, 'cy', {
+    [nameVar.id]: 'Cy',
+    [layoutVar.id]: null,
+    [closeFriendVar.id]: false,
+  });
+  if (task === 'layout') {
+    stage.addPrompt({ task: 'layout', text: 'Place everyone.' });
+  }
+  if (task === 'highlight') {
+    stage.addPrompt({
+      task: 'highlight',
+      text: 'Mark your close friends.',
+      highlight: [{ variable: closeFriendVar.id }],
+    });
+  }
+  if (task === 'connect') {
+    stage.addPrompt({
+      task: 'connect',
+      text: 'Link people who know each other.',
+      edges: { create: friendshipType.id, display: [friendshipType.id] },
+    });
+  }
+  return synth;
+}
+
+function buildTaskLayout(): ScenarioDefinition {
+  const ids = { nameVarId: '', layoutVarId: '', closeFriendVarId: '' };
   return {
-    id: 'highlight-display-only-with-edges-create',
-    covers: [
-      'prompts[].highlight.variable',
-      'prompts[].highlight.allowHighlighting',
-    ],
+    id: 'task-layout',
+    covers: ['prompts[].task'],
+    seedNetwork: true,
+    build: () => buildTaskStage('layout', ids),
+    run: async ({ page, protocol, interview, stage }) => {
+      // A highlight is drawn only during a highlight task.
+      expect(await stage.sociogram.isNodeHighlighted('Ash')).toBe(false);
+      await expect(stage.sociogram.getNode('Cy')).toBeEnabled();
+
+      await dragNodeToCanvasPosition(page, 'Ash', { x: 0.5, y: 0.7 });
+      await expect
+        .poll(async () => {
+          const state = await protocol.getNetworkState(interview.interviewId);
+          const ash = asPoint(
+            nodeAttribute(state, ids.nameVarId, 'Ash', ids.layoutVarId),
+          );
+          return ash ? Math.abs(ash.y - 0.7) < 0.1 : false;
+        })
+        .toBe(true);
+
+      // Tapping toggles nothing in a layout task.
+      await stage.sociogram.clickNode('Bea');
+      await expect(stage.sociogram.getNode('Bea')).not.toHaveAttribute(
+        'data-node-linking',
+      );
+      const state = await protocol.getNetworkState(interview.interviewId);
+      expect(
+        nodeAttribute(state, ids.nameVarId, 'Bea', ids.closeFriendVarId),
+      ).toBe(false);
+    },
+  };
+}
+
+function buildTaskHighlight(): ScenarioDefinition {
+  const ids = { nameVarId: '', layoutVarId: '', closeFriendVarId: '' };
+  return {
+    id: 'task-highlight',
+    covers: ['prompts[].task', 'prompts[].highlight[].variable'],
+    seedNetwork: true,
+    build: () => buildTaskStage('highlight', ids),
+    run: async ({ page, protocol, interview, stage }) => {
+      await expect
+        .poll(() => stage.sociogram.isNodeHighlighted('Ash'))
+        .toBe(true);
+
+      // Nobody can be moved in a highlight task.
+      await dragNodeToCanvasPosition(page, 'Bea', { x: 0.5, y: 0.8 });
+      let state = await protocol.getNetworkState(interview.interviewId);
+      expect(
+        asPoint(nodeAttribute(state, ids.nameVarId, 'Bea', ids.layoutVarId)),
+      ).toEqual({ x: 0.7, y: 0.3 });
+
+      // The drag ended as a tap, or no tap at all; either way one tap now
+      // decides Bea's highlight.
+      const beaBefore = await stage.sociogram.isNodeHighlighted('Bea');
+      await stage.sociogram.clickNode('Bea');
+      await expect
+        .poll(() => stage.sociogram.isNodeHighlighted('Bea'))
+        .toBe(!beaBefore);
+      state = await protocol.getNetworkState(interview.interviewId);
+      expect(
+        nodeAttribute(state, ids.nameVarId, 'Bea', ids.closeFriendVarId),
+      ).toBe(!beaBefore);
+    },
+  };
+}
+
+function buildTaskConnect(): ScenarioDefinition {
+  const ids = { nameVarId: '', layoutVarId: '', closeFriendVarId: '' };
+  return {
+    id: 'task-connect',
+    covers: ['prompts[].task', 'prompts[].edges.create'],
+    seedNetwork: true,
+    build: () => buildTaskStage('connect', ids),
+    run: async ({ page, protocol, interview, stage }) => {
+      // A highlight is drawn only during a highlight task.
+      expect(await stage.sociogram.isNodeHighlighted('Ash')).toBe(false);
+
+      // Nobody can be moved in a connect task.
+      await dragNodeToCanvasPosition(page, 'Bea', { x: 0.5, y: 0.8 });
+      let state = await protocol.getNetworkState(interview.interviewId);
+      expect(
+        asPoint(nodeAttribute(state, ids.nameVarId, 'Bea', ids.layoutVarId)),
+      ).toEqual({ x: 0.7, y: 0.3 });
+      // A drag that does not move a node may end as a tap; clear any pending
+      // source before linking.
+      if (
+        (await stage.sociogram
+          .getNode('Bea')
+          .getAttribute('data-node-linking')) === 'true'
+      ) {
+        await stage.sociogram.clickNode('Bea');
+      }
+
+      await stage.sociogram.connectNodes('Ash', 'Bea');
+      expect(await stage.sociogram.getEdgeCount()).toBe(1);
+      state = await protocol.getNetworkState(interview.interviewId);
+      expect(state?.edges).toHaveLength(1);
+      // Tapping writes no highlight in a connect task.
+      expect(
+        nodeAttribute(state, ids.nameVarId, 'Bea', ids.closeFriendVarId),
+      ).toBe(false);
+    },
+  };
+}
+
+// --- unplaced-nodes-disabled-outside-layout -------------------------------
+
+function buildUnplacedNodesDisabledOutsideLayout(): ScenarioDefinition {
+  return {
+    id: 'unplaced-nodes-disabled-outside-layout',
+    covers: ['prompts[].task'],
     seedNetwork: true,
     build: () => {
       const synth = new SyntheticInterview();
       const personType = synth.addNodeType({ name: 'Person' });
       const nameVar = personType.addVariable({ type: 'text', name: 'name' });
-      nameVarId = nameVar.id;
       const layoutVar = synth.addLayout({ name: 'sociogramLayout' });
       const closeFriendVar = personType.addVariable({
         type: 'boolean',
         name: 'closeFriend',
       });
-      closeFriendVarId = closeFriendVar.id;
       const friendshipType = synth.addEdgeType({ name: 'Friendship' });
-      friendshipTypeId = friendshipType.id;
-
       const stage = synth.addStage('Sociogram', { layout: layoutVar.id });
       synth.addManualNode(stage.id, personType.id, 'ash', {
         [nameVar.id]: 'Ash',
-        [layoutVar.id]: { x: 0.3, y: 0.3 },
-        [closeFriendVar.id]: true,
+        [layoutVar.id]: { x: 0.4, y: 0.4 },
       });
       synth.addManualNode(stage.id, personType.id, 'bea', {
         [nameVar.id]: 'Bea',
-        [layoutVar.id]: { x: 0.7, y: 0.3 },
-        [closeFriendVar.id]: false,
+        [layoutVar.id]: null,
       });
-      synth.addManualNode(stage.id, personType.id, 'cy', {
-        [nameVar.id]: 'Cy',
-        [layoutVar.id]: { x: 0.5, y: 0.7 },
-        [closeFriendVar.id]: false,
+      stage.addPrompt({ task: 'layout', text: 'Place everyone.' });
+      stage.addPrompt({
+        task: 'highlight',
+        text: 'Mark your close friends.',
+        highlight: [{ variable: closeFriendVar.id }],
       });
       stage.addPrompt({
-        text: 'Draw a line between people who know each other.',
-        edges: { create: friendshipType.id, display: [friendshipType.id] },
+        task: 'connect',
+        text: 'Link people who know each other.',
+        edges: { create: friendshipType.id },
       });
-      // Schema-legal display-only highlight: the superRefine only forbids
-      // edges.create combined with allowHighlighting:true, not a bare
-      // display-only highlight.variable. The fluent builder hardcodes
-      // allowHighlighting:true whenever `highlight` is passed, so we set the
-      // display-only highlight directly on the built prompt entry instead
-      // (the builder change is out of this task's file ownership).
-      const lastPrompt =
-        stage.stageEntry.prompts[stage.stageEntry.prompts.length - 1];
-      if (lastPrompt && 'highlight' in lastPrompt) {
-        lastPrompt.highlight = {
-          allowHighlighting: false,
-          variable: closeFriendVar.id,
-        };
-      }
       return synth;
     },
-    run: async ({ protocol, interview, stage }) => {
-      // Read-only highlight renders from the seeded attribute before any
-      // interaction — allowHighlighting:false never blocks display.
-      await expect
-        .poll(() => stage.sociogram.isNodeHighlighted('Ash'))
-        .toBe(true);
-      expect(await stage.sociogram.isNodeHighlighted('Bea')).toBe(false);
+    run: async ({ page, interview, stage }) => {
+      const bea = stage.sociogram.getNode('Bea');
+      const ash = stage.sociogram.getNode('Ash');
 
-      // Tapping nodes on this prompt always creates/toggles an edge — the
-      // create handler branch runs before the highlight branch is reached.
-      await stage.sociogram.connectNodes('Ash', 'Bea');
+      await expect(bea).toBeEnabled();
 
-      expect(await stage.sociogram.getEdgeCount()).toBe(1);
-      const state = await protocol.getNetworkState(interview.interviewId);
-      expect(state?.edges.some((e) => e.type === friendshipTypeId)).toBe(true);
+      await interview.nextButton.click();
+      await expect(bea).toBeDisabled();
+      await expect(ash).toBeEnabled();
 
-      // Highlight attribute is untouched by the tap — display-only confirmed.
-      expect(nodeAttribute(state, nameVarId, 'Ash', closeFriendVarId)).toBe(
-        true,
-      );
-      expect(await stage.sociogram.isNodeHighlighted('Ash')).toBe(true);
-      expect(await stage.sociogram.isNodeHighlighted('Bea')).toBe(false);
+      await interview.nextButton.click();
+      await expect(bea).toBeDisabled();
+      await expect(ash).toBeEnabled();
+      // The drawer stays visible so the gap is evident.
+      await expect(
+        page.getByRole('button', { name: /^1 unplaced\b/ }),
+      ).toBeVisible();
     },
   };
 }
@@ -1183,7 +1347,7 @@ function buildMultiPromptNavigationAndCollapse(): ScenarioDefinition {
       });
       stage.addPrompt({
         text: 'Now mark close friends.',
-        highlight: { variable: closeFriendVar.id },
+        highlight: [{ variable: closeFriendVar.id }],
       });
       return synth;
     },
@@ -1366,7 +1530,10 @@ export const sociogramScenarios: InterfaceScenarios = {
     buildAutomaticLayoutNodeDrag(),
     buildEdgesFullMatrix(),
     buildHighlightToggle(),
-    buildHighlightDisplayOnlyWithEdgesCreate(),
+    buildTaskLayout(),
+    buildTaskHighlight(),
+    buildTaskConnect(),
+    buildUnplacedNodesDisabledOutsideLayout(),
     buildMultiPromptNavigationAndCollapse(),
     buildSortOrderDrawer(),
     buildSubjectFiltersToNodeType(),

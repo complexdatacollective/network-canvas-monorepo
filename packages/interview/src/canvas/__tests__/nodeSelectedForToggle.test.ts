@@ -25,10 +25,9 @@ describe('nodeSelectedForToggle', () => {
     ).toBe(true);
   });
 
-  it('reports nothing on for a display-only prompt', () => {
-    // A prompt may set highlight.variable purely to colour nodes while leaving
-    // allowHighlighting off. Activating such a node does nothing — the canvas
-    // also unwires activation entirely, so no toggle is announced.
+  it('reports nothing on when activation toggles nothing', () => {
+    // In a layout task activating a node toggles nothing, so the canvas
+    // unwires activation entirely and no toggle is announced.
     expect(nodeSelectedForToggle(null, state({ highlighted: true }))).toBe(
       false,
     );

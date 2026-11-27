@@ -253,7 +253,7 @@ const buildWithHighlighting = () => {
     initialNodes: { count: 6 },
   });
   stage.addPrompt({
-    highlight: { variable: highlightVar.id },
+    highlight: [{ variable: highlightVar.id }],
   });
   const hlValues = [true, false, true, null, true, false];
   hlValues.forEach((v, i) => {
@@ -314,7 +314,7 @@ const buildMultiplePrompts = () => {
   stage.addPrompt();
   stage.addPrompt({
     text: 'Now highlight people who are close friends.',
-    highlight: { variable: highlightVar.id },
+    highlight: [{ variable: highlightVar.id }],
   });
   si.addInformationStage({
     title: 'Complete',
@@ -429,9 +429,9 @@ const buildEdgesAndHighlighting = () => {
     initialNodes: { count: 6 },
   });
   stage.addPrompt({
-    text: 'Draw lines between people who know each other and highlight close friends.',
-    edges: { create: et.id, display: [et.id] },
-    highlight: { variable: highlightVar.id },
+    text: 'Highlight your close friends.',
+    edges: { display: [et.id] },
+    highlight: [{ variable: highlightVar.id }],
   });
   const hlValues = [true, false, true, false, true, false];
   hlValues.forEach((v, i) => {
@@ -526,6 +526,123 @@ export const UnplaceNodes: Story = {
     await waitFor(() => {
       expect(tab.textContent).toContain('1 unplaced');
     });
+  },
+};
+
+const buildTasks = (task: 'layout' | 'highlight' | 'connect') => () => {
+  const { si, layoutVar, highlightVar, et } = createSociogramInterview(15);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('Sociogram', {
+    layout: layoutVar.id,
+    initialNodes: { count: 5 },
+  });
+  if (task === 'layout') {
+    stage.addPrompt({ text: 'Place the people you know.' });
+  }
+  if (task === 'highlight') {
+    stage.addPrompt({
+      text: 'Tap your close friends.',
+      highlight: [{ variable: highlightVar.id }],
+    });
+  }
+  if (task === 'connect') {
+    stage.addPrompt({
+      text: 'Link people who know each other.',
+      edges: { create: et.id, display: [et.id] },
+    });
+  }
+  for (let i = 0; i < 5; i++) {
+    si.setNodeAttribute(i, highlightVar.id, false);
+  }
+  // Two people are still in the drawer.
+  for (let i = 3; i < 5; i++) {
+    si.unsetNodeAttribute(i, layoutVar.id);
+  }
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+  return si;
+};
+
+const sociogramParts = async (canvasElement: HTMLElement) =>
+  waitFor(() => {
+    const canvas = canvasElement.querySelector<HTMLElement>(
+      '[data-testid="sociogram"] [role="application"]',
+    );
+    const drawer = canvasElement.querySelector<HTMLElement>(
+      '[data-testid="node-drawer-nodes"]',
+    );
+    expect(canvas).not.toBeNull();
+    expect(drawer).not.toBeNull();
+    const placed = [...canvas!.querySelectorAll<HTMLButtonElement>('button')];
+    const unplaced = [...drawer!.querySelectorAll<HTMLButtonElement>('button')];
+    expect(placed).toHaveLength(3);
+    expect(unplaced).toHaveLength(2);
+    return { placed, unplaced };
+  });
+
+const buildLayoutTask = buildTasks('layout');
+const buildHighlightTask = buildTasks('highlight');
+const buildConnectTask = buildTasks('connect');
+
+// In a layout task people in the drawer can be dragged onto the canvas, and
+// placed people can be moved.
+export const LayoutTask: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildLayoutTask} />,
+  play: async ({ canvasElement }) => {
+    const { placed, unplaced } = await sociogramParts(canvasElement);
+    for (const node of unplaced) await expect(node).toBeEnabled();
+    for (const node of placed) {
+      await expect(node).toBeEnabled();
+      await expect(node.style.cursor).toBe('grab');
+    }
+    const [first] = placed;
+    const left = first!.style.left;
+    first!.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() => expect(first!.style.left).not.toBe(left));
+  },
+};
+
+// In a highlight task a tap toggles the highlight. Nobody can be moved, and
+// people still in the drawer are dimmed.
+export const HighlightTask: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildHighlightTask} />,
+  play: async ({ canvasElement }) => {
+    const { placed, unplaced } = await sociogramParts(canvasElement);
+    for (const node of unplaced) await expect(node).toBeDisabled();
+    const [first] = placed;
+    await expect(first!.style.cursor).not.toBe('grab');
+    await expect(first).not.toHaveAttribute('data-node-highlighted');
+    await userEvent.click(first!);
+    await waitFor(() =>
+      expect(first).toHaveAttribute('data-node-highlighted', 'true'),
+    );
+    await userEvent.click(first!);
+    await waitFor(() =>
+      expect(first).not.toHaveAttribute('data-node-highlighted'),
+    );
+  },
+};
+
+// In a connect task tapping two people links them. Nobody can be moved, and
+// people still in the drawer are dimmed.
+export const ConnectTask: Story = {
+  render: () => <SociogramStoryWrapper buildFn={buildConnectTask} />,
+  play: async ({ canvasElement }) => {
+    const { placed, unplaced } = await sociogramParts(canvasElement);
+    for (const node of unplaced) await expect(node).toBeDisabled();
+    const [first, second] = placed;
+    await expect(first!.style.cursor).not.toBe('grab');
+    await expect(canvasElement.querySelectorAll('[data-edge-id]').length).toBe(
+      0,
+    );
+    await userEvent.click(first!);
+    await userEvent.click(second!);
+    await waitFor(() =>
+      expect(canvasElement.querySelectorAll('[data-edge-id]').length).toBe(1),
+    );
   },
 };
 

@@ -68,7 +68,7 @@ function buildInterview() {
   sociogram.addPrompt({
     text: 'Tap the people you are close to.',
     edges: { display: [friendship.id] },
-    highlight: { variable: close.id },
+    highlight: [{ variable: close.id }],
   });
 
   const census = interview.addStage('OneToManyDyadCensus', {

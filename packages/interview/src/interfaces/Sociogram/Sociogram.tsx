@@ -1,12 +1,15 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import Node from '@codaco/fresco-ui/Node';
+import { edgeTypeAllowsEndpoints } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import { elapsedMs } from '../../analytics/elapsed';
@@ -33,6 +36,7 @@ import {
 } from '../../selectors/session';
 import { useLoopingInteractionSound } from '../../sounds/InteractionSounds';
 import type { AttributePatch } from '../../store/entityAttributePatch';
+import { getCodebook } from '../../store/modules/protocol';
 import {
   toggleEdge,
   toggleNodeAttributes,
@@ -63,15 +67,23 @@ const Sociogram = (stageProps: SociogramProps) => {
 
   const interfaceRef = useRef<HTMLDivElement>(null);
 
-  // Behaviour Configuration
-  const createEdge = prompt.edges?.create ?? null;
-  const allowHighlighting = prompt.highlight?.allowHighlighting ?? false;
+  // Each prompt is one task. Nodes are placed and moved only in a layout task;
+  // a highlight task toggles the attribute named for each node's type, and a
+  // connect task creates edges of one type.
+  const isLayoutTask = prompt.task === 'layout';
+  const createEdge = prompt.task === 'connect' ? prompt.edges.create : null;
+  const highlightAttributes = useMemo(
+    () =>
+      prompt.task === 'highlight'
+        ? Object.fromEntries(
+            prompt.highlight.map(({ type, variable }) => [type, variable]),
+          )
+        : undefined,
+    [prompt],
+  );
 
   // Display Properties
   const layoutId = stage.layout;
-  // `variable` alone drives highlight display — a display-only highlight sets
-  // it with allowHighlighting off, which only gates the tap-to-toggle branch.
-  const highlightAttribute = prompt.highlight?.variable;
   const layoutMode: 'AUTOMATIC' | 'MANUAL' = stage.behaviours?.automaticLayout
     ? 'AUTOMATIC'
     : 'MANUAL';
@@ -155,6 +167,57 @@ const Sociogram = (stageProps: SociogramProps) => {
   }, [simulation.isRunning, canvasNodes.length, edges.length, track]);
 
   const selectedNodeId = useCanvasStore(store, (state) => state.selectedNodeId);
+  const codebook = useSelector(getCodebook);
+
+  // Outside a layout task, a node that has no position cannot be operated:
+  // it stays in the drawer, dimmed, so the gap is evident. In a highlight task
+  // so is a node whose type the prompt does not highlight, and in a connect
+  // task a node the edge type cannot join to the selected source (or, before
+  // a source is chosen, cannot start from).
+  const isNodeDisabled = useCallback(
+    (node: NcNode) => {
+      if (isLayoutTask) return false;
+      if (
+        layoutMode === 'MANUAL' &&
+        node[entityAttributesProperty][layoutId] == null
+      ) {
+        return true;
+      }
+      if (highlightAttributes !== undefined) {
+        return !Object.hasOwn(highlightAttributes, node.type);
+      }
+      if (createEdge === null) return false;
+      const sourceId = selectedNodeId;
+      const source =
+        sourceId === null
+          ? undefined
+          : allNodes.find((n) => n[entityPrimaryKeyProperty] === sourceId);
+      if (source === undefined) {
+        return !allNodes.some((target) =>
+          edgeTypeAllowsEndpoints(codebook, createEdge, node.type, target.type),
+        );
+      }
+      if (source[entityPrimaryKeyProperty] === node[entityPrimaryKeyProperty]) {
+        return false;
+      }
+      return !edgeTypeAllowsEndpoints(
+        codebook,
+        createEdge,
+        source.type,
+        node.type,
+      );
+    },
+    [
+      isLayoutTask,
+      layoutMode,
+      layoutId,
+      highlightAttributes,
+      createEdge,
+      selectedNodeId,
+      allNodes,
+      codebook,
+    ],
+  );
 
   // While a node waits to be connected to the next one tapped, a sound loops.
   // It stops with the selection, and with this prompt when the next one does
@@ -187,11 +250,13 @@ const Sociogram = (stageProps: SociogramProps) => {
           );
           store.getState().selectNode(null);
         }
-      } else if (allowHighlighting && highlightAttribute) {
+      } else if (highlightAttributes !== undefined) {
         const node = canvasNodes.find(
           (n) => n[entityPrimaryKeyProperty] === nodeId,
         );
-        if (node) {
+        const highlightAttribute =
+          node === undefined ? undefined : highlightAttributes[node.type];
+        if (node && highlightAttribute !== undefined) {
           const currentValue =
             node[entityAttributesProperty][highlightAttribute];
           track(currentValue ? 'node_deselected' : 'node_selected', {
@@ -213,8 +278,7 @@ const Sociogram = (stageProps: SociogramProps) => {
       createEdge,
       store,
       dispatch,
-      allowHighlighting,
-      highlightAttribute,
+      highlightAttributes,
       canvasNodes,
       track,
       currentStep,
@@ -354,30 +418,38 @@ const Sociogram = (stageProps: SociogramProps) => {
         edges={edges}
         store={store}
         selectedNodeId={selectedNodeId}
-        highlightAttribute={highlightAttribute}
+        highlightAttributes={highlightAttributes}
+        isNodeDisabled={isNodeDisabled}
         onNodeSelect={handleNodeSelect}
         // Mirrors handleNodeSelect's own branching, so what is announced as a
         // toggle is exactly what activation operates on.
         nodeToggle={
           createEdge
             ? 'edge'
-            : allowHighlighting && highlightAttribute
+            : highlightAttributes !== undefined
               ? 'highlight'
               : null
         }
         onNodeDragEnd={handleNodeDragEnd}
         onDrop={handleDrop}
+        allowDrop={isLayoutTask}
+        allowRepositioning={isLayoutTask}
         simulation={simulationHandlers}
         nodeDragItemType={
-          layoutMode === 'MANUAL' ? PLACED_NODE_ITEM_TYPE : undefined
+          layoutMode === 'MANUAL' && isLayoutTask
+            ? PLACED_NODE_ITEM_TYPE
+            : undefined
         }
-        onNodeRemove={layoutMode === 'MANUAL' ? handleUnplaceNode : null}
+        onNodeRemove={
+          layoutMode === 'MANUAL' && isLayoutTask ? handleUnplaceNode : null
+        }
       />
       {layoutMode === 'MANUAL' && (
         <NodeDrawer
           nodes={sortedUnplacedNodes}
           floating
-          dropTarget={drawerDropTarget}
+          dropTarget={isLayoutTask ? drawerDropTarget : undefined}
+          isNodeDisabled={isLayoutTask ? undefined : isNodeDisabled}
         />
       )}
       <CollapsablePrompts dragConstraints={interfaceRef}>

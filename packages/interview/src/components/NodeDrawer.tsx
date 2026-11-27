@@ -50,6 +50,11 @@ type NodeDrawerProps = {
   /** Called when a person who cannot be dragged is tapped. */
   onNodeClick?: (node: NcNode) => void;
   /**
+   * Names the people shown dimmed, who can be neither dragged nor tapped, as
+   * the unplaced people are while nodes cannot be placed.
+   */
+  isNodeDisabled?: (node: NcNode) => boolean;
+  /**
    * Changes when the selected person should be brought back into view even
    * if they are still the one selected, as on a new prompt.
    */
@@ -73,6 +78,7 @@ export default function NodeDrawer({
   collapsible = true,
   selectedNodeId,
   onNodeClick,
+  isNodeDisabled,
   selectionKey,
 }: NodeDrawerProps) {
   const unplacedId = useId();
@@ -291,6 +297,7 @@ export default function NodeDrawer({
             fade
             remeasureKey={remeasureKey}
             viewportClassName="flex items-center gap-4 p-4"
+            data-testid="node-drawer-nodes"
           >
             {isEmpty && canExpandWhenEmpty ? (
               // Matches the height of a drawer node so the empty drawer
@@ -313,6 +320,7 @@ export default function NodeDrawer({
                     onLayoutAnimationComplete={handleLayoutAnimationComplete}
                     draggable={draggable}
                     onClick={onNodeClick}
+                    disabled={isNodeDisabled?.(node) ?? false}
                     selected={
                       selectedNodeId !== undefined &&
                       node[entityPrimaryKeyProperty] === selectedNodeId

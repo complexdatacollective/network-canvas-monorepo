@@ -23,6 +23,7 @@ const build = () => {
     initialNodes: { count: 9 },
   });
   stage.addPrompt({
+    task: 'connect',
     text: 'Please connect any two people who know each other.',
     edges: { create: et.id, display: [et.id] },
   });

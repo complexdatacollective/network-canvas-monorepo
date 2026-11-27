@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -90,7 +90,7 @@ const node = (
   [entityAttributesProperty]: attributes,
 });
 
-function renderNarrative() {
+function renderNarrative(narrative: StageProps<'Narrative'>['stage'] = stage) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -119,7 +119,7 @@ function renderNarrative() {
         schemaVersion: 9,
         localization: { defaultLocale: 'en', locales: ['en'] },
         codebook,
-        stages: [stage],
+        stages: [narrative],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -153,7 +153,7 @@ function renderNarrative() {
 
   render(
     <Narrative
-      stage={stage}
+      stage={narrative}
       getNavigationHelpers={() => ({
         moveForward: vi.fn(),
         moveBackward: vi.fn(),
@@ -161,6 +161,7 @@ function renderNarrative() {
     />,
     { wrapper: Wrapper },
   );
+  return store;
 }
 
 describe('Narrative', () => {
@@ -172,5 +173,43 @@ describe('Narrative', () => {
     });
     expect(screen.queryByText('Blair')).not.toBeInTheDocument();
     expect(screen.queryByText('Park')).not.toBeInTheDocument();
+  });
+
+  it('repositioning a node on a Narrative writes nothing to the layout', async () => {
+    const store = renderNarrative({
+      ...stage,
+      behaviours: { allowRepositioning: true },
+    });
+    const alex = await screen.findByRole('button', { name: 'Alex' });
+    expect(alex.style.left).toBe('30%');
+
+    fireEvent.keyDown(alex, { key: 'ArrowRight' });
+
+    // The node moves on the canvas, but the stored layout keeps its place.
+    await waitFor(() => expect(alex.style.left).not.toBe('30%'));
+    const stored = store
+      .getState()
+      .session.network.nodes.find(
+        (entry) => entry[entityPrimaryKeyProperty] === 'alex',
+      );
+    expect(stored?.[entityAttributesProperty][LAYOUT]).toEqual({
+      x: 0.3,
+      y: 0.3,
+    });
+  });
+
+  it('free-draw is offered when the stage allows it', async () => {
+    renderNarrative({ ...stage, behaviours: { freeDraw: true } });
+    expect(
+      await screen.findByRole('button', { name: 'Toggle drawing' }),
+    ).toBeInTheDocument();
+  });
+
+  it('free-draw is not offered when the stage does not allow it', async () => {
+    renderNarrative();
+    await screen.findByText('Alex');
+    expect(
+      screen.queryByRole('button', { name: 'Toggle drawing' }),
+    ).not.toBeInTheDocument();
   });
 });

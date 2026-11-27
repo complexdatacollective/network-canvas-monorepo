@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useRef, useState } from 'react';
+import { type ComponentProps, useRef, useState } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import { useFitText } from './hooks/useFitText';
@@ -1588,7 +1588,11 @@ export const CustomShapes: Story = {
   },
 };
 
-function CustomShapeStateGrid() {
+function CustomShapeStateGrid({
+  onClick,
+}: {
+  onClick?: ComponentProps<typeof Node>['onClick'];
+}) {
   const states = [
     { caption: 'Default', props: {} },
     { caption: 'Selected', props: { selected: true } },
@@ -1615,6 +1619,7 @@ function CustomShapeStateGrid() {
                   label={state.caption}
                   shape={shape}
                   color={sequenceColor(index)}
+                  onClick={onClick}
                   {...state.props}
                 />
                 <span className="text-xs text-current/70">{state.caption}</span>
@@ -1631,7 +1636,30 @@ function CustomShapeStateGrid() {
  * Every visual state on custom artwork: the rings follow a rounded rectangle.
  */
 export const CustomShapeStates: Story = {
-  render: () => <CustomShapeStateGrid />,
+  args: { onClick: fn() },
+  render: ({ onClick }) => <CustomShapeStateGrid onClick={onClick} />,
+  // A disabled node on custom artwork is dimmed and takes no tap or key.
+  play: async ({ args, canvasElement }) => {
+    const disabledNodes = within(canvasElement).getAllByRole('button', {
+      name: 'Disabled',
+    });
+    await expect(disabledNodes).toHaveLength(3);
+    for (const node of disabledNodes) {
+      await expect(
+        node.querySelector('svg[data-node-shape-artwork]'),
+      ).not.toBeNull();
+      await expect(node).toBeDisabled();
+      await userEvent.click(node, { pointerEventsCheck: 0 });
+      node.focus();
+      await userEvent.keyboard('{Enter}');
+    }
+    await expect(args.onClick).not.toHaveBeenCalled();
+    const [defaultNode] = within(canvasElement).getAllByRole('button', {
+      name: 'Default',
+    });
+    await userEvent.click(defaultNode!);
+    await expect(args.onClick).toHaveBeenCalledTimes(1);
+  },
   parameters: {
     layout: 'padded',
     chromatic: { pauseAnimationAtEnd: true },

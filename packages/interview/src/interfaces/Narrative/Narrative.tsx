@@ -294,10 +294,20 @@ const Narrative = ({ stage }: NarrativeProps) => {
     }),
   );
 
-  // Highlight attribute
-  const highlightAttribute = showHighlightedNodes
+  // A preset's highlight names one attribute, which lights any node of the
+  // stage's types that has it set.
+  const highlightVariable = showHighlightedNodes
     ? highlight[highlightIndex]?.variable
     : undefined;
+  const highlightAttributes = useMemo(
+    () =>
+      highlightVariable === undefined
+        ? undefined
+        : Object.fromEntries(
+            subjectTypes.map((type) => [type, highlightVariable]),
+          ),
+    [highlightVariable, subjectTypes],
+  );
 
   const underlays = convexHullVariable ? (
     <ConvexHullLayer
@@ -331,7 +341,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
         edges={filteredEdges}
         store={store}
         selectedNodeId={null}
-        highlightAttribute={highlightAttribute}
+        highlightAttributes={highlightAttributes}
         onNodeDragEnd={undefined}
         allowRepositioning={allowRepositioning}
         simulation={
