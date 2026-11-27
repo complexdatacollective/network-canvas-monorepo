@@ -55,6 +55,7 @@ import {
   type Codebook,
   type EdgeDefinition,
   type EntityDefinition,
+  type LayoutDefinition,
   type Variable,
   type VariablePropertyKey,
 } from '@codaco/protocol-validation';
@@ -107,6 +108,11 @@ type UpdateVariablePayload = {
   variable: string;
   configuration: Partial<Variable>;
   replaceProperties?: readonly VariablePropertyKey[];
+};
+
+type SetLayoutPayload = {
+  layoutId: string;
+  definition: LayoutDefinition;
 };
 
 type DeleteVariablePayload = {
@@ -520,6 +526,13 @@ const codebookSlice = createSlice({
         replaceProperties,
       );
     },
+    setLayout: (state, action: PayloadAction<SetLayoutPayload>) => {
+      const { layoutId, definition } = action.payload;
+      return {
+        ...state,
+        layouts: { ...state.layouts, [layoutId]: definition },
+      };
+    },
     deleteVariable: (state, action: PayloadAction<DeleteVariablePayload>) => {
       const { entity, type, variable } = action.payload;
       const variablePath =
@@ -547,6 +560,8 @@ const codebookSlice = createSlice({
     });
   },
 });
+
+export const { setLayout } = codebookSlice.actions;
 
 // Export convenience wrapper for updateVariableAsync with cleaner API
 export const updateVariableByUUID = (

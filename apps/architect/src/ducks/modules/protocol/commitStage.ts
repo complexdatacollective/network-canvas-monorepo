@@ -4,6 +4,7 @@ import type {
   CurrentProtocol,
   EdgeDefinition,
   EgoDefinition,
+  LayoutDefinition,
   NodeDefinition,
   Stage,
 } from '@codaco/protocol-validation';
@@ -12,7 +13,12 @@ import type {
 export type CommittedCodebookSection =
   | Readonly<{ entity: 'node'; type: string; definition: NodeDefinition }>
   | Readonly<{ entity: 'edge'; type: string; definition: EdgeDefinition }>
-  | Readonly<{ entity: 'ego'; definition: EgoDefinition }>;
+  | Readonly<{ entity: 'ego'; definition: EgoDefinition }>
+  | Readonly<{
+      entity: 'layout';
+      layoutId: string;
+      definition: LayoutDefinition;
+    }>;
 
 export type CommitStagePayload = {
   /** The stage being edited, or `null` when the editor is creating one. */

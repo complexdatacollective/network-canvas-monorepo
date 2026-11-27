@@ -62,6 +62,7 @@ import {
   EdgeColorSequence,
   type Experiments,
   type ExtractedAsset,
+  isVariableId,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
@@ -1753,6 +1754,53 @@ describe("Architect's in-process protocol-builder host", () => {
     });
   });
 
+  it('creates a layout under an id of its own, and renames it under its lock', async () => {
+    const { store, client } = openProtocol();
+    const layouts = () => getProtocol(store.getState())?.codebook.layouts;
+
+    const created = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'seating' }),
+    });
+    const ref = parseSectionId(created.sectionId);
+    if (ref.kind !== 'codebookLayout') throw new Error('Not a layout section');
+    expect(isVariableId(ref.layoutId)).toBe(true);
+    expect(layouts()).toEqual({ [ref.layoutId]: { name: 'seating' } });
+
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: created.sectionId,
+    });
+    expect(Redacted.value(held.document)).toEqual({ name: 'seating' });
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: created.sectionId,
+      document: Redacted.make({ name: 'tables' }),
+      revision: held.revision,
+    });
+    expect(layouts()).toEqual({ [ref.layoutId]: { name: 'tables' } });
+  });
+
+  it('refuses to create a layout whose document is not shaped like one', async () => {
+    const { store, client } = openProtocol();
+
+    const { error, isSuccess } = await safe(
+      client.call('Create', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        kind: 'codebookLayout',
+        document: Redacted.make({ name: 'seating', type: 'layout' }),
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(getProtocol(store.getState())?.codebook.layouts).toBeUndefined();
+  });
+
   it('refuses to create an ego codebook the protocol already has', async () => {
     const { store, client } = openProtocol();
     const before = getProtocol(store.getState())?.codebook.ego;
@@ -2571,6 +2619,36 @@ describe('codebook sections saved with a stage', () => {
       sectionId: NEW_TYPE,
     });
     expect(created.revision.sequence).toBeGreaterThan(0n);
+  });
+
+  it('writes a layout the stage’s editor created, undone with the stage', async () => {
+    const { store, client } = openProtocol();
+    const layoutId = testVariableId('seating layout');
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      codebook: [
+        {
+          sectionId: sectionId({ kind: 'codebookLayout', layoutId }),
+          document: Redacted.make({ name: 'seating' }),
+        },
+      ],
+    });
+
+    expect(getProtocol(store.getState())?.codebook.layouts).toEqual({
+      [layoutId]: { name: 'seating' },
+    });
+    expect(undoDepth(store)).toBe(1);
+    store.dispatch(timelineActions.undo());
+    expect(getProtocol(store.getState())?.codebook.layouts).toBeUndefined();
   });
 
   it('writes a created stage with its codebook', async () => {

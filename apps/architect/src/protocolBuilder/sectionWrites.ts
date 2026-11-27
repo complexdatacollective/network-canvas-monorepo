@@ -9,7 +9,9 @@ import {
   createProtocolObjectId,
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
+  createVariableId,
   isFinishSessionStage,
+  LayoutDefinitionSchema,
   NodeDefinitionSchema,
   stageSchema,
   type CurrentProtocol,
@@ -38,6 +40,7 @@ import { deleteAsset } from '~/ducks/modules/protocol/assetManifest';
 import {
   createEdgeAsync,
   createTypeAsync,
+  setLayout,
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
 import {
@@ -75,7 +78,8 @@ export type CreatableSectionKind =
   | 'stage'
   | 'codebookNode'
   | 'codebookEdge'
-  | 'codebookEgo';
+  | 'codebookEgo'
+  | 'codebookLayout';
 
 function refuseParse(
   schema: z.ZodType,
@@ -224,6 +228,19 @@ export function stageCodebook(sections: readonly StageCodebookSection[]):
         };
       }
       codebook.push({ entity: 'ego', definition: parsed.data });
+    } else if (ref.kind === 'codebookLayout') {
+      const parsed = LayoutDefinitionSchema.safeParse(document);
+      if (!parsed.success) {
+        return {
+          ...refuseParse(LayoutDefinitionSchema, document, parsed.error),
+          sectionId: id,
+        };
+      }
+      codebook.push({
+        entity: 'layout',
+        layoutId: ref.layoutId,
+        definition: parsed.data,
+      });
     } else {
       return {
         ...refuse('not a codebook section'),
@@ -385,6 +402,15 @@ export function submitSection(
         return refuseParse(EgoDefinitionSchema, document, parsed.error);
       return writeEntityDefinition(store, 'ego', EGO_TYPE, parsed.data);
     }
+    case 'codebookLayout': {
+      const parsed = LayoutDefinitionSchema.safeParse(document);
+      if (!parsed.success)
+        return refuseParse(LayoutDefinitionSchema, document, parsed.error);
+      store.dispatch(
+        setLayout({ layoutId: ref.layoutId, definition: parsed.data }),
+      );
+      return { status: 'written' };
+    }
     case 'settings':
       return submitSettings(store, document);
     case 'stageOrder':
@@ -500,6 +526,21 @@ export async function createSection(
         sectionId: target,
       };
     await writeEntityDefinition(store, 'ego', EGO_TYPE, parsed.data);
+    return { status: 'created', sectionId: target };
+  }
+
+  // A layout's id is a variable id: layouts and attributes share one
+  // namespace, since a node keeps its position in a layout under that id.
+  if (kind === 'codebookLayout') {
+    const layoutId = createVariableId();
+    const target = sectionId({ kind, layoutId });
+    const parsed = LayoutDefinitionSchema.safeParse(document);
+    if (!parsed.success)
+      return {
+        ...refuseParse(LayoutDefinitionSchema, document, parsed.error),
+        sectionId: target,
+      };
+    store.dispatch(setLayout({ layoutId, definition: parsed.data }));
     return { status: 'created', sectionId: target };
   }
 

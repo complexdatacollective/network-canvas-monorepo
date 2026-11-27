@@ -215,6 +215,11 @@ const activeProtocolSlice = createSlice({
           // does not hold yet is created, not just updated.
           if (section.entity === 'ego') {
             state.codebook.ego = definitionAsStored('ego', section.definition);
+          } else if (section.entity === 'layout') {
+            state.codebook.layouts = {
+              ...state.codebook.layouts,
+              [section.layoutId]: section.definition,
+            };
           } else if (section.entity === 'node') {
             const types = state.codebook.node ?? {};
             state.codebook.node = {
