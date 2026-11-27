@@ -413,11 +413,19 @@ Studio section: `SectionRef` gains `{ kind: 'codebookLayout'; layoutId: string }
 with id prefix `codebook:layout:` (`packages/studio-sync/src/taxonomy.ts`).
 
 SyntheticInterview: `addLayout(input?: { name?: string }): { id: string; name:
-string }`. Stage inputs take `layout?: string` (Sociogram, NetworkComposer) and
-presets take `layout?: string`; when omitted the builder creates one layout per
-stage named `layout`, `layout_2`, and so on. `getNetwork` writes a position
-for every node whose type has the layout in the built protocol, using the
-current `ValueGenerator` layout formula.
+string }`. A nameless call names the layout `layout_<n+1>` (`layout_1`,
+`layout_2`, ...), and a call with the name of a layout already added returns
+that layout. Stage inputs take `layout?: string` (Sociogram, NetworkComposer)
+and presets take `layout?: string`. When omitted, every Sociogram shares one
+layout named `sociogramLayout`, every Network Composer shares one named
+`composerLayout`, and a Narrative preset reads the first layout of the
+interview, or adds `narrativeLayout` when there is none. `getNetwork` writes a
+position for a node in every layout that a stage whose subject includes the
+node's type sets, and also in every layout that a Narrative preset about the
+type reads (a synthetic network stands for an interview whose earlier stages
+all ran), using the current `ValueGenerator` layout formula. Fixtures for
+`findUnreachableLayoutReads` (3b) and `isFirstStageUsingLayout` (slice 4) that
+need separate layouts or an unplaced node pass `layout` explicitly.
 
 ### C6. Sociogram prompts and highlight attributes
 
