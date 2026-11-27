@@ -202,7 +202,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
   );
 
   // Display Properties
-  const layoutVariable = currentPreset?.layout ?? '';
+  const layoutId = currentPreset?.layout ?? '';
   const highlight = currentPreset?.highlight ?? [];
   const convexHullVariable = showConvexHulls
     ? (currentPreset?.groupVariable ?? '')
@@ -217,14 +217,14 @@ const Narrative = ({ stage }: NarrativeProps) => {
   const subjectTypes = useMemo(() => getStageNodeTypes(stage), [stage]);
   const nodesWithLayout = useMemo(
     () =>
-      layoutVariable
+      layoutId
         ? nodes.filter(
             (node) =>
               subjectTypes.includes(node.type) &&
-              node[entityAttributesProperty][layoutVariable],
+              node[entityAttributesProperty][layoutId],
           )
         : [],
-    [nodes, layoutVariable, subjectTypes],
+    [nodes, layoutId, subjectTypes],
   );
 
   // Filter edges by display types
@@ -254,12 +254,12 @@ const Narrative = ({ stage }: NarrativeProps) => {
   const nodesWithLayoutRef = useRef(nodesWithLayout);
   nodesWithLayoutRef.current = nodesWithLayout;
 
-  // Sync positions from nodes when layout variable or the node set changes. This
+  // Sync positions from nodes when the preset's layout or the node set changes. This
   // runs before useAutoLayout reads store.positions to seed the simulation.
   useEffect(() => {
-    store.getState().syncFromNodes(nodesWithLayoutRef.current, layoutVariable);
+    store.getState().syncFromNodes(nodesWithLayoutRef.current, layoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeIdsKey, layoutVariable, store]);
+  }, [nodeIdsKey, layoutId, store]);
 
   // Read-only but fully interactive layout. persist:false makes syncToRedux
   // unreachable, so a node's position in the layout is never written — but it is
@@ -277,7 +277,7 @@ const Narrative = ({ stage }: NarrativeProps) => {
     edges: filteredEdges,
     store,
     nodeRadius: nodeWidth / 2,
-    layoutVariable,
+    layoutId,
     groupVariable: convexHullVariable,
     persist: false,
     runMode: 'continuous',

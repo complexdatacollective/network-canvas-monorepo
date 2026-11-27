@@ -44,12 +44,12 @@ type CanvasActions = {
   setBatchPositions: (entries: [string, Position][]) => void;
   setCanvasDimensions: (dimensions: CanvasDimensions) => void;
   setNodeRadius: (radius: number) => void;
-  syncFromNodes: (nodes: NcNode[], layoutVariable: string) => void;
-  syncNewFromNodes: (nodes: NcNode[], layoutVariable: string) => void;
+  syncFromNodes: (nodes: NcNode[], layoutId: string) => void;
+  syncNewFromNodes: (nodes: NcNode[], layoutId: string) => void;
   selectNode: (nodeId: string | null) => void;
   syncToRedux: (
     dispatch: AppDispatch,
-    layoutVariable: string,
+    layoutId: string,
     currentStep: number,
   ) => void;
 };
@@ -133,12 +133,12 @@ export const createCanvasStore = () =>
         });
       },
 
-      syncFromNodes: (nodes, layoutVariable) => {
+      syncFromNodes: (nodes, layoutId) => {
         const { canvasDimensions: dims, nodeRadius } = get();
         const next = new Map<string, Position>();
         for (const node of nodes) {
           const attrs = node[entityAttributesProperty];
-          const layoutValue = attrs[layoutVariable];
+          const layoutValue = attrs[layoutId];
           if (isPosition(layoutValue)) {
             next.set(
               node[entityPrimaryKeyProperty],
@@ -151,7 +151,7 @@ export const createCanvasStore = () =>
 
       // Only add positions for new nodes and remove stale ones.
       // Preserves existing positions managed by the force simulation.
-      syncNewFromNodes: (nodes, layoutVariable) => {
+      syncNewFromNodes: (nodes, layoutId) => {
         set((state) => {
           const next = new Map(state.positions);
           const currentNodeIds = new Set(
@@ -168,7 +168,7 @@ export const createCanvasStore = () =>
             const nodeId = node[entityPrimaryKeyProperty];
             if (!next.has(nodeId)) {
               const attrs = node[entityAttributesProperty];
-              const layoutValue = attrs[layoutVariable];
+              const layoutValue = attrs[layoutId];
               if (isPosition(layoutValue)) {
                 next.set(
                   nodeId,
@@ -190,7 +190,7 @@ export const createCanvasStore = () =>
         set({ selectedNodeId: nodeId });
       },
 
-      syncToRedux: (dispatch, layoutVariable, currentStep) => {
+      syncToRedux: (dispatch, layoutId, currentStep) => {
         const { positions } = get();
         for (const [nodeId, position] of positions) {
           void dispatch(
@@ -198,7 +198,7 @@ export const createCanvasStore = () =>
               nodeId,
               attributePatch: {
                 set: {
-                  [layoutVariable]: { x: position.x, y: position.y },
+                  [layoutId]: { x: position.x, y: position.y },
                 },
                 unset: [],
               },

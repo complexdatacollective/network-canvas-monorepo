@@ -87,7 +87,7 @@ type UseAutoLayoutOptions = {
   // the seeding effect re-runs once a real measurement arrives.
   nodeRadius: number;
   // Re-seed trigger; also the persistence target attribute when `persist`.
-  layoutVariable: string;
+  layoutId: string;
   // Cohesion key. Empty/undefined disables cohesion (every node's groupKeys is
   // empty, so the force is inert) — the Sociogram case.
   groupVariable?: string;
@@ -121,7 +121,7 @@ export function useAutoLayout({
   edges,
   store,
   nodeRadius,
-  layoutVariable,
+  layoutId,
   groupVariable = '',
   persist = false,
   dispatch,
@@ -285,11 +285,7 @@ export function useAutoLayout({
       if (msgType === 'end' && persistArgs) {
         store
           .getState()
-          .syncToRedux(
-            persistArgs.dispatch,
-            layoutVariable,
-            persistArgs.currentStep,
-          );
+          .syncToRedux(persistArgs.dispatch, layoutId, persistArgs.currentStep);
       }
     });
 
@@ -366,7 +362,7 @@ export function useAutoLayout({
     nodeIdsKey,
     seedEdgesKey,
     groupMembershipKey,
-    layoutVariable,
+    layoutId,
     nodeRadius,
     runMode,
     mockLayout,

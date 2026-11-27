@@ -734,7 +734,7 @@ describe('SyntheticInterview', () => {
       // Add variable after stage and nodes were created
       const varRef = nt.addVariable({ type: 'number', name: 'Score' });
 
-      // Also add a prompt that creates a layout variable
+      // Also add a prompt
       stage.addPrompt();
 
       const network = si.getNetwork();

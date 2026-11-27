@@ -79,7 +79,7 @@ describe('useAutoLayout', () => {
           edges: [],
           store,
           nodeRadius: 20,
-          layoutVariable: LAYOUT_VAR,
+          layoutId: LAYOUT_VAR,
           persist: true,
           dispatch: dispatch as unknown as AppDispatch,
           currentStep: 0,

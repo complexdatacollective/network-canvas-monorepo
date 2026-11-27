@@ -218,7 +218,7 @@ function buildManualBaseline(): ScenarioDefinition {
         label: 'Friendship map',
         interviewScript: 'Ask about closeness.',
       });
-      // Placed: explicit layout attribute.
+      // Placed: an explicit position in the layout.
       synth.addManualNode(stage.id, personType.id, 'p0', {
         [nameVar.id]: 'Ash',
         [layoutVar.id]: { x: 0.3, y: 0.3 },

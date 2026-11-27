@@ -35,7 +35,7 @@ const RESUME_LAYOUT = 'Release the layout - matrix check';
 
 /**
  * Base Narrative builder: a Person node type with a real "name" text variable
- * (deduped against the auto-seeded one) and a layout variable. Every Narrative
+ * (deduped against the auto-seeded one) and a layout. Every Narrative
  * scenario seeds manual nodes, so callers MUST set `seedNetwork: true` —
  * buildSyntheticPayload wipes nodes/edges otherwise (synthetic-payload.ts).
  */
@@ -47,7 +47,7 @@ function buildBaseNarrative() {
   return { synth, person, nameVar, layoutVar };
 }
 
-const layoutVariableNodeInclusion: ScenarioDefinition = {
+const layoutNodeInclusion: ScenarioDefinition = {
   id: 'layout-variable-node-inclusion-and-defaults',
   covers: [
     'presets',
@@ -91,7 +91,7 @@ const layoutVariableNodeInclusion: ScenarioDefinition = {
     const narrative = new NarrativeFixture(page);
     const before = await page.evaluate(() => window.__test.getNetworkState());
 
-    // Only nodes with the preset's layout variable set render; Dana (null) is
+    // Only nodes with a position in the preset's layout render; Dana (null) is
     // excluded.
     await expect(narrative.getNode('Alice')).toBeVisible();
     await expect(narrative.getNode('Bob')).toBeVisible();
@@ -231,7 +231,7 @@ const multiplePresetsSwitchResets: ScenarioDefinition = {
     await narrative.selectHighlightRadio('Trusted');
     await expect(narrative.getHighlightRadio('Trusted')).toBeChecked();
 
-    // Preset 1 (View B): layout variable B repositions the nodes; only the
+    // Preset 1 (View B): layout B repositions the nodes; only the
     // Groups section renders.
     await narrative.goToNextPreset();
     await expect(narrative.getPresetLabelButton('View B')).toBeVisible();
@@ -1008,7 +1008,7 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
 export const narrativeScenarios: InterfaceScenarios = {
   interfaceType: 'Narrative',
   scenarios: [
-    layoutVariableNodeInclusion,
+    layoutNodeInclusion,
     multiplePresetsSwitchResets,
     edgesDisplayAndLinksLegend,
     convexHullsGroups,

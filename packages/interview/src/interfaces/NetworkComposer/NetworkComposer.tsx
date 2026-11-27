@@ -124,7 +124,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     groups: intl.formatMessage(interfaceMessages.composerGroups),
   };
 
-  const layoutVariable = stage.layout;
+  const layoutId = stage.layout;
 
   // Background Configuration
   const stageBackground = stage.background;
@@ -286,11 +286,11 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // In automatic mode, only initialise new nodes — the simulation owns positions.
   useEffect(() => {
     if (layoutMode === 'AUTOMATIC') {
-      canvasStore.getState().syncNewFromNodes(nodes, layoutVariable);
+      canvasStore.getState().syncNewFromNodes(nodes, layoutId);
     } else {
-      canvasStore.getState().syncFromNodes(nodes, layoutVariable);
+      canvasStore.getState().syncFromNodes(nodes, layoutId);
     }
-  }, [nodes, layoutVariable, canvasStore, layoutMode]);
+  }, [nodes, layoutId, canvasStore, layoutMode]);
 
   // Measure the rendered node size off-screen so the auto-layout collision radius
   // tracks the live --theme-root-size scaling (mirrors the Sociogram).
@@ -328,7 +328,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     edges,
     store: canvasStore,
     nodeRadius: nodeWidth / 2,
-    layoutVariable,
+    layoutId,
     groupVariable: groupVariable?.id ?? '',
     persist: true,
     dispatch,

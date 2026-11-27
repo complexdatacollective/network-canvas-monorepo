@@ -51,10 +51,8 @@ type SociogramProps = StageProps<'Sociogram'>;
 // unplaced-node drawer can accept it back.
 const PLACED_NODE_ITEM_TYPE = 'PLACED_NODE';
 
-export function unplaceNodeAttributePatch(
-  layoutVariable: string,
-): AttributePatch {
-  return { set: {}, unset: [layoutVariable] };
+export function unplaceNodeAttributePatch(layoutId: string): AttributePatch {
+  return { set: {}, unset: [layoutId] };
 }
 
 const Sociogram = (stageProps: SociogramProps) => {
@@ -70,7 +68,7 @@ const Sociogram = (stageProps: SociogramProps) => {
   const allowHighlighting = prompt.highlight?.allowHighlighting ?? false;
 
   // Display Properties
-  const layoutVariable = stage.layout;
+  const layoutId = stage.layout;
   // `variable` alone drives highlight display — a display-only highlight sets
   // it with allowHighlighting off, which only gates the tap-to-toggle branch.
   const highlightAttribute = prompt.highlight?.variable;
@@ -103,15 +101,15 @@ const Sociogram = (stageProps: SociogramProps) => {
     component: <Node size="sm" />,
   });
 
-  // Sync positions from Redux when nodes or layout variable change.
+  // Sync positions from Redux when the nodes or the stage's layout change.
   // In automatic mode, only initialize new nodes — the simulation owns positions.
   useEffect(() => {
     if (layoutMode === 'AUTOMATIC') {
-      store.getState().syncNewFromNodes(canvasNodes, layoutVariable);
+      store.getState().syncNewFromNodes(canvasNodes, layoutId);
     } else {
-      store.getState().syncFromNodes(canvasNodes, layoutVariable);
+      store.getState().syncFromNodes(canvasNodes, layoutId);
     }
-  }, [canvasNodes, layoutVariable, store, layoutMode]);
+  }, [canvasNodes, layoutId, store, layoutMode]);
 
   // Force simulation (only active in AUTOMATIC mode). Continuous, user-toggleable,
   // and persists settled positions back to Redux.
@@ -121,7 +119,7 @@ const Sociogram = (stageProps: SociogramProps) => {
     edges,
     store,
     nodeRadius: nodeWidth / 2,
-    layoutVariable,
+    layoutId,
     groupVariable: '',
     persist: true,
     dispatch,
@@ -241,7 +239,7 @@ const Sociogram = (stageProps: SociogramProps) => {
           nodeId,
           attributePatch: {
             set: {
-              [layoutVariable]: { x: position.x, y: position.y },
+              [layoutId]: { x: position.x, y: position.y },
             },
             unset: [],
           },
@@ -249,7 +247,7 @@ const Sociogram = (stageProps: SociogramProps) => {
         }),
       ).then(writeSucceeded);
     },
-    [dispatch, layoutVariable, currentStep, layoutMode, track],
+    [dispatch, layoutId, currentStep, layoutMode, track],
   );
 
   // Handle drop from drawer to canvas (first placement of an unplaced node)
@@ -264,7 +262,7 @@ const Sociogram = (stageProps: SociogramProps) => {
           nodeId,
           attributePatch: {
             set: {
-              [layoutVariable]: { x: position.x, y: position.y },
+              [layoutId]: { x: position.x, y: position.y },
             },
             unset: [],
           },
@@ -272,7 +270,7 @@ const Sociogram = (stageProps: SociogramProps) => {
         }),
       ).then(writeSucceeded);
     },
-    [store, dispatch, layoutVariable, currentStep, layoutMode, track],
+    [store, dispatch, layoutId, currentStep, layoutMode, track],
   );
 
   // Reads each label as its node shows it when the node is unplaced: the
@@ -280,7 +278,7 @@ const Sociogram = (stageProps: SociogramProps) => {
   // otherwise.
   const labelNode = useNodeLabeller(useCachedOutcomes());
 
-  // Unplace a node: clearing the layout variable returns it to the drawer.
+  // Unplace a node: clearing its position in the layout returns it to the drawer.
   // Reached by dragging a placed node onto the drawer, or by pressing
   // Delete/Backspace on a focused node.
   const handleUnplaceNode = useCallback(
@@ -292,7 +290,7 @@ const Sociogram = (stageProps: SociogramProps) => {
       const stored = dispatch(
         updateNode({
           nodeId,
-          attributePatch: unplaceNodeAttributePatch(layoutVariable),
+          attributePatch: unplaceNodeAttributePatch(layoutId),
           currentStep,
         }),
       ).then(writeSucceeded);
@@ -301,15 +299,7 @@ const Sociogram = (stageProps: SociogramProps) => {
       );
       return stored;
     },
-    [
-      allNodes,
-      labelNode,
-      dispatch,
-      layoutVariable,
-      currentStep,
-      track,
-      announce,
-    ],
+    [allNodes, labelNode, dispatch, layoutId, currentStep, track, announce],
   );
 
   const drawerDropTarget = useMemo(

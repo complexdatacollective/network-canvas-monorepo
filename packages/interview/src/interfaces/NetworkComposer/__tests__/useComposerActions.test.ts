@@ -104,7 +104,7 @@ function makeWrapper(store: ReturnType<typeof makeStore>) {
 
 describe('useComposerActions', () => {
   // 1. createNodeAt adds node with correct attributes; returns the node's pk
-  it('createNodeAt adds a person node with quickAdd and layout attributes; returned id matches the node pk', async () => {
+  it('createNodeAt adds a person node with a quickAdd attribute and a position in the layout; returned id matches the node pk', async () => {
     const store = makeStore();
     const undoStore = createUndoStore();
 

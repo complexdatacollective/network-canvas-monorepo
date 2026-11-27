@@ -263,7 +263,7 @@ describe('the label of a highlighted attribute', () => {
  * What a preset READS, offered whoever else writes it.
  *
  * A narrative preset stores four references and writes none of them: the
- * runtime restores positions from the layout attribute with `persist: false`,
+ * runtime restores positions from the layout with `persist: false`,
  * reads the grouping attribute to draw hulls, and reads the highlight
  * attributes to highlight nodes. Classed as an unvalidated WRITER, the pickers
  * would run the exclusivity that keeps a bin or a stamp off an attribute a

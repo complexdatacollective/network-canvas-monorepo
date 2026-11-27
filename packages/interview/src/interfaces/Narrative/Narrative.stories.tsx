@@ -763,21 +763,21 @@ const buildTwoNodeGroup = () => {
 
 // --- SNA topology demos ---
 //
-// Each topology authors explicit, well-spread seed positions on the layout
-// variable (normalized 0-1) so the read-only cohesion + collision layout has a
+// Each topology authors explicit, well-spread seed positions in the layout
+// (normalized 0-1) so the read-only cohesion + collision layout has a
 // realistic Sociogram-style arrangement to refine, rather than a pre-clustered
-// blob. Positions are set via setNodeAttribute on the layout variable; nodes
+// blob. Positions are set via setNodeAttribute under the layout's id; nodes
 // without a layout value are not rendered by the Narrative interface.
 
 type Point = { x: number; y: number };
 
 const setLayout = (
   si: SyntheticInterview,
-  layoutVariableId: string,
+  layoutId: string,
   positions: Point[],
 ) => {
   positions.forEach((position, i) => {
-    si.setNodeAttribute(i, layoutVariableId, position);
+    si.setNodeAttribute(i, layoutId, position);
   });
 };
 

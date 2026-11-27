@@ -209,7 +209,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         expect(layout.x).toBeCloseTo(0.6, 1);
         expect(layout.y).toBeCloseTo(0.6, 1);
 
-        // The rendered node's inline position tracks the layout variable.
+        // The rendered node's inline position tracks its position in the layout.
         const style = await composer.getNode('Carol').getAttribute('style');
         const leftMatch = /left:\s*([\d.]+)%/.exec(style ?? '');
         expect(leftMatch).not.toBeNull();
