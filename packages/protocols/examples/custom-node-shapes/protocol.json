@@ -9,6 +9,14 @@
   "lastModified": "2026-11-13T00:00:00.000Z",
   "experiments": {},
   "codebook": {
+    "layouts": {
+      "67f223d3-7a19-5c10-94d9-ad66f8f7e6bc": {
+        "name": "illustrated_layout"
+      },
+      "809fb97e-b3d0-5e76-a9dc-65fae3c5042d": {
+        "name": "accented_layout"
+      }
+    },
     "node": {
       "4a31d1a4-c474-5343-8d68-43ac59eff8a3": {
         "name": "Part of my world",
@@ -224,10 +232,6 @@
               "required": true,
               "maxSelected": 1
             }
-          },
-          "7cc7af0b-0e6b-5304-b820-722005269399": {
-            "name": "layout",
-            "type": "layout"
           }
         }
       },
@@ -445,10 +449,6 @@
               "required": true,
               "maxSelected": 1
             }
-          },
-          "5d3e49be-a12b-5673-b0e3-3b8aaae36a38": {
-            "name": "layout",
-            "type": "layout"
           }
         }
       }
@@ -671,6 +671,7 @@
         "entity": "node",
         "types": ["4a31d1a4-c474-5343-8d68-43ac59eff8a3"]
       },
+      "layout": "67f223d3-7a19-5c10-94d9-ad66f8f7e6bc",
       "background": {
         "concentricCircles": 3,
         "skewedTowardCenter": true
@@ -680,9 +681,6 @@
           "id": "d68ec0c3-0264-533d-9709-b59676488e28",
           "text": {
             "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
-          },
-          "layout": {
-            "layoutVariable": "7cc7af0b-0e6b-5304-b820-722005269399"
           },
           "edges": {
             "create": "d1afb5e2-5112-5902-ba02-255ed7976153",
@@ -751,6 +749,7 @@
         "entity": "node",
         "types": ["a1403c8c-070e-5a3f-b201-dd1283371c86"]
       },
+      "layout": "809fb97e-b3d0-5e76-a9dc-65fae3c5042d",
       "background": {
         "concentricCircles": 3,
         "skewedTowardCenter": true
@@ -760,9 +759,6 @@
           "id": "ca59c43b-a6b5-54a6-bc61-6e53b00dda3b",
           "text": {
             "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
-          },
-          "layout": {
-            "layoutVariable": "5d3e49be-a12b-5673-b0e3-3b8aaae36a38"
           },
           "edges": {
             "create": "3723a5c7-6898-5390-8451-23072d8f5be7",

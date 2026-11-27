@@ -466,10 +466,6 @@
             "validation": {
               "minSelected": 1
             }
-          },
-          "a08b8051-1e97-5445-89a0-be9d247dbc0a": {
-            "name": "layout",
-            "type": "layout"
           }
         }
       }
@@ -478,6 +474,11 @@
       "14ae2a64-0021-538d-bfef-d756ba74cfbd": {
         "name": "Knows",
         "color": "edge-color-seq-1"
+      }
+    },
+    "layouts": {
+      "a08b8051-1e97-5445-89a0-be9d247dbc0a": {
+        "name": "layout"
       }
     }
   },
@@ -735,27 +736,27 @@
           "label": {
             "en": "Smoking"
           },
-          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
           "groupVariable": "2d97da18-ea10-5c8c-8135-5c6bea8dd5dc",
-          "highlight": []
+          "highlight": [],
+          "layout": "a08b8051-1e97-5445-89a0-be9d247dbc0a"
         },
         {
           "id": "d3da7416-5989-5979-ad4e-cdcac3c46663",
           "label": {
             "en": "Physical activity"
           },
-          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
           "groupVariable": "a585234d-14b0-5b6c-bd92-02bf65c6f043",
-          "highlight": []
+          "highlight": [],
+          "layout": "a08b8051-1e97-5445-89a0-be9d247dbc0a"
         },
         {
           "id": "59da2f24-3470-5c3a-8cfc-4c21783cb0af",
           "label": {
             "en": "Drinking"
           },
-          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
           "groupVariable": "859fa610-6c3e-5d45-95a1-97b800483da2",
-          "highlight": []
+          "highlight": [],
+          "layout": "a08b8051-1e97-5445-89a0-be9d247dbc0a"
         }
       ],
       "background": {

@@ -682,12 +682,13 @@
                 "value": 5
               }
             ]
-          },
-          "353f0d07-aa7a-5ccb-a899-7e079cfa5ba8": {
-            "name": "layout",
-            "type": "layout"
           }
         }
+      }
+    },
+    "layouts": {
+      "353f0d07-aa7a-5ccb-a899-7e079cfa5ba8": {
+        "name": "layout"
       }
     }
   },
@@ -1011,9 +1012,9 @@
           "label": {
             "en": "Support map by source (formal vs informal)"
           },
-          "layoutVariable": "353f0d07-aa7a-5ccb-a899-7e079cfa5ba8",
           "groupVariable": "eab06e13-a9d9-5d1e-b9ca-7fcb3e3e6465",
-          "highlight": []
+          "highlight": [],
+          "layout": "353f0d07-aa7a-5ccb-a899-7e079cfa5ba8"
         }
       ],
       "background": {

@@ -695,10 +695,6 @@
                 "value": 5
               }
             ]
-          },
-          "75f6452d-9382-5004-ab8c-170b0ee38c07": {
-            "name": "layout",
-            "type": "layout"
           }
         }
       }
@@ -707,6 +703,11 @@
       "22bd9e04-df49-53ab-86c3-f7a0f08273be": {
         "name": "Knows",
         "color": "edge-color-seq-1"
+      }
+    },
+    "layouts": {
+      "75f6452d-9382-5004-ab8c-170b0ee38c07": {
+        "name": "layout"
       }
     }
   },
@@ -1112,15 +1113,13 @@
           "text": {
             "en": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**."
           },
-          "layout": {
-            "layoutVariable": "75f6452d-9382-5004-ab8c-170b0ee38c07"
-          },
           "edges": {
             "create": "22bd9e04-df49-53ab-86c3-f7a0f08273be",
             "display": ["22bd9e04-df49-53ab-86c3-f7a0f08273be"]
           }
         }
-      ]
+      ],
+      "layout": "75f6452d-9382-5004-ab8c-170b0ee38c07"
     },
     {
       "id": "92905b20-ddf2-5e4e-804c-2a57e66f4005",
@@ -1146,7 +1145,6 @@
           "label": {
             "en": "Supportive vs difficult ties"
           },
-          "layoutVariable": "75f6452d-9382-5004-ab8c-170b0ee38c07",
           "highlight": [
             {
               "id": "69476724-d32f-5cb7-81f9-ec634ac17d87",
@@ -1162,14 +1160,14 @@
                 "en": "Source of stress"
               }
             }
-          ]
+          ],
+          "layout": "75f6452d-9382-5004-ab8c-170b0ee38c07"
         },
         {
           "id": "9b8e5033-0fbe-5afc-889b-25405cb28f39",
           "label": {
             "en": "Who knows about your mental health"
           },
-          "layoutVariable": "75f6452d-9382-5004-ab8c-170b0ee38c07",
           "highlight": [
             {
               "id": "d5d5c3cc-625d-5d25-98dd-757f026c45b9",
@@ -1185,7 +1183,8 @@
                 "en": "Formal or clinical help"
               }
             }
-          ]
+          ],
+          "layout": "75f6452d-9382-5004-ab8c-170b0ee38c07"
         }
       ],
       "background": {

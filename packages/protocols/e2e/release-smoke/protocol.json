@@ -25,10 +25,6 @@
               "required": true
             }
           },
-          "160bee45-a7be-5011-bd76-05d7a6271344": {
-            "name": "layout",
-            "type": "layout"
-          },
           "117edc34-6e53-544f-ad47-9fe23b055c68": {
             "name": "context",
             "type": "categorical",
@@ -359,6 +355,11 @@
           ]
         }
       }
+    },
+    "layouts": {
+      "160bee45-a7be-5011-bd76-05d7a6271344": {
+        "name": "layout"
+      }
     }
   },
   "stages": [
@@ -520,15 +521,13 @@
             "en-US": "Drag to place everyone; link people who know each other.",
             "es": "Arrastra para ubicar a todos; une a las personas que se conocen entre sí."
           },
-          "layout": {
-            "layoutVariable": "160bee45-a7be-5011-bd76-05d7a6271344"
-          },
           "edges": {
             "create": "9565afd7-9888-54fb-8e32-7c627cb2f740",
             "display": ["9565afd7-9888-54fb-8e32-7c627cb2f740"]
           }
         }
-      ]
+      ],
+      "layout": "160bee45-a7be-5011-bd76-05d7a6271344"
     },
     {
       "id": "863b2c2e-6148-502d-ab6e-45c18705fa51",

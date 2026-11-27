@@ -21,14 +21,6 @@
               "required": true
             }
           },
-          "ee090c9b-2b70-4648-a6db-328d4ef4dbfe": {
-            "name": "sociogram_layout",
-            "type": "layout"
-          },
-          "88271ba2-301d-402c-8407-cfa89446ca1d": {
-            "name": "box_layout",
-            "type": "layout"
-          },
           "6637c4a8-c383-4a54-bfd8-7f093a1cb4e1": {
             "name": "communication_freq",
             "type": "ordinal",
@@ -543,6 +535,14 @@
             }
           ]
         }
+      }
+    },
+    "layouts": {
+      "ee090c9b-2b70-4648-a6db-328d4ef4dbfe": {
+        "name": "sociogram_layout"
+      },
+      "88271ba2-301d-402c-8407-cfa89446ca1d": {
+        "name": "box_layout"
       }
     }
   },
@@ -1084,14 +1084,12 @@
           "text": {
             "en": "Please position the people you have named amongst the concentric circles. Place people who know each other together, and put people you are closer to towards the center of the circles."
           },
-          "layout": {
-            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
-          },
           "highlight": {
             "allowHighlighting": false
           }
         }
-      ]
+      ],
+      "layout": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
     },
     {
       "id": "8dcc71c0-32fe-11eb-8503-3b4fa95b8bc6",
@@ -1112,14 +1110,12 @@
           "text": {
             "en": "Please position the people you have named in the boxes according to which group you feel they most belong to"
           },
-          "layout": {
-            "layoutVariable": "88271ba2-301d-402c-8407-cfa89446ca1d"
-          },
           "highlight": {
             "allowHighlighting": false
           }
         }
-      ]
+      ],
+      "layout": "88271ba2-301d-402c-8407-cfa89446ca1d"
     },
     {
       "id": "0f0dbd20-32ff-11eb-8982-61526ca14943",
@@ -1151,9 +1147,6 @@
           "text": {
             "en": "Please connect any two people who might spend time together without you being there"
           },
-          "layout": {
-            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
-          },
           "edges": {
             "display": ["a489e869-2555-4896-a760-2d38046b54f9"],
             "create": "a489e869-2555-4896-a760-2d38046b54f9"
@@ -1167,9 +1160,6 @@
           "text": {
             "en": "Please connect any two people who have conflict, or who don't get on well with each other"
           },
-          "layout": {
-            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
-          },
           "edges": {
             "display": ["8487418e-cd64-452b-9064-b46ffff28a79"],
             "create": "8487418e-cd64-452b-9064-b46ffff28a79"
@@ -1178,7 +1168,8 @@
             "allowHighlighting": false
           }
         }
-      ]
+      ],
+      "layout": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
     },
     {
       "id": "903709bb-8e63-5216-8d64-20f49dc3d855",
@@ -1295,9 +1286,6 @@
           "text": {
             "en": "Please select anyone who you have asked for advice within the previous 6 months"
           },
-          "layout": {
-            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
-          },
           "edges": {
             "display": [
               "a489e869-2555-4896-a760-2d38046b54f9",
@@ -1314,9 +1302,6 @@
           "text": {
             "en": "Please select anyone who has supported you financially within the previous 6 months"
           },
-          "layout": {
-            "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
-          },
           "edges": {
             "display": [
               "a489e869-2555-4896-a760-2d38046b54f9",
@@ -1328,7 +1313,8 @@
             "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45"
           }
         }
-      ]
+      ],
+      "layout": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
     },
     {
       "id": "3b85fcc0-3302-11eb-8982-61526ca14943",
@@ -1481,7 +1467,6 @@
           "label": {
             "en": "Sample Preset"
           },
-          "layoutVariable": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe",
           "groupVariable": "132ad372-2ef2-4eec-820e-9eae91829e53",
           "edges": {
             "display": [
@@ -1516,7 +1501,8 @@
                 "en": "provides_material_support"
               }
             }
-          ]
+          ],
+          "layout": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"
         }
       ],
       "background": {

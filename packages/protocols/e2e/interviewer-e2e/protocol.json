@@ -42,10 +42,6 @@
                 "value": false
               }
             ]
-          },
-          "38c54f1a-e9dd-50d7-926b-b50eefbe7b2b": {
-            "name": "layout",
-            "type": "layout"
           }
         }
       }
@@ -66,6 +62,11 @@
             "required": true
           }
         }
+      }
+    },
+    "layouts": {
+      "38c54f1a-e9dd-50d7-926b-b50eefbe7b2b": {
+        "name": "layout"
       }
     }
   },
@@ -159,15 +160,13 @@
           "text": {
             "en-US": "Drag to place; link people who know each other."
           },
-          "layout": {
-            "layoutVariable": "38c54f1a-e9dd-50d7-926b-b50eefbe7b2b"
-          },
           "edges": {
             "create": "65c6495c-b0da-58f9-965c-a7ca10ad018e",
             "display": ["65c6495c-b0da-58f9-965c-a7ca10ad018e"]
           }
         }
-      ]
+      ],
+      "layout": "38c54f1a-e9dd-50d7-926b-b50eefbe7b2b"
     },
     {
       "id": "2db7ec32-a68e-55c7-b5fb-87a72220bd8a",

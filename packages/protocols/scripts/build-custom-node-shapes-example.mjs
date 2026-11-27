@@ -116,7 +116,6 @@ function nodeType({ key, name, color, customShapes }) {
         })),
         validation: { required: true, maxSelected: 1 },
       },
-      [`${key}_layout`]: { name: 'layout', type: 'layout' },
     },
   };
 }
@@ -152,6 +151,7 @@ function sociogram({ name, type, edge, label }) {
     type: 'Sociogram',
     label: en(label),
     subject: { entity: 'node', types: [type] },
+    layout: `${type}_layout`,
     background: { concentricCircles: 3, skewedTowardCenter: true },
     prompts: [
       {
@@ -159,7 +159,6 @@ function sociogram({ name, type, edge, label }) {
         text: en(
           'Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**.',
         ),
-        layout: { layoutVariable: `${type}_layout` },
         edges: { create: edge, display: [edge] },
       },
     ],
@@ -198,6 +197,10 @@ async function buildProtocol() {
     lastModified: '2026-11-13T00:00:00.000Z',
     experiments: {},
     codebook: {
+      layouts: {
+        world_illustrated_layout: { name: 'illustrated_layout' },
+        world_accented_layout: { name: 'accented_layout' },
+      },
       node: {
         world_illustrated: nodeType({
           key: 'world_illustrated',

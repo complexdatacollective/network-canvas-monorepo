@@ -130,10 +130,6 @@
             "type": "boolean",
             "component": "Toggle"
           },
-          "b1df922c-05fd-5e69-9514-02f6798664fc": {
-            "name": "layout",
-            "type": "layout"
-          },
           "4274a5f4-3a85-5a09-ad5c-c62feb516e42": {
             "name": "tie_type",
             "type": "categorical",
@@ -532,6 +528,11 @@
       "a2c89998-4caa-569b-a761-41284575c7e0": {
         "name": "Knows",
         "color": "edge-color-seq-2"
+      }
+    },
+    "layouts": {
+      "b1df922c-05fd-5e69-9514-02f6798664fc": {
+        "name": "layout"
       }
     }
   },
@@ -1219,9 +1220,6 @@
           "text": {
             "en": "Connect any of these people who **know one another**."
           },
-          "layout": {
-            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
-          },
           "edges": {
             "create": "a2c89998-4caa-569b-a761-41284575c7e0",
             "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
@@ -1231,9 +1229,6 @@
           "id": "6ceeaaea-65ec-519b-aa57-f430a8dbbdc4",
           "text": {
             "en": "Who do you **share health or genetic information** with?"
-          },
-          "layout": {
-            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
@@ -1248,9 +1243,6 @@
           "text": {
             "en": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?"
           },
-          "layout": {
-            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
-          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "ac30061c-f1d0-5f76-8e30-58d6331f57f3"
@@ -1264,9 +1256,6 @@
           "text": {
             "en": "Who do you **share your feelings** with about all of this?"
           },
-          "layout": {
-            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
-          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "ebed7466-4e07-5a01-8019-7b05fb13b463"
@@ -1279,9 +1268,6 @@
           "id": "3b2ae83b-faa8-53a1-95e9-341b1802e91f",
           "text": {
             "en": "Who do you share a **spiritual or religious connection** with?"
-          },
-          "layout": {
-            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
@@ -1305,7 +1291,8 @@
             }
           }
         ]
-      }
+      },
+      "layout": "b1df922c-05fd-5e69-9514-02f6798664fc"
     },
     {
       "id": "db9c4410-1ec0-5d82-a225-89494d02beb3",
@@ -1330,9 +1317,6 @@
           "text": {
             "en": "Who in your family **looks for information** about this condition — reads about it, asks questions, or keeps track of what is known?"
           },
-          "layout": {
-            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
-          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "daa3b5ec-b3a0-50fc-a73d-5a9db535e8c6"
@@ -1346,9 +1330,6 @@
           "text": {
             "en": "Who in your family **helps people talk** about it and passes news on?"
           },
-          "layout": {
-            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
-          },
           "highlight": {
             "allowHighlighting": true,
             "variable": "5609e618-49dd-5033-b64c-69ecd27f84c7"
@@ -1361,9 +1342,6 @@
           "id": "7a07dd97-d91d-5b11-bd10-7b0f708999f9",
           "text": {
             "en": "Who in your family finds it **hard to talk** about it, or would rather not know?"
-          },
-          "layout": {
-            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
@@ -1398,7 +1376,8 @@
             }
           }
         ]
-      }
+      },
+      "layout": "b1df922c-05fd-5e69-9514-02f6798664fc"
     },
     {
       "id": "b2b39ff2-d6d7-5d51-8833-84450677794b",
@@ -1432,7 +1411,6 @@
           "label": {
             "en": "Everyone on your map"
           },
-          "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc",
           "filter": {
             "rules": [
               {
@@ -1457,14 +1435,14 @@
                 }
               }
             ]
-          }
+          },
+          "layout": "b1df922c-05fd-5e69-9514-02f6798664fc"
         },
         {
           "id": "89a74f0f-55ff-53fe-90b1-35ee12e2ae89",
           "label": {
             "en": "Forms of support"
           },
-          "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc",
           "filter": {
             "rules": [
               {
@@ -1519,14 +1497,14 @@
                 "en": "Spiritual or religious connection"
               }
             }
-          ]
+          ],
+          "layout": "b1df922c-05fd-5e69-9514-02f6798664fc"
         },
         {
           "id": "43a8eb2d-c26e-562c-90c6-a728e6408b91",
           "label": {
             "en": "Family health communication"
           },
-          "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc",
           "filter": {
             "rules": [
               {
@@ -1574,7 +1552,8 @@
                 "en": "Finds it hard to talk about it"
               }
             }
-          ]
+          ],
+          "layout": "b1df922c-05fd-5e69-9514-02f6798664fc"
         }
       ]
     },

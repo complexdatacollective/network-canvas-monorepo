@@ -31,10 +31,6 @@
             "type": "text",
             "component": "Text"
           },
-          "59869f03-9b27-57a6-95bd-b07125f456ca": {
-            "name": "layout",
-            "type": "layout"
-          },
           "b4f13220-7694-50aa-8b09-82d53ba64c0f": {
             "name": "location",
             "type": "location"
@@ -357,6 +353,11 @@
           }
         }
       }
+    },
+    "layouts": {
+      "59869f03-9b27-57a6-95bd-b07125f456ca": {
+        "name": "layout"
+      }
     }
   },
   "stages": [
@@ -561,9 +562,6 @@
           "text": {
             "en-US": "Place the people who know each other close together"
           },
-          "layout": {
-            "layoutVariable": "59869f03-9b27-57a6-95bd-b07125f456ca"
-          },
           "edges": {
             "display": ["be546dd6-d6dc-5f85-b821-974abd0845e5"],
             "create": "be546dd6-d6dc-5f85-b821-974abd0845e5"
@@ -577,9 +575,6 @@
           "text": {
             "en-US": "Highlight the people you feel closest to"
           },
-          "layout": {
-            "layoutVariable": "59869f03-9b27-57a6-95bd-b07125f456ca"
-          },
           "edges": {
             "display": ["be546dd6-d6dc-5f85-b821-974abd0845e5"]
           },
@@ -588,7 +583,8 @@
             "variable": "c5612235-bc7e-5f25-bf5f-ecaa548db445"
           }
         }
-      ]
+      ],
+      "layout": "59869f03-9b27-57a6-95bd-b07125f456ca"
     },
     {
       "id": "aae728cd-e60d-503d-b263-7fa21099894a",
@@ -774,7 +770,6 @@
           "label": {
             "en-US": "Default layout"
           },
-          "layoutVariable": "59869f03-9b27-57a6-95bd-b07125f456ca",
           "groupVariable": "c85d3510-7891-5c8d-a5c3-78129528cd29",
           "edges": {
             "display": [
@@ -795,7 +790,8 @@
                 "en-US": "Flagged"
               }
             }
-          ]
+          ],
+          "layout": "59869f03-9b27-57a6-95bd-b07125f456ca"
         }
       ],
       "background": {
@@ -1143,10 +1139,10 @@
         "types": ["f7a9fa56-4b42-57df-865a-ea1fc6569f42"]
       },
       "quickAdd": "0036a0d6-0feb-58d0-816c-42c8a72312da",
-      "layoutVariable": "59869f03-9b27-57a6-95bd-b07125f456ca",
       "background": {
         "concentricCircles": 4
-      }
+      },
+      "layout": "59869f03-9b27-57a6-95bd-b07125f456ca"
     },
     {
       "id": "15031867-da58-528e-9b3f-d98870df0a81",

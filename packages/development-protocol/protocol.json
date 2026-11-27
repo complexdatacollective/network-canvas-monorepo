@@ -900,9 +900,6 @@
               "direction": "desc"
             }
           ],
-          "layout": {
-            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
-          },
           "edges": {
             "display": [
               "01e58147-1429-5f19-93fc-52b08cd0685a",
@@ -919,9 +916,6 @@
           "text": {
             "en": "Creates a second edge type",
             "es": "Crea un segundo tipo de vínculo"
-          },
-          "layout": {
-            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "sortOrder": [
             {
@@ -947,9 +941,6 @@
             "en": "Toggle variable",
             "es": "Variable de interruptor"
           },
-          "layout": {
-            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
-          },
           "sortOrder": [
             {
               "id": "93ca6c0a-039f-54b2-833e-ff11fa354f3a",
@@ -974,9 +965,6 @@
             "en": "This prompt shows 3 concentric circles and creates friend edges.",
             "es": "Esta instrucción muestra 3 círculos concéntricos y crea vínculos de amistad."
           },
-          "layout": {
-            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
-          },
           "edges": {
             "display": [
               "70b691ec-912f-5207-a0ef-63c78d7d3df9",
@@ -985,7 +973,8 @@
             "create": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
           }
         }
-      ]
+      ],
+      "layout": "792400ec-4fd2-535d-bf18-65cb440ec801"
     },
     {
       "id": "0f0347ee-0dec-5ad5-87db-08aeb130fd2c",
@@ -1015,12 +1004,10 @@
               "property": "*",
               "direction": "desc"
             }
-          ],
-          "layout": {
-            "layoutVariable": "28fec613-725c-5ef7-90ed-3d9c8d42f2d0"
-          }
+          ]
         }
-      ]
+      ],
+      "layout": "28fec613-725c-5ef7-90ed-3d9c8d42f2d0"
     },
     {
       "id": "fafa24ad-d1d7-51f1-b795-ff13d0015709",
@@ -1450,7 +1437,6 @@
             "en": "My preset",
             "es": "Mi ajuste predefinido"
           },
-          "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
             "display": [
@@ -1489,7 +1475,8 @@
                 "es": "amigo cercano"
               }
             }
-          ]
+          ],
+          "layout": "792400ec-4fd2-535d-bf18-65cb440ec801"
         },
         {
           "id": "78af7c87-b4a0-5ecc-9255-f52de2c1e87f",
@@ -1497,7 +1484,6 @@
             "en": "Another preset (with more text than will fit)",
             "es": "Otro ajuste predefinido (con más texto del que cabe)"
           },
-          "layoutVariable": "e13ca72d-aefe-4f48-841d-09f020e0e987",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
             "display": [
@@ -1520,7 +1506,8 @@
                 "es": "ha dado consejos"
               }
             }
-          ]
+          ],
+          "layout": "e13ca72d-aefe-4f48-841d-09f020e0e987"
         }
       ],
       "background": {
@@ -1609,10 +1596,10 @@
         "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "quickAdd": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
-      "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801",
       "background": {
         "concentricCircles": 4
-      }
+      },
+      "layout": "792400ec-4fd2-535d-bf18-65cb440ec801"
     },
     {
       "id": "ceabf87a-65c2-580a-86e2-402a9ad08c5f",
@@ -2182,18 +2169,6 @@
               }
             ]
           },
-          "792400ec-4fd2-535d-bf18-65cb440ec801": {
-            "name": "closenessLayout",
-            "type": "layout"
-          },
-          "15c24db9-8fb3-5dc9-b8e0-f29e7214f746": {
-            "name": "manualLayout",
-            "type": "layout"
-          },
-          "e13ca72d-aefe-4f48-841d-09f020e0e987": {
-            "name": "anotherLayout",
-            "type": "layout"
-          },
           "d2d8091e-8170-42c1-9dc0-c0d54553b3e6": {
             "name": "talk_friend",
             "type": "boolean"
@@ -2671,14 +2646,6 @@
           "0a5f7952-a9a7-4e87-9353-2d17a59284ee": {
             "name": "rawaddr",
             "type": "text"
-          },
-          "28fec613-725c-5ef7-90ed-3d9c8d42f2d0": {
-            "name": "Layout",
-            "type": "layout"
-          },
-          "fbd9661c-9de5-5cee-8492-c6bce2f7b238": {
-            "name": "Layout_Manual",
-            "type": "layout"
           }
         }
       },
@@ -3423,6 +3390,23 @@
             "type": "boolean"
           }
         }
+      }
+    },
+    "layouts": {
+      "792400ec-4fd2-535d-bf18-65cb440ec801": {
+        "name": "closenessLayout"
+      },
+      "15c24db9-8fb3-5dc9-b8e0-f29e7214f746": {
+        "name": "manualLayout"
+      },
+      "e13ca72d-aefe-4f48-841d-09f020e0e987": {
+        "name": "anotherLayout"
+      },
+      "28fec613-725c-5ef7-90ed-3d9c8d42f2d0": {
+        "name": "Layout"
+      },
+      "fbd9661c-9de5-5cee-8492-c6bce2f7b238": {
+        "name": "Layout_Manual"
       }
     }
   },

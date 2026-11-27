@@ -622,10 +622,6 @@
           "eb6ed071-ff6a-5bf4-87d9-c83437b55bff": {
             "name": "alter_location",
             "type": "location"
-          },
-          "27b437a0-0e36-550b-a463-63c9f1077c64": {
-            "name": "layout",
-            "type": "layout"
           }
         }
       }
@@ -634,6 +630,11 @@
       "94a9131f-e617-5e7a-8e73-88f967853c87": {
         "name": "Knows",
         "color": "edge-color-seq-1"
+      }
+    },
+    "layouts": {
+      "27b437a0-0e36-550b-a463-63c9f1077c64": {
+        "name": "layout"
       }
     }
   },
@@ -1144,15 +1145,13 @@
             "es": "Las personas que ha mencionado aparecen abajo, ya colocadas automáticamente. Por favor, dibuje una línea entre cada **par de personas que se conozcan entre sí**, es decir, que se reconozcan mutuamente y tengan al menos algo de contacto, no solo a través de usted.",
             "hu": "Az Ön által említett embereket alább automatikusan elrendeztük. Kérjük, húzzon vonalat minden olyan **két ember közé, akik ismerik egymást** – vagyis akik felismernék egymást, és akiknek Öntől függetlenül is van legalább egy kis kapcsolatuk egymással."
           },
-          "layout": {
-            "layoutVariable": "27b437a0-0e36-550b-a463-63c9f1077c64"
-          },
           "edges": {
             "create": "94a9131f-e617-5e7a-8e73-88f967853c87",
             "display": ["94a9131f-e617-5e7a-8e73-88f967853c87"]
           }
         }
-      ]
+      ],
+      "layout": "27b437a0-0e36-550b-a463-63c9f1077c64"
     },
     {
       "id": "55ec0a3b-e1b7-5db8-bc7a-93fb709b88e1",
@@ -1194,7 +1193,6 @@
             "es": "De dónde son las personas",
             "hu": "Ki honnan származik"
           },
-          "layoutVariable": "27b437a0-0e36-550b-a463-63c9f1077c64",
           "groupVariable": "b3222a79-a319-5ef8-a8c9-4848b80032a8",
           "edges": {
             "display": [
@@ -1219,7 +1217,8 @@
                 "hu": "Azonos etnikai vagy kulturális háttér"
               }
             }
-          ]
+          ],
+          "layout": "27b437a0-0e36-550b-a463-63c9f1077c64"
         },
         {
           "id": "5e1d548d-c17c-586b-a9a3-d350933e3c8d",
@@ -1228,7 +1227,6 @@
             "es": "Apoyo en toda la red",
             "hu": "Támogatás a kapcsolati hálóban"
           },
-          "layoutVariable": "27b437a0-0e36-550b-a463-63c9f1077c64",
           "groupVariable": "a7da3315-920b-5e1e-a780-9c5a0af9e29d",
           "edges": {
             "display": [
@@ -1242,7 +1240,8 @@
                 }
               }
             ]
-          }
+          },
+          "layout": "27b437a0-0e36-550b-a463-63c9f1077c64"
         }
       ],
       "background": {

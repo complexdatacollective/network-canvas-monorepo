@@ -341,10 +341,6 @@
             "parameters": {
               "type": "month"
             }
-          },
-          "18908d60-bec8-5c71-aa87-60e8e725e06c": {
-            "name": "layout",
-            "type": "layout"
           }
         }
       }
@@ -354,6 +350,11 @@
         "name": "Knows",
         "color": "edge-color-seq-1",
         "variables": {}
+      }
+    },
+    "layouts": {
+      "18908d60-bec8-5c71-aa87-60e8e725e06c": {
+        "name": "layout"
       }
     }
   },
@@ -663,9 +664,6 @@
           "text": {
             "en": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected."
           },
-          "layout": {
-            "layoutVariable": "18908d60-bec8-5c71-aa87-60e8e725e06c"
-          },
           "edges": {
             "create": "36005e0a-931e-5e15-ac5a-4f07c80ab47b",
             "display": ["36005e0a-931e-5e15-ac5a-4f07c80ab47b"]
@@ -674,7 +672,8 @@
             "allowHighlighting": false
           }
         }
-      ]
+      ],
+      "layout": "18908d60-bec8-5c71-aa87-60e8e725e06c"
     },
     {
       "id": "e8e11c03-2072-57d5-911b-8fd997e7cf7a",

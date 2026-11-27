@@ -237,10 +237,6 @@
           "818dc328-e9b4-5a52-b94d-6251c8e0f86b": {
             "name": "close_to_partner",
             "type": "boolean"
-          },
-          "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b": {
-            "name": "layout",
-            "type": "layout"
           }
         },
         "color": "node-color-seq-1",
@@ -479,6 +475,11 @@
             }
           ]
         }
+      }
+    },
+    "layouts": {
+      "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b": {
+        "name": "layout"
       }
     }
   },
@@ -938,9 +939,6 @@
           "text": {
             "en": "The people you mentioned are arranged for you below. Draw a line between any **two people who know each other**."
           },
-          "layout": {
-            "layoutVariable": "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b"
-          },
           "edges": {
             "display": ["7f9978de-5e31-5842-aa44-e480a089f7d3"],
             "create": "7f9978de-5e31-5842-aa44-e480a089f7d3"
@@ -951,9 +949,6 @@
           "text": {
             "en": "Now tap anyone who is **close to, or regularly in touch with, the person who harmed you**."
           },
-          "layout": {
-            "layoutVariable": "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b"
-          },
           "edges": {
             "display": ["7f9978de-5e31-5842-aa44-e480a089f7d3"]
           },
@@ -962,7 +957,8 @@
             "variable": "818dc328-e9b4-5a52-b94d-6251c8e0f86b"
           }
         }
-      ]
+      ],
+      "layout": "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b"
     },
     {
       "id": "4244e65d-aa8d-5a6a-9fa8-0e622cc11a2c",

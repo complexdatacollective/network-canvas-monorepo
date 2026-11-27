@@ -406,10 +406,6 @@
             "type": "text",
             "component": "TextArea"
           },
-          "bbf798ba-b8e5-5f9c-9529-77e756079940": {
-            "name": "layout",
-            "type": "layout"
-          },
           "ea198045-6a3a-44e9-86b7-a02263b9f891": {
             "name": "name",
             "type": "text",
@@ -429,6 +425,11 @@
       "3fc03840-a26d-56d9-9449-7b3c042e882d": {
         "name": "Close",
         "color": "edge-color-seq-2"
+      }
+    },
+    "layouts": {
+      "bbf798ba-b8e5-5f9c-9529-77e756079940": {
+        "name": "layout"
       }
     }
   },
@@ -545,7 +546,6 @@
         "types": ["93d1e2e9-4675-5246-9270-6c58443e26d4"]
       },
       "quickAdd": "ea198045-6a3a-44e9-86b7-a02263b9f891",
-      "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
       "convexHullVariable": "8a5878ef-1cd9-5d9a-b791-827e8125c72d",
       "background": {
         "concentricCircles": 1,
@@ -646,7 +646,8 @@
             "en": "Close"
           }
         }
-      ]
+      ],
+      "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"
     },
     {
       "id": "3f6fac4d-04f0-52d1-8a18-cbece93bfc43",
@@ -683,15 +684,14 @@
           "label": {
             "en": "The circles of your life"
           },
-          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
-          "groupVariable": "8a5878ef-1cd9-5d9a-b791-827e8125c72d"
+          "groupVariable": "8a5878ef-1cd9-5d9a-b791-827e8125c72d",
+          "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"
         },
         {
           "id": "0d2ef46d-d28a-589e-a391-912967a94cee",
           "label": {
             "en": "Before and since"
           },
-          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
           "highlight": [
             {
               "id": "797ae0e8-41f4-51ad-b637-bdf47ae09eeb",
@@ -707,14 +707,14 @@
                 "en": "New since the change"
               }
             }
-          ]
+          ],
+          "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"
         },
         {
           "id": "f617bdac-dda8-5168-b778-3b2892c4c60e",
           "label": {
             "en": "Who helped, and who didn't"
           },
-          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
           "highlight": [
             {
               "id": "e5715d6e-06f6-5574-804f-abe17db7b57d",
@@ -730,14 +730,14 @@
                 "en": "Made things harder"
               }
             }
-          ]
+          ],
+          "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"
         },
         {
           "id": "71b81337-c2fd-5c41-930f-ee134d7f3b83",
           "label": {
             "en": "Who fell away"
           },
-          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
           "groupVariable": "8a5878ef-1cd9-5d9a-b791-827e8125c72d",
           "edges": {
             "display": [
@@ -758,14 +758,14 @@
                 "en": "Lost touch since the change"
               }
             }
-          ]
+          ],
+          "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"
         },
         {
           "id": "18c7cba0-23ef-5695-86bc-6001e86d93e1",
           "label": {
             "en": "Who is close to whom"
           },
-          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
           "edges": {
             "display": [
               {
@@ -776,7 +776,8 @@
                 }
               }
             ]
-          }
+          },
+          "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"
         }
       ]
     },
