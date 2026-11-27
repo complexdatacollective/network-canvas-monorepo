@@ -4,6 +4,7 @@ import { enIntl as intl, readMessage } from '../../testing/i18n.ts';
 import { testId } from '../../testing/testId.ts';
 import {
   exportColumnRefusals,
+  layoutNameRefusal,
   type ScopedVariable,
   type VariableNameScope,
   variableNameRefusal,
@@ -579,5 +580,46 @@ describe('the export columns an attribute would write', () => {
     expect(
       refusals({ name: 'Foo', type: 'text' }, [{ name: 'foo', type: 'text' }]),
     ).toEqual([]);
+  });
+});
+
+describe('the rule for a layout name', () => {
+  const nodeTypes = {
+    person: {
+      name: 'Person',
+      variables: {
+        'v-name': { name: 'name', type: 'text' as const },
+        'v-map-x': { name: 'map_x', type: 'number' as const },
+      },
+    },
+  };
+  const layouts = { 'layout-home': { name: 'Home' } };
+  const refusal = (typed: string) =>
+    layoutNameRefusal(typed, { layouts, nodeTypes, intl });
+
+  it('takes a name nothing else holds', () => {
+    expect(refusal('Neighbourhood')).toBe(undefined);
+  });
+
+  it('refuses the name of another layout, whatever its case', () => {
+    expect(refusal('HOME')).toBe(
+      'the codebook already has a layout called that',
+    );
+  });
+
+  it('refuses the name of a node type’s attribute', () => {
+    expect(refusal('name')).toBe(
+      'the node type “Person” already has an attribute called that',
+    );
+  });
+
+  it('refuses a name with a control character', () => {
+    expect(refusal('home\tmap')).toBe(CONTROL);
+  });
+
+  it('refuses a name whose position columns an attribute already uses', () => {
+    expect(refusal('map')).toBe(
+      'the export would write its positions to the column “map_x”, which is already used',
+    );
   });
 });
