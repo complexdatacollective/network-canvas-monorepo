@@ -40,13 +40,7 @@ const stageTypes = Object.keys(import.meta.glob('../content/*.md')).map(
  * can find, so the step highlights its whole section. Each is a known gap to
  * close, listed so that any other step naming a missing field fails.
  */
-const KNOWN_UNMARKED_FIELDS = new Set([
-  'FamilyPedigree:nodeConfiguration.relationshipToParticipantAttribute',
-  'FamilyPedigree:form.fields',
-  'FamilyPedigree:completeness.scope',
-  'FamilyPedigree:completeness.enforcement',
-  'NetworkComposer:nodeForm.fields',
-]);
+const KNOWN_UNMARKED_FIELDS = new Set(['NetworkComposer:nodeForm.fields']);
 
 /** Checked in StageLanguagesSection.test.tsx, with Architect's store. */
 const CHECKED_ELSEWHERE = new Set(['LanguageChooser']);
@@ -83,6 +77,25 @@ const REVEAL: Readonly<
   // ...and a name generator's minimum and maximum notices.
   NameGenerator: (fields) =>
     withBehaviours(fields, { minNodes: 1, maxNodes: 5 }),
+  // The optional pedigree sections render their fields only once switched on.
+  FamilyPedigree: (fields) => {
+    const current = fields.nodeConfiguration;
+    const nodeConfiguration =
+      typeof current === 'object' && current !== null ? current : {};
+    return {
+      ...fields,
+      nodeConfiguration: {
+        ...nodeConfiguration,
+        relationshipToParticipantAttribute: 'relationship-to-participant',
+      },
+      completeness: { scope: 'parents', enforcement: 'required' },
+      form: {
+        fields: [
+          { variable: 'additional-attribute', prompt: { 'en-US': 'Prompt' } },
+        ],
+      },
+    };
+  },
 };
 
 describe('walkthrough sections', () => {
