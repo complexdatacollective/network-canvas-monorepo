@@ -96,6 +96,48 @@ export const getNodeTypesWithLayout = (
     : [];
 };
 
+/** The layouts that a stage setting them places `nodeType` in, in codebook order. */
+export const getLayoutsOfNodeType = (
+  protocol: LayoutProtocol,
+  nodeType: string,
+): readonly string[] =>
+  Object.entries(getLayoutUsage(protocol))
+    .filter(([, usage]) => usage.nodeTypes.includes(nodeType))
+    .map(([layoutId]) => layoutId);
+
+/**
+ * Every use that reads a layout for node types that no stage sets it for,
+ * with those types. Nodes of those types can never have a position there.
+ */
+export const findUnreachableLayoutReads = (
+  protocol: LayoutProtocol,
+): Array<{
+  stageId: string;
+  presetId?: string;
+  layoutId: string;
+  nodeTypes: readonly string[];
+}> => {
+  const usage = getLayoutUsage(protocol);
+  return protocol.stages.flatMap((stage) =>
+    getStageLayoutUses(stage).flatMap((use) => {
+      if (use.access !== 'reads') return [];
+      const placed = Object.hasOwn(usage, use.layoutId)
+        ? (usage[use.layoutId]?.nodeTypes ?? [])
+        : [];
+      const nodeTypes = use.nodeTypes.filter((type) => !placed.includes(type));
+      if (nodeTypes.length === 0) return [];
+      return [
+        {
+          stageId: use.stageId,
+          ...(use.presetId === undefined ? {} : { presetId: use.presetId }),
+          layoutId: use.layoutId,
+          nodeTypes,
+        },
+      ];
+    }),
+  );
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 

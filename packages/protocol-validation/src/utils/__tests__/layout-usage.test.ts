@@ -8,6 +8,8 @@ import { getStageNodeTypes } from '../../schemas/9/stage-capabilities.ts';
 import type { Stage } from '../../schemas/9/stages/index.ts';
 import { collectLayoutReferences } from '../collectEntityAttributeReferences.ts';
 import {
+  findUnreachableLayoutReads,
+  getLayoutsOfNodeType,
   getLayoutUsage,
   getNodeTypesWithLayout,
   getStageLayoutUses,
@@ -240,5 +242,75 @@ describe('layout usage', () => {
     );
     expect(fromHits.length).toBeGreaterThanOrEqual(3);
     expect(fromHits.toSorted()).toEqual(fromUses.toSorted());
+  });
+
+  it('getLayoutsOfNodeType lists the layouts a stage sets for the type', () => {
+    const protocol = protocolWithNarrative();
+    const person = nodeTypeKeyNamed(protocol, 'Person');
+    const colleague = nodeTypeKeyNamed(protocol, 'Colleague');
+
+    expect(getLayoutsOfNodeType(protocol, person)).toEqual([
+      layoutKeyNamed(protocol, 'Layout_Position'),
+    ]);
+    // The Narrative reads Layout_Position and colleague_map for colleagues;
+    // reading gives them neither.
+    expect(getLayoutsOfNodeType(protocol, colleague)).toEqual([
+      layoutKeyNamed(protocol, 'composer_map'),
+    ]);
+    expect(getLayoutsOfNodeType(protocol, 'nobody')).toEqual([]);
+  });
+
+  it('findUnreachableLayoutReads reports a reading use whose types no stage sets the layout for', () => {
+    const protocol = protocolWithNarrative();
+    const colleague = nodeTypeKeyNamed(protocol, 'Colleague');
+    const narrative = protocol.stages.find(({ type }) => type === 'Narrative');
+    if (narrative?.type !== 'Narrative') throw new Error('No Narrative');
+
+    expect(findUnreachableLayoutReads(protocol)).toEqual([
+      {
+        stageId: narrative.id,
+        presetId: narrative.presets[0]?.id,
+        layoutId: layoutKeyNamed(protocol, 'Layout_Position'),
+        nodeTypes: [colleague],
+      },
+      {
+        stageId: narrative.id,
+        presetId: narrative.presets[1]?.id,
+        layoutId: layoutKeyNamed(protocol, 'colleague_map'),
+        nodeTypes: [colleague],
+      },
+    ]);
+  });
+
+  it('findUnreachableLayoutReads is silent once another stage sets the layout for the type', () => {
+    const protocol = protocolWithNarrative();
+    const colleague = nodeTypeKeyNamed(protocol, 'Colleague');
+    const colleagueMap = layoutKeyNamed(protocol, 'colleague_map');
+    const shared = layoutKeyNamed(protocol, 'Layout_Position');
+    // A later Sociogram that places colleagues in colleague_map, and a
+    // Composer that places them in Layout_Position.
+    const stages = protocol.stages.flatMap((stage): Stage[] => {
+      if (stage.type === 'NetworkComposer') {
+        return [{ ...stage, layout: shared }];
+      }
+      if (stage.type === 'Narrative') {
+        const sociogram = protocol.stages.find(
+          ({ type }) => type === 'Sociogram',
+        );
+        if (sociogram?.type !== 'Sociogram') throw new Error('No Sociogram');
+        return [
+          stage,
+          {
+            ...sociogram,
+            id: 'later-sociogram',
+            subject: { entity: 'node', types: [colleague] },
+            layout: colleagueMap,
+          },
+        ];
+      }
+      return [stage];
+    });
+
+    expect(findUnreachableLayoutReads({ ...protocol, stages })).toEqual([]);
   });
 });

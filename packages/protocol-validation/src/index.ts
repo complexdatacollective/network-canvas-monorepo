@@ -500,6 +500,8 @@ export {
 export { readRosterCsv } from './utils/readRosterCsv.ts';
 export {
   findRulesNamingLayout,
+  findUnreachableLayoutReads,
+  getLayoutsOfNodeType,
   getLayoutUsage,
   getNodeTypesWithLayout,
 } from './utils/layoutUsage.ts';
