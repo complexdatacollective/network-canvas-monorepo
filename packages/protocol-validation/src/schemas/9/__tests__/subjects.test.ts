@@ -108,13 +108,17 @@ describe('stage node type accessors', () => {
   });
 });
 
+const ORDINAL_BIN_INDEX = 10;
+
 describe('the reference walk on a stage listing two node types', () => {
+  // A bin's sort rules are about its stage subject, which a stage listing
+  // two node types does not resolve.
   const sortPropertyPath = [
     'stages',
-    SOCIOGRAM_INDEX,
+    ORDINAL_BIN_INDEX,
     'prompts',
-    1,
-    'sortOrder',
+    0,
+    'bucketSortOrder',
     0,
     'property',
   ].join('.');
@@ -129,17 +133,17 @@ describe('the reference walk on a stage listing two node types', () => {
     ) {
       throw new Error('The fixture has no stages');
     }
-    const stage: unknown = protocol.stages[SOCIOGRAM_INDEX];
+    const stage: unknown = protocol.stages[ORDINAL_BIN_INDEX];
     if (typeof stage !== 'object' || stage === null) {
-      throw new Error('No Sociogram stage');
+      throw new Error('No Ordinal Bin stage');
     }
     Reflect.set(stage, 'subject', { entity: 'node', types });
     const prompts: unknown = Reflect.get(stage, 'prompts');
-    const prompt: unknown = Array.isArray(prompts) ? prompts[1] : undefined;
+    const prompt: unknown = Array.isArray(prompts) ? prompts[0] : undefined;
     if (typeof prompt !== 'object' || prompt === null) {
-      throw new Error('No second Sociogram prompt');
+      throw new Error('No Ordinal Bin prompt');
     }
-    Reflect.set(prompt, 'sortOrder', [
+    Reflect.set(prompt, 'bucketSortOrder', [
       {
         id: '5f0f8a63-4b6e-4c55-9a43-0d6c2f7b9e11',
         property: 'name',

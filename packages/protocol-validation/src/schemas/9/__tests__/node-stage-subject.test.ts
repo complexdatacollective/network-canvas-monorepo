@@ -122,12 +122,32 @@ describe('node stage subjects', () => {
     const fixture = loadFixture();
     const types = nodeTypeIds(fixture);
     expect(types.length).toBeGreaterThanOrEqual(2);
-    for (const { index, type } of nodeSubjectStageIndexes(fixture)) {
-      expect(nodeTypeCapabilityOf(type)).toBe('single');
+    const single = nodeSubjectStageIndexes(fixture).filter(
+      ({ type }) => nodeTypeCapabilityOf(type) === 'single',
+    );
+    expect(single.length).toBeGreaterThan(0);
+    for (const { index, type } of single) {
       expect(
         issuesFor(withSubjectTypes(index, types.slice(0, 2))),
         type,
       ).toContainEqual(
+        expect.objectContaining({ path: `stages.${index}.subject.types` }),
+      );
+    }
+  });
+
+  it('accepts a second type on every stage type whose capability is several', () => {
+    const fixture = loadFixture();
+    const types = nodeTypeIds(fixture);
+    const several = nodeSubjectStageIndexes(fixture).filter(
+      ({ type }) => nodeTypeCapabilityOf(type) === 'several',
+    );
+    expect(several.map(({ type }) => type)).toContain('Sociogram');
+    for (const { index, type } of several) {
+      expect(
+        issuesFor(withSubjectTypes(index, types.slice(0, 2))),
+        type,
+      ).not.toContainEqual(
         expect.objectContaining({ path: `stages.${index}.subject.types` }),
       );
     }
@@ -179,7 +199,7 @@ describe('node stage subjects', () => {
           const capped = expect.objectContaining({
             path: `stages.${index}.subject.types`,
           });
-          if (type === raised) {
+          if (type === raised || nodeTypeCapabilityOf(type) === 'several') {
             expect(issues, `${type} raised`).not.toContainEqual(capped);
           } else {
             expect(issues, `${type} while ${raised} is raised`).toContainEqual(

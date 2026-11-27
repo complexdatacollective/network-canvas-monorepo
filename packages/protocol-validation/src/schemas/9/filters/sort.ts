@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { entityTypeReference } from '../entity-type-reference.ts';
 import { protocolObjectId } from '../protocol-object-id.ts';
 
 /**
@@ -43,6 +44,33 @@ export type SortRule = z.infer<typeof SortRuleSchema>;
 export const SortOrderSchema = z.array(SortRuleSchema);
 
 export type SortOrder = z.infer<typeof SortOrderSchema>;
+
+/**
+ * A sort rule on a stage that shows several node types: it sorts the nodes of
+ * the one type it names, by an attribute of that type.
+ */
+export const NodeTypeSortRuleSchema = z.strictObject({
+  id: protocolObjectId('sortRule'),
+  type: entityTypeReference({ entity: 'node' }),
+  property: entityAttributeReference({
+    subject: { sibling: 'type', entity: 'node' },
+    existence: 'unchecked',
+    ignoreValues: [NOMINATION_ORDER_SORT_KEY],
+  }),
+  direction: z.enum(['asc', 'desc']),
+});
+
+export type NodeTypeSortRule = z.infer<typeof NodeTypeSortRuleSchema>;
+
+export const NodeTypeSortOrderSchema = z.array(NodeTypeSortRuleSchema);
+
+/**
+ * The order the node types of a stage are listed in, before each type's own
+ * sort rules apply. It names every one of the stage's node types once.
+ */
+export const NodeTypeOrderSchema = z.array(
+  entityTypeReference({ entity: 'node' }),
+);
 
 /**
  * A sort order over the items of an external data source (a Name Generator

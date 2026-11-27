@@ -5,7 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { EdgeStageSubjectSchema } from '../common/subjects.ts';
-import type { DynamicValueSite } from '../dynamic-values.ts';
+import {
+  type DynamicValueSite,
+  dynamicValueRolesAt,
+} from '../dynamic-values.ts';
 import {
   entityAttributeReference,
   getEntityAttributeReferenceDescriptor,
@@ -51,6 +54,24 @@ const DYNAMIC_VALUES_SUFFIX = ' (dynamic values)';
 const STAGE_INDEPENDENT_DYNAMIC_VALUE_SITES: ReadonlySet<DynamicValueSite> =
   new Set<DynamicValueSite>(['stageText', 'nodeLabel']);
 
+// A prompt shows values only of the entities its interface is on while it
+// shows (`dynamicValueRolesAt`): on a canvas of many nodes that is the ego
+// alone. Asked of a bin in select mode, which adds the node being placed, so
+// a stage whose roles depend on its behaviours is counted.
+const siteCanShowStageEntity = (
+  stageType: string | undefined,
+  site: DynamicValueSite,
+): boolean =>
+  site !== 'prompt' ||
+  stageType === undefined ||
+  [
+    ...dynamicValueRolesAt(
+      { type: stageType, behaviours: { interactionMode: 'select' } },
+      site,
+      undefined,
+    ),
+  ].some((role) => role !== 'ego');
+
 const unwrapToObject = (schema: unknown): z.ZodObject | undefined => {
   if (schema instanceof z.ZodObject) return schema;
   if (schema instanceof z.ZodPipe) return unwrapToObject(schema.in);
@@ -82,6 +103,7 @@ const isSingleTypedSubject = (schema: unknown): boolean => {
 const unanchoredStageSubjectReferences = (
   schema: z.ZodType,
   honourOwnSubject = true,
+  stageType = stageTypeOf(schema),
 ): string[] => {
   const found = new Set<string>();
   // Schemas are shared between places (a form schema serves the stage and
@@ -102,7 +124,8 @@ const unanchoredStageSubjectReferences = (
       const site = getLocalizedStringDescriptor(node)?.dynamicValues;
       if (
         site !== undefined &&
-        !STAGE_INDEPENDENT_DYNAMIC_VALUE_SITES.has(site)
+        !STAGE_INDEPENDENT_DYNAMIC_VALUE_SITES.has(site) &&
+        siteCanShowStageEntity(stageType, site)
       ) {
         found.add(`${path.join('.')}${DYNAMIC_VALUES_SUFFIX}`);
       }
@@ -297,26 +320,26 @@ describe('stage-subject references on stages that run several node types', () =>
   });
 
   describe('placement of a listed field', () => {
-    const SORT_PROPERTY = 'prompts.[].sortOrder.[].property';
+    const SORT_PROPERTY = 'prompts.[].bucketSortOrder.[].property';
 
     it('reports an entry for a stage type that runs one node type', () => {
-      expect(nodeTypeCapabilityOf('Sociogram')).toBe('single');
+      expect(nodeTypeCapabilityOf('OrdinalBin')).toBe('single');
       expect(
         misplacedListedFields({
-          Sociogram: [
+          OrdinalBin: [
             { field: SORT_PROPERTY, rejects: () => null, issuePath: [] },
           ],
         }),
-      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
+      ).toEqual([`OrdinalBin ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry naming a field that is not a stage-subject reference', () => {
-      const before = STAGE_NODE_TYPE_CAPABILITY.Sociogram;
+      const before = STAGE_NODE_TYPE_CAPABILITY.OrdinalBin;
       try {
-        STAGE_NODE_TYPE_CAPABILITY.Sociogram = 'several';
+        STAGE_NODE_TYPE_CAPABILITY.OrdinalBin = 'several';
         expect(
           misplacedListedFields({
-            Sociogram: [
+            OrdinalBin: [
               { field: SORT_PROPERTY, rejects: () => null, issuePath: [] },
               {
                 field: 'prompts.[].no-such-field',
@@ -325,9 +348,9 @@ describe('stage-subject references on stages that run several node types', () =>
               },
             ],
           }),
-        ).toEqual(['Sociogram prompts.[].no-such-field']);
+        ).toEqual(['OrdinalBin prompts.[].no-such-field']);
       } finally {
-        STAGE_NODE_TYPE_CAPABILITY.Sociogram = before;
+        STAGE_NODE_TYPE_CAPABILITY.OrdinalBin = before;
       }
     });
   });
@@ -337,28 +360,28 @@ describe('stage-subject references on stages that run several node types', () =>
   });
 
   describe('proof of a listed field', () => {
-    const SOCIOGRAM = 6;
+    const ORDINAL_BIN = 10;
     const PLACE = 'd2904722-c463-5fe3-8f6d-032114d8ed55';
     const SORT_PATH = [
       'stages',
-      SOCIOGRAM,
+      ORDINAL_BIN,
       'prompts',
-      1,
-      'sortOrder',
+      0,
+      'bucketSortOrder',
       0,
       'property',
     ] as const;
-    const SORT_PROPERTY = 'prompts.[].sortOrder.[].property';
+    const SORT_PROPERTY = 'prompts.[].bucketSortOrder.[].property';
 
-    const sociogramWith = (change: (stage: Fields) => void) => () => {
+    const ordinalBinWith = (change: (stage: Fields) => void) => () => {
       const protocol = loadAllInterfacesFixture();
-      const stage = stageAt(protocol, SOCIOGRAM);
-      if (stage?.type !== 'Sociogram') throw new Error('No Sociogram stage');
+      const stage = stageAt(protocol, ORDINAL_BIN);
+      if (stage?.type !== 'OrdinalBin') throw new Error('No Ordinal Bin stage');
       change(stage);
       return protocol;
     };
 
-    const twoTypes = sociogramWith((stage) => {
+    const twoTypes = ordinalBinWith((stage) => {
       stage.subject = {
         entity: 'node',
         types: [...nodeTypesOf(stage), PLACE],
@@ -367,10 +390,10 @@ describe('stage-subject references on stages that run several node types', () =>
 
     const numericSortProperty = (stage: Fields) => {
       const prompt: unknown = Array.isArray(stage.prompts)
-        ? stage.prompts[1]
+        ? stage.prompts[0]
         : undefined;
-      if (!isRecord(prompt)) throw new Error('No second prompt');
-      prompt.sortOrder = [
+      if (!isRecord(prompt)) throw new Error('No prompt');
+      prompt.bucketSortOrder = [
         {
           id: '0c2b5bd4-8f39-4e33-9d1b-31c4f1e3b8a2',
           property: 42,
@@ -382,7 +405,7 @@ describe('stage-subject references on stages that run several node types', () =>
     // Stands in for a validation rule that refuses the sort order on a stage
     // listing two types, which no stage has while every one runs one type.
     const refusesSortOnTwoTypes = (protocol: unknown) => {
-      const stage = stageAt(protocol, SOCIOGRAM);
+      const stage = stageAt(protocol, ORDINAL_BIN);
       return stage && nodeTypesOf(stage).length >= 2
         ? [SORT_PATH.join('.')]
         : [];
@@ -392,7 +415,7 @@ describe('stage-subject references on stages that run several node types', () =>
       expect(
         unprovenListedFields(
           {
-            Sociogram: [
+            OrdinalBin: [
               {
                 field: SORT_PROPERTY,
                 rejects: twoTypes,
@@ -409,7 +432,7 @@ describe('stage-subject references on stages that run several node types', () =>
       expect(issuePathsOf(twoTypes())).not.toContain(SORT_PATH.join('.'));
       expect(
         unprovenListedFields({
-          Sociogram: [
+          OrdinalBin: [
             {
               field: SORT_PROPERTY,
               rejects: twoTypes,
@@ -417,14 +440,14 @@ describe('stage-subject references on stages that run several node types', () =>
             },
           ],
         }),
-      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
+      ).toEqual([`OrdinalBin ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry whose issue path points at a stage of another type', () => {
       expect(
         unprovenListedFields(
           {
-            Sociogram: [
+            OrdinalBin: [
               {
                 field: SORT_PROPERTY,
                 rejects: loadAllInterfacesFixture,
@@ -433,33 +456,33 @@ describe('stage-subject references on stages that run several node types', () =>
                   0,
                   'prompts',
                   0,
-                  'sortOrder',
+                  'bucketSortOrder',
                   0,
                   'property',
                 ],
               },
             ],
           },
-          () => ['stages.0.prompts.0.sortOrder.0.property'],
+          () => ['stages.0.prompts.0.bucketSortOrder.0.property'],
         ),
-      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
+      ).toEqual([`OrdinalBin ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry whose stage lists one type', () => {
-      const rejects = sociogramWith(numericSortProperty);
+      const rejects = ordinalBinWith(numericSortProperty);
       expect(issuePathsOf(rejects())).toContain(SORT_PATH.join('.'));
       expect(
         unprovenListedFields({
-          Sociogram: [{ field: SORT_PROPERTY, rejects, issuePath: SORT_PATH }],
+          OrdinalBin: [{ field: SORT_PROPERTY, rejects, issuePath: SORT_PATH }],
         }),
-      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
+      ).toEqual([`OrdinalBin ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry whose stage is of another type', () => {
       expect(
         unprovenListedFields(
           {
-            Narrative: [
+            CategoricalBin: [
               {
                 field: SORT_PROPERTY,
                 rejects: twoTypes,
@@ -469,14 +492,14 @@ describe('stage-subject references on stages that run several node types', () =>
           },
           refusesSortOnTwoTypes,
         ),
-      ).toEqual([`Narrative ${SORT_PROPERTY}`]);
+      ).toEqual([`CategoricalBin ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry whose issue path is in another field', () => {
       expect(
         unprovenListedFields(
           {
-            Sociogram: [
+            OrdinalBin: [
               {
                 field: 'prompts.[].edges.create',
                 rejects: twoTypes,
@@ -486,14 +509,14 @@ describe('stage-subject references on stages that run several node types', () =>
           },
           refusesSortOnTwoTypes,
         ),
-      ).toEqual(['Sociogram prompts.[].edges.create']);
+      ).toEqual(['OrdinalBin prompts.[].edges.create']);
     });
 
     it('reports an entry that validation refuses whatever the stage lists', () => {
       expect(
         unprovenListedFields(
           {
-            Sociogram: [
+            OrdinalBin: [
               {
                 field: SORT_PROPERTY,
                 rejects: twoTypes,
@@ -503,7 +526,7 @@ describe('stage-subject references on stages that run several node types', () =>
           },
           () => [SORT_PATH.join('.')],
         ),
-      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
+      ).toEqual([`OrdinalBin ${SORT_PROPERTY}`]);
     });
   });
 
@@ -522,16 +545,25 @@ describe('stage-subject references on stages that run several node types', () =>
   });
 
   it('fails when a stage with an unlisted stage-subject reference is raised to several types', () => {
-    const before = STAGE_NODE_TYPE_CAPABILITY.Sociogram;
+    const before = STAGE_NODE_TYPE_CAPABILITY.OrdinalBin;
     try {
-      STAGE_NODE_TYPE_CAPABILITY.Sociogram = 'several';
+      STAGE_NODE_TYPE_CAPABILITY.OrdinalBin = 'several';
       const problems = multiTypeProblems();
-      expect(problems.Sociogram).toEqual(
-        expect.arrayContaining(['prompts.[].sortOrder.[].property']),
+      expect(problems.OrdinalBin).toEqual(
+        expect.arrayContaining(['prompts.[].bucketSortOrder.[].property']),
       );
     } finally {
-      STAGE_NODE_TYPE_CAPABILITY.Sociogram = before;
+      STAGE_NODE_TYPE_CAPABILITY.OrdinalBin = before;
     }
+  });
+
+  it('does not count a prompt whose dynamic values cannot be about a node of the stage', () => {
+    const schema = stageSchemasByType().get('Sociogram');
+    if (!schema) throw new Error('No Sociogram stage');
+    expect(unanchoredStageSubjectReferences(schema)).toEqual([]);
+    expect(
+      unanchoredStageSubjectReferences(schema, true, 'DyadCensus'),
+    ).toEqual(['prompts.[].text (dynamic values)']);
   });
 
   it('fails when a census whose prompts show dynamic values is raised to several types', () => {
@@ -572,7 +604,7 @@ describe('stage-subject references on stages that run several node types', () =>
     const text = localizedString(
       z.string(),
       { format: 'plain', lines: 'single' },
-      { dynamicValues: 'prompt' },
+      { dynamicValues: 'formField' },
     );
     const entry = (subject: z.ZodType) => z.object({ subject, variable, text });
     const schema = z.object({

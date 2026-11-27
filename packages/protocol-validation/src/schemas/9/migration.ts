@@ -663,6 +663,28 @@ const sociogramPromptsToTasks = (protocol: unknown) => {
   }
 };
 
+/**
+ * A schema 9 Sociogram sorts each node type by rules of its own, so each sort
+ * rule names the stage's one node type. Reads the schema 8 `subject.type`.
+ */
+const sociogramSortRulesGainNodeType = (protocol: unknown) => {
+  const stages = isRecord(protocol) ? protocol.stages : undefined;
+  if (!Array.isArray(stages)) return;
+  for (const stage of stages) {
+    if (!isRecord(stage) || stage.type !== 'Sociogram') continue;
+    const nodeType = isRecord(stage.subject) ? stage.subject.type : undefined;
+    if (typeof nodeType !== 'string' || !Array.isArray(stage.prompts)) continue;
+    for (const prompt of stage.prompts) {
+      if (!isRecord(prompt) || !Array.isArray(prompt.sortOrder)) continue;
+      prompt.sortOrder = prompt.sortOrder.map((rule: unknown) =>
+        isRecord(rule)
+          ? { ...rule, id: createProtocolObjectId(), type: nodeType }
+          : rule,
+      );
+    }
+  }
+};
+
 /** The attribute definitions of the entity type a stage subject names. */
 const subjectVariables = (
   codebook: unknown,
@@ -1243,6 +1265,7 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   moveLayoutVariablesToLayouts(migrated);
   removeEgoAndEdgeLayoutVariables(migrated);
   sociogramPromptsToTasks(migrated);
+  sociogramSortRulesGainNodeType(migrated);
   // After every step that reads a stage's schema 8 `subject.type`.
   nodeSubjectsToTypeLists(migrated);
   joinSingleLineText(migrated);

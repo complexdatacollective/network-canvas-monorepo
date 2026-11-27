@@ -48,6 +48,7 @@ export * from './interface-owned-options.ts';
 export * from './stages/index.ts';
 export * from './variables/index.ts';
 
+import { edgeTypeAllowsAnyPair } from '../../utils/edgeTypeRules.ts';
 import { findEmptyTextPaths } from './built-in-wording.ts';
 // Import what we need for the ProtocolSchema
 import {
@@ -64,6 +65,7 @@ import {
 } from './common/subjects.ts';
 import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
 import type { FilterRule } from './filters/index.ts';
+import { findNodeTypeSortingProblems } from './filters/node-type-sorting.ts';
 import {
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
@@ -1402,6 +1404,39 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
             });
           }
           seen.add(entry.type);
+        });
+      });
+      stage.prompts.forEach((prompt, promptIndex) => {
+        const promptPath = ['stages', stageIndex, 'prompts', promptIndex];
+        for (const issue of findNodeTypeSortingProblems({
+          nodeTypeNames: protocol.codebook.node ?? {},
+          nodeTypes,
+          rules: prompt.sortOrder,
+          rulesPath: [...promptPath, 'sortOrder'],
+          order: prompt.nodeTypeOrder,
+          orderPath: [...promptPath, 'nodeTypeOrder'],
+        })) {
+          ctx.addIssue({ code: 'custom' as const, ...issue });
+        }
+      });
+      stage.prompts.forEach((prompt, promptIndex) => {
+        if (prompt.task !== 'connect') return;
+        const edgeType = prompt.edges.create;
+        if (!Object.hasOwn(protocol.codebook.edge ?? {}, edgeType)) return;
+        if (edgeTypeAllowsAnyPair(protocol.codebook, edgeType, nodeTypes)) {
+          return;
+        }
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: `Edge type "${protocol.codebook.edge?.[edgeType]?.name ?? edgeType}" allows no connection between the node types this stage shows.`,
+          path: [
+            'stages',
+            stageIndex,
+            'prompts',
+            promptIndex,
+            'edges',
+            'create',
+          ],
         });
       });
     }

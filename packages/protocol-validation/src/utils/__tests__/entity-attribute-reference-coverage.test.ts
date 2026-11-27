@@ -60,8 +60,11 @@ const countTagged = (
 // the total is unchanged.
 // The Sociogram, Narrative preset and Network Composer layout fields name a
 // layout (`layoutReference`), not an attribute, so they are not counted.
+// It counts the typed sort rule `property` (NodeTypeSortRuleSchema, a sort
+// key of the node type its rule names), reached by Sociogram prompts; the
+// shared sort rule stays in use by the bins.
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 39;
+const EXPECTED_TAGGED_FIELD_COUNT = 40;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns, and every slot whose option LIST a stage manages. All drive
@@ -151,15 +154,15 @@ describe('entity-attribute reference coverage', () => {
     const unchecked = collectDescriptors(CurrentProtocolSchema).filter(
       (descriptor) => descriptor.existence === 'unchecked',
     );
-    // The shared sort rule `property`, the roster's own sort rule `property`,
-    // and the roster's three column fields.
-    expect(unchecked).toHaveLength(5);
+    // The shared sort rule `property`, the typed sort rule `property`, the
+    // roster's own sort rule `property`, and the roster's three column fields.
+    expect(unchecked).toHaveLength(6);
     // Only the sort rules admit a magic key, and `'*'` is the only one.
     expect(
       unchecked
         .map((descriptor) => descriptor.ignoreValues)
         .filter((values) => values !== undefined),
-    ).toEqual([['*'], ['*']]);
+    ).toEqual([['*'], ['*'], ['*']]);
     // The roster's four name columns of its data source, which a migration
     // renaming variables leaves as they are.
     expect(

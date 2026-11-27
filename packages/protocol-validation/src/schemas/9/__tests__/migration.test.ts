@@ -2843,6 +2843,44 @@ describe('Migrating layouts from schema 8 to 9', () => {
     expect(map?.prompts.map(({ task }) => task)).toEqual(['connect']);
   });
 
+  it("Sociogram sort rules gain the stage's node type and no nodeTypeOrder", () => {
+    const migrated = migrateReadable(
+      withSociogramPrompts([
+        {
+          sortOrder: [
+            { property: 'close', direction: 'desc' },
+            { property: '*', direction: 'asc' },
+          ],
+        },
+        {},
+      ]),
+      9,
+    );
+
+    const [map] = sociogramsOf(migrated);
+    expect(map?.prompts[0]?.sortOrder).toEqual([
+      {
+        id: expect.stringMatching(UUID),
+        type: 'person',
+        property: 'close',
+        direction: 'desc',
+      },
+      {
+        id: expect.stringMatching(UUID),
+        type: 'person',
+        property: '*',
+        direction: 'asc',
+      },
+    ]);
+    expect(map?.prompts[0]?.sortOrder?.[0]?.id).not.toBe(
+      map?.prompts[0]?.sortOrder?.[1]?.id,
+    );
+    expect(map?.prompts[1]).not.toHaveProperty('sortOrder');
+    for (const prompt of map?.prompts ?? []) {
+      expect(prompt).not.toHaveProperty('nodeTypeOrder');
+    }
+  });
+
   it('a rule naming a layout variable stays valid when the migrated Sociogram has no layout task', () => {
     const migrated = migrateReadable(
       withSociogramPrompts([{ edges: { create: 'knows' } }], {}, [

@@ -5,6 +5,10 @@ import { asExclusiveVariants } from '../declared-variants.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
+import {
+  NodeTypeOrderSchema,
+  NodeTypeSortOrderSchema,
+} from '../filters/sort.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { protocolObjectId } from '../protocol-object-id.ts';
 
@@ -89,8 +93,11 @@ export const highlightAttributeSchema = ({ writes }: { writes: boolean }) =>
 
 const displayedEdgeTypes = z.array(entityTypeReference({ entity: 'edge' }));
 
+// The bucket of unplaced nodes is grouped by node type, in `nodeTypeOrder`
+// or else subject order, and each group is sorted by its type's rules.
 const sociogramPromptBase = promptSchema.extend({
-  sortOrder: SortOrderSchema.optional(),
+  sortOrder: NodeTypeSortOrderSchema.optional(),
+  nodeTypeOrder: NodeTypeOrderSchema.optional(),
 });
 
 // Each Sociogram prompt is one task. In a layout task the participant places

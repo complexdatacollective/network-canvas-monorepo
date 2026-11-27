@@ -196,9 +196,6 @@ describe('stage edge type support', () => {
     const message =
       'Edge type "Knows" is directed, which this stage cannot use.';
     expect(describeIssues(protocol, await issuesOf(protocol))).toEqual([
-      `Sociogram prompts.0.edges.create: ${message}`,
-      `Sociogram prompts.1.edges.create: ${message}`,
-      `Sociogram prompts.2.edges.create: ${message}`,
       `NetworkComposer edges.0.subject.type: ${message}`,
       `AlterEdgeForm subject.type: ${message}`,
       `DyadCensus prompts.0.createEdge: ${message}`,
@@ -227,7 +224,32 @@ describe('stage edge type support', () => {
     expect(await issuesOf(baseProtocol())).toEqual([]);
   });
 
-  describe.each(STAGE_EDGE_TYPES)('%s', (stageType, edgeType) => {
+  it('lets a Sociogram use directed edge types and endpoint rules', () => {
+    expect(STAGE_EDGE_TYPE_SUPPORT.Sociogram).toEqual({
+      directed: true,
+      endpointRules: true,
+    });
+  });
+
+  it('accepts a directed edge type on a Sociogram', async () => {
+    const protocol = withEdgeTypeSettings(baseProtocol(), 'knows', {
+      directed: true,
+      endpointRules: [{ sourceType: 'person', targetType: 'person' }],
+    });
+    const index = stageIndexOf(protocol, 'Sociogram');
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(
+      (await issuesOf(protocol)).filter(
+        (issue) => issue.path[0] === 'stages' && issue.path[1] === index,
+      ),
+    ).toEqual([]);
+  });
+
+  describe.each(
+    STAGE_EDGE_TYPES.filter(
+      ([stageType]) => !STAGE_EDGE_TYPE_SUPPORT[stageType].directed,
+    ),
+  )('%s', (stageType, edgeType) => {
     it('refuses a directed edge type', async () => {
       const protocol = withEdgeTypeSettings(baseProtocol(), edgeType, {
         directed: true,
@@ -276,17 +298,18 @@ describe('stage edge type support', () => {
     return protocol;
   };
 
-  const sociogramOf = (protocol: Protocol) => {
+  // A stage that still refuses directed edge types and endpoint rules.
+  const dyadCensusOf = (protocol: Protocol) => {
     const stage: unknown = protocol.stages.find(
-      ({ type }) => type === 'Sociogram',
+      ({ type }) => type === 'DyadCensus',
     );
-    if (!isRecord(stage)) throw new Error('No Sociogram');
+    if (!isRecord(stage)) throw new Error('No Dyad Census');
     return stage;
   };
 
   it('accepts a directed edge type named only in a filter rule', async () => {
     const protocol = withAdviceEdgeType(baseProtocol());
-    sociogramOf(protocol).filter = {
+    dyadCensusOf(protocol).filter = {
       join: 'AND',
       rules: [
         {
@@ -301,7 +324,7 @@ describe('stage edge type support', () => {
 
   it("accepts a directed edge type named only in a condition's edge-count rule", async () => {
     const protocol = withAdviceEdgeType(baseProtocol());
-    sociogramOf(protocol).conditions = {
+    dyadCensusOf(protocol).conditions = {
       [testTypeId('adviceCondition')]: {
         about: 'node',
         rules: [

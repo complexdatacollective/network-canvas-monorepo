@@ -897,6 +897,7 @@
           "sortOrder": [
             {
               "id": "5c1200a6-8b5b-5162-903c-cff604ca6295",
+              "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
               "property": "*",
               "direction": "desc"
             }
@@ -919,6 +920,7 @@
           "sortOrder": [
             {
               "id": "2876c321-73ad-595b-b0a3-802b8c344c4d",
+              "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
               "direction": "desc"
             }
@@ -941,6 +943,7 @@
           "sortOrder": [
             {
               "id": "93ca6c0a-039f-54b2-833e-ff11fa354f3a",
+              "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
               "direction": "desc"
             }
@@ -1003,6 +1006,7 @@
           "sortOrder": [
             {
               "id": "5e5faa44-52eb-5121-b841-990a6a5b7774",
+              "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f",
               "property": "*",
               "direction": "desc"
             }

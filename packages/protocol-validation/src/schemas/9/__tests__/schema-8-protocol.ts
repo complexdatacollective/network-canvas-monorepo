@@ -66,6 +66,14 @@ const sociogramPromptTasks = (stage: unknown) => {
     if (!isRecord(prompt)) continue;
     const { task, highlight } = prompt;
     delete prompt.task;
+    // A schema 8 Sociogram sorted its one node type, so its rules named none
+    // and it had no node type order.
+    delete prompt.nodeTypeOrder;
+    if (Array.isArray(prompt.sortOrder)) {
+      for (const rule of prompt.sortOrder) {
+        if (isRecord(rule)) delete rule.type;
+      }
+    }
     if (task !== 'highlight') continue;
     const [entry] = Array.isArray(highlight) ? highlight : [];
     prompt.highlight = {
@@ -190,7 +198,8 @@ const informationItems = (
 of type `layout` named by the stages that use it (a Sociogram that used
 several layouts stays split), an Anonymisation
  * explanation's heading is a title of its own, a Sociogram prompt has no
- * task (a highlight task allows highlighting its one entry's attribute), an Information page is a title
+ * task (a highlight task allows highlighting its one entry's attribute) and
+ * its sort rules name no node type, an Information page is a title
  * and a list of items, and the language
  * chooser and language settings, which schema 8 did not have, are gone.
  */
