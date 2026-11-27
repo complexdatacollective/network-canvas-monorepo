@@ -194,7 +194,7 @@ describe('runExport via the export worker', () => {
     await expect(exportPromise).rejects.toThrow('stop');
   });
 
-  it('schema 8 export through Interviewer keeps layout columns', async () => {
+  it('schema 8 export through Interviewer hands node layouts over as layouts and drops ego and edge ones', async () => {
     const position = {
       name: 'position',
       type: 'layout',
@@ -216,6 +216,22 @@ describe('runExport via the export worker', () => {
         name: 'Schema 8 Protocol',
         schemaVersion: 8,
         codebook: {
+          ego: {
+            variables: {
+              egoSpot: { name: 'egoSpot', type: 'layout' },
+              nickname,
+            },
+          },
+          edge: {
+            knows: {
+              name: 'Knows',
+              variables: {
+                edgeSpot: { name: 'edgeSpot', type: 'layout' },
+                nickname,
+              },
+            },
+            likes: { name: 'Likes' },
+          },
           node: {
             person: { name: 'Person', variables: { nickname, position } },
             place: { name: 'Place', variables: { position } },
@@ -234,14 +250,20 @@ describe('runExport via the export worker', () => {
       expect(FakeWorker.instances[0]?.posted).toHaveLength(1);
     });
 
-    // The exporter has no layout variable type: each schema 8 layout variable
-    // is handed over as a layout of the node types that declared it.
+    // The exporter has no layout variable type: each schema 8 node layout
+    // variable is handed over as a layout of the node types that declared it,
+    // and an ego or edge one, which no stage could place, is dropped.
     expect(
       FakeWorker.instances[0]?.posted[0]?.data.protocols['hash-8'],
     ).toEqual({
       hash: 'hash-8',
       name: 'Schema 8 Protocol',
       codebook: {
+        ego: { variables: { nickname } },
+        edge: {
+          knows: { name: 'Knows', variables: { nickname } },
+          likes: { name: 'Likes' },
+        },
         node: {
           person: { name: 'Person', variables: { nickname } },
           place: { name: 'Place', variables: {} },

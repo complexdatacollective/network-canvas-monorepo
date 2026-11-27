@@ -76,8 +76,8 @@ export type ProtocolExportInput = {
   name: string;
   codebook: Codebook;
   /**
-   * For each layout of the codebook, the node types a stage sets it for, as
-   * `getNodeTypesWithLayout` gives them. A node type has columns for the
+   * For each layout of the codebook, the node types a stage sets it for: the
+   * `nodeTypes` of the layout's entry in `getLayoutUsage`. A node type has columns for the
    * layouts it is listed under, and for any layout a node of it holds a
    * position in.
    */

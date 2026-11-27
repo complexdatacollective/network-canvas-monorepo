@@ -4,9 +4,9 @@ import { withFinishStage } from '../../__tests__/finishStage.ts';
 import { withTestCodebookIds, withTestIds } from '../../__tests__/testIds.ts';
 import { completeProtocol } from '../../schemas/9/__tests__/complete-localized-protocol.ts';
 import { ProtocolSchemaV9 } from '../../schemas/9/schema.ts';
+import { getStageNodeTypes } from '../../schemas/9/stage-capabilities.ts';
 import { collectLayoutReferences } from '../collectEntityAttributeReferences.ts';
 import {
-  getLayoutNodeTypes,
   getLayoutUsage,
   getNodeTypesWithLayout,
   getStageLayoutUses,
@@ -16,7 +16,8 @@ import { createBaseProtocol, localized } from '../test-utils.ts';
 const parsed = (protocol: unknown) => ProtocolSchemaV9.parse(protocol);
 
 // The base protocol, whose Sociogram places people in `layoutPosition`, with
-// a Narrative that shows colleagues in a layout of its own.
+// a Network Composer that places colleagues in a layout of its own and a
+// Narrative that shows colleagues in another.
 const protocolWithNarrative = () => {
   const base = createBaseProtocol();
   return parsed(
@@ -27,11 +28,21 @@ const protocolWithNarrative = () => {
         layouts: {
           ...base.codebook.layouts,
           colleagueMap: { name: 'colleague_map' },
+          composerMap: { name: 'composer_map' },
           unused: { name: 'unused' },
         },
       },
       stages: [
         ...base.stages,
+        {
+          id: 'composer',
+          type: 'NetworkComposer',
+          label: localized('Composer'),
+          subject: { entity: 'node', types: ['colleague'] },
+          quickAdd: 'colleagueName',
+          layout: 'composerMap',
+          background: { concentricCircles: 3 },
+        },
         {
           id: 'narrative',
           type: 'Narrative',
@@ -99,15 +110,61 @@ describe('layout usage', () => {
     ).toEqual([]);
   });
 
-  it('getLayoutNodeTypes lists every layout of the codebook with its node types', () => {
+  it('a Network Composer sets its layout for its node types', () => {
     const protocol = protocolWithNarrative();
-    expect(getLayoutNodeTypes(protocol)).toEqual({
+    const composerMap = layoutKeyNamed(protocol, 'composer_map');
+    expect(getNodeTypesWithLayout(protocol, composerMap)).toEqual([
+      nodeTypeKeyNamed(protocol, 'Colleague'),
+    ]);
+    expect(
+      getLayoutUsage(protocol)[composerMap]?.setBy.map(
+        ({ stageId, access }) =>
+          `${protocol.stages.find(({ id }) => id === stageId)?.type ?? '?'} ${access}`,
+      ),
+    ).toEqual(['NetworkComposer sets']);
+  });
+
+  it('getLayoutUsage lists every layout of the codebook with its node types', () => {
+    const protocol = protocolWithNarrative();
+    expect(
+      Object.fromEntries(
+        Object.entries(getLayoutUsage(protocol)).map(([id, entry]) => [
+          id,
+          entry.nodeTypes,
+        ]),
+      ),
+    ).toEqual({
       [layoutKeyNamed(protocol, 'Layout_Position')]: [
         nodeTypeKeyNamed(protocol, 'Person'),
       ],
       [layoutKeyNamed(protocol, 'colleague_map')]: [],
+      [layoutKeyNamed(protocol, 'composer_map')]: [
+        nodeTypeKeyNamed(protocol, 'Colleague'),
+      ],
       [layoutKeyNamed(protocol, 'unused')]: [],
     });
+  });
+
+  // Only a hand-written file can name such a layout, and validation refuses
+  // it; the helpers still answer for it instead of throwing.
+  it('a stage naming a member every object inherits gets its own entry', () => {
+    const protocol = protocolWithNarrative();
+    const stages = protocol.stages.map((stage) =>
+      stage.type === 'NetworkComposer'
+        ? { ...stage, layout: 'toString' }
+        : stage,
+    );
+    const usage = getLayoutUsage({ codebook: protocol.codebook, stages });
+    expect(Object.hasOwn(usage, 'toString')).toBe(true);
+    expect(usage.toString).toEqual(
+      expect.objectContaining({ readBy: [], nodeTypes: [expect.any(String)] }),
+    );
+    expect(
+      getNodeTypesWithLayout(
+        { codebook: protocol.codebook, stages },
+        'constructor',
+      ),
+    ).toEqual([]);
   });
 
   it('a layout no stage references is unused', () => {
@@ -125,15 +182,23 @@ describe('layout usage', () => {
     const protocol = parsed(
       withTestIds(withTestCodebookIds(completeProtocol())),
     );
+    const expectedAccess: Record<string, string> = {
+      Sociogram: 'sets',
+      NetworkComposer: 'sets',
+      Narrative: 'reads',
+    };
     const fromHits = collectLayoutReferences(protocol).map(
       ({ path, layoutId }) => {
         const stage = protocol.stages[Number(path[1])];
-        return `${stage?.id ?? '?'} ${layoutId}`;
+        return `${stage?.id ?? '?'} ${layoutId} ${expectedAccess[stage?.type ?? ''] ?? '?'}`;
       },
     );
     const fromUses = protocol.stages.flatMap((stage) =>
       getStageLayoutUses(stage).map(
-        ({ stageId, layoutId }) => `${stageId} ${layoutId}`,
+        ({ stageId, layoutId, access, nodeTypes }) => {
+          expect(nodeTypes).toEqual(getStageNodeTypes(stage));
+          return `${stageId} ${layoutId} ${access}`;
+        },
       ),
     );
     expect(fromHits.length).toBeGreaterThanOrEqual(3);

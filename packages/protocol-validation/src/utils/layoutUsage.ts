@@ -6,7 +6,7 @@ import { valueAt } from './protocolObjectIdRewrite.ts';
 
 type LayoutAccess = 'sets' | 'reads';
 
-export type StageLayoutUse = {
+type StageLayoutUse = {
   layoutId: string;
   access: LayoutAccess;
   nodeTypes: readonly string[];
@@ -19,7 +19,7 @@ type LayoutProtocol = {
   stages: readonly Stage[];
 };
 
-export type LayoutUsage = {
+type LayoutUsage = {
   setBy: StageLayoutUse[];
   readBy: StageLayoutUse[];
   nodeTypes: readonly string[];
@@ -60,7 +60,9 @@ export const getLayoutUsage = (
 ): Record<string, LayoutUsage> => {
   const usage: Record<string, LayoutUsage> = {};
   const entryFor = (layoutId: string): LayoutUsage => {
-    const existing = usage[layoutId];
+    const existing = Object.hasOwn(usage, layoutId)
+      ? usage[layoutId]
+      : undefined;
     if (existing) return existing;
     const created: LayoutUsage = { setBy: [], readBy: [], nodeTypes: [] };
     usage[layoutId] = created;
@@ -83,22 +85,16 @@ export const getLayoutUsage = (
   return usage;
 };
 
-/** Each layout of the codebook, with the node types that have it. */
-export const getLayoutNodeTypes = (
-  protocol: LayoutProtocol,
-): Record<string, readonly string[]> =>
-  Object.fromEntries(
-    Object.entries(getLayoutUsage(protocol)).map(([layoutId, entry]) => [
-      layoutId,
-      entry.nodeTypes,
-    ]),
-  );
-
 /** The node types that a stage setting `layoutId` places. */
 export const getNodeTypesWithLayout = (
   protocol: LayoutProtocol,
   layoutId: string,
-): readonly string[] => getLayoutUsage(protocol)[layoutId]?.nodeTypes ?? [];
+): readonly string[] => {
+  const usage = getLayoutUsage(protocol);
+  return Object.hasOwn(usage, layoutId)
+    ? (usage[layoutId]?.nodeTypes ?? [])
+    : [];
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

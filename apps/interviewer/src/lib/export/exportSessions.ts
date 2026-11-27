@@ -4,17 +4,17 @@ import type {
   ProtocolExportInput,
 } from '@codaco/network-exporters/input';
 import type { ExportOptions } from '@codaco/network-exporters/options';
-import { getLayoutNodeTypes } from '@codaco/protocol-validation';
+import { getLayoutUsage } from '@codaco/protocol-validation';
 
 import { APP_VERSION } from '../appVersion';
 import { getProtocolsByHashes, getSessionsForExport } from '../db/api';
-import type { StoredSchema8Protocol } from '../db/types';
 import {
   type ExportPipelineData,
   type ExportRun,
   runPipelineWithData,
 } from './exportPipelineRunner';
 import type { ExportWorkerMessage, ExportWorkerStart } from './exportWorker';
+import { schema8ExportInput } from './schema8ExportInput';
 
 export type ExportInvocation = {
   options: ExportOptions;
@@ -60,71 +60,17 @@ async function fetchExportInputs(
             hash: protocol.hash,
             name: protocol.name,
             codebook: protocol.codebook,
-            layoutNodeTypes: getLayoutNodeTypes({
-              codebook: protocol.codebook,
-              stages: protocol.protocol.stages,
-            }),
+            layoutNodeTypes: Object.fromEntries(
+              Object.entries(
+                getLayoutUsage({
+                  codebook: protocol.codebook,
+                  stages: protocol.protocol.stages,
+                }),
+              ).map(([layoutId, usage]) => [layoutId, usage.nodeTypes]),
+            ),
           };
   }
   return { sessions, protocols };
-}
-
-/**
- * The export input of a schema 8 protocol. It is exported as it was
- * collected, never converted to schema 9: the exporter reads only what the two
- * schemas share (entity types, variable names, types and options), and its own
- * handling of each variable type covers schema 8's. The one difference it
- * cannot read is a layout: schema 8 declared one as a node variable of type
- * `layout`, which is handed over as a layout of the codebook, held by the node
- * types that declared it, so its position columns stay in the export.
- */
-function schema8ExportInput(
-  protocol: StoredSchema8Protocol,
-): ProtocolExportInput {
-  const layouts: Record<string, { name: string }> = {};
-  const layoutNodeTypes: Record<string, string[]> = {};
-  const nodeTypes = protocol.codebook.node;
-  const node =
-    nodeTypes === undefined || nodeTypes === null
-      ? undefined
-      : Object.fromEntries(
-          Object.entries(nodeTypes).map(([type, definition]) => {
-            if (definition.variables === undefined) return [type, definition];
-            const variables = Object.fromEntries(
-              Object.entries(definition.variables).filter(([id, variable]) => {
-                if (
-                  typeof variable !== 'object' ||
-                  variable === null ||
-                  !('type' in variable) ||
-                  variable.type !== 'layout'
-                ) {
-                  return true;
-                }
-                layouts[id] ??= {
-                  name:
-                    'name' in variable && typeof variable.name === 'string'
-                      ? variable.name
-                      : id,
-                };
-                (layoutNodeTypes[id] ??= []).push(type);
-                return false;
-              }),
-            );
-            return [type, { ...definition, variables }];
-          }),
-        );
-  const converted: unknown = {
-    ...protocol.codebook,
-    ...(node === undefined ? {} : { node }),
-    ...(Object.keys(layouts).length === 0 ? {} : { layouts }),
-  };
-  return {
-    hash: protocol.hash,
-    name: protocol.name,
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the schema 8 and current codebook types differ only in fields the exporter never reads, once layout variables are moved to layouts
-    codebook: converted as ProtocolExportInput['codebook'],
-    layoutNodeTypes,
-  };
 }
 
 function runOnWorker({

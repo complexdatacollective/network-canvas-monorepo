@@ -3,7 +3,7 @@ import { Effect, Layer } from 'effect';
 import { DatabaseError } from '@codaco/network-exporters/errors';
 import { type ProtocolExportInput } from '@codaco/network-exporters/input';
 import { ProtocolRepository } from '@codaco/network-exporters/services/ProtocolRepository';
-import { getLayoutNodeTypes } from '@codaco/protocol-validation';
+import { getLayoutUsage } from '@codaco/protocol-validation';
 import { prisma } from '~/lib/db';
 import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 
@@ -39,7 +39,11 @@ export const PrismaProtocolRepository = Layer.succeed(ProtocolRepository, {
           hash: row.hash,
           name: row.name,
           codebook: stored.data.codebook,
-          layoutNodeTypes: getLayoutNodeTypes(stored.data),
+          layoutNodeTypes: Object.fromEntries(
+            Object.entries(getLayoutUsage(stored.data)).map(
+              ([layoutId, usage]) => [layoutId, usage.nodeTypes],
+            ),
+          ),
         };
       }
       return result;

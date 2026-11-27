@@ -500,7 +500,8 @@ export {
 export { readRosterCsv } from './utils/readRosterCsv.ts';
 export {
   findRulesNamingLayout,
-  getLayoutNodeTypes,
+  getLayoutUsage,
+  getNodeTypesWithLayout,
 } from './utils/layoutUsage.ts';
 export { isDirectedEdgeType } from './utils/edgeTypeRules.ts';
 export {

@@ -8,7 +8,7 @@ import {
   DATE_RESOLUTION,
   type DateFormat,
   DEFAULT_TYPE as DEFAULT_DATE_FORMAT,
-  getLayoutNodeTypes,
+  getNodeTypesWithLayout,
   isValidDateAtResolution,
   type Variable,
   type Variables,
@@ -247,9 +247,10 @@ export const ruleLayoutOptions = (
   const typeLayouts =
     stages === undefined || nodeTypeId === undefined
       ? []
-      : Object.entries(getLayoutNodeTypes({ codebook, stages })).flatMap(
-          ([layoutId, nodeTypes]) =>
-            nodeTypes.includes(nodeTypeId) ? [layoutId] : [],
+      : Object.keys(layouts).filter((layoutId) =>
+          getNodeTypesWithLayout({ codebook, stages }, layoutId).includes(
+            nodeTypeId,
+          ),
         );
   const listed = Object.keys(layouts).filter(
     (layoutId) =>
