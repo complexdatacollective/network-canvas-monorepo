@@ -284,7 +284,15 @@ const withEveryReference = () => {
   const sociogram = stageNamed(protocol, 'sociogram');
   const [sociogramPrompt] = arrayAt(sociogram, ['prompts']);
   if (isRecord(sociogramPrompt)) {
-    sociogramPrompt.sortOrder = [{ property: 'name', direction: 'asc' }];
+    sociogramPrompt.sortOrder = [
+      {
+        id: testId('sociogram sort'),
+        type: 'person',
+        property: 'name',
+        direction: 'asc',
+      },
+    ];
+    sociogramPrompt.nodeTypeOrder = ['person'];
     sociogramPrompt.edges = { display: ['knows'] };
   }
 
@@ -394,6 +402,8 @@ const EVERY_REFERENCE_KIND = [
   'T Sociogram stages.#.prompts.#.edges.create',
   'T Sociogram stages.#.prompts.#.edges.display.#',
   'T Sociogram stages.#.prompts.#.highlight.#.type',
+  'T Sociogram stages.#.prompts.#.nodeTypeOrder.#',
+  'T Sociogram stages.#.prompts.#.sortOrder.#.type',
   'T Sociogram stages.#.subject.types.#',
   'T TieStrengthCensus stages.#.prompts.#.createEdge',
   'T TieStrengthCensus stages.#.subject.types.#',

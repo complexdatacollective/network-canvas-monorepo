@@ -127,16 +127,14 @@ describe('a Sociogram showing several node types', () => {
     );
   });
 
-  it('rejects a sort rule about a type the stage does not show', () => {
-    const base = createBaseProtocol();
-    expect(Object.keys(base.codebook.node)).toContain('colleague');
+  it('rejects a sort rule about a codebook type the stage does not show', () => {
     expect(
-      issuesOf([{ sortOrder: [sortRule('unknown-type', 'name')] }]),
+      issuesOf([{ sortOrder: [sortRule('venue', 'name')] }]),
     ).toContainEqual({
       path: 'stages.1.prompts.0.sortOrder.0.type',
       code: 'custom',
       message:
-        'A sort rule is about node type "unknown-type", which this stage does not show.',
+        'A sort rule is about node type "Venue", which this stage does not show.',
     });
   });
 
@@ -152,6 +150,14 @@ describe('a Sociogram showing several node types', () => {
       path: 'stages.1.prompts.0.nodeTypeOrder.2',
       code: 'custom',
       message: 'The node type order names node type "Person" more than once.',
+    });
+    expect(
+      issuesOf([{ nodeTypeOrder: ['person', 'colleague', 'venue'] }]),
+    ).toContainEqual({
+      path: 'stages.1.prompts.0.nodeTypeOrder.2',
+      code: 'custom',
+      message:
+        'The node type order names node type "Venue", which this stage does not show.',
     });
     expect(issuesOf([{ nodeTypeOrder: ['person', 'colleague'] }])).toEqual([]);
   });
