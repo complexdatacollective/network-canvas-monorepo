@@ -13,6 +13,7 @@ import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   FilterRuleSetField,
@@ -25,6 +26,7 @@ import {
   attributeTrigger,
   chooseAttributeById,
   offeredAttributes,
+  unavailableAttributes,
 } from '../../testing/attributePicker.ts';
 import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
 import type { RuleDraft } from '../rule.ts';
@@ -1675,5 +1677,84 @@ describe('saving a rule', () => {
         options: { type: PERSON, operator: 'NOT_EXISTS' },
       },
     ]);
+  });
+});
+
+describe('a layout in the node attribute picker', () => {
+  const PLACE = testTypeId('place');
+  const SOCIOGRAM = testId('stage/sociogram');
+
+  // A Sociogram places people in `home`, so the layout is one of the
+  // person type's attributes and not one of the place type's.
+  const renderWithSociogram = () => {
+    const sections = ruleSections();
+    render(
+      <RuleEditorHost
+        sections={{
+          ...sections,
+          [sectionId({ kind: 'stageOrder' })]: {
+            stages: ['stage-1', SOCIOGRAM],
+          },
+          [sectionId({ kind: 'stage', stageId: SOCIOGRAM })]: {
+            id: SOCIOGRAM,
+            type: 'Sociogram',
+            label: { en: 'Sociogram' },
+            subject: { entity: 'node', types: [PERSON] },
+            layout: HOME,
+            background: { concentricCircles: 3 },
+            prompts: [{ id: testId('prompt'), text: { en: 'Place people' } }],
+          },
+          [sectionId({ kind: 'codebookNode', typeId: PLACE })]: {
+            name: 'Place',
+            color: 'node-color-seq-3',
+            shape: { default: 'circle' },
+            variables: {
+              [testVariableId('place-name')]: { name: 'Name', type: 'text' },
+            },
+          },
+        }}
+      >
+        <BuilderSection sectionKey="skip-logic" title="Skip logic">
+          <Field
+            name={RULE_SET_FIELD}
+            label="Rules"
+            component={QueryRuleSetField}
+          />
+        </BuilderSection>
+      </RuleEditorHost>,
+    );
+  };
+
+  const nodeAttributeField = async (
+    user: ReturnType<typeof userEvent.setup>,
+    typeName: string,
+  ) => {
+    await openNewRule(user);
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'Node - match a node type or one of its attributes.',
+      }),
+    );
+    await user.click(await screen.findByRole('radio', { name: typeName }));
+    await user.click(await screen.findByRole('option', { name: /Attribute/ }));
+    return waitFor(() => attributeField('Node attribute'));
+  };
+
+  it('lists a layout a stage places the node type in as unavailable', async () => {
+    const user = userEvent.setup();
+    renderWithSociogram();
+    const field = await nodeAttributeField(user, 'Person');
+
+    expect(await unavailableAttributes(user, field)).toContain(HOME);
+    expect(await offeredAttributes(user, field)).not.toContain(HOME);
+  });
+
+  it('leaves the layout out for a node type no stage places in it', async () => {
+    const user = userEvent.setup();
+    renderWithSociogram();
+    const field = await nodeAttributeField(user, 'Place');
+
+    expect(await unavailableAttributes(user, field)).not.toContain(HOME);
+    expect(await offeredAttributes(user, field)).not.toContain(HOME);
   });
 });
