@@ -1204,6 +1204,69 @@ describe('the in-memory host', () => {
     ).toMatchObject({ layouts: { [layoutId]: { name: 'seating' } } });
   });
 
+  const createLayout = async (subject: ReturnType<typeof host>) =>
+    subject.adapter.rpcCall('Create', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'positions' }),
+    });
+
+  it('deletes a layout', async () => {
+    const subject = host();
+    const created = await createLayout(subject);
+
+    const deleted = await subject.adapter.rpcCall('Delete', {
+      protocolId: subject.protocolId,
+      sectionId: created.sectionId,
+    });
+
+    expect(deleted.changedSections).toEqual([created.sectionId]);
+    expect(subject.store.has(created.sectionId)).toBe(false);
+    expect(
+      assembleProtocolSections(sectionsOf(subject)).codebook,
+    ).not.toHaveProperty('layouts');
+  });
+
+  it('refuses to delete a layout an editor holds, and names them', async () => {
+    const subject = host();
+    const created = await createLayout(subject);
+    await subject.asCollaborator(COLLABORATOR).rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: created.sectionId,
+    });
+
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Delete', {
+      protocolId: subject.protocolId,
+      sectionId: created.sectionId,
+    });
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('SectionsLocked');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      blocked: [
+        { sectionId: created.sectionId, holder: { displayName: 'Grace' } },
+      ],
+    });
+    expect(subject.store.has(created.sectionId)).toBe(true);
+  });
+
+  it('refuses to delete a layout the protocol does not have', async () => {
+    const subject = host();
+    const missing = sectionId({
+      kind: 'codebookLayout',
+      layoutId: testVariableId('missing layout'),
+    });
+
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Delete', {
+      protocolId: subject.protocolId,
+      sectionId: missing,
+    });
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('SectionNotFound');
+  });
+
   it('refuses to create a layout whose document is not shaped like one', async () => {
     const subject = host();
 
@@ -1909,6 +1972,47 @@ describe('codebook sections written with a stage', () => {
       sectionId: INVENTED,
     });
     expect(subject.store.has(INVENTED)).toBe(false);
+    expect(subject.store.read(INFORMATION).document).toEqual(before);
+  });
+
+  const SEATING = sectionId({
+    kind: 'codebookLayout',
+    layoutId: testVariableId('seating layout'),
+  });
+
+  it('writes a new layout in the stage’s revision', async () => {
+    const subject = host();
+
+    const { data: result, isSuccess } = await submitWith(subject, [
+      { sectionId: SEATING, document: Redacted.make({ name: 'seating' }) },
+    ]);
+
+    expect(isSuccess).toBe(true);
+    expect(subject.store.read(SEATING).revision.sequence).toBe(
+      result?.revision.sequence,
+    );
+    expect(subject.store.read(SEATING).document).toEqual({ name: 'seating' });
+  });
+
+  it.each([
+    [
+      'whose id is not a UUID',
+      sectionId({ kind: 'codebookLayout', layoutId: 'seating' }),
+      { name: 'seating' },
+    ],
+    ['whose document is not a layout', SEATING, { name: 7 }],
+  ])('writes nothing for a layout %s', async (_, id, document) => {
+    const subject = host();
+    const before = subject.store.read(INFORMATION).document;
+
+    const { refusal, isSuccess } = await submitWith(subject, [
+      { sectionId: id, document: Redacted.make(document) },
+    ]);
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(revealed(refusalData(refusal))).toMatchObject({ sectionId: id });
+    expect(subject.store.has(id)).toBe(false);
     expect(subject.store.read(INFORMATION).document).toEqual(before);
   });
 

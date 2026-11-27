@@ -176,6 +176,9 @@ export class ProtocolBuilderGroup extends RpcGroup.make(
    * dialog is the researcher deciding the thing is gone. The order pointer is
    * not such a dependency — it is how the protocol holds the stage, and this
    * call rewrites it.
+   *
+   * It also removes a codebook layout, refusing while an editor holds the
+   * layout's section.
    */
   Rpc.make('Delete', {
     payload: DeleteSectionInputSchema,

@@ -53,7 +53,7 @@ const RESPONSIBILITIES: Readonly<Record<string, string>> = {
   Create:
     'Add a section the protocol does not hold yet — a stage, an entity type, a layout — and place it where the editor asked.',
   Delete:
-    'Remove a section, and refuse while any section the removal would touch is held elsewhere.',
+    'Remove a stage or a layout, and refuse while any section the removal would touch is held elsewhere.',
   RefactorDeleteVariable:
     'Remove a variable from the codebook and every stage that referenced it, as one change, so no stage is left pointing at an attribute the codebook no longer has.',
   RefactorDeleteEntityType:

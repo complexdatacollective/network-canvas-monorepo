@@ -405,6 +405,11 @@ function buildHandlers(
       yield* inProtocol(input);
       yield* inSection(input.sectionId);
       const ref = parseSectionId(input.sectionId);
+      if (ref.kind === 'codebookLayout') {
+        return yield* refactorAnswer(
+          store.deleteLayout(ref.layoutId, yield* callerPrincipal),
+        );
+      }
       if (ref.kind !== 'stage') {
         return yield* new SectionNotFound({ sectionId: input.sectionId });
       }

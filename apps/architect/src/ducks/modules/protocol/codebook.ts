@@ -533,6 +533,13 @@ const codebookSlice = createSlice({
         layouts: { ...state.layouts, [layoutId]: definition },
       };
     },
+    deleteLayout: (state, action: PayloadAction<{ layoutId: string }>) => {
+      const { [action.payload.layoutId]: _deleted, ...layouts } =
+        state.layouts ?? {};
+      const { layouts: _layouts, ...rest } = state;
+      // A codebook with no layouts holds no `layouts` record at all.
+      return Object.keys(layouts).length === 0 ? rest : { ...rest, layouts };
+    },
     deleteVariable: (state, action: PayloadAction<DeleteVariablePayload>) => {
       const { entity, type, variable } = action.payload;
       const variablePath =
@@ -561,7 +568,7 @@ const codebookSlice = createSlice({
   },
 });
 
-export const { setLayout } = codebookSlice.actions;
+export const { deleteLayout, setLayout } = codebookSlice.actions;
 
 // Export convenience wrapper for updateVariableAsync with cleaner API
 export const updateVariableByUUID = (

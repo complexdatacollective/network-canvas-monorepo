@@ -1162,6 +1162,54 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     );
   });
 
+  it('deletes a layout, and refuses while an editor holds it', async () => {
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'codebookLayout',
+        document: Redacted.make({ name: 'seating' }),
+      }),
+    );
+    await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: created.sectionId }),
+    );
+    await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+      ),
+      'SectionsLocked',
+    );
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: created.sectionId }),
+    );
+
+    const deleted = await call(
+      ADA,
+      host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+    );
+
+    expect(deleted.changedSections).toEqual([created.sectionId]);
+    await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId: created.sectionId }),
+      ),
+      'SectionNotFound',
+    );
+    await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+      ),
+      'SectionNotFound',
+    );
+  });
+
   it('refuses to create a layout whose document is not shaped like one', async () => {
     await expectRpcFailure(
       callExit(

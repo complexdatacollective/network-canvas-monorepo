@@ -1784,6 +1784,85 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(layouts()).toEqual({ [ref.layoutId]: { name: 'tables' } });
   });
 
+  it('deletes a layout as one undo step', async () => {
+    const { store, client } = openProtocol();
+    const created = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'seating' }),
+    });
+    const depth = undoDepth(store);
+
+    const deleted = await client.call('Delete', {
+      protocolId: PROTOCOL_ID,
+      sectionId: created.sectionId,
+    });
+
+    expect(deleted.changedSections).toEqual([created.sectionId]);
+    expect(getProtocol(store.getState())?.codebook).not.toHaveProperty(
+      'layouts',
+    );
+    const { error } = await safe(
+      client.call('GetSection', {
+        protocolId: PROTOCOL_ID,
+        sectionId: created.sectionId,
+      }),
+    );
+    expect(error).toBeInstanceOf(SectionNotFound);
+    expect(undoDepth(store)).toBe(depth + 1);
+    store.dispatch(timelineActions.undo());
+    expect(
+      Object.values(getProtocol(store.getState())?.codebook.layouts ?? {}),
+    ).toEqual([{ name: 'seating' }]);
+  });
+
+  it('refuses to delete a layout an editor holds', async () => {
+    const { store, client } = openProtocol();
+    const created = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'seating' }),
+    });
+    await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: created.sectionId,
+    });
+
+    const { error, isSuccess } = await safe(
+      client.call('Delete', {
+        protocolId: PROTOCOL_ID,
+        sectionId: created.sectionId,
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(error).toBeInstanceOf(SectionsLocked);
+    expect(error).toMatchObject({
+      blocked: [{ sectionId: created.sectionId }],
+    });
+    expect(
+      Object.values(getProtocol(store.getState())?.codebook.layouts ?? {}),
+    ).toEqual([{ name: 'seating' }]);
+  });
+
+  it('refuses to delete a layout the protocol does not have', async () => {
+    const { client } = openProtocol();
+
+    const { error } = await safe(
+      client.call('Delete', {
+        protocolId: PROTOCOL_ID,
+        sectionId: sectionId({
+          kind: 'codebookLayout',
+          layoutId: testVariableId('missing layout'),
+        }),
+      }),
+    );
+
+    expect(error).toBeInstanceOf(SectionNotFound);
+  });
+
   it('refuses to create a layout whose document is not shaped like one', async () => {
     const { store, client } = openProtocol();
 
@@ -2650,6 +2729,45 @@ describe('codebook sections saved with a stage', () => {
     store.dispatch(timelineActions.undo());
     expect(getProtocol(store.getState())?.codebook.layouts).toBeUndefined();
   });
+
+  it.each([
+    [
+      'a layout',
+      sectionId({ kind: 'codebookLayout', layoutId: 'seating' }),
+      { name: 'seating' },
+    ],
+    [
+      'a node type',
+      sectionId({ kind: 'codebookNode', typeId: 'invented' }),
+      INVENTED,
+    ],
+  ])(
+    'refuses %s the stage’s editor created under an id that is not a UUID, and writes nothing',
+    async (_, staged, document) => {
+      const { store, client } = openProtocol();
+      const before = getProtocol(store.getState())?.codebook;
+      const held = await client.call('AcquireLock', {
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+      });
+
+      const { error } = await safe(
+        client.call('Submit', {
+          protocolId: PROTOCOL_ID,
+          requestId: nextRequestId(),
+          sectionId: INFORMATION,
+          document: held.document,
+          revision: held.revision,
+          codebook: [{ sectionId: staged, document: Redacted.make(document) }],
+        }),
+      );
+
+      expect(error).toBeInstanceOf(InvalidShape);
+      expect(error instanceof InvalidShape && error.sectionId).toBe(staged);
+      expect(getProtocol(store.getState())?.codebook).toEqual(before);
+      expect(undoDepth(store)).toBe(0);
+    },
+  );
 
   it('writes a created stage with its codebook', async () => {
     const { store, client } = openProtocol();

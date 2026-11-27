@@ -1574,6 +1574,33 @@ export function deleteStage(session: ProtocolBuilderSession, stageId: string) {
   );
 }
 
+/**
+ * Removes a codebook layout. No stage can name a layout yet, so nothing
+ * refuses it but an editor holding its section, this connection included.
+ */
+export function deleteLayout(
+  session: ProtocolBuilderSession,
+  layoutId: string,
+) {
+  return refactor(
+    session,
+    (head: HeadState) => {
+      const target = makeSectionId({ kind: 'codebookLayout', layoutId });
+      return Effect.succeed(
+        head.sectionHashes[target] === undefined
+          ? undefined
+          : {
+              writes: new Map<ProtocolSectionId, SectionDoc | undefined>([
+                [target, undefined],
+              ]),
+              owned: new Set<ProtocolSectionId>(),
+            },
+      );
+    },
+    ['unset'],
+  );
+}
+
 export function deleteVariable(
   session: ProtocolBuilderSession,
   input: { subject: CodebookSubject; variableId: string },

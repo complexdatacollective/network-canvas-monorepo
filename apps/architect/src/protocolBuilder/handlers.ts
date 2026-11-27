@@ -56,6 +56,7 @@ import { ProtocolRevisions, type LoggedEvent } from './protocolRevisions.ts';
 import type { ResourceBridge } from './resourceBridge.ts';
 import {
   createSection,
+  deleteLayoutSection,
   deleteStageSection,
   stageCodebook,
   stageInterfaceText,
@@ -407,7 +408,7 @@ export const ArchitectHandlers = (
             yield* requireOpen(input.protocolId);
             const ref = parseSectionId(input.sectionId);
             if (
-              ref.kind !== 'stage' ||
+              (ref.kind !== 'stage' && ref.kind !== 'codebookLayout') ||
               revisions.read(input.sectionId) === undefined
             ) {
               return yield* new SectionNotFound({ sectionId: input.sectionId });
@@ -416,15 +417,21 @@ export const ArchitectHandlers = (
             if (blocked !== undefined) {
               return yield* new SectionsLocked(blocked);
             }
-            const held = heldSections(revisions, [
-              input.sectionId,
-              STAGE_ORDER_SECTION,
-            ]);
+            const held = heldSections(
+              revisions,
+              ref.kind === 'stage'
+                ? [input.sectionId, STAGE_ORDER_SECTION]
+                : [input.sectionId],
+            );
             if (held.length > 0) {
               return yield* new SectionsLocked({ blocked: held });
             }
             const { result, changed } = yield* Effect.promise(() =>
-              revisions.write(() => deleteStageSection(store, ref.stageId)),
+              revisions.write(async () =>
+                ref.kind === 'stage'
+                  ? deleteStageSection(store, ref.stageId)
+                  : deleteLayoutSection(store, ref.layoutId),
+              ),
             );
             if (result.status === 'referenced') {
               return yield* new ReferencesRemain({

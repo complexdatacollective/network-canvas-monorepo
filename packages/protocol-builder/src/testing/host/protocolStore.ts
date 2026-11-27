@@ -12,8 +12,7 @@ import type {
 import { type InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
-  validateSection,
-  validateStageSectionIdentity,
+  sectionShapeIssues,
   type SectionIssue,
 } from '@codaco/studio-sync/section-validation';
 import {
@@ -251,7 +250,7 @@ export class InMemoryProtocolStore {
     if (owner === undefined || owner.sessionId !== principal.sessionId) {
       return { status: 'notLockHolder', holder: this.holderOf(id) };
     }
-    const issues = shapeIssues(id, document);
+    const issues = sectionShapeIssues(id, document);
     if (issues.length > 0) return { status: 'invalidShape', issues };
     if (assetEntries !== undefined) {
       // The manifest is a section like any other and a promotion writes it, so
@@ -269,7 +268,7 @@ export class InMemoryProtocolStore {
       const blocked = this.#blockedBy([SETTINGS], new Set([id]), principal);
       if (blocked.length > 0) return { status: 'blocked', blocked };
       settings = this.#settingsWith(interfaceText);
-      const refused = shapeIssues(SETTINGS, settings);
+      const refused = sectionShapeIssues(SETTINGS, settings);
       if (refused.length > 0) {
         return { status: 'invalidShape', sectionId: SETTINGS, issues: refused };
       }
@@ -338,7 +337,7 @@ export class InMemoryProtocolStore {
     }
     const created: SectionDoc =
       kind === 'stage' && id !== undefined ? { ...document, id } : document;
-    const issues = shapeIssues(target, created);
+    const issues = sectionShapeIssues(target, created);
     if (issues.length > 0) {
       return { status: 'invalidShape', sectionId: target, issues };
     }
@@ -347,7 +346,7 @@ export class InMemoryProtocolStore {
         ? undefined
         : this.#settingsWith(interfaceText);
     if (settings !== undefined) {
-      const refused = shapeIssues(SETTINGS, settings);
+      const refused = sectionShapeIssues(SETTINGS, settings);
       if (refused.length > 0) {
         return { status: 'invalidShape', sectionId: SETTINGS, issues: refused };
       }
@@ -409,6 +408,20 @@ export class InMemoryProtocolStore {
         [target, undefined],
         [STAGE_ORDER, { ...order, stages }],
       ],
+      principal,
+      new Set<ProtocolSectionId>(),
+    );
+  }
+
+  /**
+   * Removes a codebook layout. No stage can name a layout yet, so nothing
+   * refuses it but a section held elsewhere.
+   */
+  deleteLayout(layoutId: string, principal: HostPrincipal): RefactorOutcome {
+    const target = sectionId({ kind: 'codebookLayout', layoutId });
+    if (!this.has(target)) return { status: 'notFound', sectionId: target };
+    return this.#applyRefactor(
+      [[target, undefined]],
       principal,
       new Set<ProtocolSectionId>(),
     );
@@ -657,7 +670,7 @@ export class InMemoryProtocolStore {
       };
     }
     for (const entry of codebook) {
-      const issues = shapeIssues(
+      const issues = sectionShapeIssues(
         entry.sectionId,
         Redacted.value(entry.document),
       );
@@ -894,7 +907,7 @@ function removeOneReference(
     if (current === undefined) continue;
     const next = withoutReference(current, reference.path);
     if (next === undefined) continue;
-    if (shapeIssues(reference.sectionId, next).length > 0) continue;
+    if (sectionShapeIssues(reference.sectionId, next).length > 0) continue;
     documents[reference.sectionId] = next;
     rewritten.set(reference.sectionId, next);
     return true;
@@ -947,18 +960,4 @@ function codebookSectionId(subject: CodebookSubject): ProtocolSectionId {
     return sectionId({ kind: 'codebookNode', typeId: subject.type });
   }
   return sectionId({ kind: 'codebookEdge', typeId: subject.type });
-}
-
-function shapeIssues(
-  id: ProtocolSectionId,
-  document: SectionDoc,
-): SectionIssue[] {
-  const result = validateSection(id, document);
-  const issues = result.success ? [] : [...result.issues];
-  const ref = parseSectionId(id);
-  if (ref.kind === 'stage') {
-    const identity = validateStageSectionIdentity(ref.stageId, document);
-    if (!identity.success) issues.push(...identity.issues);
-  }
-  return issues;
 }

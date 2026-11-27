@@ -27,7 +27,7 @@ import {
   ProtocolEventSchema,
   SectionIdSchema,
   StageResourceInputSchema,
-  StageSectionIdSchema,
+  DeletableSectionIdSchema,
   SubmitResultSchema,
 } from '../schemas.ts';
 import { HostSession } from '../session.ts';
@@ -178,15 +178,16 @@ describe('a section id', () => {
     >().toEqualTypeOf<ProtocolSectionId>();
     expectTypeOf<typeof SectionIdSchema.Encoded>().toEqualTypeOf<string>();
     expectTypeOf<
-      typeof StageSectionIdSchema.Type
+      typeof DeletableSectionIdSchema.Type
     >().toEqualTypeOf<ProtocolSectionId>();
   });
 
-  it('is only a stage where a stage is asked for', () => {
-    expect(accepts(StageSectionIdSchema, 'stage:abc')).toBe(true);
+  it('is only a stage or a layout where a deletable section is asked for', () => {
+    expect(accepts(DeletableSectionIdSchema, 'stage:abc')).toBe(true);
+    expect(accepts(DeletableSectionIdSchema, 'codebook:layout:abc')).toBe(true);
     for (const id of ['codebook:node:person', 'codebook:ego', 'settings']) {
       expect(accepts(SectionIdSchema, id)).toBe(true);
-      expect(accepts(StageSectionIdSchema, id)).toBe(false);
+      expect(accepts(DeletableSectionIdSchema, id)).toBe(false);
     }
   });
 });

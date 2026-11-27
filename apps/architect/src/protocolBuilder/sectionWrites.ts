@@ -24,6 +24,7 @@ import {
   type SectionReference,
 } from '@codaco/studio-sync/section-references';
 import {
+  sectionShapeIssues,
   SettingsSectionSchema,
   StageOrderSectionSchema,
   toSectionIssues,
@@ -40,6 +41,7 @@ import { deleteAsset } from '~/ducks/modules/protocol/assetManifest';
 import {
   createEdgeAsync,
   createTypeAsync,
+  deleteLayout,
   setLayout,
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
@@ -246,6 +248,12 @@ export function stageCodebook(sections: readonly StageCodebookSection[]):
         ...refuse('not a codebook section'),
         sectionId: id,
       };
+    }
+    // The document parsed, so what is left to refuse is the section's own
+    // identity: a type or layout id the client chose that is not a UUID.
+    const issues = sectionShapeIssues(id, document);
+    if (issues.length > 0) {
+      return { status: 'refused', sectionId: id, issues };
     }
   }
   return { status: 'written', codebook };
@@ -471,6 +479,18 @@ export async function deleteStageSection(
     };
   }
   await store.dispatch(stageActionCreators.deleteStage(stageId)).unwrap();
+  return { status: 'deleted' };
+}
+
+/**
+ * Removes a layout from the codebook. Nothing in the protocol can name a
+ * layout yet, so there is no reference to refuse it for.
+ */
+export function deleteLayoutSection(
+  store: ArchitectStore,
+  layoutId: string,
+): SectionDeletion {
+  store.dispatch(deleteLayout({ layoutId }));
   return { status: 'deleted' };
 }
 

@@ -51,6 +51,7 @@ import {
   authorizeCaller,
   create,
   deleteEntityType,
+  deleteLayout,
   deleteStage,
   deleteVariable,
   headSection,
@@ -625,14 +626,16 @@ export const ProtocolBuilderHandlers: Layer.Layer<
       }) {
         const session = yield* openSession(protocolId);
         const ref = parseSectionId(sectionId);
-        if (ref.kind !== 'stage') {
+        if (ref.kind !== 'stage' && ref.kind !== 'codebookLayout') {
           return yield* new SectionNotFound({ sectionId });
         }
         return yield* Effect.uninterruptible(
           Effect.gen(function* () {
             const result = yield* command(
               protocolId,
-              deleteStage(session, ref.stageId),
+              ref.kind === 'stage'
+                ? deleteStage(session, ref.stageId)
+                : deleteLayout(session, ref.layoutId),
             );
             yield* events.publish(session, result.events);
             const outcome = result.outcome;

@@ -508,19 +508,23 @@ export const DeleteEntityTypeInputSchema = Schema.Struct({
 });
 
 /**
- * A stage section's id. Stages are the only sections `Delete` removes: a
+ * The id of a section `Delete` removes: a stage or a codebook layout. A
  * codebook type goes with `RefactorDeleteEntityType`, which also sweeps the
  * references to it, and the rest of the taxonomy is a protocol's singletons.
  */
-export const StageSectionIdSchema = SectionIdSchema.check(
-  Schema.makeFilter((id) => parseSectionId(id).kind === 'stage', {
-    message: 'not a stage section id',
-  }),
+export const DeletableSectionIdSchema = SectionIdSchema.check(
+  Schema.makeFilter(
+    (id) => {
+      const { kind } = parseSectionId(id);
+      return kind === 'stage' || kind === 'codebookLayout';
+    },
+    { message: 'not a stage or layout section id' },
+  ),
 );
 
 export const DeleteSectionInputSchema = Schema.Struct({
   protocolId: ProtocolIdSchema,
-  sectionId: StageSectionIdSchema,
+  sectionId: DeletableSectionIdSchema,
 });
 
 /** What one atomic change wrote, and which sections it wrote. */
