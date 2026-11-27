@@ -2,7 +2,8 @@ import type { ProtocolExportInput } from '@codaco/network-exporters/input';
 
 import type { StoredSchema8Protocol } from '../db/types';
 
-type EntityDefinition = { variables?: Record<string, unknown> };
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const isLayoutVariable = (variable: unknown) =>
   typeof variable === 'object' &&
@@ -19,10 +20,12 @@ const layoutName = (id: string, variable: unknown) =>
     : id;
 
 const withoutLayoutVariables = (
-  definition: EntityDefinition,
+  definition: unknown,
   onLayout: (id: string, variable: unknown) => void = () => undefined,
-): EntityDefinition => {
-  if (definition.variables === undefined) return definition;
+): unknown => {
+  if (!isRecord(definition) || !isRecord(definition.variables)) {
+    return definition;
+  }
   const variables = Object.fromEntries(
     Object.entries(definition.variables).filter(([id, variable]) => {
       if (!isLayoutVariable(variable)) return true;
@@ -34,10 +37,10 @@ const withoutLayoutVariables = (
 };
 
 const mapTypes = (
-  types: Record<string, EntityDefinition> | null | undefined,
-  map: (type: string, definition: EntityDefinition) => EntityDefinition,
+  types: unknown,
+  map: (type: string, definition: unknown) => unknown,
 ) =>
-  types === undefined || types === null
+  !isRecord(types)
     ? undefined
     : Object.fromEntries(
         Object.entries(types).map(([type, definition]) => [
