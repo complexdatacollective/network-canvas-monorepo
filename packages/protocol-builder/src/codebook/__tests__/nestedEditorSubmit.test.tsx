@@ -108,6 +108,7 @@ const editors = [
       <VariableEditor
         openId="nested-variable"
         mode="update"
+        layouts={undefined}
         subject={SUBJECT}
         authoritativeDocument={PERSON}
         variableId={ATTRIBUTE}

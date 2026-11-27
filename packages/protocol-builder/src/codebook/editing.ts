@@ -612,7 +612,18 @@ const assertVariableNameAvailable = (
   excludedVariableId?: string,
 ): void => {
   const normalizedName = normalizeForComparison(variable.name);
+  const held =
+    excludedVariableId === undefined
+      ? undefined
+      : variables[excludedVariableId];
+  // As with export columns, only a clash this write introduces is refused, so
+  // an attribute that already shares a layout's name can still be edited.
+  const keepsHeldName =
+    isRecord(held) &&
+    typeof held.name === 'string' &&
+    normalizeForComparison(held.name) === normalizedName;
   if (
+    !keepsHeldName &&
     layoutsFor(input.subject, input.layouts).some(
       ({ name }) => normalizeForComparison(name) === normalizedName,
     )

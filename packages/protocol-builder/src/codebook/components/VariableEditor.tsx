@@ -377,6 +377,12 @@ export type VariableEditorProps =
       Readonly<{
         mode: 'update';
         protocolContext?: never;
+        /**
+         * The codebook's layouts, which a node attribute may not be named
+         * like or share an export column with. `undefined` where the
+         * codebook has none.
+         */
+        layouts: ProtocolBuilderProtocolContext['codebook']['layouts'];
       }>);
 
 type VariableEditorInstanceProps = VariableEditorProps extends infer TProps
@@ -770,10 +776,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               subject,
               authoritativeDocument,
               variableId,
-              // An update has no protocol context to read the layouts from.
-              // The host's rebased write, which has one, refuses a name or
-              // column a layout already takes.
-              layouts: undefined,
+              layouts: props.layouts,
               draft: submittedDraft,
               replaceProperties,
               localization,

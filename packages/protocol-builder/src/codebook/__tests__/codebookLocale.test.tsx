@@ -716,6 +716,7 @@ describe('the codebook editors swept for English', () => {
       <VariableEditor
         openId="locale-switch-variable"
         mode="update"
+        layouts={undefined}
         subject={{ entity: 'node', type: PERSON }}
         authoritativeDocument={{
           ...PERSON_DOCUMENT,

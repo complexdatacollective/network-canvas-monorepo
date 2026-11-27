@@ -523,14 +523,85 @@ describe('beside the codebook layouts', () => {
     );
   });
 
-  it('lets an attribute of an edge or of the participant take a layout’s name', () => {
-    expect(() => createBeside(text('seating'), EGO)).not.toThrow();
+  it.each([
+    ['an edge', 'seating', { entity: 'edge', type: testTypeId('knows') }],
+    ['an edge', 'seating_x', { entity: 'edge', type: testTypeId('knows') }],
+    ['the participant', 'seating', EGO],
+    ['the participant', 'seating_x', EGO],
+  ] satisfies [string, string, CodebookSubject][])(
+    'lets an attribute of %s be named %s beside a layout',
+    (_, name, subject) => {
+      expect(() => createBeside(text(name), subject)).not.toThrow();
+    },
+  );
+
+  it('lets an attribute that already shares a layout’s name have its other properties changed', () => {
+    const section = sectionOf({ seats: text('seating') });
     expect(() =>
-      createBeside(text('seating_x'), {
-        entity: 'edge',
-        type: testTypeId('knows'),
+      documentWithUpdatedVariable({
+        subject: NODE,
+        authoritativeDocument: section,
+        variableId: testVariableId('seats'),
+        layouts: LAYOUTS,
+        draft: { encrypted: true },
       }),
     ).not.toThrow();
+  });
+
+  describe('when a nested editor’s document is rebased', () => {
+    const section = sectionOf({ age: text('age') });
+    const rebase = (
+      submitted: Record<string, unknown>,
+      ownedProperties?: readonly string[],
+      authoritativeDocument: SectionDoc = section,
+    ) =>
+      documentWithRebasedVariable({
+        subject: NODE,
+        authoritativeDocument,
+        submittedDocument: sectionOf({ age: submitted }),
+        variableId: testVariableId('age'),
+        layouts: LAYOUTS,
+        ...(ownedProperties === undefined ? {} : { ownedProperties }),
+      });
+
+    it.each([undefined, ['name']])(
+      'refuses a rename onto a layout (owned properties %j)',
+      (ownedProperties) => {
+        expect(
+          nameRefusalOf(() => rebase(text('seating'), ownedProperties)),
+        ).toBe('The codebook already has a layout called "seating"');
+      },
+    );
+
+    it.each([undefined, ['name']])(
+      'refuses a rename onto a layout’s column (owned properties %j)',
+      (ownedProperties) => {
+        expect(
+          conflictOf(() => rebase(text('seating_X'), ownedProperties)),
+        ).toEqual({
+          path: ['name'],
+          text: expect.stringContaining('“seating”'),
+        });
+      },
+    );
+
+    it('accepts an owned property that does not touch the name, beside a layout', () => {
+      expect(() =>
+        rebase({ ...text('age'), validation: { required: true } }, [
+          'validation',
+        ]),
+      ).not.toThrow();
+    });
+
+    it('accepts an owned property of an attribute that already shares a layout’s name', () => {
+      expect(() =>
+        rebase(
+          { ...text('seating'), validation: { required: true } },
+          ['validation'],
+          sectionOf({ age: text('seating') }),
+        ),
+      ).not.toThrow();
+    });
   });
 });
 

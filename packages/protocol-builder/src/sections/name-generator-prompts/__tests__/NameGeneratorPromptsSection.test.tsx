@@ -494,6 +494,31 @@ describe("a name generator's prompts", () => {
     expect(attributeTrigger(stampPicker(dialog))).toBeInTheDocument();
   });
 
+  it('refuses an attribute to assign named like a layout of the codebook', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: prompts,
+    });
+    harness.receiveCodebookUpdate({
+      layouts: { [testVariableId('seating layout')]: { name: 'seating' } },
+    });
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Add new attribute to assign' }),
+    );
+    const window = await openPicker(harness, dialog);
+    await harness.user.type(searchBox(window), 'seating');
+
+    const refused = within(window).getByRole('option', {
+      name: 'An attribute cannot be named “seating”',
+    });
+    expect(refused).toHaveAttribute('aria-disabled', 'true');
+    expect(refused).toHaveAccessibleDescription(
+      'the codebook already has a layout called that',
+    );
+  });
+
   /**
    * The other refusal — the host's, not the schema's — comes with the save.
    *

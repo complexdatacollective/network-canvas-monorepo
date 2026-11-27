@@ -174,6 +174,7 @@ function renderAttributeEditor(
   const props: VariableEditorProps = {
     openId: 'open-1',
     mode: 'update',
+    layouts: undefined,
     subject: SUBJECT,
     authoritativeDocument: personDocument({ [CLOSENESS]: committed }),
     variableId: CLOSENESS,

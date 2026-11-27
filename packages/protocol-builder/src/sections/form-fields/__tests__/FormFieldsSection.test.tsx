@@ -1097,6 +1097,74 @@ describe('a codebook change a field needs, refused', () => {
     expect(screen.queryByText('the variable draft is invalid')).toBeNull();
   });
 
+  it.each([
+    ['seating', 'the codebook already has a layout called that'],
+    [
+      'seating_x',
+      'The export already has a column called “seating_x” for the positions in the layout “seating”. Choose a different name.',
+    ],
+  ])(
+    'refuses a new node attribute named %s beside the layout “seating”',
+    async (name, reason) => {
+      const harness = renderStageEditor({
+        stageId: fixtureStageId('alter-form-1'),
+        sections: <FormFieldsSection subject="node" />,
+      });
+      harness.receiveCodebookUpdate({
+        layouts: { [testVariableId('seating layout')]: { name: 'seating' } },
+      });
+
+      const dialog = await openField(harness, 'Create new form field');
+      const pickerWindow = await openAttributePicker(
+        harness.user,
+        attributePicker(dialog),
+      );
+      await harness.user.type(
+        within(pickerWindow).getByRole('combobox', {
+          name: 'Find or create an attribute',
+        }),
+        name,
+      );
+
+      const refused = within(pickerWindow).getByRole('option', {
+        name: `An attribute cannot be named “${name}”`,
+      });
+      expect(refused).toHaveAttribute('aria-disabled', 'true');
+      expect(refused).toHaveAccessibleDescription(reason);
+    },
+  );
+
+  it('refuses an option value whose column is a position column of a layout', async () => {
+    const harness = renderStageEditor({
+      stageId: fixtureStageId('alter-form-1'),
+      sections: <FormFieldsSection subject="node" />,
+    });
+    harness.receiveCodebookUpdate({
+      layouts: { [testVariableId('seat_ing layout')]: { name: 'seat_ing' } },
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await inventThroughThePicker(harness, dialog, 'seat');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'CheckboxGroup',
+    );
+    await addInlineValue(harness, 'Ing', 'ing_x');
+    await addInlineValue(harness, 'Row', 'row');
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Where do you sit?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await screen.findByText(
+        'Option “ing_x” of “seat” would be exported to a column called “seat_ing_x”, but the export already has a column called “seat_ing_x” for the positions in the layout “seat_ing”. Change the option value or the attribute name.',
+      ),
+    ).toBeInTheDocument();
+    expect(savedAttribute(harness, 'seat')).toBeUndefined();
+  });
+
   it('control: a name that clashes with no export column is created', async () => {
     const harness = renderStageEditor({
       stageId: fixtureStageId('alter-form-1'),

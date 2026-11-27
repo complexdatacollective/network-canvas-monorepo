@@ -304,6 +304,7 @@ describe('VariableEditor', () => {
       <VariableEditor
         openId="edit-1"
         mode="update"
+        layouts={undefined}
         subject={SUBJECT}
         authoritativeDocument={authoritativeDocument}
         variableId={PREFERENCE_ID}
@@ -358,6 +359,7 @@ describe('VariableEditor', () => {
         <VariableEditor
           openId="managed"
           mode="update"
+          layouts={undefined}
           subject={SUBJECT}
           authoritativeDocument={personDocument({ [GENDER_ID]: MANAGED })}
           variableId={GENDER_ID}
@@ -462,6 +464,7 @@ describe('VariableEditor', () => {
         <VariableEditor
           openId="row-choice"
           mode="update"
+          layouts={undefined}
           subject={SUBJECT}
           authoritativeDocument={personDocument({ [GENDER_ID]: GENDER })}
           variableId={GENDER_ID}
@@ -581,6 +584,7 @@ describe('VariableEditor', () => {
       <VariableEditor
         openId="edit-unchanged"
         mode="update"
+        layouts={undefined}
         subject={SUBJECT}
         authoritativeDocument={personDocument({ [COMMENT_ID]: existing })}
         variableId={COMMENT_ID}
@@ -615,6 +619,7 @@ describe('VariableEditor', () => {
       <VariableEditor
         openId="edit-type-change"
         mode="update"
+        layouts={undefined}
         subject={SUBJECT}
         authoritativeDocument={personDocument({ [BIRTHDAY_ID]: existing })}
         variableId={BIRTHDAY_ID}
@@ -653,6 +658,7 @@ describe('VariableEditor', () => {
       <VariableEditor
         openId="edit-encrypted-type-change"
         mode="update"
+        layouts={undefined}
         subject={SUBJECT}
         authoritativeDocument={personDocument({ [SECRET_ID]: existing })}
         variableId={SECRET_ID}
@@ -694,6 +700,7 @@ describe('VariableEditor', () => {
     const common = {
       openId: 'edit-live-remote',
       mode: 'update' as const,
+      layouts: undefined,
       subject: SUBJECT,
       variableId: COMMENT_ID,
       onSubmitDocument,
@@ -899,6 +906,70 @@ describe('VariableEditor', () => {
     expect(onSubmitDocument).not.toHaveBeenCalled();
   });
 
+  it('says at the field that a new attribute takes the name of a layout', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    const onSubmitDocument = submitting();
+
+    render(
+      <VariableEditor
+        {...createProps({
+          initialDraft: { name: 'seating', type: 'text' },
+          protocolContext: {
+            ...EMPTY_CONTEXT,
+            codebook: {
+              ...EMPTY_CONTEXT.codebook,
+              layouts: {
+                [testVariableId('seating layout')]: { name: 'seating' },
+              },
+            },
+          },
+          onSubmitDocument,
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    const refusal = 'The codebook already has a layout called "seating"';
+    expect(await screen.findByRole('alert')).toHaveTextContent(refusal);
+    expect(screen.getByTestId('variable-name-field-error')).toHaveTextContent(
+      refusal,
+    );
+    expect(onSubmitDocument).not.toHaveBeenCalled();
+  });
+
+  it('says at the field that a renamed attribute takes the name of a layout', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    const onSubmitDocument = submitting();
+    const existing = { name: 'age', type: 'number' } as const;
+
+    render(
+      <VariableEditor
+        openId="rename-onto-layout"
+        mode="update"
+        layouts={{ [testVariableId('seating layout')]: { name: 'seating' } }}
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ [AGE]: existing })}
+        variableId={AGE}
+        initialDraft={existing}
+        onSubmitDocument={onSubmitDocument}
+        onComplete={() => undefined}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'Seating');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    const refusal = 'The codebook already has a layout called "Seating"';
+    expect(await screen.findByRole('alert')).toHaveTextContent(refusal);
+    expect(screen.getByTestId('variable-name-field-error')).toHaveTextContent(
+      refusal,
+    );
+    expect(onSubmitDocument).not.toHaveBeenCalled();
+  });
+
   /**
    * A write that threw still has to read as a refusal.
    *
@@ -1086,6 +1157,7 @@ describe('the settings the chosen input control takes', () => {
   ): Extract<VariableEditorProps, { mode: 'update' }> => ({
     openId: 'parameters-open',
     mode: 'update',
+    layouts: undefined,
     subject: SUBJECT,
     authoritativeDocument: personDocument({ [SUBJECT_ID]: variable }),
     variableId: SUBJECT_ID,
@@ -1743,6 +1815,7 @@ describe('the two answers a boolean offers', () => {
   ): Extract<VariableEditorProps, { mode: 'update' }> => ({
     openId: 'boolean-open',
     mode: 'update',
+    layouts: undefined,
     subject: SUBJECT,
     authoritativeDocument: personDocument({ [FLAGGED_ID]: variable }),
     variableId: FLAGGED_ID,

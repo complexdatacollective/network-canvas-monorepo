@@ -121,6 +121,7 @@ export default function StageManagedOptionsEditor({
           title={dialogTitle}
           onClose={closeSession}
           mode="update"
+          layouts={protocolContext.codebook.layouts}
           openId={session.key}
           subject={subject}
           authoritativeDocument={document ?? session.openedDocument}

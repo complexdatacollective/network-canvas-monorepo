@@ -347,6 +347,7 @@ function VariableEditorDemo({
           <VariableEditor
             {...common}
             mode="update"
+            layouts={undefined}
             variableId={held.variableId}
             initialDraft={held.draft}
           />

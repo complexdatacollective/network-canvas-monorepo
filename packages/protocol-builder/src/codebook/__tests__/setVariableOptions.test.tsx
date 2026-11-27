@@ -13,7 +13,7 @@ import {
   fixtureVariableId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testId } from '../../testing/testId.ts';
+import { testId, testVariableId } from '../../testing/testId.ts';
 import { sectionIdForCodebookSubject } from '../editing.ts';
 import { useSetVariableOptions } from '../useCodebookVariableEdits.ts';
 
@@ -180,6 +180,56 @@ describe('writing the answers an attribute offers', () => {
       ),
     );
     expect(harness.host.store.read(familyMemberSection)).toEqual(before);
+  });
+
+  it('refuses a value whose export column is a position column of a layout', async () => {
+    const person: CodebookSubject = {
+      entity: 'node',
+      type: fixtureTypeId('node', 'person'),
+    };
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: (
+        <WriteOptions
+          subject={person}
+          variableId={fixtureVariableId(
+            { entity: 'node', typeName: 'person' },
+            'contactType',
+          )}
+          options={[
+            {
+              id: testId('option/contactType/ing_x'),
+              value: 'ing_x',
+              label: { 'en-US': 'Ing' },
+            },
+            {
+              id: testId('option/contactType/row'),
+              value: 'row',
+              label: { 'en-US': 'Row' },
+            },
+          ]}
+        />
+      ),
+    });
+    harness.receiveCodebookUpdate({
+      layouts: {
+        [testVariableId('contactType_ing layout')]: { name: 'contactType_ing' },
+      },
+    });
+    const before = harness.host.store.read(sectionIdForCodebookSubject(person));
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Write the values' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('outcome')).toHaveTextContent(
+        'refused: Option “ing_x” of “contactType” would be exported to a column called “contactType_ing_x”, but the export already has a column called “contactType_ing_x” for the positions in the layout “contactType_ing”. Change the option value or the attribute name.',
+      ),
+    );
+    expect(
+      harness.host.store.read(sectionIdForCodebookSubject(person)),
+    ).toEqual(before);
   });
 
   /** An unchanged list is not a revision anybody has to merge. */

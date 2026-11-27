@@ -193,6 +193,7 @@ export type CodebookPatch = Readonly<{
   node?: Readonly<Record<string, SectionDoc | null>>;
   edge?: Readonly<Record<string, SectionDoc | null>>;
   ego?: SectionDoc | null;
+  layouts?: Readonly<Record<string, SectionDoc | null>>;
 }>;
 
 /** The stage a harness opens, split the way a section document holds it. */
@@ -1229,6 +1230,9 @@ function codebookSections(
   }
   if (patch.ego !== undefined) {
     changed[sectionId({ kind: 'codebookEgo' })] = patch.ego;
+  }
+  for (const [layoutId, definition] of Object.entries(patch.layouts ?? {})) {
+    changed[sectionId({ kind: 'codebookLayout', layoutId })] = definition;
   }
   return changed;
 }

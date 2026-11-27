@@ -110,6 +110,18 @@ vi.mock('~/selectors/codebook', async (importOriginal) => {
   };
 });
 
+// The codebook's layouts, which a node attribute may not be named like.
+vi.mock('~/selectors/protocol', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('~/selectors/protocol')>();
+  return {
+    ...actual,
+    getCodebook: () => ({
+      ...codebook,
+      layouts: { [testVariableId('seating layout')]: { name: 'seating' } },
+    }),
+  };
+});
+
 const { ConnectedVariablePill, VariablePill } = await import('../VariablePill');
 const { updateVariableByUUID } =
   await import('~/ducks/modules/protocol/codebook');
@@ -249,6 +261,30 @@ describe('ConnectedVariablePill', () => {
       await screen.findByText('this type already has an attribute called that'),
     ).toBeInTheDocument();
     expect(subjectsSeen.at(-1)).toEqual({ entity: 'node', type: PERSON });
+  });
+
+  it('rejects renaming a node variable to the name of a layout', async () => {
+    const input = await startEditing(testVariableId('node-subject'));
+    fireEvent.change(input, { target: { value: 'Seating' } });
+
+    expect(
+      await screen.findByText('the codebook already has a layout called that'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
+  });
+
+  it('lets an ego variable take the name of a layout', async () => {
+    const input = await startEditing(testVariableId('ego-subject'));
+    fireEvent.change(input, { target: { value: 'seating' } });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save Changes' }),
+      ).toBeEnabled(),
+    );
+    expect(
+      screen.queryByText('the codebook already has a layout called that'),
+    ).not.toBeInTheDocument();
   });
 
   it('allows an ego variable to keep its own name', async () => {
