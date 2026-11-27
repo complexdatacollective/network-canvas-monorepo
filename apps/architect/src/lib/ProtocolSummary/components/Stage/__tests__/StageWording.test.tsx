@@ -161,7 +161,13 @@ describe('Protocol Summary canvas wording', () => {
         {
           id: 'p1',
           label: { en: 'Preset' },
-          highlight: [{ variable: 'age', label: { en: 'Age' } }],
+          highlight: [
+            {
+              id: 'h1',
+              label: { en: 'Age' },
+              attributes: [{ id: 'a1', type: 'person', variable: 'age' }],
+            },
+          ],
         },
       ],
     });

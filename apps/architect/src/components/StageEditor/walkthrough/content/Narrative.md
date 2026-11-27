@@ -62,6 +62,14 @@ Each preset shows the nodes in the **Layout** that you choose for it. A node app
 
 > Avoid: Crowding a single preset with every group, edge type and attribute at once. A dense view is hard to read and hard to discuss; separate concerns into distinct presets and switch between them.
 
+## Highlight and group nodes
+
+<!-- section: presets -->
+
+Each preset can offer **highlights**. A highlight has a label and a boolean attribute. When the interviewer or participant chooses the highlight in the preset switcher, the nodes whose attribute is true stand out. On a stage that shows more than one node type, choose an attribute for each node type in the highlight. A node type whose attribute you leave empty is not highlighted.
+
+A preset can also group the nodes that share a value of an attribute. Each group is drawn as a region on the canvas. Groups need a stage that shows one node type. When you add a second node type to the stage, Architect removes the group attribute from every preset.
+
 <!-- include: background -->
 
 ## Arrange nodes automatically

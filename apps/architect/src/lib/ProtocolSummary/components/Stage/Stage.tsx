@@ -156,7 +156,10 @@ export type StageConfiguration = {
     >['presets'][number]['layout'];
     groupVariable?: string;
     edges?: { display?: { type: string; label: LocalizedString }[] };
-    highlight?: { variable: string; label: LocalizedString }[];
+    highlight?: Extract<
+      ProtocolStage,
+      { type: 'Narrative' }
+    >['presets'][number]['highlight'];
   }[];
   title?: LocalizedString;
   interviewScript?: string;

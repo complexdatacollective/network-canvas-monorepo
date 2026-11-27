@@ -34,9 +34,39 @@ type PresetsProps = {
     layout?: NarrativePreset['layout'];
     groupVariable?: string;
     edges?: { display?: { type: string; label: LocalizedString }[] };
-    highlight?: { variable: string; label: LocalizedString }[];
+    highlight?: NarrativePreset['highlight'];
     filter?: FilterType;
   }> | null;
+};
+
+// The node type is printed beside an attribute only when the entries name
+// more than one, since a single type is already the stage's own.
+const HighlightEntries = ({
+  entries,
+}: Readonly<{ entries: NonNullable<NarrativePreset['highlight']> }>) => {
+  const severalTypes =
+    new Set(entries.flatMap(({ attributes }) => attributes.map((a) => a.type)))
+      .size > 1;
+
+  return (
+    <ul className="flex flex-col gap-2">
+      {entries.map((entry) => (
+        <li key={entry.id} className="flex flex-col items-start gap-1">
+          <SummaryText value={entry.label} />
+          <ul className="flex flex-wrap items-center gap-2">
+            {entry.attributes.map((attribute) => (
+              <li key={attribute.id} className="flex items-center gap-1">
+                {severalTypes && (
+                  <EntityBadge entity="node" type={attribute.type} tiny link />
+                )}
+                <Variable id={attribute.variable} />
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  );
 };
 
 const Presets = ({ presets = null }: PresetsProps) => {
@@ -117,27 +147,10 @@ const Presets = ({ presets = null }: PresetsProps) => {
                   ],
                   [
                     intl.formatMessage(summaryMessages.highlightAttributes),
-                    <ul key="highlight" className="flex flex-col gap-1">
-                      {(preset.highlight ?? []).map(({ variable, label }) =>
-                        multilingual ? (
-                          <li
-                            key={variable}
-                            className="flex flex-col items-start gap-1"
-                          >
-                            <Variable id={variable} />
-                            <SummaryText value={label} />
-                          </li>
-                        ) : (
-                          <li
-                            key={variable}
-                            className="flex flex-wrap items-center gap-2"
-                          >
-                            <SummaryText value={label} />
-                            <Variable id={variable} />
-                          </li>
-                        ),
-                      )}
-                    </ul>,
+                    <HighlightEntries
+                      key="highlight"
+                      entries={preset.highlight ?? []}
+                    />,
                   ],
                 ]}
               />

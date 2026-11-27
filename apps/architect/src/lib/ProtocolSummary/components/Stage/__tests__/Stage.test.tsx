@@ -251,6 +251,86 @@ describe('Protocol Summary edge labels participants see', () => {
     expect(within(edges).getByText('knows')).toBeInTheDocument();
   });
 
+  it('prints each highlight entry with its attributes', () => {
+    const FAMILY = testTypeId('family');
+    const CLOSE = testVariableId('close');
+    const RELATIVE = testVariableId('relative');
+    const LIVES_NEARBY = testVariableId('livesNearby');
+    const withTypes = {
+      ...protocol,
+      codebook: {
+        node: {
+          [PERSON]: { name: 'person', color: 'node-color-seq-1' },
+          [FAMILY]: { name: 'family member', color: 'node-color-seq-2' },
+        },
+        edge: {},
+        ego: {},
+      },
+    } satisfies CurrentProtocol;
+    const variable = (id: string, name: string) => ({
+      id,
+      name,
+      type: 'boolean',
+      stages: [],
+    });
+
+    render(
+      <SummaryContext.Provider
+        value={{
+          protocol: withTypes,
+          protocolName: withTypes.name,
+          index: [
+            variable(CLOSE, 'close'),
+            variable(RELATIVE, 'relative'),
+            variable(LIVES_NEARBY, 'lives_nearby'),
+          ],
+        }}
+      >
+        <Stage
+          id="stage"
+          label={{ en: 'A stage' }}
+          stageNumber={1}
+          type="Narrative"
+          configuration={{
+            presets: [
+              {
+                id: 'preset',
+                label: { en: 'Everyone' },
+                highlight: [
+                  {
+                    id: 'close-entry',
+                    label: { en: 'Close to you' },
+                    attributes: [
+                      { id: 'a1', type: PERSON, variable: CLOSE },
+                      { id: 'a2', type: FAMILY, variable: RELATIVE },
+                    ],
+                  },
+                  {
+                    id: 'nearby-entry',
+                    label: { en: 'Nearby' },
+                    attributes: [
+                      { id: 'a3', type: FAMILY, variable: LIVES_NEARBY },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    const row = screen.getByRole('row', { name: /Highlight attributes/ });
+    const [entries] = within(row).getAllByRole('list');
+    if (!entries) throw new Error('No highlight entries were printed');
+    expect(
+      Array.from(entries.children, (entry) => entry.textContent),
+    ).toStrictEqual([
+      'Close to youpersonclosefamily memberrelative',
+      'Nearbyfamily memberlives_nearby',
+    ]);
+  });
+
   it('prints a Narrative preset’s own filter with that preset, and none for a preset without one', () => {
     renderConfigured('Narrative', {
       presets: [
