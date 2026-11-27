@@ -5,6 +5,7 @@ import {
   caseProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -446,6 +447,37 @@ describe('layout columns', () => {
     expect(rows[0]?.get('map_x')).toBe('0.5');
     expect(rows[0]?.get('map_y')).toBe('0.25');
     expect(warnings).toEqual([]);
+  });
+
+  it('adds no layout columns for a type that neither has the layout nor holds a position', () => {
+    const { headers } = exportAttributeList(
+      codebook({ [layoutId]: [testTypeId('person')] }),
+      withNodes({
+        [entityPrimaryKeyProperty]: 'node-place',
+        type: placeType,
+        [entityAttributesProperty]: {},
+      }),
+    );
+
+    expect(headers.slice(3)).toEqual([]);
+  });
+
+  it('writes the marker in the layout columns of an encrypted position', () => {
+    const { headers, rows } = exportAttributeList(
+      codebook({}),
+      withNodes({
+        [entityPrimaryKeyProperty]: 'node-place',
+        type: placeType,
+        [entityAttributesProperty]: { [layoutId]: [201, 17, 93, 4] },
+        [entitySecureAttributesMeta]: {
+          [layoutId]: { iv: [15, 243, 77, 120] },
+        },
+      }),
+    );
+
+    expect(headers.slice(3)).toEqual(['map_x', 'map_y']);
+    expect(rows[0]?.get('map_x')).toBe('ENCRYPTED');
+    expect(rows[0]?.get('map_y')).toBe('ENCRYPTED');
   });
 });
 

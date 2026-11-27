@@ -5,6 +5,7 @@ import type { Codebook } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
 import {
@@ -355,6 +356,59 @@ describe('GraphML layout keys', () => {
     expect(keys.some((key) => key.getAttribute('attr.name') === layoutId)).toBe(
       false,
     );
+  });
+
+  it('declares no layout keys for a type that neither has the layout nor holds a position', async () => {
+    const layoutId = testVariableId('map');
+    const keys = keyElements(
+      await render(
+        {
+          ...personCodebook({}),
+          layouts: { [layoutId]: { name: 'map' } },
+          layoutNodeTypes: { [layoutId]: [testTypeId('place')] },
+        },
+        sessionWithNode({}),
+        false,
+      ),
+    );
+
+    expect(
+      keys.filter((key) => key.getAttribute('id')?.startsWith(layoutId)),
+    ).toEqual([]);
+  });
+
+  it('declares the layout keys of an encrypted position as strings and writes the marker', async () => {
+    const layoutId = testVariableId('map');
+    const xml = await render(
+      {
+        ...personCodebook({}),
+        layouts: { [layoutId]: { name: 'map' } },
+        layoutNodeTypes: {},
+      },
+      {
+        ...sessionWithNode({}),
+        nodes: [
+          {
+            [entityPrimaryKeyProperty]: 'node-a',
+            type: testTypeId('person'),
+            [entityAttributesProperty]: { [layoutId]: [201, 17, 93, 4] },
+            [entitySecureAttributesMeta]: {
+              [layoutId]: { iv: [15, 243, 77, 120] },
+            },
+          },
+        ],
+      },
+      false,
+    );
+    const keys = keyElements(xml);
+
+    expect(keyById(keys, `${layoutId}_X`).getAttribute('attr.type')).toBe(
+      'string',
+    );
+    expect(keyById(keys, `${layoutId}_Y`).getAttribute('attr.type')).toBe(
+      'string',
+    );
+    expect(new Map(nodeData(xml, 0)).get(`${layoutId}_X`)).toBe('ENCRYPTED');
   });
 });
 
