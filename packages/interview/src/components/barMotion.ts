@@ -5,51 +5,50 @@ import {
   segmentPresenceVariants,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
-// The toolbar's grow-in leaves `filter: blur(0px) opacity(100%)` on a
-// segment once it has arrived. A filter keeps the element in a layer of its
-// own, which makes a navigation bar button's hover feedback lag behind the
-// pointer, so the bar removes the filter once a button has grown in.
-const segmentAnimate = segmentPresenceVariants.animate;
+// The delay between one control's entrance and the next.
+const STAGGER = 0.04;
 
-const settled = (variant: Variant | undefined): Variant =>
-  typeof variant === 'object'
-    ? { ...variant, transitionEnd: { filter: 'none' } }
-    : (variant ?? {});
+const target = (variant: Variant | undefined) =>
+  typeof variant === 'object' ? variant : {};
+
+const grown = target(segmentPresenceVariants.animate);
 
 /**
- * How a navigation bar button that comes and goes appears and disappears:
- * the segmented toolbar's grow-in and shrink-away, with no filter left on the
- * button once it is in place.
- */
-const barPresenceVariants: Variants = {
-  ...segmentPresenceVariants,
-  animate: settled(segmentAnimate),
-};
-
-/** How a navigation bar control fades, with reduced motion. */
-export const fadeVariants = {
-  initial: {
-    opacity: 0,
-  },
-  animate: {
-    opacity: 1,
-  },
-  exit: {
-    opacity: 0,
-  },
-};
-
-/**
- * The bar moves its controls the way the segmented toolbar moves its
- * segments. A control grows out of a blur when it appears and shrinks back
- * into one when it goes, while the controls that stay glide to their new
- * places.
+ * The segmented toolbar's grow-in and shrink-away. A control's `custom` is its
+ * place on the bar, which delays its entrance after the control before it.
  *
- * When the bar first appears, every control takes its animation from the
- * bar, which brings them in one after another once it has finished arriving
- * (`arrived` is false). After that, a control that can come and go
- * (`presence`) names its own variants: a control that is removed does not
- * take `exit` from the bar, and one that is added must animate by itself.
+ * Once grown in, a control is left with no `filter`: a filter keeps it in a
+ * layer of its own, which makes its hover feedback lag behind the pointer.
+ */
+const barVariants: Variants = {
+  initial: target(segmentPresenceVariants.initial),
+  animate: (index: number) => ({
+    ...grown,
+    transition: { ...grown.transition, delay: index * STAGGER },
+    transitionEnd: { filter: 'none' },
+  }),
+  exit: target(segmentPresenceVariants.exit),
+};
+
+/** With reduced motion a control only fades. */
+const fadeVariants: Variants = {
+  initial: { opacity: 0 },
+  animate: (index: number) => ({
+    opacity: 1,
+    transition: { delay: index * STAGGER },
+  }),
+  exit: { opacity: 0 },
+};
+
+/**
+ * How every control on the navigation bar moves, the way the segmented
+ * toolbar moves its segments: a control grows out of a blur when it appears
+ * and shrinks back into one when it goes, and the controls that stay glide
+ * to their new places.
+ *
+ * Each control animates by itself. It waits, hidden, until the bar has
+ * finished arriving (`arrived`), and then grows in after the control before
+ * it (`index`, its place on the bar).
  *
  * A control glides only if it renders again when another comes or goes, so
  * that Motion can measure where it was. The React Compiler skips a control
@@ -61,18 +60,20 @@ export const fadeVariants = {
  */
 export const barItemMotion = ({
   reduceMotion,
-  presence,
   arrived,
+  index,
   layoutDependency,
 }: {
   reduceMotion: boolean;
-  presence: boolean;
   arrived: boolean;
+  index: number;
   layoutDependency: string;
 }): MotionProps => ({
-  variants: reduceMotion ? fadeVariants : barPresenceVariants,
-  ...(presence &&
-    arrived && { initial: 'initial', animate: 'animate', exit: 'exit' }),
+  variants: reduceMotion ? fadeVariants : barVariants,
+  custom: index,
+  initial: 'initial',
+  animate: arrived ? 'animate' : 'initial',
+  exit: 'exit',
   layout: 'position',
   layoutDependency,
   transition: {

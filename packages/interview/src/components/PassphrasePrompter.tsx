@@ -71,8 +71,8 @@ export default function PassphrasePrompter({
                     key="lock"
                     {...barItemMotion({
                       reduceMotion,
-                      presence: true,
                       arrived,
+                      index: 3,
                       layoutDependency,
                     })}
                     className={cx(

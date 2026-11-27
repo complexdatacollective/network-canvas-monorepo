@@ -39,7 +39,7 @@ import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { showPassphrasePrompter } from '../store/modules/ui';
 import { useSyncFlush } from '../store/SyncFlushContext';
-import { barItemMotion, fadeVariants } from './barMotion';
+import { barItemMotion } from './barMotion';
 import PassphrasePrompter from './PassphrasePrompter';
 import ReadyToContinueAnnouncer from './ReadyToContinueAnnouncer';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
@@ -69,8 +69,6 @@ const containerVariants = {
     y: 0,
     x: 0,
     transition: {
-      when: 'beforeChildren',
-      staggerChildren: 0.05,
       type: 'spring' as const,
       stiffness: 100,
       damping: 20,
@@ -128,7 +126,7 @@ const NavigationButton = ({
   className,
   wrapperClassName,
   buttonRef,
-  presence = false,
+  index,
   arrived,
   layoutDependency,
   ...props
@@ -137,8 +135,8 @@ const NavigationButton = ({
   ref?: Ref<HTMLDivElement>;
   buttonRef?: Ref<HTMLButtonElement>;
   wrapperClassName?: string;
-  /** The button can come and go while the bar is on screen. */
-  presence?: boolean;
+  /** The button's place on the bar (see `barItemMotion`). */
+  index: number;
   /** Whether the bar has finished arriving (see `barItemMotion`). */
   arrived: boolean;
   /** Which optional controls the bar shows (see `barItemMotion`). */
@@ -148,7 +146,7 @@ const NavigationButton = ({
   return (
     <motion.div
       ref={ref}
-      {...barItemMotion({ reduceMotion, presence, arrived, layoutDependency })}
+      {...barItemMotion({ reduceMotion, arrived, index, layoutDependency })}
       className={wrapperClassName}
     >
       <IconButton
@@ -191,8 +189,8 @@ const LanguageSwitcherControl = ({
       ref={ref}
       {...barItemMotion({
         reduceMotion,
-        presence: true,
         arrived,
+        index: 2,
         layoutDependency,
       })}
       className={barControlVariants({ orientation })}
@@ -358,9 +356,8 @@ const Navigation = ({
   // the panel has finished sliding in; on close we flip it first and let the
   // StagesMenu report back (`handleCardsClosed`) once the cards have animated
   // out, so the panel slides away only after — never over — the stagger.
-  // Until the bar has arrived, its controls take their animation from it, so
-  // that they come in one after another once it is in place (see
-  // `barItemMotion`).
+  // The controls wait, hidden, until the bar has finished arriving, and then
+  // come in one after another (see `barItemMotion`).
   const [barArrived, setBarArrived] = useState(false);
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -487,7 +484,7 @@ const Navigation = ({
               arrived={barArrived}
               layoutDependency={barLayout}
               key="exit"
-              presence
+              index={0}
               wrapperClassName={barControlVariants({ orientation })}
               className={barFeatureIconClassName}
               onClick={() => void handleExit()}
@@ -505,8 +502,8 @@ const Navigation = ({
               key="text-size"
               {...barItemMotion({
                 reduceMotion: shouldReduceMotion,
-                presence: true,
                 arrived: barArrived,
+                index: 1,
                 layoutDependency: barLayout,
               })}
               className={barControlVariants({ orientation })}
@@ -558,9 +555,13 @@ const Navigation = ({
             aria-label="Go to another screen"
             lang="en"
             onClick={() => setMenuOpen(true)}
-            variants={fadeVariants}
+            {...barItemMotion({
+              reduceMotion: shouldReduceMotion,
+              arrived: barArrived,
+              index: 4,
+              layoutDependency: barLayout,
+            })}
             layout
-            layoutDependency={barLayout}
             transition={progressTransition}
             className={cx(
               progressContainerClassName,
@@ -574,9 +575,13 @@ const Navigation = ({
         ) : (
           <motion.div
             className={progressContainerClassName}
-            variants={fadeVariants}
+            {...barItemMotion({
+              reduceMotion: shouldReduceMotion,
+              arrived: barArrived,
+              index: 4,
+              layoutDependency: barLayout,
+            })}
             layout
-            layoutDependency={barLayout}
             transition={progressTransition}
           >
             <ProgressBar percentProgress={progress} orientation={orientation} />
@@ -586,6 +591,7 @@ const Navigation = ({
           arrived={barArrived}
           layoutDependency={barLayout}
           wrapperClassName={barControlVariants({ orientation })}
+          index={5}
           onClick={moveBackward}
           disabled={disableMoveBackward}
           icon={<BackIcon />}
@@ -603,6 +609,7 @@ const Navigation = ({
             pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
           )}
           wrapperClassName={barControlVariants({ orientation })}
+          index={6}
           onClick={moveForward}
           disabled={disableMoveForward}
           icon={<ForwardIcon className="size-8" strokeWidth="3px" />}

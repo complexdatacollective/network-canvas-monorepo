@@ -903,6 +903,11 @@ export const ExitWithoutTextSize: Story = {
   },
 };
 
+// These stories are also for trying the animation by hand, so in a browser
+// their play functions leave the bar alone; only the test runner, an
+// automated host, plays them.
+const isTestRunner = () => window.navigator.webdriver;
+
 /**
  * Automated hosts turn Motion off (`AnimationProvider`), which would let these
  * stories pass whether or not anything moved. They turn it on again while they
@@ -1054,6 +1059,7 @@ export const ControlsComeAndGo: Story = {
   parameters: { controls: { exclude: ['stageCount'] } },
   render: () => <ToggledControls orientation="vertical" />,
   play: async ({ canvasElement }) => {
+    if (!isTestRunner()) return;
     await expectControlsComeAndGo(canvasElement);
   },
 };
@@ -1063,6 +1069,7 @@ export const HorizontalControlsComeAndGo: Story = {
   parameters: { controls: { exclude: ['stageCount'] } },
   render: () => <ToggledControls orientation="horizontal" />,
   play: async ({ canvasElement }) => {
+    if (!isTestRunner()) return;
     await expectControlsComeAndGo(canvasElement);
   },
 };
@@ -1077,6 +1084,7 @@ export const ReducedMotionControlsComeAndGo: Story = {
   globals: { reducedMotion: 'always' },
   render: () => <ToggledControls orientation="vertical" />,
   play: async ({ canvasElement }) => {
+    if (!isTestRunner()) return;
     const nav = await within(canvasElement).findByRole('navigation');
     await within(nav).findByRole('button', { name: 'Exit interview' });
     await settled(nav, true);
@@ -1136,6 +1144,7 @@ export const LanguageButtonComesAndGoes: Story = {
     </WithMotion>
   ),
   play: async ({ canvasElement }) => {
+    if (!isTestRunner()) return;
     const canvas = within(canvasElement);
     const nav = await canvas.findByRole('navigation');
     await within(nav).findByRole('button', { name: 'Exit interview' });
