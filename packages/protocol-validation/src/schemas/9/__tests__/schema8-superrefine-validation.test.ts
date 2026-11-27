@@ -1062,6 +1062,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
+                task: 'layout',
                 text: localized('Position nodes'),
               },
             ],
@@ -1094,6 +1095,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             prompts: [
               {
                 id: 'prompt1',
+                task: 'layout',
                 text: localized('Position nodes'),
               },
             ],

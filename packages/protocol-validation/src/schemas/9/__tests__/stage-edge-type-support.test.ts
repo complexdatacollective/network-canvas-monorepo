@@ -34,8 +34,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 type Protocol = ReturnType<typeof completeProtocol>;
 
-// The complete protocol, with its Sociogram creating `knows` edges so every
-// stage type in the table names an edge type.
+// The complete protocol, with each of its Sociogram's prompts a connect task
+// creating `knows` edges, so every stage type in the table names an edge type.
 const baseProtocol = () => {
   const protocol = completeProtocol();
   const stages: unknown[] = protocol.stages;
@@ -44,7 +44,10 @@ const baseProtocol = () => {
     const { prompts } = stage;
     if (!Array.isArray(prompts)) continue;
     for (const prompt of prompts) {
-      if (isRecord(prompt)) prompt.edges = { create: 'knows' };
+      if (!isRecord(prompt)) continue;
+      prompt.task = 'connect';
+      prompt.edges = { create: 'knows' };
+      delete prompt.highlight;
     }
   }
   return protocol;
@@ -194,6 +197,8 @@ describe('stage edge type support', () => {
       'Edge type "Knows" is directed, which this stage cannot use.';
     expect(describeIssues(protocol, await issuesOf(protocol))).toEqual([
       `Sociogram prompts.0.edges.create: ${message}`,
+      `Sociogram prompts.1.edges.create: ${message}`,
+      `Sociogram prompts.2.edges.create: ${message}`,
       `NetworkComposer edges.0.subject.type: ${message}`,
       `AlterEdgeForm subject.type: ${message}`,
       `DyadCensus prompts.0.createEdge: ${message}`,

@@ -241,6 +241,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(5, 'prompts', 0, 'text'), MARKDOWN_LINE),
 
   site(stage(6, 'prompts', 0, 'text'), MARKDOWN_LINE),
+  site(stage(6, 'prompts', 1, 'text'), MARKDOWN_LINE),
+  site(stage(6, 'prompts', 2, 'text'), MARKDOWN_LINE),
 
   // The composer's own scale end labels are separate sites from the codebook
   // scalar's, and override them.

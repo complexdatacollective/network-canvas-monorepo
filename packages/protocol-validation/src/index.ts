@@ -504,6 +504,7 @@ export {
   getLayoutsOfNodeType,
   getLayoutUsage,
   getNodeTypesWithLayout,
+  isFirstStageUsingLayout,
 } from './utils/layoutUsage.ts';
 export { isDirectedEdgeType } from './utils/edgeTypeRules.ts';
 export {

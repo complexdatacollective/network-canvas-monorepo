@@ -1211,12 +1211,12 @@
         "concentricCircles": 0
       },
       "behaviours": {
-        "automaticLayout": true,
-        "allowRepositioning": true
+        "automaticLayout": true
       },
       "prompts": [
         {
           "id": "c471379a-3b92-50dd-9f89-67fc1889c5c5",
+          "task": "connect",
           "text": {
             "en": "Connect any of these people who **know one another**."
           },
@@ -1227,55 +1227,71 @@
         },
         {
           "id": "6ceeaaea-65ec-519b-aa57-f430a8dbbdc4",
+          "task": "highlight",
           "text": {
             "en": "Who do you **share health or genetic information** with?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "f0a04c28-9d21-5eab-9a8b-d1fe83e9e096"
-          },
           "edges": {
             "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "92503c4c-c640-4f91-99f4-a5f6e879b045",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "variable": "f0a04c28-9d21-5eab-9a8b-d1fe83e9e096"
+            }
+          ]
         },
         {
           "id": "0f9b0974-cdb5-524b-aef5-8b56f4952927",
+          "task": "highlight",
           "text": {
             "en": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "ac30061c-f1d0-5f76-8e30-58d6331f57f3"
-          },
           "edges": {
             "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "1870f927-1c2e-43cb-bbc1-574b95dcee7a",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "variable": "ac30061c-f1d0-5f76-8e30-58d6331f57f3"
+            }
+          ]
         },
         {
           "id": "3449d339-d70e-5e52-bf28-4d438bf52ad0",
+          "task": "highlight",
           "text": {
             "en": "Who do you **share your feelings** with about all of this?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "ebed7466-4e07-5a01-8019-7b05fb13b463"
-          },
           "edges": {
             "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "a9ed7ed6-2a20-4f10-b432-c083a5552d90",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "variable": "ebed7466-4e07-5a01-8019-7b05fb13b463"
+            }
+          ]
         },
         {
           "id": "3b2ae83b-faa8-53a1-95e9-341b1802e91f",
+          "task": "highlight",
           "text": {
             "en": "Who do you share a **spiritual or religious connection** with?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "94a99940-7d07-542b-9780-4678d0814fe7"
-          },
           "edges": {
             "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "0925b2a0-4ef2-4f2a-938f-7c379294891a",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "variable": "94a99940-7d07-542b-9780-4678d0814fe7"
+            }
+          ]
         }
       ],
       "filter": {
@@ -1314,42 +1330,54 @@
       "prompts": [
         {
           "id": "ba904edc-da2e-5212-b0a0-99adbb51f6e8",
+          "task": "highlight",
           "text": {
             "en": "Who in your family **looks for information** about this condition — reads about it, asks questions, or keeps track of what is known?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "daa3b5ec-b3a0-50fc-a73d-5a9db535e8c6"
-          },
           "edges": {
             "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "cc674481-3b7d-4b5b-8907-bef8e9a5fecc",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "variable": "daa3b5ec-b3a0-50fc-a73d-5a9db535e8c6"
+            }
+          ]
         },
         {
           "id": "612421c7-70a1-5bc0-804f-a1b73074d4ea",
+          "task": "highlight",
           "text": {
             "en": "Who in your family **helps people talk** about it and passes news on?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "5609e618-49dd-5033-b64c-69ecd27f84c7"
-          },
           "edges": {
             "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "da816582-4662-46c5-bf12-bb4fd50c71aa",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "variable": "5609e618-49dd-5033-b64c-69ecd27f84c7"
+            }
+          ]
         },
         {
           "id": "7a07dd97-d91d-5b11-bd10-7b0f708999f9",
+          "task": "highlight",
           "text": {
             "en": "Who in your family finds it **hard to talk** about it, or would rather not know?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "c0b4f7ea-3258-5a38-b27c-9c0cfde63f7f"
-          },
           "edges": {
             "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "bcf2e0d8-5ae3-4995-9edd-e31b3a2ecab9",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "variable": "c0b4f7ea-3258-5a38-b27c-9c0cfde63f7f"
+            }
+          ]
         }
       ],
       "filter": {

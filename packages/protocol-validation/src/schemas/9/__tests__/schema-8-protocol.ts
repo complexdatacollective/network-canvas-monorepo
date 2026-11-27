@@ -56,6 +56,25 @@ const composerEdgeLabels = (stage: unknown) => {
   }
 };
 
+// A schema 8 Sociogram prompt had no task: a connect task created edges, a
+// highlight task let participants highlight its one entry's attribute, and a
+// layout task did neither.
+const sociogramPromptTasks = (stage: unknown) => {
+  if (!isRecord(stage) || stage.type !== 'Sociogram') return;
+  if (!Array.isArray(stage.prompts)) return;
+  for (const prompt of stage.prompts) {
+    if (!isRecord(prompt)) continue;
+    const { task, highlight } = prompt;
+    delete prompt.task;
+    if (task !== 'highlight') continue;
+    const [entry] = Array.isArray(highlight) ? highlight : [];
+    prompt.highlight = {
+      allowHighlighting: true,
+      variable: isRecord(entry) ? entry.variable : undefined,
+    };
+  }
+};
+
 // A schema 8 node stage named its one node type as `subject.type`.
 const singularNodeSubject = (stage: unknown) => {
   if (!isRecord(stage) || !isRecord(stage.subject)) return;
@@ -170,7 +189,8 @@ const informationItems = (
  * names its one node type as `subject.type`, each layout is a node attribute
 of type `layout` named by the stages that use it (a Sociogram that used
 several layouts stays split), an Anonymisation
- * explanation's heading is a title of its own, an Information page is a title
+ * explanation's heading is a title of its own, a Sociogram prompt has no
+ * task (a highlight task allows highlighting its one entry's attribute), an Information page is a title
  * and a list of items, and the language
  * chooser and language settings, which schema 8 did not have, are gone.
  */
@@ -224,6 +244,7 @@ export const asSchema8Protocol = (
     Reflect.set(parent, key, rewrite(text));
   }
   for (const stage of document.stages) {
+    sociogramPromptTasks(stage);
     layoutVariables(stage, document.codebook);
     legendIds(stage);
     composerEdgeLabels(stage);

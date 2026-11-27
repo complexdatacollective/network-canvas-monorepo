@@ -17,7 +17,7 @@ import { stageSchema } from '../stages/index.ts';
  *   (reject location variables)
  * - quickAdd must reference an existing text variable on the subject node type
  * - CategoricalBin requires otherOptionLabel when otherVariable is set
- * - sociogram highlight.variable must reference a boolean variable
+ * - a sociogram highlight entry's variable must be a boolean variable
  * - a sociogram's layout must be a layout of the codebook
  * - RelativeDatePicker before/after must be non-negative (independent offsets);
  *   anchor must be a valid ISO date
@@ -278,8 +278,8 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       expect(result.success).toBe(true);
     });
   });
-  describe('sociogram highlight.variable type', () => {
-    it('rejects highlight.variable referencing a non-boolean variable', () => {
+  describe('sociogram highlight entry variable type', () => {
+    it('rejects a highlight entry naming a non-boolean variable', () => {
       const base = createBaseProtocol();
       const protocol = {
         ...base,
@@ -294,8 +294,9 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             prompts: [
               {
                 id: 'p1',
+                task: 'highlight',
                 text: localized('Highlight'),
-                highlight: { allowHighlighting: true, variable: 'age' },
+                highlight: [{ id: 'h1', type: 'person', variable: 'age' }],
               },
             ],
           },
@@ -312,7 +313,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       }
     });
 
-    it('accepts highlight.variable referencing a boolean variable', () => {
+    it('accepts a highlight entry naming a boolean variable', () => {
       const base = createBaseProtocol();
       const protocol = {
         ...base,
@@ -344,8 +345,9 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             prompts: [
               {
                 id: 'p1',
+                task: 'highlight',
                 text: localized('Highlight'),
-                highlight: { allowHighlighting: true, variable: 'flagged' },
+                highlight: [{ id: 'h1', type: 'person', variable: 'flagged' }],
               },
             ],
           },
@@ -370,7 +372,9 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             subject: { entity: 'node', types: ['person'] },
             layout,
             background: { concentricCircles: 4 },
-            prompts: [{ id: 'p1', text: localized('Position') }],
+            prompts: [
+              { id: 'p1', task: 'layout', text: localized('Position') },
+            ],
           },
         ],
       };

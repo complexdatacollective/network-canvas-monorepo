@@ -15,6 +15,7 @@ export const PROTOCOL_OBJECT_KINDS = [
   'rule',
   'sortRule',
   'additionalAttribute',
+  'highlightAttribute',
   'rosterCardProperty',
   'rosterSortableProperty',
   'narrativePreset',

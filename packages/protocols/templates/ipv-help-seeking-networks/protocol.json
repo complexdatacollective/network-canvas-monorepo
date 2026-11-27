@@ -936,6 +936,7 @@
       "prompts": [
         {
           "id": "58ea759c-a97f-52d8-9f9e-e5096230c108",
+          "task": "connect",
           "text": {
             "en": "The people you mentioned are arranged for you below. Draw a line between any **two people who know each other**."
           },
@@ -946,16 +947,20 @@
         },
         {
           "id": "b08ede12-fff0-5506-9942-8eae8cf38bce",
+          "task": "highlight",
           "text": {
             "en": "Now tap anyone who is **close to, or regularly in touch with, the person who harmed you**."
           },
           "edges": {
             "display": ["7f9978de-5e31-5842-aa44-e480a089f7d3"]
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "818dc328-e9b4-5a52-b94d-6251c8e0f86b"
-          }
+          "highlight": [
+            {
+              "id": "09267dad-e2fc-401a-b4af-af6b1844999a",
+              "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6",
+              "variable": "818dc328-e9b4-5a52-b94d-6251c8e0f86b"
+            }
+          ]
         }
       ],
       "layout": "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b"

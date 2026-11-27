@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-// Shared behaviours for the canvas-based layout interfaces (Sociogram and
-// Narrative). Each behaviour is an optional boolean:
+// The Narrative's behaviours. Each behaviour is an optional boolean:
 // - automaticLayout: position nodes with a force-directed layout
 // - allowRepositioning: let the participant drag nodes to reposition them
 // - freeDraw: let the participant draw annotations on the canvas
@@ -10,6 +9,14 @@ export const canvasBehavioursSchema = z
     automaticLayout: z.boolean().optional(),
     allowRepositioning: z.boolean().optional(),
     freeDraw: z.boolean().optional(),
+  })
+  .optional();
+
+// The Sociogram's behaviours. Participants move nodes only in a layout task,
+// and a Sociogram offers no free drawing, so automatic layout is the only one.
+export const sociogramBehavioursSchema = z
+  .strictObject({
+    automaticLayout: z.boolean().optional(),
   })
   .optional();
 

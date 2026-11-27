@@ -155,10 +155,15 @@ function sociogram({ name, type, edge, label }) {
     background: { concentricCircles: 3, skewedTowardCenter: true },
     prompts: [
       {
+        id: objectId(`${name}/place`),
+        task: 'layout',
+        text: en('Put the things that matter **most** to you in the middle.'),
+        edges: { display: [edge] },
+      },
+      {
         id: objectId(`${name}/prompt`),
-        text: en(
-          'Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**.',
-        ),
+        task: 'connect',
+        text: en('Now tap two things to join them up if they **go together**.'),
         edges: { create: edge, display: [edge] },
       },
     ],

@@ -72,6 +72,7 @@ import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolStructureSchema } from './protocol-structure.ts';
 import {
   getSingleStageNodeType,
+  getStageNodeTypes,
   stageEdgeTypeSupportIssues,
 } from './stage-capabilities.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
@@ -1360,36 +1361,48 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
             });
           }
         }
+      });
+    }
 
-        // highlight.variable type check (existence covered by the
-        // entity-attribute reference validator): must reference a boolean.
-        if (
-          'highlight' in prompt &&
-          prompt.highlight &&
-          'variable' in prompt.highlight &&
-          prompt.highlight.variable &&
-          stageSubject
-        ) {
-          const highlightVariable = prompt.highlight.variable;
-          const variable = getVariablesForSubject(
-            protocol.codebook,
-            stageSubject,
-          )[highlightVariable];
-          if (variable && variable.type !== 'boolean') {
+    // 3d. Sociogram highlight tasks: each entry is about one of the stage's
+    // node types, and a prompt has at most one entry per type. The
+    // attribute's existence and boolean type are checked through its
+    // reference, against the entry's own type.
+    if (stage.type === 'Sociogram') {
+      const nodeTypes = getStageNodeTypes(stage);
+      stage.prompts.forEach((prompt, promptIndex) => {
+        if (prompt.task !== 'highlight') return;
+        const seen = new Set<string>();
+        prompt.highlight.forEach((entry, entryIndex) => {
+          const nodeTypeDefinitions = protocol.codebook.node ?? {};
+          const typeName = Object.hasOwn(nodeTypeDefinitions, entry.type)
+            ? (nodeTypeDefinitions[entry.type]?.name ?? entry.type)
+            : entry.type;
+          const path = [
+            'stages',
+            stageIndex,
+            'prompts',
+            promptIndex,
+            'highlight',
+            entryIndex,
+            'type',
+          ];
+          if (!nodeTypes.includes(entry.type)) {
             ctx.addIssue({
               code: 'custom' as const,
-              message: `Highlight attribute "${highlightVariable}" must be of type "boolean", but is "${variable.type}".`,
-              path: [
-                'stages',
-                stageIndex,
-                'prompts',
-                promptIndex,
-                'highlight',
-                'variable',
-              ],
+              message: `A highlight entry is about node type "${typeName}", which this stage does not show.`,
+              path,
             });
           }
-        }
+          if (seen.has(entry.type)) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `A prompt highlights node type "${typeName}" more than once.`,
+              path,
+            });
+          }
+          seen.add(entry.type);
+        });
       });
     }
 

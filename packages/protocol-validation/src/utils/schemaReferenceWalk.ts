@@ -496,12 +496,6 @@ const walkString = (
     // reference site without being one. Emitting a hit would put it in every
     // usage index as a variable id that no codebook can ever contain.
     if (attributeDescriptor.ignoreValues?.includes(value)) return [];
-    // A conditional writer (see `usageRequiresSibling`) is a write only in
-    // the configuration that turns the write on; in every other it is a
-    // read, and the hit must not carry a `usage` that would make the
-    // exclusive-slot and variable-role rules treat it as a second writer.
-    const gate = attributeDescriptor.usageRequiresSibling;
-    const writes = gate === undefined || ctx.parent?.[gate] === true;
     return [
       {
         kind: 'attribute',
@@ -510,7 +504,7 @@ const walkString = (
         subject: resolveSubject(attributeDescriptor.subject, path, ctx),
         requireType: attributeDescriptor.requireType,
         existence: attributeDescriptor.existence,
-        usage: writes ? attributeDescriptor.usage : undefined,
+        usage: attributeDescriptor.usage,
         exclusive: attributeDescriptor.exclusive,
         ownedOptions: attributeDescriptor.ownedOptions,
         stageManagedOptions: attributeDescriptor.stageManagedOptions,

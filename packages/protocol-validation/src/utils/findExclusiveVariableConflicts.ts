@@ -85,12 +85,11 @@ export type ExclusiveVariableConflict = {
  * that are not only valid but the reason the interface records the value at
  * all.
  *
- * Read or write is a property of the SITE, not of the field name: a Sociogram
- * prompt's `highlight.variable` colours nodes either way, but writes the
- * attribute back only when the participant can tap them
- * (`allowHighlighting: true`), and only then is it a conflict. The schema says
- * which by tagging that site `usageRequiresSibling: 'allowHighlighting'`; this
- * function reads the answer off the collected hit and never re-derives it.
+ * Read or write is a property of the SITE, not of the field name: a
+ * Sociogram highlight task's entry writes its attribute (the participant taps
+ * nodes to set it), while a Narrative highlight only shows it. The schema
+ * says which by tagging the writing site with `usage`; this function reads
+ * the answer off the collected hit and never re-derives it.
  *
  * `hits` lets the protocol schema's own refinement pass the references it has
  * already collected — both to avoid a second walk of the whole protocol, and

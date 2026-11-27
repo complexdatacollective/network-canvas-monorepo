@@ -351,7 +351,20 @@ const protocolDocument = () => ({
       prompts: [
         {
           id: 'p1',
+          task: 'layout',
           text: localized('Place people'),
+        },
+        {
+          id: 'p2',
+          task: 'highlight',
+          text: localized('Tap the people you trust'),
+          highlight: [{ id: 'highlight-1', type: 'person', variable: 'flag' }],
+        },
+        {
+          id: 'p3',
+          task: 'connect',
+          text: localized('Connect people who know each other'),
+          edges: { create: 'knows', display: ['knows'] },
         },
       ],
     },

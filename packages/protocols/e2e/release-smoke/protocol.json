@@ -516,7 +516,16 @@
       },
       "prompts": [
         {
+          "id": "fcd73dee-7a82-45e8-b6bd-9ef90ce0778d",
+          "task": "layout",
+          "text": {
+            "en-US": "Drag to place everyone; link people who know each other.",
+            "es": "Arrastra para ubicar a todos; une a las personas que se conocen entre sí."
+          }
+        },
+        {
           "id": "eb12f0dc-37a4-5f0e-81c9-a60f43784cfb",
+          "task": "connect",
           "text": {
             "en-US": "Drag to place everyone; link people who know each other.",
             "es": "Arrastra para ubicar a todos; une a las personas que se conocen entre sí."

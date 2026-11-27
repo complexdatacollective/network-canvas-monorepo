@@ -611,6 +611,58 @@ const nodeSubjectsToTypeLists = (protocol: unknown) => {
   }
 };
 
+/**
+ * Each Sociogram prompt becomes one task. A prompt that created edges becomes
+ * a connect task, keeping the edges it drew; else one that let participants
+ * highlight becomes a highlight task with one entry for the stage's node
+ * type; any other becomes a layout task. A highlight participants could not
+ * change only coloured nodes, which schema 9 does not do, so it is removed.
+ * Nothing is added: a stage whose prompts all connect or highlight has no
+ * prompt where nodes are placed. The Sociogram's `allowRepositioning` and
+ * `freeDraw`, which the interview ignored, are removed. Reads the schema 8
+ * `subject.type`.
+ */
+const sociogramPromptsToTasks = (protocol: unknown) => {
+  const stages = isRecord(protocol) ? protocol.stages : undefined;
+  if (!Array.isArray(stages)) return;
+  for (const stage of stages) {
+    if (!isRecord(stage) || stage.type !== 'Sociogram') continue;
+    if (isRecord(stage.behaviours)) {
+      delete stage.behaviours.allowRepositioning;
+      delete stage.behaviours.freeDraw;
+    }
+    const nodeType = isRecord(stage.subject) ? stage.subject.type : undefined;
+    if (!Array.isArray(stage.prompts)) continue;
+    for (const prompt of stage.prompts) {
+      if (!isRecord(prompt)) continue;
+      const { highlight, edges } = prompt;
+      delete prompt.highlight;
+      if (isRecord(edges) && typeof edges.create === 'string') {
+        prompt.task = 'connect';
+        continue;
+      }
+      if (isRecord(edges)) delete edges.create;
+      if (
+        isRecord(highlight) &&
+        highlight.allowHighlighting === true &&
+        typeof highlight.variable === 'string' &&
+        typeof nodeType === 'string'
+      ) {
+        prompt.task = 'highlight';
+        prompt.highlight = [
+          {
+            id: createProtocolObjectId(),
+            type: nodeType,
+            variable: highlight.variable,
+          },
+        ];
+        continue;
+      }
+      prompt.task = 'layout';
+    }
+  }
+};
+
 /** The attribute definitions of the entity type a stage subject names. */
 const subjectVariables = (
   codebook: unknown,
@@ -1190,6 +1242,7 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   splitSociogramsByLayout(migrated);
   moveLayoutVariablesToLayouts(migrated);
   removeEgoAndEdgeLayoutVariables(migrated);
+  sociogramPromptsToTasks(migrated);
   // After every step that reads a stage's schema 8 `subject.type`.
   nodeSubjectsToTypeLists(migrated);
   joinSingleLineText(migrated);
@@ -1274,6 +1327,8 @@ const migrationV8toV9 = createMigration({
 - A Sociogram stage now places its nodes in one layout, which every prompt on the stage uses. A Sociogram whose prompts used different layout attributes is split into consecutive stages, one for each run of prompts that use the same layout attribute. Each new stage has the name and settings of the original, and skip logic that jumped to the original stage now jumps to the first of them.
 - Layouts are no longer attributes of a node type. Each layout attribute becomes a layout with the same name, which any stage that places nodes can use for nodes of every type. Positions already recorded are kept. Where several node types shared one layout attribute, it becomes one layout. Where the name of a layout would be the same as the name of another layout or of a node attribute, or would give an export column the same name as one of theirs, the name of the node type is added to it, followed by a number if that name is also taken.
 - Layout attributes of edge types and of the ego are removed, because only nodes can have positions and no stage could record one. Skip logic and filter rules that used these attributes are removed too.
+- Each prompt of a Sociogram stage is now one task: placing nodes, highlighting nodes, or connecting nodes. A prompt that let participants create edges becomes a connecting task, one that let participants highlight nodes becomes a highlighting task, and any other becomes a placing task. Participants can move nodes only during a placing task. A highlight that participants could not change is removed, because a Sociogram now shows highlights only while participants highlight. The settings for repositioning nodes and for drawing on the canvas, which the interview did not use on a Sociogram, are removed.
+- A Sociogram stage whose prompts all connect or highlight nodes, and that does not lay nodes out automatically, now has no prompt where participants place nodes, so it shows only nodes that already have a position. Architect shows a warning on such a stage when no earlier stage uses its layout. Add a placing prompt at the start of the stage if participants should place the nodes there.
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
   migrate: migrateDocument,
 });

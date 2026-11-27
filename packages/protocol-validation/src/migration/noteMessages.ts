@@ -576,6 +576,20 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. A layout attribute was the kind of attribute that stored positions on a canvas. The ego is the participant, as described in the protocol. Skip logic and filter rules are rules that decide whether a stage is shown and which people and relationships it shows.',
   },
+  schema9SociogramTasks: {
+    id: 'protocolValidation.migrationNotes.schema9.sociogramTasks',
+    defaultMessage:
+      'Each prompt of a Sociogram stage is now one task: placing nodes, highlighting nodes, or connecting nodes. A prompt that let participants create edges becomes a connecting task, one that let participants highlight nodes becomes a highlighting task, and any other becomes a placing task. Participants can move nodes only during a placing task. A highlight that participants could not change is removed, because a Sociogram now shows highlights only while participants highlight. The settings for repositioning nodes and for drawing on the canvas, which the interview did not use on a Sociogram, are removed.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Sociogram" is the name Architect gives the interface; use the same name Architect uses for it. A prompt is one instruction shown on the stage. A node is a person or thing shown as a circle on the canvas; an edge is a line connecting two nodes. To highlight a node is to mark it by tapping it. Placing, highlighting and connecting are the three kinds of task a prompt can be, as Architect names them.',
+  },
+  schema9SociogramWithoutPlacing: {
+    id: 'protocolValidation.migrationNotes.schema9.sociogramWithoutPlacing',
+    defaultMessage:
+      'A Sociogram stage whose prompts all connect or highlight nodes, and that does not lay nodes out automatically, now has no prompt where participants place nodes, so it shows only nodes that already have a position. Architect shows a warning on such a stage when no earlier stage uses its layout. Add a placing prompt at the start of the stage if participants should place the nodes there.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Sociogram" is the name Architect gives the interface; use the same name Architect uses for it. A prompt is one instruction shown on the stage. To place a node is to drag it onto the canvas, which gives it a position. Laying nodes out automatically is a Sociogram setting that positions nodes without the participant. A layout is the set of positions that nodes are placed at on a canvas. A placing prompt is a prompt whose task is placing nodes.',
+  },
   schema9SingleLineText: {
     id: 'protocolValidation.migrationNotes.schema9.singleLineText',
     defaultMessage:
@@ -723,6 +737,8 @@ const migrationNoteSets: Record<
       migrationNoteMessages.schema9SociogramLayoutSplit,
       migrationNoteMessages.schema9LayoutsLeaveNodeTypes,
       migrationNoteMessages.schema9EgoAndEdgeLayouts,
+      migrationNoteMessages.schema9SociogramTasks,
+      migrationNoteMessages.schema9SociogramWithoutPlacing,
       migrationNoteMessages.schema9SingleLineText,
     ],
   },

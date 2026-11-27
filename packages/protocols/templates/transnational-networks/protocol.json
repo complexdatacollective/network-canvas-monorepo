@@ -1140,6 +1140,7 @@
       "prompts": [
         {
           "id": "f3081ab3-e08f-5c46-b710-267798862720",
+          "task": "connect",
           "text": {
             "en": "The people you mentioned are arranged for you automatically below. Please draw a line between any **two people who know each other** — that is, who would recognise one another and have at least a little contact, independently of you.",
             "es": "Las personas que ha mencionado aparecen abajo, ya colocadas automáticamente. Por favor, dibuje una línea entre cada **par de personas que se conozcan entre sí**, es decir, que se reconozcan mutuamente y tengan al menos algo de contacto, no solo a través de usted.",

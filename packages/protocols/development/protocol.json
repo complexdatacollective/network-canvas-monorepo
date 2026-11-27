@@ -889,6 +889,7 @@
       "prompts": [
         {
           "id": "c1085b44-fcd2-5a7b-841d-2720fa91fe0f",
+          "task": "connect",
           "text": {
             "en": "This interface uses the concentric circles background and excludes John and William",
             "es": "Esta interfaz usa el fondo de círculos concéntricos y excluye a John y a William"
@@ -906,13 +907,11 @@
               "70b691ec-912f-5207-a0ef-63c78d7d3df9"
             ],
             "create": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
-          },
-          "highlight": {
-            "allowHighlighting": false
           }
         },
         {
           "id": "d10b6522-b43f-5296-94f2-da7e49238a62",
+          "task": "connect",
           "text": {
             "en": "Creates a second edge type",
             "es": "Crea un segundo tipo de vínculo"
@@ -930,13 +929,11 @@
               "01e58147-1429-5f19-93fc-52b08cd0685a"
             ],
             "create": "01e58147-1429-5f19-93fc-52b08cd0685a"
-          },
-          "highlight": {
-            "allowHighlighting": false
           }
         },
         {
           "id": "2971ceef-5d7d-5fa4-ad9c-b318b67bb296",
+          "task": "highlight",
           "text": {
             "en": "Toggle variable",
             "es": "Variable de interruptor"
@@ -954,13 +951,17 @@
               "01e58147-1429-5f19-93fc-52b08cd0685a"
             ]
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6"
-          }
+          "highlight": [
+            {
+              "id": "28923c88-ec27-475f-b978-a209bd6f7e9c",
+              "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
+              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6"
+            }
+          ]
         },
         {
           "id": "28763ead-4a69-5abd-80c3-9f6da6742147",
+          "task": "connect",
           "text": {
             "en": "This prompt shows 3 concentric circles and creates friend edges.",
             "es": "Esta instrucción muestra 3 círculos concéntricos y crea vínculos de amistad."
@@ -994,6 +995,7 @@
       "prompts": [
         {
           "id": "f5f073b1-a1f3-55a7-ba69-bfafaa332223",
+          "task": "layout",
           "text": {
             "en": "This interface uses a background image. Nodes are placed in reverse nomination order.",
             "es": "Esta interfaz usa una imagen de fondo. Los nodos se colocan en orden inverso de nominación."

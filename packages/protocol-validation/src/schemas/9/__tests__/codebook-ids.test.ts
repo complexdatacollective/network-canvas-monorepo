@@ -285,8 +285,7 @@ const withEveryReference = () => {
   const [sociogramPrompt] = arrayAt(sociogram, ['prompts']);
   if (isRecord(sociogramPrompt)) {
     sociogramPrompt.sortOrder = [{ property: 'name', direction: 'asc' }];
-    sociogramPrompt.highlight = { allowHighlighting: true, variable: 'flag' };
-    sociogramPrompt.edges = { display: ['knows'], create: 'knows' };
+    sociogramPrompt.edges = { display: ['knows'] };
   }
 
   const roster = stageNamed(protocol, 'roster');
@@ -356,7 +355,7 @@ const EVERY_REFERENCE_KIND = [
   'A NetworkComposer stages.#.nodeForm.fields.#.variable',
   'A NetworkComposer stages.#.quickAdd',
   'A OrdinalBin stages.#.prompts.#.variable',
-  'A Sociogram stages.#.prompts.#.highlight.variable',
+  'A Sociogram stages.#.prompts.#.highlight.#.variable',
   'A Sociogram stages.#.prompts.#.sortOrder.#.property',
   'A TieStrengthCensus stages.#.prompts.#.edgeVariable',
   'A $ codebook.node.*.dynamicLabel.text.en',
@@ -394,6 +393,7 @@ const EVERY_REFERENCE_KIND = [
   'T OrdinalBin stages.#.subject.types.#',
   'T Sociogram stages.#.prompts.#.edges.create',
   'T Sociogram stages.#.prompts.#.edges.display.#',
+  'T Sociogram stages.#.prompts.#.highlight.#.type',
   'T Sociogram stages.#.subject.types.#',
   'T TieStrengthCensus stages.#.prompts.#.createEdge',
   'T TieStrengthCensus stages.#.subject.types.#',

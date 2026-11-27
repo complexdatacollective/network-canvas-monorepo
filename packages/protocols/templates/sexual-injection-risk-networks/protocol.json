@@ -661,15 +661,13 @@
       "prompts": [
         {
           "id": "5174bbe3-136f-5969-93f6-f4e3a7499ad2",
+          "task": "connect",
           "text": {
             "en": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected."
           },
           "edges": {
             "create": "36005e0a-931e-5e15-ac5a-4f07c80ab47b",
             "display": ["36005e0a-931e-5e15-ac5a-4f07c80ab47b"]
-          },
-          "highlight": {
-            "allowHighlighting": false
           }
         }
       ],

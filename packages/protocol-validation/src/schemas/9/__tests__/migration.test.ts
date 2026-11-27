@@ -2742,6 +2742,115 @@ describe('Migrating layouts from schema 8 to 9', () => {
     ]);
   });
 
+  // A schema 8 protocol with people who have a layout variable `spot` and a
+  // boolean `close`, an edge type `knows`, and a Sociogram with the prompts
+  // given, after a Name Generator.
+  const withSociogramPrompts = (
+    prompts: Record<string, unknown>[],
+    settings: Record<string, unknown> = {},
+    stages: unknown[] = [],
+  ) =>
+    schema8({
+      node: {
+        person: nodeType('Person', {
+          spot: layoutVariable('spot'),
+          close: { name: 'close', type: 'boolean' },
+        }),
+      },
+      edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
+      stages: [
+        nameGenerator('names'),
+        sociogram('map', [], 'person', {
+          prompts: prompts.map((prompt, index) => ({
+            id: testId(`map prompt ${index}`),
+            text: `Prompt ${index}`,
+            layout: { layoutVariable: 'spot' },
+            ...prompt,
+          })),
+          ...settings,
+        }),
+        ...stages,
+      ],
+    });
+
+  it('maps create to connect, allowHighlighting to highlight and the rest to layout', () => {
+    const migrated = migrateReadable(
+      withSociogramPrompts(
+        [
+          {},
+          { edges: { create: 'knows', display: ['knows'] } },
+          { highlight: { allowHighlighting: true, variable: 'close' } },
+          { edges: { display: ['knows'] } },
+        ],
+        { behaviours: { automaticLayout: false, allowRepositioning: true } },
+      ),
+      9,
+    );
+
+    const [map] = sociogramsOf(migrated);
+    expect(map?.behaviours).toEqual({ automaticLayout: false });
+    expect(map?.prompts.map(({ task }) => task)).toEqual([
+      'layout',
+      'connect',
+      'highlight',
+      'layout',
+    ]);
+    expect(map?.prompts[1]).toMatchObject({
+      edges: { create: 'knows', display: ['knows'] },
+    });
+    const highlight = map?.prompts[2];
+    expect(highlight?.task === 'highlight' && highlight.highlight).toEqual([
+      { id: expect.stringMatching(UUID), type: 'person', variable: 'close' },
+    ]);
+    expect(map?.prompts[3]).toMatchObject({ edges: { display: ['knows'] } });
+  });
+
+  it('drops a display-only highlight', () => {
+    const migrated = migrateReadable(
+      withSociogramPrompts([
+        { highlight: { allowHighlighting: false, variable: 'close' } },
+      ]),
+      9,
+    );
+
+    const [map] = sociogramsOf(migrated);
+    expect(map?.prompts).toHaveLength(1);
+    expect(map?.prompts[0]?.task).toBe('layout');
+    expect(map?.prompts[0]).not.toHaveProperty('highlight');
+  });
+
+  it('adds no layout task', () => {
+    const migrated = migrateReadable(
+      withSociogramPrompts([{ edges: { create: 'knows' } }]),
+      9,
+    );
+
+    const [map] = sociogramsOf(migrated);
+    expect(map?.prompts.map(({ task }) => task)).toEqual(['connect']);
+  });
+
+  it('a rule naming a layout variable stays valid when the migrated Sociogram has no layout task', () => {
+    const migrated = migrateReadable(
+      withSociogramPrompts([{ edges: { create: 'knows' } }], {}, [
+        nameGenerator('later', 'person', {
+          skipLogic: {
+            action: 'SHOW',
+            filter: { join: 'AND', rules: [layoutNodeRule('spot')] },
+          },
+        }),
+      ]),
+      9,
+    );
+
+    expect(migrated.codebook.layouts).toEqual({ spot: { name: 'spot' } });
+    const later = migrated.stages[2];
+    expect(later?.skipLogic?.filter.rules).toEqual([
+      expect.objectContaining({
+        options: expect.objectContaining({ attribute: 'spot' }),
+      }),
+    ]);
+  });
+
   it('drops ego and edge layout variables and rules naming them', () => {
     const migrated = migrateReadable(
       schema8({

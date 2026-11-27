@@ -116,12 +116,9 @@ describe('findExclusiveVariableConflicts', () => {
     expect(result.success ? null : result.error.issues).toBeNull();
   });
 
-  // A Sociogram prompt that sets `highlight.variable` without
-  // `allowHighlighting` colours nodes by a value it never writes — the same
-  // kind of read as grouping a narrative map by edgeConfiguration. Rejecting it
-  // would forbid showing the participant their own node on a map of the family
-  // the pedigree built.
-  it('accepts a display-only sociogram highlight on an interface-owned variable', () => {
+  // A Sociogram highlight task lets the participant turn the attribute on and
+  // off, so on the pedigree's own participant marker it is a second writer.
+  it('reports a sociogram highlight task on an interface-owned variable', () => {
     const protocol = protocolWith([
       familyPedigree(),
       {
@@ -134,47 +131,22 @@ describe('findExclusiveVariableConflicts', () => {
         prompts: [
           {
             id: 'p1',
+            task: 'highlight',
             text: localized('Place your family'),
-            highlight: { allowHighlighting: false, variable: 'isEgo' },
-          },
-        ],
-      },
-    ]);
-    expect(findExclusiveVariableConflicts(protocol)).toEqual([]);
-    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
-    expect(result.success ? null : result.error.issues).toBeNull();
-  });
-
-  // The same field IS a writer once the participant can tap it: highlighting
-  // would let them turn the pedigree's own participant marker on and off.
-  it('still reports a tap-to-highlight sociogram prompt on an interface-owned variable', () => {
-    const protocol = protocolWith([
-      familyPedigree(),
-      {
-        id: 'sg1',
-        label: localized('Map your family'),
-        type: 'Sociogram',
-        subject: { entity: 'node', types: ['family_member'] },
-        layout: 'fmLayout',
-        background: { concentricCircles: 4 },
-        prompts: [
-          {
-            id: 'p1',
-            text: localized('Place your family'),
-            highlight: { allowHighlighting: true, variable: 'isEgo' },
+            highlight: [{ id: 'h1', type: 'family_member', variable: 'isEgo' }],
           },
         ],
       },
     ]);
     const conflicts = findExclusiveVariableConflicts(protocol);
     expect(conflicts.map((conflict) => conflict.path)).toEqual([
-      ['stages', 1, 'prompts', 0, 'highlight', 'variable'],
+      ['stages', 1, 'prompts', 0, 'highlight', 0, 'variable'],
     ]);
     expect(
       parseIssues(ProtocolSchemaV9.safeParse(withFinishStage(protocol))),
     ).toEqual([
       {
-        path: 'stages.1.prompts.0.highlight.variable',
+        path: 'stages.1.prompts.0.highlight.0.variable',
         code: 'custom',
         message:
           'Attribute "is_ego" is set by the Family Pedigree interface, which marks the participant, so nothing else in this protocol may set it.',

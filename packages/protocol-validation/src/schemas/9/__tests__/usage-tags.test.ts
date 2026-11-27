@@ -142,44 +142,38 @@ describe('attribute-writer usage tags', () => {
     expect(kind?.usage).toBe('unvalidatedAttribute');
   });
 
-  // Whether a Sociogram highlight writes is a property of the prompt, not of
-  // the field: the canvas colours nodes either way, but only a highlight the
-  // participant can tap dispatches an attribute change.
-  it.each([
-    { allowHighlighting: true, expected: 'unvalidatedAttribute' },
-    { allowHighlighting: false, expected: undefined },
-  ])(
-    'tags a Sociogram highlight variable per allowHighlighting: $allowHighlighting',
-    ({ allowHighlighting, expected }) => {
-      const protocol = {
-        ...createBaseProtocol(),
-        stages: [
-          {
-            id: 'sg1',
-            type: 'Sociogram',
-            label: localized('Map'),
-            subject: { entity: 'node', types: ['person'] },
-            background: { concentricCircles: 4 },
-            layout: 'layoutPosition',
-            prompts: [
-              {
-                id: 'p1',
-                text: localized('Place them'),
-                highlight: { allowHighlighting, variable: 'strength' },
-              },
-            ],
-          },
-        ],
-      };
-      const highlightHits = hitsFor(protocol).filter(
-        (hit) =>
-          hit.path.includes('highlight') &&
-          hit.path[hit.path.length - 1] === 'variable',
-      );
-      expect(highlightHits).toHaveLength(1);
-      expect(highlightHits[0]?.usage).toBe(expected);
-    },
-  );
+  // A Sociogram highlight task is how the participant sets the attribute, so
+  // each of its entries writes the variable it names.
+  it('tags a Sociogram highlight entry variable as written', () => {
+    const protocol = {
+      ...createBaseProtocol(),
+      stages: [
+        {
+          id: 'sg1',
+          type: 'Sociogram',
+          label: localized('Map'),
+          subject: { entity: 'node', types: ['person'] },
+          background: { concentricCircles: 4 },
+          layout: 'layoutPosition',
+          prompts: [
+            {
+              id: 'p1',
+              task: 'highlight',
+              text: localized('Tap them'),
+              highlight: [{ id: 'h1', type: 'person', variable: 'strength' }],
+            },
+          ],
+        },
+      ],
+    };
+    const highlightHits = hitsFor(protocol).filter(
+      (hit) =>
+        hit.path.includes('highlight') &&
+        hit.path[hit.path.length - 1] === 'variable',
+    );
+    expect(highlightHits).toHaveLength(1);
+    expect(highlightHits[0]?.usage).toBe('unvalidatedAttribute');
+  });
 
   it('leaves Narrative preset groupVariable and highlight references untagged (grouping/display slots never restrict a variable elsewhere)', () => {
     const protocol = {

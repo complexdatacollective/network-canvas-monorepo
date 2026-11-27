@@ -297,15 +297,17 @@ describe('stage-subject references on stages that run several node types', () =>
   });
 
   describe('placement of a listed field', () => {
-    const HIGHLIGHT = 'prompts.[].highlight.variable';
+    const SORT_PROPERTY = 'prompts.[].sortOrder.[].property';
 
     it('reports an entry for a stage type that runs one node type', () => {
       expect(nodeTypeCapabilityOf('Sociogram')).toBe('single');
       expect(
         misplacedListedFields({
-          Sociogram: [{ field: HIGHLIGHT, rejects: () => null, issuePath: [] }],
+          Sociogram: [
+            { field: SORT_PROPERTY, rejects: () => null, issuePath: [] },
+          ],
         }),
-      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry naming a field that is not a stage-subject reference', () => {
@@ -315,7 +317,7 @@ describe('stage-subject references on stages that run several node types', () =>
         expect(
           misplacedListedFields({
             Sociogram: [
-              { field: HIGHLIGHT, rejects: () => null, issuePath: [] },
+              { field: SORT_PROPERTY, rejects: () => null, issuePath: [] },
               {
                 field: 'prompts.[].no-such-field',
                 rejects: () => null,
@@ -337,15 +339,16 @@ describe('stage-subject references on stages that run several node types', () =>
   describe('proof of a listed field', () => {
     const SOCIOGRAM = 6;
     const PLACE = 'd2904722-c463-5fe3-8f6d-032114d8ed55';
-    const HIGHLIGHT_PATH = [
+    const SORT_PATH = [
       'stages',
       SOCIOGRAM,
       'prompts',
       1,
-      'highlight',
-      'variable',
+      'sortOrder',
+      0,
+      'property',
     ] as const;
-    const HIGHLIGHT = 'prompts.[].highlight.variable';
+    const SORT_PROPERTY = 'prompts.[].sortOrder.[].property';
 
     const sociogramWith = (change: (stage: Fields) => void) => () => {
       const protocol = loadAllInterfacesFixture();
@@ -362,22 +365,26 @@ describe('stage-subject references on stages that run several node types', () =>
       };
     });
 
-    const unknownHighlightVariable = (stage: Fields) => {
+    const numericSortProperty = (stage: Fields) => {
       const prompt: unknown = Array.isArray(stage.prompts)
         ? stage.prompts[1]
         : undefined;
-      if (!isRecord(prompt) || !isRecord(prompt.highlight)) {
-        throw new Error('No highlight on the second prompt');
-      }
-      prompt.highlight.variable = 'no-such-variable';
+      if (!isRecord(prompt)) throw new Error('No second prompt');
+      prompt.sortOrder = [
+        {
+          id: '0c2b5bd4-8f39-4e33-9d1b-31c4f1e3b8a2',
+          property: 42,
+          direction: 'asc',
+        },
+      ];
     };
 
-    // Stands in for a validation rule that refuses the highlight on a stage
+    // Stands in for a validation rule that refuses the sort order on a stage
     // listing two types, which no stage has while every one runs one type.
-    const refusesHighlightOnTwoTypes = (protocol: unknown) => {
+    const refusesSortOnTwoTypes = (protocol: unknown) => {
       const stage = stageAt(protocol, SOCIOGRAM);
       return stage && nodeTypesOf(stage).length >= 2
-        ? [HIGHLIGHT_PATH.join('.')]
+        ? [SORT_PATH.join('.')]
         : [];
     };
 
@@ -387,30 +394,30 @@ describe('stage-subject references on stages that run several node types', () =>
           {
             Sociogram: [
               {
-                field: HIGHLIGHT,
+                field: SORT_PROPERTY,
                 rejects: twoTypes,
-                issuePath: HIGHLIGHT_PATH,
+                issuePath: SORT_PATH,
               },
             ],
           },
-          refusesHighlightOnTwoTypes,
+          refusesSortOnTwoTypes,
         ),
       ).toEqual([]);
     });
 
     it('reports an entry whose protocol validation accepts', () => {
-      expect(issuePathsOf(twoTypes())).not.toContain(HIGHLIGHT_PATH.join('.'));
+      expect(issuePathsOf(twoTypes())).not.toContain(SORT_PATH.join('.'));
       expect(
         unprovenListedFields({
           Sociogram: [
             {
-              field: HIGHLIGHT,
+              field: SORT_PROPERTY,
               rejects: twoTypes,
-              issuePath: HIGHLIGHT_PATH,
+              issuePath: SORT_PATH,
             },
           ],
         }),
-      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry whose issue path points at a stage of another type', () => {
@@ -419,25 +426,33 @@ describe('stage-subject references on stages that run several node types', () =>
           {
             Sociogram: [
               {
-                field: HIGHLIGHT,
+                field: SORT_PROPERTY,
                 rejects: loadAllInterfacesFixture,
-                issuePath: ['stages', 0, 'prompts', 0, 'highlight', 'variable'],
+                issuePath: [
+                  'stages',
+                  0,
+                  'prompts',
+                  0,
+                  'sortOrder',
+                  0,
+                  'property',
+                ],
               },
             ],
           },
-          () => ['stages.0.prompts.0.highlight.variable'],
+          () => ['stages.0.prompts.0.sortOrder.0.property'],
         ),
-      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry whose stage lists one type', () => {
-      const rejects = sociogramWith(unknownHighlightVariable);
-      expect(issuePathsOf(rejects())).toContain(HIGHLIGHT_PATH.join('.'));
+      const rejects = sociogramWith(numericSortProperty);
+      expect(issuePathsOf(rejects())).toContain(SORT_PATH.join('.'));
       expect(
         unprovenListedFields({
-          Sociogram: [{ field: HIGHLIGHT, rejects, issuePath: HIGHLIGHT_PATH }],
+          Sociogram: [{ field: SORT_PROPERTY, rejects, issuePath: SORT_PATH }],
         }),
-      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry whose stage is of another type', () => {
@@ -446,15 +461,15 @@ describe('stage-subject references on stages that run several node types', () =>
           {
             Narrative: [
               {
-                field: HIGHLIGHT,
+                field: SORT_PROPERTY,
                 rejects: twoTypes,
-                issuePath: HIGHLIGHT_PATH,
+                issuePath: SORT_PATH,
               },
             ],
           },
-          refusesHighlightOnTwoTypes,
+          refusesSortOnTwoTypes,
         ),
-      ).toEqual([`Narrative ${HIGHLIGHT}`]);
+      ).toEqual([`Narrative ${SORT_PROPERTY}`]);
     });
 
     it('reports an entry whose issue path is in another field', () => {
@@ -465,11 +480,11 @@ describe('stage-subject references on stages that run several node types', () =>
               {
                 field: 'prompts.[].edges.create',
                 rejects: twoTypes,
-                issuePath: HIGHLIGHT_PATH,
+                issuePath: SORT_PATH,
               },
             ],
           },
-          refusesHighlightOnTwoTypes,
+          refusesSortOnTwoTypes,
         ),
       ).toEqual(['Sociogram prompts.[].edges.create']);
     });
@@ -480,15 +495,15 @@ describe('stage-subject references on stages that run several node types', () =>
           {
             Sociogram: [
               {
-                field: HIGHLIGHT,
+                field: SORT_PROPERTY,
                 rejects: twoTypes,
-                issuePath: HIGHLIGHT_PATH,
+                issuePath: SORT_PATH,
               },
             ],
           },
-          () => [HIGHLIGHT_PATH.join('.')],
+          () => [SORT_PATH.join('.')],
         ),
-      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+      ).toEqual([`Sociogram ${SORT_PROPERTY}`]);
     });
   });
 
@@ -512,7 +527,7 @@ describe('stage-subject references on stages that run several node types', () =>
       STAGE_NODE_TYPE_CAPABILITY.Sociogram = 'several';
       const problems = multiTypeProblems();
       expect(problems.Sociogram).toEqual(
-        expect.arrayContaining(['prompts.[].highlight.variable']),
+        expect.arrayContaining(['prompts.[].sortOrder.[].property']),
       );
     } finally {
       STAGE_NODE_TYPE_CAPABILITY.Sociogram = before;

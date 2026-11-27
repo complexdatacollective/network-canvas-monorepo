@@ -1689,7 +1689,7 @@ describe('Migration V7 to V8', () => {
         'Narrative',
       );
       expect(stage.behaviours?.automaticLayout).toBeUndefined();
-      expect(stage.behaviours?.allowRepositioning).toBe(true);
+      expect(stage.behaviours).toMatchObject({ allowRepositioning: true });
     });
   });
 
@@ -3516,10 +3516,10 @@ describe('Migration V7 to V8', () => {
       const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).toHaveProperty(
-          'highlight.allowHighlighting',
-          true,
-        );
+        expect(stage.prompts[0]).toMatchObject({
+          task: 'highlight',
+          highlight: [{ type: 'person', variable: 'isClose' }],
+        });
       }
     });
 
@@ -3531,10 +3531,8 @@ describe('Migration V7 to V8', () => {
       const parsed = V8OutputSchema.parse(migratedRaw);
       const stage = parsed.stages[0];
       if (stage && 'prompts' in stage) {
-        expect(stage.prompts[0]).toHaveProperty(
-          'highlight.allowHighlighting',
-          false,
-        );
+        expect(stage.prompts[0]).toMatchObject({ task: 'layout' });
+        expect(stage.prompts[0]).not.toHaveProperty('highlight');
       }
     });
 

@@ -44,8 +44,8 @@ export const VARIANT_ROW_SEGMENT = '*';
  * whole-list `set` — but the merge that replays such a `set` re-seats the row
  * on the one the session holds LEAF by leaf, so that a collaborator's edit to
  * another property of the same row survives. That is the same granularity, and
- * it makes the same hybrid: a sociogram prompt with highlighting switched on
- * and no attribute left to write. So a path may run through a list, naming its
+ * it makes the same hybrid: a sociogram prompt with one researcher's task and
+ * the other's task settings. So a path may run through a list, naming its
  * rows with `VARIANT_ROW_SEGMENT`.
  */
 
@@ -85,8 +85,7 @@ function innerSchema(schema: z.core.$ZodType): z.core.$ZodType {
  * a value made of members each side is entitled to can still be one the schema
  * refuses. Two shapes to choose between is one way to say that — it is the
  * whole of what `EXCLUSIVE_VARIANT_CONTAINERS` is about — and a check on the
- * object is the other: a sociogram prompt must set an edge to create or a
- * non-empty list of edges to draw, a name generator's `maxNodes` may not fall
+ * object is the other: a name generator's `maxNodes` may not fall
  * below its `minNodes`, a composer form field's `parameters` have to match the
  * control it names.
  */
@@ -165,8 +164,8 @@ function scanObject(
  * — the vocabulary addresses object keys and edits a list as rows — but the
  * merge that replays a rewritten row re-seats it on the row the session holds
  * LEAF by leaf, and that is the same granularity, one level down. A variant
- * inside a row makes the same hybrid there: a sociogram prompt with
- * highlighting switched on and no attribute left to write.
+ * inside a row makes the same hybrid there: a categorical bin prompt that
+ * offers an 'other' option and has lost the fields describing it.
  */
 function scanValue(
   schema: z.core.$ZodType,
@@ -309,16 +308,16 @@ export const isExclusiveVariantContainer = (path: readonly string[]): boolean =>
  * that a value assembled out of members each side is entitled to can still be
  * one the schema refuses.
  *
- * A sociogram prompt's `edges` is the shape this exists for: it says which
- * edges to draw and which the participant may create, and the schema requires
- * at least one of the two, because an empty `edges` has no effect. The
- * researcher clears `create` while a collaborator empties `display`, and a
- * merge that goes leaf by leaf answers with `{ display: [] }` — a prompt
- * NEITHER of them held. The exclusive-variant answer cannot be used: the two
- * members are not rival shapes, and keeping both people's work on them is the
- * reason the merge goes leaf by leaf in the first place. So the container is
- * assembled as it always was and then PUT TO the schema, and only a refusal
- * makes the researcher's own container travel whole.
+ * A sociogram prompt row is the shape this exists for: its task decides which
+ * other members it may hold. The researcher switches a prompt to a layout task
+ * while a collaborator sets the edge type it creates, and a merge that goes
+ * leaf by leaf answers with a layout task that creates edges — a prompt
+ * NEITHER of them held. The exclusive-variant answer cannot be used there,
+ * because a name generator's prompt row is at the same path and keeping both
+ * people's work on it is the reason the merge goes leaf by leaf in the first
+ * place. So the container is assembled as it always was and then PUT TO the
+ * schema, and only a refusal makes the researcher's own container travel
+ * whole.
  *
  * Every schema declared at the path is kept, not just the constraining one,
  * because a consumer that asks is handed a stage's fields and not its type: a

@@ -296,12 +296,14 @@
       "prompts": [
         {
           "id": "32653099-a030-57fe-a801-0b9ae86b6659",
+          "task": "layout",
           "text": {
             "en-US": "Place people on the map in a way that makes sense to you. You can put people closer to the centre if they feel closer to you."
           }
         },
         {
           "id": "aeba8608-4b99-58a0-813a-7e5602fc4605",
+          "task": "connect",
           "text": {
             "en-US": "Which people know one another? Connect them if you want to."
           },
@@ -312,55 +314,71 @@
         },
         {
           "id": "5672f97e-82d3-5618-bd4d-3148b917c84b",
+          "task": "highlight",
           "text": {
             "en-US": "Who on this map feels like family to you right now?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "b095f131-10a8-5eb2-8e30-b94b29a98769"
-          },
           "edges": {
             "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "0947d742-e479-4a39-b057-0ad860d5df4c",
+              "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e",
+              "variable": "b095f131-10a8-5eb2-8e30-b94b29a98769"
+            }
+          ]
         },
         {
           "id": "03d59d06-0e65-5148-9461-095845ea04a5",
+          "task": "highlight",
           "text": {
             "en-US": "Who can you turn to when you need to talk about something personal?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "c3fedc1a-67c7-5751-a7e7-26ad69c4eb1a"
-          },
           "edges": {
             "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "78a143e7-bd75-4db4-b5c9-dfe5a075d82b",
+              "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e",
+              "variable": "c3fedc1a-67c7-5751-a7e7-26ad69c4eb1a"
+            }
+          ]
         },
         {
           "id": "dce616da-e2e4-590d-9f7c-9c13544be15b",
+          "task": "highlight",
           "text": {
             "en-US": "Who helps with everyday needs, such as a place to stay, transport or practical advice?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "e30f5f02-6af0-54bf-8703-4fef629130a0"
-          },
           "edges": {
             "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "9a1955a9-d7c1-4d5e-9616-7cac05a7d66c",
+              "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e",
+              "variable": "e30f5f02-6af0-54bf-8703-4fef629130a0"
+            }
+          ]
         },
         {
           "id": "55256163-12f5-5d1e-996c-66ad69687b57",
+          "task": "highlight",
           "text": {
             "en-US": "Who helps you feel recognised and accepted as you are?"
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "9495f2bf-b7d1-5a80-9e9c-6ea413cb96bc"
-          },
           "edges": {
             "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
-          }
+          },
+          "highlight": [
+            {
+              "id": "9dbd1655-a4f1-4c25-ba5c-ff7aeb00adf4",
+              "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e",
+              "variable": "9495f2bf-b7d1-5a80-9e9c-6ea413cb96bc"
+            }
+          ]
         }
       ],
       "layout": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9"

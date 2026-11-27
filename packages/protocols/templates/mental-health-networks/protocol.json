@@ -1109,9 +1109,17 @@
       },
       "prompts": [
         {
-          "id": "6b2fb0bd-6bc7-5e8c-a4f1-a8f28d83a024",
+          "id": "27e6af81-8706-4318-a977-52da51ed0687",
+          "task": "layout",
           "text": {
-            "en": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**."
+            "en": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre."
+          }
+        },
+        {
+          "id": "6b2fb0bd-6bc7-5e8c-a4f1-a8f28d83a024",
+          "task": "connect",
+          "text": {
+            "en": "Draw a line between any **two people who know one another**."
           },
           "edges": {
             "create": "22bd9e04-df49-53ab-86c3-f7a0f08273be",

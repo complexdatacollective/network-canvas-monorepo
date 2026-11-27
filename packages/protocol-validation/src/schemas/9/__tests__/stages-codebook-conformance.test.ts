@@ -25,140 +25,7 @@ import { sociogramStage } from '../stages/sociogram.ts';
  * schema enforces on its own.
  */
 
-describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
-  const baseStage = {
-    id: testId('soc1'),
-    label: localized('Sociogram'),
-    type: 'Sociogram' as const,
-    subject: { entity: 'node' as const, types: ['person'] },
-    layout: 'pos',
-    background: { concentricCircles: 4 },
-  };
-
-  it('accepts a prompt with only edges.create set', () => {
-    const result = sociogramStage.safeParse({
-      ...baseStage,
-      prompts: [
-        {
-          id: testId('p1'),
-          text: localized('Connect'),
-          edges: { create: 'friend' },
-        },
-      ],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('accepts a prompt with only highlight.allowHighlighting set', () => {
-    const result = sociogramStage.safeParse({
-      ...baseStage,
-      prompts: [
-        {
-          id: testId('p1'),
-          text: localized('Highlight'),
-          highlight: { allowHighlighting: true, variable: 'isClose' },
-        },
-      ],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects a prompt with both edges.create and highlight.allowHighlighting set', () => {
-    const result = sociogramStage.safeParse({
-      ...baseStage,
-      prompts: [
-        {
-          id: testId('p1'),
-          text: localized('Both'),
-          edges: { create: 'friend' },
-          highlight: { allowHighlighting: true, variable: 'isClose' },
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.toLowerCase().includes('highlight'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
-  it('accepts a prompt with edges.create and highlight present but allowHighlighting false', () => {
-    const result = sociogramStage.safeParse({
-      ...baseStage,
-      prompts: [
-        {
-          id: testId('p1'),
-          text: localized('Create only'),
-          edges: { create: 'friend' },
-          highlight: { allowHighlighting: false },
-        },
-      ],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('rejects a prompt with allowHighlighting enabled but no highlight variable', () => {
-    const result = sociogramStage.safeParse({
-      ...baseStage,
-      prompts: [
-        {
-          id: testId('p1'),
-          text: localized('Highlight'),
-          highlight: { allowHighlighting: true },
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.includes('highlight.variable is required'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
-  it('rejects a prompt with an empty edges object', () => {
-    const result = sociogramStage.safeParse({
-      ...baseStage,
-      prompts: [
-        {
-          id: testId('p1'),
-          text: localized('Edges'),
-          edges: {},
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.includes('edges must set create'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
-  it('rejects a prompt whose edges only set an empty display array', () => {
-    const result = sociogramStage.safeParse({
-      ...baseStage,
-      prompts: [
-        {
-          id: testId('p1'),
-          text: localized('Edges'),
-          edges: { display: [] },
-        },
-      ],
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const issue = result.error.issues.find((i) =>
-        i.message.includes('edges must set create'),
-      );
-      expect(issue).toBeDefined();
-    }
-  });
-
+describe('Sociogram background', () => {
   it('rejects a background with an empty-string image', () => {
     const result = sociogramStage.safeParse({
       id: testId('soc1'),
@@ -170,6 +37,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       prompts: [
         {
           id: testId('p1'),
+          task: 'layout',
           text: localized('Position'),
         },
       ],

@@ -1081,11 +1081,9 @@
       "prompts": [
         {
           "id": "788a8dcb-f2fb-4ec5-8a3f-304a4e575752",
+          "task": "layout",
           "text": {
             "en": "Please position the people you have named amongst the concentric circles. Place people who know each other together, and put people you are closer to towards the center of the circles."
-          },
-          "highlight": {
-            "allowHighlighting": false
           }
         }
       ],
@@ -1107,11 +1105,9 @@
       "prompts": [
         {
           "id": "53b81a21-402c-443f-9421-4ca752d8fa0a",
+          "task": "layout",
           "text": {
             "en": "Please position the people you have named in the boxes according to which group you feel they most belong to"
-          },
-          "highlight": {
-            "allowHighlighting": false
           }
         }
       ],
@@ -1144,28 +1140,24 @@
       "prompts": [
         {
           "id": "ebbdc24d-51d4-4790-bf45-76493ae41d63",
+          "task": "connect",
           "text": {
             "en": "Please connect any two people who might spend time together without you being there"
           },
           "edges": {
             "display": ["a489e869-2555-4896-a760-2d38046b54f9"],
             "create": "a489e869-2555-4896-a760-2d38046b54f9"
-          },
-          "highlight": {
-            "allowHighlighting": false
           }
         },
         {
           "id": "47a9bfde-fd5c-4fb2-a8fe-c79744b0589a",
+          "task": "connect",
           "text": {
             "en": "Please connect any two people who have conflict, or who don't get on well with each other"
           },
           "edges": {
             "display": ["8487418e-cd64-452b-9064-b46ffff28a79"],
             "create": "8487418e-cd64-452b-9064-b46ffff28a79"
-          },
-          "highlight": {
-            "allowHighlighting": false
           }
         }
       ],
@@ -1283,6 +1275,7 @@
       "prompts": [
         {
           "id": "1acac0d9-0ef6-4792-acb2-ba5e1dcc7b39",
+          "task": "highlight",
           "text": {
             "en": "Please select anyone who you have asked for advice within the previous 6 months"
           },
@@ -1292,13 +1285,17 @@
               "8487418e-cd64-452b-9064-b46ffff28a79"
             ]
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645"
-          }
+          "highlight": [
+            {
+              "id": "139d4945-6da0-4291-9beb-4c223d3001a0",
+              "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d",
+              "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645"
+            }
+          ]
         },
         {
           "id": "ec442369-54a0-4306-8387-1cc612a5f778",
+          "task": "highlight",
           "text": {
             "en": "Please select anyone who has supported you financially within the previous 6 months"
           },
@@ -1308,10 +1305,13 @@
               "8487418e-cd64-452b-9064-b46ffff28a79"
             ]
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45"
-          }
+          "highlight": [
+            {
+              "id": "2be066be-1352-43ab-8360-a4786af65c80",
+              "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d",
+              "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45"
+            }
+          ]
         }
       ],
       "layout": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"

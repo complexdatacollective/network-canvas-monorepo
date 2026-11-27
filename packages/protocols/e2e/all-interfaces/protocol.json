@@ -559,29 +559,31 @@
       "prompts": [
         {
           "id": "e47e83ec-1a8f-5330-a0e2-0e3360c2e4a6",
+          "task": "connect",
           "text": {
             "en-US": "Place the people who know each other close together"
           },
           "edges": {
             "display": ["be546dd6-d6dc-5f85-b821-974abd0845e5"],
             "create": "be546dd6-d6dc-5f85-b821-974abd0845e5"
-          },
-          "highlight": {
-            "allowHighlighting": false
           }
         },
         {
           "id": "c6915d43-dcfe-5f94-9a4c-fe9fbb8146b1",
+          "task": "highlight",
           "text": {
             "en-US": "Highlight the people you feel closest to"
           },
           "edges": {
             "display": ["be546dd6-d6dc-5f85-b821-974abd0845e5"]
           },
-          "highlight": {
-            "allowHighlighting": true,
-            "variable": "c5612235-bc7e-5f25-bf5f-ecaa548db445"
-          }
+          "highlight": [
+            {
+              "id": "ec37154a-ccbb-4df4-b811-f4574bb88fa2",
+              "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42",
+              "variable": "c5612235-bc7e-5f25-bf5f-ecaa548db445"
+            }
+          ]
         }
       ],
       "layout": "59869f03-9b27-57a6-95bd-b07125f456ca"

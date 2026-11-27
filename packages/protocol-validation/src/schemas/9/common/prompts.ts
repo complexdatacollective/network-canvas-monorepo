@@ -69,82 +69,57 @@ export const nameGeneratorPromptSchema = promptSchema.extend({
   additionalAttributes: AdditionalAttributesSchema.optional(),
 });
 
-// ONE declaration of the highlight variable, shared by the loose shape the
-// reference collector reads and by both narrowed union branches, so the two
-// cannot disagree about what the site is. Tapping a node writes the attribute,
-// but only when `allowHighlighting` is on: a prompt that sets `variable` alone
-// merely colours nodes by a value something else recorded, which is a read (see
-// `usageRequiresSibling`, and the Canvas's display-only highlight).
-const highlightVariableReference = entityAttributeReference({
-  subject: 'stageSubject',
-  usage: 'unvalidatedAttribute',
-  usageRequiresSibling: 'allowHighlighting',
+/**
+ * One row of a highlight: the node type it is about and the boolean attribute
+ * of that type it shows. `writes` says whether the stage lets the participant
+ * set the attribute by tapping a node (a Sociogram highlight task) or only
+ * shows it, so a display stays out of the writers that the variable role and
+ * exclusive-slot rules compare.
+ */
+export const highlightAttributeSchema = ({ writes }: { writes: boolean }) =>
+  z.strictObject({
+    id: protocolObjectId('highlightAttribute'),
+    type: entityTypeReference({ entity: 'node' }),
+    variable: entityAttributeReference({
+      subject: { sibling: 'type', entity: 'node' },
+      requireType: ['boolean'],
+      ...(writes ? { usage: 'unvalidatedAttribute' as const } : {}),
+    }),
+  });
+
+const displayedEdgeTypes = z.array(entityTypeReference({ entity: 'edge' }));
+
+const sociogramPromptBase = promptSchema.extend({
+  sortOrder: SortOrderSchema.optional(),
 });
 
-// Loose shape + superRefine for the author-facing message, piped into a union
-// so the static type proves `variable` exists whenever highlighting is on.
-// The union must accept exactly what the refine accepts.
-const sociogramHighlightSchema = z
-  .strictObject({
-    allowHighlighting: z.boolean().optional(),
-    variable: highlightVariableReference.optional(),
-  })
-  .superRefine((highlight, ctx) => {
-    if (highlight.allowHighlighting && !highlight.variable) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message:
-          'highlight.variable is required when allowHighlighting is enabled.',
-        path: ['variable'],
-      });
-    }
-  })
-  .transform(
-    narrowTo(
-      z.union([
-        z.strictObject({
-          allowHighlighting: z.literal(true),
-          variable: highlightVariableReference,
-        }),
-        z.strictObject({
-          allowHighlighting: z.literal(false).optional(),
-          variable: highlightVariableReference.optional(),
-        }),
-      ]),
-    ),
-  );
-
-// Highlighting is on and names the attribute a tap writes, or it is off. A
-// value carrying the members of both is one this schema refuses, so an editor
-// writing part of one has to write the whole of it — see `asExclusiveVariants`,
-// which is how a walk of the schemas learns what the transform above hides.
-asExclusiveVariants(sociogramHighlightSchema);
-
-export const sociogramPromptSchema = promptSchema
-  .extend({
-    sortOrder: SortOrderSchema.optional(),
+// Each Sociogram prompt is one task. In a layout task the participant places
+// and moves nodes; in a highlight task tapping a node toggles the boolean
+// attribute its type's entry names; in a connect task tapping two nodes
+// creates or removes an edge of `edges.create`. Nodes cannot be moved outside
+// a layout task.
+export const sociogramPromptSchema = z.discriminatedUnion('task', [
+  sociogramPromptBase.extend({
+    task: z.literal('layout'),
     edges: z
-      .strictObject({
-        display: z.array(entityTypeReference({ entity: 'edge' })).optional(),
-        create: entityTypeReference({ entity: 'edge' }).optional(),
-      })
+      .strictObject({ display: displayedEdgeTypes.optional() })
       .optional(),
-    highlight: sociogramHighlightSchema.optional(),
-  })
-  .superRefine((prompt, ctx) => {
-    if (
-      prompt.edges &&
-      prompt.edges.create === undefined &&
-      (prompt.edges.display === undefined || prompt.edges.display.length === 0)
-    ) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message:
-          'edges must set create and/or a non-empty display; an empty edges object has no effect.',
-        path: ['edges'],
-      });
-    }
-  });
+  }),
+  sociogramPromptBase.extend({
+    task: z.literal('highlight'),
+    highlight: z.array(highlightAttributeSchema({ writes: true })).min(1),
+    edges: z
+      .strictObject({ display: displayedEdgeTypes.optional() })
+      .optional(),
+  }),
+  sociogramPromptBase.extend({
+    task: z.literal('connect'),
+    edges: z.strictObject({
+      create: entityTypeReference({ entity: 'edge' }),
+      display: displayedEdgeTypes.optional(),
+    }),
+  }),
+]);
 
 export const dyadCensusPromptSchema = promptSchema.extend({
   createEdge: entityTypeReference({ entity: 'edge' }),

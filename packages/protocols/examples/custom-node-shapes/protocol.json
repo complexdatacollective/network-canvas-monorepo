@@ -678,9 +678,20 @@
       },
       "prompts": [
         {
-          "id": "d68ec0c3-0264-533d-9709-b59676488e28",
+          "id": "de2c09da-e341-5b02-b058-a029b659a3b8",
+          "task": "layout",
           "text": {
-            "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
+            "en": "Put the things that matter **most** to you in the middle."
+          },
+          "edges": {
+            "display": ["d1afb5e2-5112-5902-ba02-255ed7976153"]
+          }
+        },
+        {
+          "id": "d68ec0c3-0264-533d-9709-b59676488e28",
+          "task": "connect",
+          "text": {
+            "en": "Now tap two things to join them up if they **go together**."
           },
           "edges": {
             "create": "d1afb5e2-5112-5902-ba02-255ed7976153",
@@ -756,9 +767,20 @@
       },
       "prompts": [
         {
-          "id": "ca59c43b-a6b5-54a6-bc61-6e53b00dda3b",
+          "id": "e2f9ef3e-a9ca-5dc1-84f5-95ab0c4a5d7d",
+          "task": "layout",
           "text": {
-            "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
+            "en": "Put the things that matter **most** to you in the middle."
+          },
+          "edges": {
+            "display": ["3723a5c7-6898-5390-8451-23072d8f5be7"]
+          }
+        },
+        {
+          "id": "ca59c43b-a6b5-54a6-bc61-6e53b00dda3b",
+          "task": "connect",
+          "text": {
+            "en": "Now tap two things to join them up if they **go together**."
           },
           "edges": {
             "create": "3723a5c7-6898-5390-8451-23072d8f5be7",

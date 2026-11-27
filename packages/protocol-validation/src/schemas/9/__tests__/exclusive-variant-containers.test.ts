@@ -51,8 +51,9 @@ describe('the exclusive-variant containers of a stage document', () => {
    *   `edges.*.form.fields.*` — is discriminated on `component`: a visual
    *   analog scale's `parameters` carry its localized end labels, and every
    *   other control's are an open record.
-   * - `prompts.*.highlight` is a sociogram's: highlighting is on and names the
-   *   attribute a tap writes, or it is off.
+   *
+   * A sociogram prompt is a choice of task too, but it lives at `prompts.*`,
+   * the one path the stage types disagree about (below).
    */
   it('is every choice between object shapes the stage schemas declare', () => {
     expect(EXCLUSIVE_VARIANT_CONTAINERS).toEqual([
@@ -62,7 +63,6 @@ describe('the exclusive-variant containers of a stage document', () => {
       ['nodeForm', 'fields', '*'],
       ['panels', '*', 'filter', 'rules', '*'],
       ['presets', '*', 'filter', 'rules', '*'],
-      ['prompts', '*', 'highlight'],
       ['skipLogic', 'destination'],
       ['skipLogic', 'filter', 'rules', '*'],
     ]);
@@ -251,24 +251,31 @@ describe('the jointly constrained containers of a stage document', () => {
    * What the rule is FOR, said by the schema: a prompt row assembled out of
    * two edits each side was entitled to make, which neither of them held.
    */
-  it('refuses a sociogram prompt whose edges set neither member', () => {
-    const prompt = (edges: unknown) => ({
+  it('refuses a sociogram prompt assembled from two tasks', () => {
+    const prompt = (fields: Record<string, unknown>) => ({
       id: testId('p1'),
       text: localized('Who do you know?'),
-      edges,
+      ...fields,
     });
 
+    // A layout task given the edge type a collaborator's connect task creates.
     expect(
-      schemaRefusesContainer(['prompts', '*'], prompt({ display: [] })),
+      schemaRefusesContainer(
+        ['prompts', '*'],
+        prompt({ task: 'layout', edges: { create: 'knows' } }),
+      ),
     ).toBe(true);
     // Each side's own prompt, which is what makes the one above an invention.
     expect(
-      schemaRefusesContainer(['prompts', '*'], prompt({ display: ['knows'] })),
+      schemaRefusesContainer(
+        ['prompts', '*'],
+        prompt({ task: 'layout', edges: { display: ['knows'] } }),
+      ),
     ).toBe(false);
     expect(
       schemaRefusesContainer(
         ['prompts', '*'],
-        prompt({ display: [], create: 'knows' }),
+        prompt({ task: 'connect', edges: { create: 'knows' } }),
       ),
     ).toBe(false);
   });

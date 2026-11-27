@@ -32,6 +32,7 @@ const protocol = {
       prompts: [
         {
           id: 'p1',
+          task: 'connect',
           text: localized('Who knows whom?'),
           edges: { create: 'friendship', display: ['friendship', 'conflict'] },
         },

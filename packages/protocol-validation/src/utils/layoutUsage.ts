@@ -28,12 +28,26 @@ type LayoutUsage = {
 /**
  * The layouts a stage names, and whether it sets each (participants or the
  * automatic layout place nodes in it) or only reads it (shows positions
- * another stage set). Every Sociogram sets its layout until its prompts are
- * tasks; a Network Composer always does; a Narrative preset reads.
+ * another stage set). A Sociogram sets its layout when it lays nodes out
+ * automatically or has a layout task, and otherwise reads it; a Network
+ * Composer always sets it; a Narrative preset reads.
  */
 export const getStageLayoutUses = (stage: Stage): StageLayoutUse[] => {
   const nodeTypes = getStageNodeTypes(stage);
-  if (stage.type === 'Sociogram' || stage.type === 'NetworkComposer') {
+  if (stage.type === 'Sociogram') {
+    const sets =
+      stage.behaviours?.automaticLayout === true ||
+      stage.prompts.some((prompt) => prompt.task === 'layout');
+    return [
+      {
+        layoutId: stage.layout,
+        access: sets ? 'sets' : 'reads',
+        nodeTypes,
+        stageId: stage.id,
+      },
+    ];
+  }
+  if (stage.type === 'NetworkComposer') {
     return [
       { layoutId: stage.layout, access: 'sets', nodeTypes, stageId: stage.id },
     ];
@@ -137,6 +151,26 @@ export const findUnreachableLayoutReads = (
       ];
     }),
   );
+};
+
+/**
+ * Whether the stage `stageId` is the first in the interview to name
+ * `layoutId`, setting or reading it: no earlier stage has placed or shown
+ * nodes in it.
+ */
+export const isFirstStageUsingLayout = (
+  protocol: LayoutProtocol,
+  stageId: string,
+  layoutId: string,
+): boolean => {
+  for (const stage of protocol.stages) {
+    const uses = getStageLayoutUses(stage).some(
+      (use) => use.layoutId === layoutId,
+    );
+    if (stage.id === stageId) return uses;
+    if (uses) return false;
+  }
+  return false;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

@@ -165,6 +165,7 @@ export const createBaseProtocol = () => ({
       prompts: [
         {
           id: testId('socPrompt1'),
+          task: 'layout',
           text: localized('Position nodes'),
         },
       ],

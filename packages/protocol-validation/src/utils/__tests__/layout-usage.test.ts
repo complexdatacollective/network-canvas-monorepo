@@ -17,6 +17,7 @@ import {
   getLayoutUsage,
   getNodeTypesWithLayout,
   getStageLayoutUses,
+  isFirstStageUsingLayout,
 } from '../layoutUsage.ts';
 import { createBaseProtocol, localized } from '../test-utils.ts';
 
@@ -344,5 +345,68 @@ describe('layout usage', () => {
         nodeTypes: [colleague],
       })),
     );
+  });
+
+  describe('a Sociogram by its tasks', () => {
+    const sociogramOf = (
+      protocol: ReturnType<typeof protocolWithNarrative>,
+    ) => {
+      const stage = protocol.stages.find(({ type }) => type === 'Sociogram');
+      if (stage?.type !== 'Sociogram') throw new Error('No Sociogram');
+      return stage;
+    };
+    const connectOnly = (
+      stage: ReturnType<typeof sociogramOf>,
+    ): ReturnType<typeof sociogramOf> => ({
+      ...stage,
+      prompts: [
+        {
+          id: testId('connect'),
+          task: 'connect',
+          text: localized('Link people who know each other'),
+          edges: { create: 'knows' },
+        },
+      ],
+    });
+
+    it('a Sociogram with only connect tasks reads its layout', () => {
+      const stage = connectOnly(sociogramOf(protocolWithNarrative()));
+      expect(getStageLayoutUses(stage).map(({ access }) => access)).toEqual([
+        'reads',
+      ]);
+    });
+
+    it('automatic layout makes it set', () => {
+      const stage = connectOnly(sociogramOf(protocolWithNarrative()));
+      expect(
+        getStageLayoutUses({
+          ...stage,
+          behaviours: { automaticLayout: true },
+        }).map(({ access }) => access),
+      ).toEqual(['sets']);
+    });
+
+    it('isFirstStageUsingLayout is false once an earlier stage names the layout', () => {
+      const protocol = protocolWithNarrative();
+      const sociogram = sociogramOf(protocol);
+      const later = { ...connectOnly(sociogram), id: testId('later') };
+      const stages = [...protocol.stages, later];
+      const withLater = { ...protocol, stages };
+
+      expect(
+        isFirstStageUsingLayout(withLater, sociogram.id, sociogram.layout),
+      ).toBe(true);
+      expect(
+        isFirstStageUsingLayout(withLater, later.id, sociogram.layout),
+      ).toBe(false);
+      // A stage that does not name the layout is never the first to use it.
+      expect(
+        isFirstStageUsingLayout(
+          withLater,
+          later.id,
+          layoutKeyNamed(protocol, 'composer_map'),
+        ),
+      ).toBe(false);
+    });
   });
 });

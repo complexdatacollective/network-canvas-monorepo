@@ -551,6 +551,7 @@ describe('Cross-reference conformance', () => {
             prompts: [
               {
                 id: 'socPrompt1',
+                task: 'layout',
                 text: localized('Position nodes'),
               },
             ],

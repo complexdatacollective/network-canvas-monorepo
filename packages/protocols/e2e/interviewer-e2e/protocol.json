@@ -156,9 +156,17 @@
       },
       "prompts": [
         {
-          "id": "309d8350-43f5-5b9f-b3d5-d98252e52da5",
+          "id": "de58b685-0327-46d5-a6d8-86ebf4a85bcd",
+          "task": "layout",
           "text": {
-            "en-US": "Drag to place; link people who know each other."
+            "en-US": "Drag to place people."
+          }
+        },
+        {
+          "id": "309d8350-43f5-5b9f-b3d5-d98252e52da5",
+          "task": "connect",
+          "text": {
+            "en-US": "Link people who know each other."
           },
           "edges": {
             "create": "65c6495c-b0da-58f9-965c-a7ca10ad018e",

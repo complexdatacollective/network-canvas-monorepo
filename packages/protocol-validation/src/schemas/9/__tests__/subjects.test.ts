@@ -109,16 +109,17 @@ describe('stage node type accessors', () => {
 });
 
 describe('the reference walk on a stage listing two node types', () => {
-  const highlightPath = [
+  const sortPropertyPath = [
     'stages',
     SOCIOGRAM_INDEX,
     'prompts',
     1,
-    'highlight',
-    'variable',
+    'sortOrder',
+    0,
+    'property',
   ].join('.');
 
-  const highlightHit = (types: string[]) => {
+  const sortPropertyHit = (types: string[]) => {
     const protocol = readFixture();
     if (
       typeof protocol !== 'object' ||
@@ -133,20 +134,32 @@ describe('the reference walk on a stage listing two node types', () => {
       throw new Error('No Sociogram stage');
     }
     Reflect.set(stage, 'subject', { entity: 'node', types });
+    const prompts: unknown = Reflect.get(stage, 'prompts');
+    const prompt: unknown = Array.isArray(prompts) ? prompts[1] : undefined;
+    if (typeof prompt !== 'object' || prompt === null) {
+      throw new Error('No second Sociogram prompt');
+    }
+    Reflect.set(prompt, 'sortOrder', [
+      {
+        id: '5f0f8a63-4b6e-4c55-9a43-0d6c2f7b9e11',
+        property: 'name',
+        direction: 'asc',
+      },
+    ]);
     return collectEntityAttributeReferences(protocol).find(
-      (hit) => hit.path.join('.') === highlightPath,
+      (hit) => hit.path.join('.') === sortPropertyPath,
     );
   };
 
   it('resolves a stage-subject reference against the one type', () => {
-    expect(highlightHit([PERSON])?.subject).toEqual({
+    expect(sortPropertyHit([PERSON])?.subject).toEqual({
       entity: 'node',
       type: PERSON,
     });
   });
 
   it('resolves a stage-subject reference to no subject', () => {
-    const hit = highlightHit([PERSON, PLACE]);
+    const hit = sortPropertyHit([PERSON, PLACE]);
     expect(hit).toBeDefined();
     expect(hit?.subject).toBeUndefined();
   });
