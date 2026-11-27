@@ -15,6 +15,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import {
   CurrentProtocolSchema,
   createVariableId,
+  getStageNodeTypes,
   isEntityTypeId,
   isVariableId,
 } from '@codaco/protocol-validation';
@@ -62,21 +63,31 @@ import {
 
 const limiterUrl = await reachableRedis(REDIS_DATABASES.protocolBuilder);
 
-// The sample protocol's finish stages, in order: its main ending, then the one
-// participants who decline consent are sent to.
-const ENDINGS = CurrentProtocolSchema.parse(
+const SAMPLE = CurrentProtocolSchema.parse(
   JSON.parse(
     readFileSync(
       fileURLToPath(import.meta.resolve('@codaco/protocols/sample')),
       'utf8',
     ),
   ),
-)
-  .stages.filter((stage) => stage.type === 'FinishSession')
+);
+
+// The sample protocol's finish stages, in order: its main ending, then the one
+// participants who decline consent are sent to.
+const ENDINGS = SAMPLE.stages
+  .filter((stage) => stage.type === 'FinishSession')
   .map((stage) => stage.id);
 const [FINISH, DECLINED] = ENDINGS;
 if (FINISH === undefined || DECLINED === undefined) {
   throw new Error('the sample protocol does not end with two finish stages');
+}
+
+// A Sociogram of the sample protocol, the layout it places nodes in and the
+// node type it places.
+const PLACING = SAMPLE.stages.find((stage) => stage.type === 'Sociogram');
+const PLACED_TYPE = PLACING && getStageNodeTypes(PLACING)[0];
+if (PLACING?.type !== 'Sociogram' || PLACED_TYPE === undefined) {
+  throw new Error('the sample protocol has no Sociogram placing a node type');
 }
 
 describe.skipIf(!testDb)('the protocol-builder host surface', () => {
@@ -1208,6 +1219,112 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ),
       'SectionNotFound',
     );
+  });
+
+  it('refuses deleting a layout a stage names, and keeps it', async () => {
+    const layoutSection = sid(`codebook:layout:${PLACING.layout}`);
+
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: layoutSection }),
+      ),
+      'ReferencesRemain',
+    );
+
+    expect(error.remaining).toContainEqual({
+      sectionId: stageSection(PLACING.id),
+      path: ['layout'],
+    });
+    const kept = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: layoutSection }),
+    );
+    expect(Redacted.value(kept.document)).toEqual(
+      SAMPLE.codebook.layouts?.[PLACING.layout],
+    );
+  });
+
+  it('deleting a layout a filter rule names removes the rule', async () => {
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'codebookLayout',
+        document: Redacted.make({ name: 'seating_by_rule' }),
+      }),
+    );
+    const layoutId = created.sectionId.slice('codebook:layout:'.length);
+    const placedRule = randomUUID();
+    const presentRule = randomUUID();
+    const stage = await createStage(ADA, 'Skips by a layout');
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: stage.sectionId }),
+    );
+    await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: stage.sectionId,
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          skipLogic: {
+            action: 'SKIP',
+            filter: {
+              join: 'OR',
+              rules: [
+                {
+                  type: 'node',
+                  id: placedRule,
+                  options: {
+                    type: PLACED_TYPE,
+                    attribute: layoutId,
+                    operator: 'EXISTS',
+                  },
+                },
+                {
+                  type: 'node',
+                  id: presentRule,
+                  options: { type: PLACED_TYPE, operator: 'EXISTS' },
+                },
+              ],
+            },
+          },
+        }),
+        revision: held.revision,
+      }),
+    );
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: stage.sectionId }),
+    );
+
+    const deleted = await call(
+      ADA,
+      host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+    );
+
+    expect(deleted.changedSections).toEqual(
+      expect.arrayContaining([created.sectionId, stage.sectionId]),
+    );
+    await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('GetSection', { protocolId, sectionId: created.sectionId }),
+      ),
+      'SectionNotFound',
+    );
+    const swept = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: stage.sectionId }),
+    );
+    expect(Redacted.value(swept.document).skipLogic).toMatchObject({
+      filter: { rules: [{ id: presentRule }] },
+    });
+    expect(swept.revision.sequence).toBe(deleted.revision.sequence);
   });
 
   it('refuses to create a layout whose document is not shaped like one', async () => {
