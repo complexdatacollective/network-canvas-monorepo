@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
@@ -898,6 +899,78 @@ export const ExitWithoutTextSize: Story = {
     await expect(
       nav.queryByRole('button', { name: 'Text size' }),
     ).not.toBeInTheDocument();
+  },
+};
+
+const ToggledControls = ({
+  orientation,
+}: {
+  orientation: 'vertical' | 'horizontal';
+}) => {
+  const [showExit, setShowExit] = useState(true);
+  const [showTextSize, setShowTextSize] = useState(true);
+  return (
+    <div className="relative flex h-dvh w-full">
+      {/* oxlint-disable formatjs/no-literal-string-in-jsx -- story controls, not interview copy */}
+      <div className="absolute inset-e-2 top-2 z-10 flex gap-2">
+        <button type="button" onClick={() => setShowExit((show) => !show)}>
+          Toggle exit button
+        </button>
+        <button type="button" onClick={() => setShowTextSize((show) => !show)}>
+          Toggle text size
+        </button>
+      </div>
+      {/* oxlint-enable formatjs/no-literal-string-in-jsx */}
+      <StoryInterviewShell
+        rawPayload={getRawPayload(5)}
+        navigationOrientation={orientation}
+        allowUserScaling={showTextSize}
+        onExit={showExit ? () => {} : undefined}
+      />
+    </div>
+  );
+};
+
+const expectControlsComeAndGo = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  const nav = within(await canvas.findByRole('navigation'));
+  await nav.findByRole('button', { name: 'Exit interview' });
+
+  // A removed control stays in place only while it animates away.
+  await userEvent.click(canvas.getByRole('button', { name: /toggle exit/i }));
+  await waitFor(
+    () =>
+      expect(
+        nav.queryByRole('button', { name: 'Exit interview' }),
+      ).not.toBeInTheDocument(),
+    { timeout: 5_000 },
+  );
+
+  await userEvent.click(canvas.getByRole('button', { name: /toggle exit/i }));
+  const exit = await nav.findByRole('button', { name: 'Exit interview' });
+  await waitFor(() => expect(exit).toBeVisible());
+};
+
+/**
+ * The bar's optional controls animate in and out as the segmented toolbar's
+ * segments do, and the controls that stay glide to their new places. Use the
+ * buttons above the interview to add and remove them.
+ */
+export const ControlsComeAndGo: Story = {
+  name: 'Controls come and go (vertical rail)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  render: () => <ToggledControls orientation="vertical" />,
+  play: async ({ canvasElement }) => {
+    await expectControlsComeAndGo(canvasElement);
+  },
+};
+
+export const HorizontalControlsComeAndGo: Story = {
+  name: 'Controls come and go (horizontal bar)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  render: () => <ToggledControls orientation="horizontal" />,
+  play: async ({ canvasElement }) => {
+    await expectControlsComeAndGo(canvasElement);
   },
 };
 

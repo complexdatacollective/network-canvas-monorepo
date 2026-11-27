@@ -10,7 +10,12 @@ import {
   Languages,
   LogOut,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  type MotionProps,
+} from 'motion/react';
 import {
   type ComponentProps,
   type Ref,
@@ -19,6 +24,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useSelector } from 'react-redux';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { AppMessage } from '@codaco/app-i18n/react';
@@ -29,12 +35,17 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+import {
+  segmentLayoutSpring,
+  segmentPresenceVariants,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { navigationMessages as messages } from '../i18n/navigationMessages';
 import { useProtocolLocale } from '../localization/ProtocolLocalizationProvider';
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
+import { showPassphrasePrompter } from '../store/modules/ui';
 import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
 import ReadyToContinueAnnouncer from './ReadyToContinueAnnouncer';
@@ -53,6 +64,50 @@ const variants = {
   exit: {
     opacity: 0,
   },
+};
+
+/**
+ * The bar moves its controls the way the segmented toolbar moves its
+ * segments. A control that can come and go (`presence`) grows out of a blur
+ * when it appears and shrinks back into one when it goes, while the controls
+ * that stay glide to their new places. A control that is always there takes
+ * its fade from the bar, which shows its controls once it has arrived.
+ *
+ * A control that comes and goes names its own variants, because a control
+ * that is removed does not take `exit` from the bar. Its `AnimatePresence`
+ * has `initial={false}`, as the toolbar's does, so it is simply there when
+ * the bar first appears.
+ *
+ * Every control is measured again when `layoutDependency` changes. The bar
+ * passes a key naming the optional controls it shows, because a control that
+ * is added cannot ask the others to measure themselves before it arrives, as
+ * a control that is removed can.
+ *
+ * With reduced motion a control only fades, and nothing glides.
+ */
+const barItemMotion = (
+  reduceMotion: boolean,
+  presence: boolean,
+  layoutDependency: string,
+): MotionProps => {
+  const layoutTransition = reduceMotion ? { duration: 0 } : segmentLayoutSpring;
+  if (!presence) {
+    return {
+      variants,
+      layout: 'position',
+      layoutDependency,
+      transition: { layout: layoutTransition },
+    };
+  }
+  return {
+    variants: reduceMotion ? variants : segmentPresenceVariants,
+    initial: 'initial',
+    animate: 'animate',
+    exit: 'exit',
+    layout: 'position',
+    layoutDependency,
+    transition: { layout: layoutTransition },
+  };
 };
 
 type ContainerCustom = Readonly<{
@@ -122,22 +177,39 @@ const barFeatureIconClassName = cx(
 // Button already caps its width at the wrapper's; this caps its height too.
 const barIconButtonClassName = 'max-h-full';
 
+// IconButton's props are a union, which a plain `Omit` would flatten.
+type WithoutRef<T> = T extends unknown ? Omit<T, 'ref'> : never;
+
 /**
  * The back and forward buttons. Their press is heard once the interview has
  * moved (see `useInterviewNavigation`), so a press that is refused is not.
  */
 const NavigationButton = ({
+  ref,
   disabled,
   className,
   wrapperClassName,
   buttonRef,
+  presence = false,
+  layoutDependency,
   ...props
-}: ComponentProps<typeof IconButton> & {
+}: WithoutRef<ComponentProps<typeof IconButton>> & {
+  // `AnimatePresence`'s popLayout mode needs the wrapper's element.
+  ref?: Ref<HTMLDivElement>;
   buttonRef?: Ref<HTMLButtonElement>;
   wrapperClassName?: string;
+  /** The button can come and go while the bar is on screen. */
+  presence?: boolean;
+  /** Which optional controls the bar shows (see `barItemMotion`). */
+  layoutDependency: string;
 }) => {
+  const reduceMotion = usePrefersReducedMotion() ?? false;
   return (
-    <motion.div variants={variants} className={wrapperClassName}>
+    <motion.div
+      ref={ref}
+      {...barItemMotion(reduceMotion, presence, layoutDependency)}
+      className={wrapperClassName}
+    >
       <IconButton
         ref={buttonRef}
         color="dynamic"
@@ -157,18 +229,24 @@ const NavigationButton = ({
  * protocol declares more than one language.
  */
 const LanguageSwitcherControl = ({
+  ref,
   orientation,
   isRtl,
+  layoutDependency,
 }: {
+  ref?: Ref<HTMLDivElement>;
   orientation: NavigationOrientation;
   isRtl: boolean;
+  layoutDependency: string;
 }) => {
   const { locale, options, setLocale } = useProtocolLocale();
+  const reduceMotion = usePrefersReducedMotion() ?? false;
   if (options.length < 2) return null;
 
   return (
     <motion.div
-      variants={variants}
+      ref={ref}
+      {...barItemMotion(reduceMotion, true, layoutDependency)}
       className={barControlVariants({ orientation })}
     >
       <LocaleSwitcher
@@ -294,13 +372,31 @@ const Navigation = ({
         : ChevronRight;
   /* oxlint-enable direction/inline-arrow-turns */
 
-  const shouldReduceMotion = usePrefersReducedMotion();
+  const shouldReduceMotion = usePrefersReducedMotion() ?? false;
 
   const stageNavigationEnabled = !!allowStageNavigation && !!goToStage;
+
+  // The progress bar takes up the length the other controls leave, so it
+  // grows and shrinks as they come and go.
+  const progressTransition = {
+    layout: shouldReduceMotion ? { duration: 0 } : segmentLayoutSpring,
+  };
 
   // The text-size control needs both the opt-in flag and a change handler —
   // one without the other would render a dead control.
   const userScalingEnabled = !!allowUserScaling && !!onTextScaleChange;
+
+  // Names the optional controls on the bar, so every control measures itself
+  // again when one comes or goes (see `barItemMotion`).
+  const passphrasePrompterShown = useSelector(showPassphrasePrompter);
+  const barLayout = [
+    onExit && 'exit',
+    userScalingEnabled && 'text-size',
+    showLanguageSwitcher && 'language',
+    passphrasePrompterShown && 'passphrase',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const matchedTextScaleIndex = TEXT_SCALE_OPTIONS.findIndex(
     (scale) => scale === textScale,
@@ -313,6 +409,7 @@ const Navigation = ({
       : matchedTextScaleIndex;
   const shownTextScale = TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1;
   const readyDescriptionId = useId();
+  const layoutGroupId = useId();
 
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
@@ -436,104 +533,145 @@ const Navigation = ({
         animate="animate"
         exit="exit"
       >
-        {onExit && (
-          <NavigationButton
-            wrapperClassName={barControlVariants({ orientation })}
-            className={barFeatureIconClassName}
-            onClick={() => void handleExit()}
-            icon={<LogOut />}
-            // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English
-            aria-label={reviewMode ? 'Exit review' : 'Exit interview'}
-            lang="en"
-            data-testid="exit-button"
-          />
-        )}
-        {userScalingEnabled && (
-          <motion.div
-            variants={variants}
-            className={barControlVariants({ orientation })}
-          >
-            <TextSizeControl
-              scales={TEXT_SCALE_OPTIONS}
-              value={shownTextScale}
-              onChange={(scale) => onTextScaleChange?.(scale)}
-              // A rail's popup opens away from the screen edge the rail is on.
-              side={
-                orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'
-              }
-              triggerClassName={cx(
-                barFeatureIconClassName,
-                barIconButtonClassName,
-              )}
-            />
-          </motion.div>
-        )}
-        {showLanguageSwitcher && (
-          <LanguageSwitcherControl orientation={orientation} isRtl={isRtl} />
-        )}
-        {/* The bar's features come first, then the progress bar, then Back
-            and Next together at the end of the bar, in both orientations. */}
-        <PassphrasePrompter
-          orientation={orientation}
-          className={barControlVariants({ orientation })}
-        />
-        {stageNavigationEnabled ? (
-          <motion.button
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={menuOpen}
-            aria-label="Go to another screen"
-            lang="en"
-            onClick={() => setMenuOpen(true)}
-            variants={variants}
-            className={cx(
-              progressContainerVariants({ orientation }),
-              // Wrap the bar directly so the focus ring hugs its pill shape
-              // rather than a rectangular wrapper.
-              'focusable cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0',
+        {/* One layout group, as in the segmented toolbar, so that every
+            control measures itself when any one of them comes or goes: a
+            control that did not render again would otherwise jump. Each
+            control that can come and go has its own presence, so it leaves
+            the flow at once (popLayout) and the rest glide over. */}
+        <LayoutGroup id={layoutGroupId} inherit={false}>
+          <AnimatePresence initial={false} mode="popLayout">
+            {onExit && (
+              <NavigationButton
+                layoutDependency={barLayout}
+                key="exit"
+                presence
+                wrapperClassName={barControlVariants({ orientation })}
+                className={barFeatureIconClassName}
+                onClick={() => void handleExit()}
+                icon={<LogOut />}
+                // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English
+                aria-label={reviewMode ? 'Exit review' : 'Exit interview'}
+                lang="en"
+                data-testid="exit-button"
+              />
             )}
-          >
-            <ProgressBar percentProgress={progress} orientation={orientation} />
-          </motion.button>
-        ) : (
-          <motion.div
-            className={progressContainerVariants({ orientation })}
-            variants={variants}
-          >
-            <ProgressBar percentProgress={progress} orientation={orientation} />
-          </motion.div>
-        )}
-        <NavigationButton
-          wrapperClassName={barControlVariants({ orientation })}
-          onClick={moveBackward}
-          disabled={disableMoveBackward}
-          icon={<BackIcon />}
-          aria-label="Previous Step"
-          lang="en"
-          buttonRef={backButtonRef}
-          data-testid="previous-button"
-        />
-        <NavigationButton
-          className={cx(
-            pulseNext &&
-              'bg-success ui-enabled:hover:bg-success outline-success',
-            pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
+          </AnimatePresence>
+          <AnimatePresence initial={false} mode="popLayout">
+            {userScalingEnabled && (
+              <motion.div
+                key="text-size"
+                {...barItemMotion(shouldReduceMotion, true, barLayout)}
+                className={barControlVariants({ orientation })}
+              >
+                <TextSizeControl
+                  scales={TEXT_SCALE_OPTIONS}
+                  value={shownTextScale}
+                  onChange={(scale) => onTextScaleChange?.(scale)}
+                  // A rail's popup opens away from the screen edge the rail is on.
+                  side={
+                    orientation === 'vertical'
+                      ? isRtl
+                        ? 'left'
+                        : 'right'
+                      : 'top'
+                  }
+                  triggerClassName={cx(
+                    barFeatureIconClassName,
+                    barIconButtonClassName,
+                  )}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AnimatePresence initial={false} mode="popLayout">
+            {showLanguageSwitcher && (
+              <LanguageSwitcherControl
+                layoutDependency={barLayout}
+                key="language"
+                orientation={orientation}
+                isRtl={isRtl}
+              />
+            )}
+          </AnimatePresence>
+          {/* The bar's features come first, then the progress bar, then Back
+            and Next together at the end of the bar, in both orientations. */}
+          <PassphrasePrompter
+            layoutDependency={barLayout}
+            orientation={orientation}
+            className={barControlVariants({ orientation })}
+          />
+          {stageNavigationEnabled ? (
+            <motion.button
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={menuOpen}
+              aria-label="Go to another screen"
+              lang="en"
+              onClick={() => setMenuOpen(true)}
+              variants={variants}
+              layout
+              layoutDependency={barLayout}
+              transition={progressTransition}
+              className={cx(
+                progressContainerVariants({ orientation }),
+                // Wrap the bar directly so the focus ring hugs its pill shape
+                // rather than a rectangular wrapper.
+                'focusable cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0',
+              )}
+            >
+              <ProgressBar
+                percentProgress={progress}
+                orientation={orientation}
+              />
+            </motion.button>
+          ) : (
+            <motion.div
+              className={progressContainerVariants({ orientation })}
+              variants={variants}
+              layout
+              layoutDependency={barLayout}
+              transition={progressTransition}
+            >
+              <ProgressBar
+                percentProgress={progress}
+                orientation={orientation}
+              />
+            </motion.div>
           )}
-          wrapperClassName={barControlVariants({ orientation })}
-          onClick={moveForward}
-          disabled={disableMoveForward}
-          icon={<ForwardIcon className="size-8" strokeWidth="3px" />}
-          aria-label="Next Step"
-          aria-describedby={pulseNext ? readyDescriptionId : undefined}
-          lang="en"
-          buttonRef={forwardButtonRef}
-          data-testid="next-button"
-        />
-        <ReadyToContinueAnnouncer
-          ready={pulseNext}
-          screenId={screenId}
-          descriptionId={readyDescriptionId}
-        />
+          <NavigationButton
+            layoutDependency={barLayout}
+            wrapperClassName={barControlVariants({ orientation })}
+            onClick={moveBackward}
+            disabled={disableMoveBackward}
+            icon={<BackIcon />}
+            aria-label="Previous Step"
+            lang="en"
+            buttonRef={backButtonRef}
+            data-testid="previous-button"
+          />
+          <NavigationButton
+            layoutDependency={barLayout}
+            className={cx(
+              pulseNext &&
+                'bg-success ui-enabled:hover:bg-success outline-success',
+              pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
+            )}
+            wrapperClassName={barControlVariants({ orientation })}
+            onClick={moveForward}
+            disabled={disableMoveForward}
+            icon={<ForwardIcon className="size-8" strokeWidth="3px" />}
+            aria-label="Next Step"
+            aria-describedby={pulseNext ? readyDescriptionId : undefined}
+            lang="en"
+            buttonRef={forwardButtonRef}
+            data-testid="next-button"
+          />
+          <ReadyToContinueAnnouncer
+            ready={pulseNext}
+            screenId={screenId}
+            descriptionId={readyDescriptionId}
+          />
+        </LayoutGroup>
       </MotionSurface>
       {stageNavigationEnabled && (
         <Drawer.Root

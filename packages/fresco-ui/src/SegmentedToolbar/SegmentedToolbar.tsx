@@ -370,14 +370,23 @@ function useHorizontalOverflow(
   return { laneRef, frameRef };
 }
 
-const layoutSpring: Transition = {
+/**
+ * The spring a segment, and the pill around it, use to move when segments
+ * are added or removed. Exported so that other bars of controls (the
+ * interview's navigation bar) move the same way.
+ */
+export const segmentLayoutSpring: Transition = {
   type: 'spring',
   stiffness: 420,
   damping: 34,
   mass: 0.7,
 };
 
-const itemVariants: Variants = {
+/**
+ * How a segment appears and disappears: it grows out of a blur, and shrinks
+ * back into one. Exported with `segmentLayoutSpring` for the same reason.
+ */
+export const segmentPresenceVariants: Variants = {
   initial: {
     scale: 0.72,
     filter: 'blur(3px) opacity(0%)',
@@ -415,11 +424,11 @@ function motionItemProps(reduceMotion: boolean): MotionProps {
 
   return {
     layout: 'position',
-    variants: itemVariants,
+    variants: segmentPresenceVariants,
     initial: 'initial',
     animate: 'animate',
     exit: 'exit',
-    transition: { layout: layoutSpring },
+    transition: { layout: segmentLayoutSpring },
   };
 }
 
@@ -1096,7 +1105,7 @@ export function SegmentedToolbar({
 
   const surfaceTransition: Transition = reduceMotion
     ? { duration: 0 }
-    : { layout: layoutSpring };
+    : { layout: segmentLayoutSpring };
 
   if (!draggable) {
     return (
