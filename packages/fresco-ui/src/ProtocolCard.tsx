@@ -1,7 +1,6 @@
 'use client';
 
-import { spring } from 'motion';
-import { motion, type HTMLMotionProps } from 'motion/react';
+import { motion, spring, type HTMLMotionProps } from 'motion/react';
 import type { ReactNode } from 'react';
 
 import { springs } from './motion';
@@ -26,11 +25,16 @@ export type ProtocolCardProps = Omit<HTMLMotionProps<'div'>, 'children'> & {
  * transitions: the card is often a Motion `layout` element, and a CSS
  * transition on its transform or border radius would lag behind the values
  * that Motion writes each frame.
+ *
+ * The easing is built when a card is first active rather than when the module
+ * loads, so that tests which replace `motion/react` can still import the card.
  */
-const activeTransition = `box-shadow ${spring(
-  springs.settle.visualDuration,
-  springs.settle.bounce,
-).toString()}`;
+let activeTransition: string | undefined;
+const getActiveTransition = () =>
+  (activeTransition ??= `box-shadow ${spring(
+    springs.settle.visualDuration,
+    springs.settle.bounce,
+  ).toString()}`);
 
 /**
  * Shared visual shell for protocol previews. It owns the card surface,
@@ -49,7 +53,7 @@ export function ProtocolCard({
   return (
     <motion.div
       {...props}
-      style={isActive ? { transition: activeTransition, ...style } : style}
+      style={isActive ? { transition: getActiveTransition(), ...style } : style}
       className={cx(
         'focus-visible:ring-sea-green focus-visible:ring-4 focus-visible:outline-none',
         'text-navy-taupe bg-platinum publish-colors',
