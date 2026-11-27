@@ -1211,12 +1211,18 @@
           "highlight": [
             {
               "id": "f385b8a3-2fa4-51d5-99e9-6e5f6a2f3306",
-              "variable": "526b3f40-6599-598b-b9d1-d7adb0bf4eed",
               "label": {
                 "en": "Same ethnic or cultural background",
                 "es": "Mismo origen étnico o cultural",
                 "hu": "Azonos etnikai vagy kulturális háttér"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "90090375-1286-4015-b708-e54433fa0072",
+                  "type": "c3006c14-1177-50d2-937f-157d0fda53de",
+                  "variable": "526b3f40-6599-598b-b9d1-d7adb0bf4eed"
+                }
+              ]
             }
           ],
           "layout": "27b437a0-0e36-550b-a463-63c9f1077c64"

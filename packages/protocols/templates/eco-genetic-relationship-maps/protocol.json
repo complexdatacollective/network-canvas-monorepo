@@ -1499,31 +1499,55 @@
           "highlight": [
             {
               "id": "a44d3208-a1d8-5043-a5c1-a5ec73320357",
-              "variable": "f0a04c28-9d21-5eab-9a8b-d1fe83e9e096",
               "label": {
                 "en": "Shares health or genetic information"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "c494cda5-d186-4949-a416-d239559f2378",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "variable": "f0a04c28-9d21-5eab-9a8b-d1fe83e9e096"
+                }
+              ]
             },
             {
               "id": "26af3d91-c059-5137-85ea-59720f763c03",
-              "variable": "ac30061c-f1d0-5f76-8e30-58d6331f57f3",
               "label": {
                 "en": "Gives practical help"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "3976863a-dd9e-452c-9ee1-ee6165ec5dca",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "variable": "ac30061c-f1d0-5f76-8e30-58d6331f57f3"
+                }
+              ]
             },
             {
               "id": "31624d69-01ed-5043-bd18-15a01e0454d2",
-              "variable": "ebed7466-4e07-5a01-8019-7b05fb13b463",
               "label": {
                 "en": "Shares feelings"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "74a96aee-8f35-4f9a-a9a5-f7058ecaa4e2",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "variable": "ebed7466-4e07-5a01-8019-7b05fb13b463"
+                }
+              ]
             },
             {
               "id": "da4f572a-2ab0-5c08-a971-64d9af82d299",
-              "variable": "94a99940-7d07-542b-9780-4678d0814fe7",
               "label": {
                 "en": "Spiritual or religious connection"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "81d4a404-3a33-4a8b-884a-bc5b88fe4aaa",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "variable": "94a99940-7d07-542b-9780-4678d0814fe7"
+                }
+              ]
             }
           ],
           "layout": "b1df922c-05fd-5e69-9514-02f6798664fc"
@@ -1561,24 +1585,42 @@
           "highlight": [
             {
               "id": "6b1354b4-f632-54c0-b288-8b7da43910a4",
-              "variable": "daa3b5ec-b3a0-50fc-a73d-5a9db535e8c6",
               "label": {
                 "en": "Looks for information"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "727ed9fb-2c09-40c8-9382-f52cd5d756dc",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "variable": "daa3b5ec-b3a0-50fc-a73d-5a9db535e8c6"
+                }
+              ]
             },
             {
               "id": "2556ac10-4cdd-58f9-afab-5276c99a6e10",
-              "variable": "5609e618-49dd-5033-b64c-69ecd27f84c7",
               "label": {
                 "en": "Helps people talk about it"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "676fa347-3472-47a3-8634-d02e5ee00e40",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "variable": "5609e618-49dd-5033-b64c-69ecd27f84c7"
+                }
+              ]
             },
             {
               "id": "eb50e0f2-8aef-51e9-a3c9-e436afe7f51f",
-              "variable": "c0b4f7ea-3258-5a38-b27c-9c0cfde63f7f",
               "label": {
                 "en": "Finds it hard to talk about it"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "44311bd4-907a-4108-8a88-7a783034aede",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "variable": "c0b4f7ea-3258-5a38-b27c-9c0cfde63f7f"
+                }
+              ]
             }
           ],
           "layout": "b1df922c-05fd-5e69-9514-02f6798664fc"

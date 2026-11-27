@@ -439,31 +439,55 @@
           "highlight": [
             {
               "id": "e84120c2-7bfc-586f-9ccc-c133b28273b5",
-              "variable": "b095f131-10a8-5eb2-8e30-b94b29a98769",
               "label": {
                 "en-US": "feels_family"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "2accb9b8-ed4e-4ac0-a030-d95051dd715a",
+                  "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e",
+                  "variable": "b095f131-10a8-5eb2-8e30-b94b29a98769"
+                }
+              ]
             },
             {
               "id": "ed134544-eb0f-57bf-ab2f-d5851f9ac49f",
-              "variable": "c3fedc1a-67c7-5751-a7e7-26ad69c4eb1a",
               "label": {
                 "en-US": "emotional_support"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "d7f2871a-e6d9-4792-ac95-f338002462dd",
+                  "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e",
+                  "variable": "c3fedc1a-67c7-5751-a7e7-26ad69c4eb1a"
+                }
+              ]
             },
             {
               "id": "7ae27ed3-9ad5-5780-9d55-929ca8bfd590",
-              "variable": "e30f5f02-6af0-54bf-8703-4fef629130a0",
               "label": {
                 "en-US": "practical_support"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "b8348b78-ffb1-4b1c-96ac-ad358647bbdf",
+                  "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e",
+                  "variable": "e30f5f02-6af0-54bf-8703-4fef629130a0"
+                }
+              ]
             },
             {
               "id": "4f9ca6b5-14e8-51f9-8444-8cbf7c1353a4",
-              "variable": "9495f2bf-b7d1-5a80-9e9c-6ea413cb96bc",
               "label": {
                 "en-US": "identity_affirming"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "f5332bfa-99e4-4336-8fbb-4220d5b15c02",
+                  "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e",
+                  "variable": "9495f2bf-b7d1-5a80-9e9c-6ea413cb96bc"
+                }
+              ]
             }
           ],
           "edges": {

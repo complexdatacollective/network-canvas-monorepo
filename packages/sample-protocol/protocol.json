@@ -1489,17 +1489,29 @@
           "highlight": [
             {
               "id": "caaa1641-476e-55f4-93f1-3ae5b3f18a1e",
-              "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645",
               "label": {
                 "en": "provides_advice"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "1c663274-8aaf-4d8e-9bd5-1d24ca1f4ec5",
+                  "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d",
+                  "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645"
+                }
+              ]
             },
             {
               "id": "d3e68a24-8bcd-5349-87f8-4061f111b925",
-              "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45",
               "label": {
                 "en": "provides_material_support"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "fa981561-739d-49a6-b930-79cd55de70e6",
+                  "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d",
+                  "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45"
+                }
+              ]
             }
           ],
           "layout": "ee090c9b-2b70-4648-a6db-328d4ef4dbfe"

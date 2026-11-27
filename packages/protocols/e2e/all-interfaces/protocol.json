@@ -787,10 +787,16 @@
           "highlight": [
             {
               "id": "baf1910b-f341-53a8-8011-a138b3dabaa4",
-              "variable": "f7720d52-a1c1-550f-a815-c0c842cdbbfa",
               "label": {
                 "en-US": "Flagged"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "355c12d5-34ec-4eb1-ad6c-3a70cbf9b94e",
+                  "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42",
+                  "variable": "f7720d52-a1c1-550f-a815-c0c842cdbbfa"
+                }
+              ]
             }
           ],
           "layout": "59869f03-9b27-57a6-95bd-b07125f456ca"

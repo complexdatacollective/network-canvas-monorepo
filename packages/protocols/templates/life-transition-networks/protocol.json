@@ -695,17 +695,29 @@
           "highlight": [
             {
               "id": "797ae0e8-41f4-51ad-b637-bdf47ae09eeb",
-              "variable": "836afb8d-9b14-5b10-8ee5-08c2917b738a",
               "label": {
                 "en": "Knew them before the change"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "54bc2a68-d88a-4f8c-b9c4-c3064abeb205",
+                  "type": "93d1e2e9-4675-5246-9270-6c58443e26d4",
+                  "variable": "836afb8d-9b14-5b10-8ee5-08c2917b738a"
+                }
+              ]
             },
             {
               "id": "9922f3d0-878f-5ecd-92b9-2efa5f0436f1",
-              "variable": "f9c50272-f343-5db1-9e7e-5dafcd21c55b",
               "label": {
                 "en": "New since the change"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "260254cd-4838-4daa-8e8b-2b3bb33a23db",
+                  "type": "93d1e2e9-4675-5246-9270-6c58443e26d4",
+                  "variable": "f9c50272-f343-5db1-9e7e-5dafcd21c55b"
+                }
+              ]
             }
           ],
           "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"
@@ -718,17 +730,29 @@
           "highlight": [
             {
               "id": "e5715d6e-06f6-5574-804f-abe17db7b57d",
-              "variable": "4106c90a-c575-503e-989b-67a8d3f8869b",
               "label": {
                 "en": "Helped you through it"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "dc7073bf-aa95-48b1-93ca-7dba13bda88e",
+                  "type": "93d1e2e9-4675-5246-9270-6c58443e26d4",
+                  "variable": "4106c90a-c575-503e-989b-67a8d3f8869b"
+                }
+              ]
             },
             {
               "id": "c3401db0-2f03-53b5-8c1f-48d6a3965ef1",
-              "variable": "f269dd53-7b1a-5188-a062-f1a2fb0ef739",
               "label": {
                 "en": "Made things harder"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "6d9fef9a-4eae-4936-9941-ddebfee457c6",
+                  "type": "93d1e2e9-4675-5246-9270-6c58443e26d4",
+                  "variable": "f269dd53-7b1a-5188-a062-f1a2fb0ef739"
+                }
+              ]
             }
           ],
           "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"
@@ -753,10 +777,16 @@
           "highlight": [
             {
               "id": "15649fab-cb7c-5234-92ac-6934fa92124d",
-              "variable": "bfc384de-08f6-590d-9861-eded48dff1bc",
               "label": {
                 "en": "Lost touch since the change"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "f062345f-2b9e-4f87-a9fc-54ad7e8c569f",
+                  "type": "93d1e2e9-4675-5246-9270-6c58443e26d4",
+                  "variable": "bfc384de-08f6-590d-9861-eded48dff1bc"
+                }
+              ]
             }
           ],
           "layout": "bbf798ba-b8e5-5f9c-9529-77e756079940"

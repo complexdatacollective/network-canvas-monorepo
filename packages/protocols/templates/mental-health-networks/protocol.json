@@ -1156,17 +1156,29 @@
           "highlight": [
             {
               "id": "69476724-d32f-5cb7-81f9-ec634ac17d87",
-              "variable": "3cb51567-5a21-52e3-a349-15b4c7fcb6de",
               "label": {
                 "en": "Emotional support"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "048b43cf-5f6b-4cec-9099-c212fdd93521",
+                  "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5",
+                  "variable": "3cb51567-5a21-52e3-a349-15b4c7fcb6de"
+                }
+              ]
             },
             {
               "id": "fbc24f4a-a001-550d-96e7-e03a1ecabbe3",
-              "variable": "4e3903ad-45fb-5b63-b9f2-98cc4d38f0fe",
               "label": {
                 "en": "Source of stress"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "043e5231-fe2d-4c87-80dd-79af1ab53be0",
+                  "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5",
+                  "variable": "4e3903ad-45fb-5b63-b9f2-98cc4d38f0fe"
+                }
+              ]
             }
           ],
           "layout": "75f6452d-9382-5004-ab8c-170b0ee38c07"
@@ -1179,17 +1191,29 @@
           "highlight": [
             {
               "id": "d5d5c3cc-625d-5d25-98dd-757f026c45b9",
-              "variable": "b8f20dff-669a-5fe9-ab2d-0e24200c26a4",
               "label": {
                 "en": "Knows about your mental health"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "1e6668b1-cd72-4da1-be93-8e4c06a4a232",
+                  "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5",
+                  "variable": "b8f20dff-669a-5fe9-ab2d-0e24200c26a4"
+                }
+              ]
             },
             {
               "id": "9066cdf4-d75c-500e-8eed-484307c912ba",
-              "variable": "7eac5892-6c1e-5991-a566-92cf8f1fbb17",
               "label": {
                 "en": "Formal or clinical help"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "17050138-c35b-4ccf-9e33-3c2d589323be",
+                  "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5",
+                  "variable": "7eac5892-6c1e-5991-a566-92cf8f1fbb17"
+                }
+              ]
             }
           ],
           "layout": "75f6452d-9382-5004-ab8c-170b0ee38c07"

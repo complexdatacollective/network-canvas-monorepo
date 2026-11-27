@@ -1467,19 +1467,31 @@
           "highlight": [
             {
               "id": "1c856ed5-51c0-52fb-82b2-02e1e1ed2c72",
-              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
               "label": {
                 "en": "has_given_advice",
                 "es": "ha dado consejos"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "5a768cdc-bab6-4467-8dd0-c17dc1d4ef75",
+                  "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
+                  "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6"
+                }
+              ]
             },
             {
               "id": "64329ab6-2bd5-5d83-b86e-46ed3a9a0daf",
-              "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
               "label": {
                 "en": "close_friend",
                 "es": "amigo cercano"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "dfe4d5c7-f9ea-4255-8ca5-a2c82475c917",
+                  "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
+                  "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000"
+                }
+              ]
             }
           ],
           "layout": "792400ec-4fd2-535d-bf18-65cb440ec801"
@@ -1506,11 +1518,17 @@
           "highlight": [
             {
               "id": "4fd3ee6a-5ff2-5e31-a544-bd6132c2c10b",
-              "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
               "label": {
                 "en": "has_given_advice",
                 "es": "ha dado consejos"
-              }
+              },
+              "attributes": [
+                {
+                  "id": "99547910-6dc6-473b-ad16-2064379c9b77",
+                  "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
+                  "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6"
+                }
+              ]
             }
           ],
           "layout": "e13ca72d-aefe-4f48-841d-09f020e0e987"
