@@ -2160,7 +2160,7 @@ describe('instrument attributes', () => {
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
   });
 
-  it('lays a map out automatically unless its first prompt positions people', async () => {
+  it('keeps a map with a position prompt manual, positioning first, and lays out any other automatically', async () => {
     const connectPrompt = {
       task: 'connect',
       text: 'Link the people who know each other.',
@@ -2192,10 +2192,12 @@ describe('instrument attributes', () => {
       r.validation.success,
       JSON.stringify(r.validation.error?.issues),
     ).toBe(true);
-    // the connect prompt comes first, so nobody would be on the map for it
-    expect(stageById(r.stages, 'm1').behaviours).toEqual({
-      automaticLayout: true,
-    });
+    // Positions are a measure, so the map stays manual, and the position
+    // prompt is moved first so that people are on the map for the connect one.
+    const reordered = stageById(r.stages, 'm1');
+    if (reordered.type !== 'Sociogram') throw new Error('m1 is not a map');
+    expect(reordered.behaviours).toEqual({ automaticLayout: false });
+    expect(reordered.prompts.map((p) => p.task)).toEqual(['layout', 'connect']);
 
     const placedFirst = await build(
       design({
@@ -2207,6 +2209,19 @@ describe('instrument attributes', () => {
     );
     expect(stageById(placedFirst.stages, 'm1').behaviours).toEqual({
       automaticLayout: false,
+    });
+
+    const connectOnly = await build(
+      design({
+        relationships: [
+          { id: 'knows', name: 'Know each other', attributes: [] },
+        ],
+        stages: [ng(), map('m1', [connectPrompt])],
+      }),
+    );
+    // nobody would be on the map for the connect prompt
+    expect(stageById(connectOnly.stages, 'm1').behaviours).toEqual({
+      automaticLayout: true,
     });
   });
 

@@ -1114,11 +1114,18 @@ export const compile = (
         break;
       }
       case 'sociogram': {
-        // A connect or highlight task can only use people already on the map,
-        // so the map is laid out automatically unless it opens by positioning.
-        const automaticLayout = s.prompts[0]?.task !== 'position';
+        // A connect or highlight task can only use people already on the map.
+        // A map with a position prompt stays manual, so that the positions
+        // record where the participant put people, and its position prompts
+        // are moved first. A map without one is laid out automatically.
+        const automaticLayout = !s.prompts.some((p) => p.task === 'position');
         lastSociogramAuto.set(s.nodeTypeId, automaticLayout);
-        const prompts = s.prompts.map((p, i) => {
+        const numbered = s.prompts.map((p, i) => ({ p, i }));
+        const ordered = [
+          ...numbered.filter(({ p }) => p.task === 'position'),
+          ...numbered.filter(({ p }) => p.task !== 'position'),
+        ];
+        const prompts = ordered.map(({ p, i }) => {
           const id = `p${i + 1}`;
           const out: Json = {
             id,
