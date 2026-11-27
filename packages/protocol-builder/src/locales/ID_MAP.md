@@ -143,6 +143,7 @@ after the fact is marked in place.
 | `stageWording`               | `sections/supplied-wording/`                                                                                                                                                                                                                                                          | languages |
 | `layoutPicker`               | `fields/LayoutPickerField.tsx`, `fields/variableNameRules.ts` (`layoutMessages`)                                                                                                                                                                                                      | layouts   |
 | `sociogram`                  | `editors/sociogram/sections/SociogramLayoutSection.tsx`                                                                                                                                                                                                                               | layouts   |
+| `unreachableLayout`          | `fields/UnreachableLayoutAlert.tsx`                                                                                                                                                                                                                                                   | layouts   |
 
 Family E added one the reserved list did not hold, on the same terms:
 
