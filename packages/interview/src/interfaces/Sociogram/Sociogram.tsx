@@ -23,17 +23,14 @@ import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { writeSucceeded } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
-import useSortedNodeList from '../../hooks/useSortedNodeList';
+import useNodeTypeSortedList from '../../hooks/useNodeTypeSortedList';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getEdges,
   getPlacedNodes,
   getUnplacedNodes,
 } from '../../selectors/canvas';
-import {
-  getNetworkNodesForType,
-  getPromptSortOrder,
-} from '../../selectors/session';
+import { getNetworkNodesForType } from '../../selectors/session';
 import { useLoopingInteractionSound } from '../../sounds/InteractionSounds';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import { getCodebook } from '../../store/modules/protocol';
@@ -96,8 +93,12 @@ const Sociogram = (stageProps: SociogramProps) => {
   const allNodes = useStageSelector(getNetworkNodesForType);
   const placedNodes = useStageSelector(getPlacedNodes);
   const unplacedNodes = useStageSelector(getUnplacedNodes);
-  const sortOrder = useStageSelector(getPromptSortOrder);
-  const sortedUnplacedNodes = useSortedNodeList(unplacedNodes, sortOrder);
+  const sortedUnplacedNodes = useNodeTypeSortedList(
+    unplacedNodes,
+    prompt.sortOrder,
+    prompt.nodeTypeOrder,
+    stage.subject.types,
+  );
 
   const canvasNodes = layoutMode === 'AUTOMATIC' ? allNodes : placedNodes;
   const edges = useStageSelector(getEdges);

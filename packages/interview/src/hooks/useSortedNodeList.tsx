@@ -31,7 +31,7 @@ import createSorter, {
   processProtocolSortRule,
 } from '../utils/createSorter';
 
-type VariablesForType = (type: string) => Record<string, Variable>;
+export type VariablesForType = (type: string) => Record<string, Variable>;
 
 // Where a node sat in the list it was sorted from. A symbol, so no sort rule's
 // property can read it.
@@ -71,7 +71,7 @@ function readablePlaintext(
 }
 
 /** Every encrypted value that `rules` compare on `nodes`. */
-function comparedEncryptedValues(
+export function comparedEncryptedValues(
   nodes: readonly NcNode[],
   rules: readonly ProcessedSortRule[],
   variablesForType: VariablesForType,
@@ -103,7 +103,7 @@ function comparedEncryptedValues(
  * are returned as stored; their plaintext is only read for the comparison.
  * Text is ordered for `locale`, as `createSorter` orders it.
  */
-function sortNodes<T extends NcNode>(
+export function sortNodes<T extends NcNode>(
   nodes: T[],
   rules: readonly ProcessedSortRule[],
   variablesForType: VariablesForType,

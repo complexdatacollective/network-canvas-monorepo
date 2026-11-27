@@ -352,6 +352,18 @@ describe('buildStageAvailabilityMap', () => {
         ]);
       });
 
+      it('keeps a Sociogram whose only node is of its second type', () => {
+        const stages = [severalTypeStage('map', 'Sociogram'), finishStage()];
+
+        expect(kinds(stages, withEntities([node('rex', PET)]))).toEqual([
+          'available',
+          'available',
+        ]);
+        expect(
+          kinds(stages, withEntities([node('home', testTypeId('place'))])),
+        ).toEqual(['empty', 'available']);
+      });
+
       it('shows a Narrative whose only placed node is of its second type', () => {
         const stages = [
           {

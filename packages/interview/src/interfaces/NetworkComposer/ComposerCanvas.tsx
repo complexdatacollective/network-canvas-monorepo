@@ -142,6 +142,15 @@ export default function ComposerCanvas({
     return () => observer.disconnect();
   }, [canvasStore]);
 
+  // A line drawing both edges of a reciprocal pair hands over both ids. Edge
+  // types the Composer draws are undirected, so each line is one edge.
+  const handleEdgeSelect = useCallback(
+    ([edgeId]: readonly string[]) => {
+      if (edgeId !== undefined) onEdgeTap(edgeId);
+    },
+    [onEdgeTap],
+  );
+
   const handleContainerPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
 
@@ -266,7 +275,11 @@ export default function ComposerCanvas({
         {background}
       </div>
       {hulls}
-      <EdgeLayer edges={edges} store={canvasStore} onEdgeSelect={onEdgeTap} />
+      <EdgeLayer
+        edges={edges}
+        store={canvasStore}
+        onEdgeSelect={handleEdgeSelect}
+      />
       {nodes.map((node) => {
         const nodeId = node[entityPrimaryKeyProperty];
         return (

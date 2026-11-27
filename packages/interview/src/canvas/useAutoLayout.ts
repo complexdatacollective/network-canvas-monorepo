@@ -115,6 +115,34 @@ type UseAutoLayoutResult = {
   toggleSimulation: () => void;
 };
 
+/**
+ * The simulation's links for `edges` between the seeded nodes, as indices into
+ * them: one link per pair of nodes and edge type, so the two edges of a
+ * reciprocal pair pull their nodes together no harder than one edge does.
+ * Edges with an end that was not seeded are left out.
+ */
+export function simLinksFor(
+  edges: readonly NcEdge[],
+  indexById: ReadonlyMap<string, number>,
+): SimLink[] {
+  const seen = new Set<string>();
+  const links: SimLink[] = [];
+  for (const edge of edges) {
+    const source = indexById.get(edge[edgeSourceProperty]);
+    const target = indexById.get(edge[edgeTargetProperty]);
+    if (source === undefined || target === undefined) continue;
+    const key = JSON.stringify([
+      edge.type,
+      Math.min(source, target),
+      Math.max(source, target),
+    ]);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    links.push({ source, target });
+  }
+  return links;
+}
+
 export function useAutoLayout({
   enabled,
   nodes,
@@ -312,13 +340,7 @@ export function useAutoLayout({
       simNodes.map((simNode, index) => [simNode.nodeId, index]),
     );
     nodeIndexByIdRef.current = indexById;
-    const simLinks: SimLink[] = [];
-    for (const edge of edgesRef.current) {
-      const source = indexById.get(edge[edgeSourceProperty]);
-      const target = indexById.get(edge[edgeTargetProperty]);
-      if (source === undefined || target === undefined) continue;
-      simLinks.push({ source, target });
-    }
+    const simLinks = simLinksFor(edgesRef.current, indexById);
 
     worker.postMessage({
       type: 'initialize',
@@ -379,13 +401,7 @@ export function useAutoLayout({
     if (!worker || !enabled) return;
 
     const indexById = nodeIndexByIdRef.current;
-    const simLinks: SimLink[] = [];
-    for (const edge of edgesRef.current) {
-      const source = indexById.get(edge[edgeSourceProperty]);
-      const target = indexById.get(edge[edgeTargetProperty]);
-      if (source === undefined || target === undefined) continue;
-      simLinks.push({ source, target });
-    }
+    const simLinks = simLinksFor(edgesRef.current, indexById);
 
     worker.postMessage({ type: 'update_links', links: simLinks });
   }, [runMode, enabled, edgesKey]);

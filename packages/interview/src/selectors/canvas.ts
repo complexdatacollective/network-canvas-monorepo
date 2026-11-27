@@ -10,8 +10,7 @@ import {
   getCurrentPrompt,
   getCurrentStage,
   getNetworkEdges,
-  getNetworkNodes,
-  getStageSubject,
+  getNetworkNodesForType,
 } from './session';
 import { createDeepEqualSelector } from './utils';
 
@@ -37,23 +36,11 @@ const getPromptDisplayEdges = createDeepEqualSelector(
  */
 export const getPlacedNodes: Selector<RootState, NcNode[]> =
   createDeepEqualSelector(
-    getNetworkNodes,
-    getStageSubject,
+    getNetworkNodesForType,
     getStageLayout,
-    (nodes, subject, layout) => {
-      if (
-        nodes.length === 0 ||
-        !subject ||
-        subject.entity === 'ego' ||
-        !layout
-      ) {
-        return [];
-      }
-
-      return nodes.filter((node) => {
-        const attributes = getEntityAttributes(node);
-        return subject.type === node.type && !isNil(attributes[layout]);
-      });
+    (nodes, layout) => {
+      if (!layout) return [];
+      return nodes.filter((node) => !isNil(getEntityAttributes(node)[layout]));
     },
   );
 
@@ -73,27 +60,15 @@ export const getEdges: Selector<RootState, NcEdge[]> = createDeepEqualSelector(
 /**
  * Selector for all unplaced nodes (for the drawer).
  *
- * Returns all nodes of the stage subject type that have no position in the
+ * Returns all nodes of the stage's node types that have no position in the
  * stage layout.
  */
 export const getUnplacedNodes: Selector<RootState, NcNode[]> =
   createDeepEqualSelector(
-    getNetworkNodes,
-    getStageSubject,
+    getNetworkNodesForType,
     getStageLayout,
-    (nodes, subject, layout) => {
-      if (
-        nodes.length === 0 ||
-        !subject ||
-        subject.entity === 'ego' ||
-        !layout
-      ) {
-        return [];
-      }
-
-      return nodes.filter((node) => {
-        const attributes = getEntityAttributes(node);
-        return subject.type === node.type && isNil(attributes[layout]);
-      });
+    (nodes, layout) => {
+      if (!layout) return [];
+      return nodes.filter((node) => isNil(getEntityAttributes(node)[layout]));
     },
   );

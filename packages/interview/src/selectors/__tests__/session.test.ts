@@ -355,6 +355,144 @@ describe('stage filter rules naming a layout', () => {
   });
 });
 
+// Stage filters keep their schema 8 behaviour on a stage showing several
+// node types and on directed edges (issue #2725).
+describe('stage filters on a Sociogram showing two node types', () => {
+  const PET = testTypeId('pet');
+  const FOLLOWS = testTypeId('follows');
+  const LAYOUT = testId('map-layout');
+  const storeWithFilter = (
+    rule: NonNullable<
+      Extract<
+        CurrentProtocol['stages'][number],
+        { type: 'Sociogram' }
+      >['filter']
+    >['rules'][number],
+  ) => {
+    const protocolState: ProtocolPayload = {
+      id: 'protocol',
+      hash: 'hash',
+      importedAt: '2026-11-27T00:00:00.000Z',
+      assets: [],
+      name: 'Test protocol',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: {
+        node: {
+          [PERSON]: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: { [NAME]: { name: 'Name', type: 'text' } },
+          },
+          [PET]: {
+            name: 'Pet',
+            color: 'node-color-seq-2',
+            shape: { default: 'square' },
+            variables: {},
+          },
+        },
+        edge: {
+          [FOLLOWS]: {
+            name: 'Follows',
+            color: 'edge-color-seq-1',
+            directed: true,
+          },
+        },
+        ego: { variables: {} },
+        layouts: { [LAYOUT]: { name: 'map' } },
+      },
+      stages: [
+        {
+          id: testId('map'),
+          type: 'Sociogram',
+          label: { en: 'Map' },
+          subject: { entity: 'node', types: [PERSON, PET] },
+          layout: LAYOUT,
+          background: { concentricCircles: 3 },
+          filter: { join: 'AND', rules: [rule] },
+          prompts: [
+            { id: testId('place'), task: 'layout', text: { en: 'Place' } },
+          ],
+        },
+      ] satisfies CurrentProtocol['stages'],
+    };
+    const nodeOf = (
+      id: string,
+      type: string,
+      attributes: NcNode[typeof entityAttributesProperty] = {},
+    ): NcNode => ({
+      [entityPrimaryKeyProperty]: id,
+      type,
+      [entityAttributesProperty]: attributes,
+    });
+    return configureStore({
+      reducer: rootReducer,
+      preloadedState: {
+        session: {
+          id: 'session',
+          startTime: '2026-11-27T00:00:00.000Z',
+          finishTime: null,
+          exportTime: null,
+          lastUpdated: '2026-11-27T00:00:00.000Z',
+          promptIndex: 0,
+          network: {
+            ...createInitialNetwork(),
+            nodes: [
+              nodeOf('alex', PERSON, { [NAME]: 'Alex' }),
+              nodeOf('rex', PET),
+              nodeOf('sam', PERSON, { [NAME]: 'Sam' }),
+              nodeOf('tom', PET),
+            ],
+            edges: [
+              {
+                [entityPrimaryKeyProperty]: 'rex-sam',
+                type: FOLLOWS,
+                from: 'rex',
+                to: 'sam',
+                [entityAttributesProperty]: {},
+              },
+            ],
+          },
+        },
+        protocol: protocolState,
+      },
+    });
+  };
+  const shown = (store: ReturnType<typeof storeWithFilter>) =>
+    getNetworkNodesForType(store.getState(), 0).map(
+      (node) => node[entityPrimaryKeyProperty],
+    );
+
+  it('a match-all stage filter on a two-type stage keeps only the type its rules name', () => {
+    expect(
+      shown(
+        storeWithFilter({
+          id: testId('named'),
+          type: 'node',
+          options: {
+            type: PERSON,
+            attribute: asEntityAttributeReference(NAME),
+            operator: 'EXISTS',
+          },
+        }),
+      ),
+    ).toEqual(['alex', 'sam']);
+  });
+
+  it('an edge rule keeps both ends of a directed edge', () => {
+    expect(
+      shown(
+        storeWithFilter({
+          id: testId('following'),
+          type: 'edge',
+          options: { type: FOLLOWS, operator: 'EXISTS' },
+        }),
+      ),
+    ).toEqual(['rex', 'sam']);
+  });
+});
+
 describe('resolveNodeShape', () => {
   it('matches an array-valued categorical attribute against a discrete map entry', () => {
     // Categorical (multi-select) variables store their value as an array, e.g.
