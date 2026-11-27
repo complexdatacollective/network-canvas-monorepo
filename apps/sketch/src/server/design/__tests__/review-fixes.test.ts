@@ -2197,7 +2197,9 @@ describe('instrument attributes', () => {
     const reordered = stageById(r.stages, 'm1');
     if (reordered.type !== 'Sociogram') throw new Error('m1 is not a map');
     expect(reordered.behaviours).toEqual({ automaticLayout: false });
-    expect(reordered.prompts.map((p) => p.task)).toEqual(['layout', 'connect']);
+    expect(
+      (reordered.prompts ?? []).map((p) => ('task' in p ? p.task : undefined)),
+    ).toEqual(['layout', 'connect']);
 
     const placedFirst = await build(
       design({
