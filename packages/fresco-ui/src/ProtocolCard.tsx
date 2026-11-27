@@ -1,6 +1,7 @@
 'use client';
 
-import { motion, spring, type HTMLMotionProps } from 'motion/react';
+import { spring } from 'motion';
+import { motion, type HTMLMotionProps } from 'motion/react';
 import type { ReactNode } from 'react';
 
 import { springs } from './motion';
