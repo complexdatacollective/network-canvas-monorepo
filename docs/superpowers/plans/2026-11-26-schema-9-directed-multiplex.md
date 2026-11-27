@@ -420,10 +420,16 @@ and presets take `layout?: string`. When omitted, every Sociogram shares one
 layout named `sociogramLayout`, every Network Composer shares one named
 `composerLayout`, and a Narrative preset reads the first layout of the
 interview, or adds `narrativeLayout` when there is none. `getNetwork` writes a
-position for a node in every layout that a stage whose subject includes the
-node's type sets, and also in every layout that a Narrative preset about the
+position for a node in every layout that a Sociogram or Network Composer whose
+subject includes the node's type names, whether the stage sets that layout or
+only reads it, and also in every layout that a Narrative preset about the
 type reads (a synthetic network stands for an interview whose earlier stages
-all ran), using the current `ValueGenerator` layout formula. Fixtures for
+all ran), using the current `ValueGenerator` layout formula. (Slice 4
+decision: a Sociogram that only reads its layout, with connect or highlight
+tasks under a manual layout, still gets its nodes placed, so that fixtures for
+those tasks have nodes a participant can tap. `generateNetwork` simulates the
+interview and places nobody there; a fixture that needs unplaced nodes uses
+manual nodes without a position.) Fixtures for
 `findUnreachableLayoutReads` (3b) and `isFirstStageUsingLayout` (slice 4) that
 need separate layouts or an unplaced node pass `layout` explicitly.
 

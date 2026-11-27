@@ -808,9 +808,13 @@ export class SyntheticInterview {
 
   /**
    * The layouts a node of `nodeType` is given a position in: those a
-   * Sociogram or Network Composer sets for the type, and those a Narrative
+   * Sociogram or Network Composer names for the type, and those a Narrative
    * preset shows it in. A synthetic network stands for an interview whose
-   * earlier stages all ran, so a Narrative shows its nodes placed.
+   * earlier stages all ran, so a Narrative shows its nodes placed. A
+   * Sociogram that only reads its layout (connect or highlight tasks under a
+   * manual layout) also gets its nodes placed, so that a fixture for those
+   * tasks has nodes the participant can tap; `generateNetwork`, which
+   * simulates the interview itself, leaves such nodes unplaced.
    */
   private layoutsOfNodeType(nodeType: string): string[] {
     return [
@@ -2228,9 +2232,9 @@ export class SyntheticInterview {
         }
       }
 
-      // A stage that sets a layout places every node of its types there, so
-      // a generated node has a position in each; a manual one only where the
-      // caller wrote it.
+      // A generated node has a position in each layout a stage about its type
+      // names (see `layoutsOfNodeType`); a manual one only where the caller
+      // wrote it.
       const layoutIds = this.layoutsOfNodeType(nodeEntry.type);
       const writtenLayouts = definedAttributesOf(
         Object.fromEntries(

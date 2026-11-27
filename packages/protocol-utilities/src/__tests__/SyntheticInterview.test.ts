@@ -4037,9 +4037,11 @@ describe('protocol object ids', () => {
       ng.addPanel({ filter: sharedFilter });
       ng.addFormField({ component: 'Text' });
     }
-    si.addStage('Sociogram', {
+    const sociogram = si.addStage('Sociogram', {
       subject: { entity: 'node', types: [person.id] },
-    }).addPrompt({ sortOrder: sort });
+    });
+    sociogram.addPrompt({ sortOrder: sort });
+    sociogram.addPrompt({ highlight: [{ variable: close.id }] });
     si.addStage('Narrative', {
       subject: { entity: 'node', types: [person.id] },
     }).addPreset({
@@ -4096,6 +4098,7 @@ describe('protocol object ids', () => {
         'narrativePreset',
         'narrativePresetEdge',
         'narrativePresetHighlight',
+        'highlightAttribute',
         'disease',
         'composerEdge',
         'option',
