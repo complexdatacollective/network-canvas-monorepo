@@ -1,7 +1,7 @@
 ---
 title: Arbre généalogique narratif
 navOrder: 11
-translatedFrom: 49b60190c6d32d2c852063badf401202a3e7da90
+translatedFrom: 41f336e561876d77fc8dfd4a122ebadf1d9dd045
 ---
 
 <InterfaceSummary type="NarrativePedigree">
@@ -36,7 +36,7 @@ Chaque affection que la personne participante peut choisir est une ligne de la s
 
 - **Libellé de la maladie** : le nom de l’affection, affiché dans le menu des affections de la personne participante. Chaque affection doit avoir un nom différent, dans chaque langue du protocole.
 - **Couleur** : l’une des huit couleurs de nœud. Les statuts de l’affection, et ses symboles dans la légende, sont dessinés dans cette couleur.
-- **Attribut de nœud** : l’attribut **booléen** qui indique les personnes atteintes. Seuls les attributs enregistrés par l’une des [consignes de désignation](/fr/design-protocols/interface-documentation/family-pedigree#nomination-prompts-1) de l’étape source sont proposés, et chacun ne peut être associé qu’à une seule affection. Si aucun n’est proposé, ajoutez à l’étape « Arbre généalogique » une consigne de désignation qui demande qui présente l’affection.
+- **Attribut de nœud** : l’attribut **booléen** qui indique les personnes atteintes. Il doit s’agir d’un attribut enregistré par l’une des [consignes de désignation](/fr/design-protocols/interface-documentation/family-pedigree#nomination-prompts-1) de l’étape source, et chaque attribut ne peut être associé qu’à une seule affection. La liste affiche aussi les autres attributs du type de personne sous **Non disponibles ici**. Cliquez sur l’un d’eux pour savoir pourquoi il ne peut pas être utilisé. Si aucun attribut ne peut être choisi, ajoutez à l’étape source une consigne de désignation qui demande quelles personnes présentent l’affection.
 - **Mode de transmission** : la façon dont l’affection se transmet du parent à l’enfant. Toutes les déductions de l’interface en dépendent (voir [Comment les statuts sont déduits](#how-statuses-are-inferred)).
 
 Les huit modes de transmission sont autosomique dominant, autosomique récessif, dominant lié à l’X, récessif lié à l’X, lié à l’Y, mitochondrial, multifactoriel et inconnu. Avec **Multifactoriel** et **Inconnu**, l’interface montre seulement les personnes enregistrées comme atteintes et ne déduit aucun autre statut.
@@ -57,7 +57,7 @@ Sous **Propre à cette étape** se trouvent :
 - le libellé du bouton **Enregistrer un instantané** ;
 - les titres des instantanés enregistrés, l’un pour l’instantané d’une affection et l’autre pour un instantané où une personne est sélectionnée. Ils affichent le libellé de l’étape et le nom de l’affection, et le second affiche aussi le nom de la personne, à l’emplacement de leurs espaces réservés.
 
-Sous **Commun à toutes les étapes de ce type** se trouve la formulation que toutes les étapes « Arbre généalogique narratif » affichent à l’identique : le titre de la légende, la signification de chacun de ses symboles (« Présente cette affection », « Développera cette affection », « Est porteur ou porteuse de cette affection », « Pourrait développer cette affection », « Pourrait être porteur ou porteuse de cette affection » et « Inconnu »), et l’info-bulle du bouton **Annuler le centrage**. Chaque signification peut aussi nommer, à la place de « cette affection », l’affection affichée, insérée sous forme de pastille avec le bouton **Attribut** de la barre d’outils du champ, ou en saisissant `{`. Les deux statuts possibles n’y figurent que tant qu’une étape « Arbre généalogique narratif » a activé **Afficher les statuts possibles (à risque)**. À côté se trouvent les descriptions des boutons de zoom, ainsi que le nom et la description du bouton **Afficher toute la famille**, que toutes les étapes « Arbre généalogique narratif » et « Arbre généalogique » affichent à l’identique. Une modification de l’un de ces textes s’applique à toutes ces étapes, et elle est enregistrée dès que vous quittez le champ.
+Sous **Commun à toutes les étapes de ce type** se trouve la formulation que toutes les étapes « Arbre généalogique narratif » affichent à l’identique : le titre de la légende, la signification de chacun de ses symboles (« Présente cette affection », « Développera cette affection », « Est porteur ou porteuse de cette affection », « Pourrait développer cette affection », « Pourrait être porteur ou porteuse de cette affection » et « Inconnu »), et l’info-bulle du bouton **Annuler le centrage**. Chaque signification peut aussi nommer, à la place de « cette affection », l’affection affichée, insérée sous forme de pastille avec le bouton **Attribut** de la barre d’outils du champ, ou en saisissant `{`. Les deux statuts possibles n’y figurent que tant qu’une étape « Arbre généalogique narratif » a activé **Afficher les statuts possibles (à risque)**. À côté se trouvent les descriptions des boutons de zoom, ainsi que le nom et la description du bouton **Afficher toute la famille**, que toutes les étapes « Arbre généalogique narratif » et « Arbre généalogique » affichent à l’identique. Une modification de l’un de ces textes est enregistrée avec l’étape et abandonnée si vous annulez l’étape. Une fois enregistrée, elle s’applique à toutes ces étapes.
 
 ## Ce que voit la personne participante {#what-the-participant-sees}
 
