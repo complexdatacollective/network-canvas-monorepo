@@ -504,6 +504,7 @@ export {
   getLayoutsOfNodeType,
   getLayoutUsage,
   getNodeTypesWithLayout,
+  getStageLayoutUses,
   isFirstStageUsingLayout,
 } from './utils/layoutUsage.ts';
 export {

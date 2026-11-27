@@ -1867,3 +1867,183 @@ describe('generateNetwork layouts', () => {
     }
   });
 });
+
+describe('Sociogram placement', () => {
+  const codebook = makeCodebook({
+    node: {
+      'node-type-1': {
+        color: 'node-color-seq-1',
+        variables: {
+          'var-name': { name: 'Name', type: 'text' },
+          'var-close': { name: 'Close', type: 'boolean' },
+        },
+      },
+    },
+  });
+  const always = { min: 1, max: 1 };
+  const generator = (id: string, count: number) =>
+    makeNameGeneratorStage({
+      id,
+      prompts: [{ id: `${id}-prompt`, text: en('Add people') }],
+      behaviours: { minNodes: count, maxNodes: count },
+    });
+  const layoutPrompt = (id: string) => ({
+    id,
+    task: 'layout',
+    text: en('Place people'),
+  });
+  const connectPrompt = (id: string) => ({
+    id,
+    task: 'connect',
+    text: en('Link people'),
+    edges: { create: 'edge-type-1' },
+  });
+  const highlightPrompt = (id: string) => ({
+    id,
+    task: 'highlight',
+    text: en('Tap people you are close to'),
+    highlight: [
+      { id: `${id}-entry`, type: 'node-type-1', variable: 'var-close' },
+    ],
+  });
+  const sociogram = (
+    id: string,
+    prompts: Record<string, unknown>[],
+    behaviours?: Record<string, unknown>,
+  ) =>
+    ({
+      id,
+      type: 'Sociogram',
+      label: en('Sociogram'),
+      subject: { entity: 'node', types: ['node-type-1'] },
+      layout: 'var-layout',
+      background: { concentricCircles: 3 },
+      prompts,
+      ...(behaviours ? { behaviours } : {}),
+    }) as unknown as Stage;
+  const generate = (stages: Stage[], inProgressStageIndex?: number) =>
+    generateNetwork({
+      codebook,
+      stages,
+      seed: 7,
+      ...(inProgressStageIndex === undefined ? {} : { inProgressStageIndex }),
+      config: {
+        sociogramEdgeProbability: always,
+        sociogramHighlightProbability: 1,
+      },
+    }).network;
+  const isPlaced = (node: NcNode) =>
+    node[entityAttributesProperty]['var-layout'] != null;
+  const uidsOf = (nodes: NcNode[]) =>
+    new Set(nodes.map((node) => node[entityPrimaryKeyProperty]));
+
+  it('a connect-only Sociogram laid out by hand places nobody and connects nobody', () => {
+    const network = generate([
+      generator('people', 4),
+      sociogram('links', [connectPrompt('link')]),
+    ]);
+
+    expect(network.nodes).toHaveLength(4);
+    expect(network.nodes.filter(isPlaced)).toEqual([]);
+    expect(network.edges).toEqual([]);
+  });
+
+  it('a connect-only Sociogram with automatic layout places everyone and connects them', () => {
+    const network = generate([
+      generator('people', 4),
+      sociogram('links', [connectPrompt('link')], { automaticLayout: true }),
+    ]);
+
+    expect(network.nodes.filter(isPlaced)).toHaveLength(4);
+    expect(network.edges).toHaveLength(6);
+  });
+
+  it('connect and highlight tasks act only on the nodes an earlier stage placed', () => {
+    const stagesWith = (prompts: Record<string, unknown>[]) => [
+      generator('first', 2),
+      sociogram('place', [layoutPrompt('place-prompt')]),
+      generator('second', 2),
+      sociogram('links', prompts),
+    ];
+    const network = generate(
+      stagesWith([connectPrompt('link'), highlightPrompt('close')]),
+    );
+    // The same interview without the highlight task: every draw before it is
+    // the same, so the unplaced nodes carry the values they were created with.
+    const withoutHighlight = generate(stagesWith([connectPrompt('link')]));
+
+    const placed = uidsOf(network.nodes.filter(isPlaced));
+    expect(placed.size).toBe(2);
+    expect(network.edges).toHaveLength(1);
+    for (const edge of network.edges) {
+      expect(placed.has(edge.from)).toBe(true);
+      expect(placed.has(edge.to)).toBe(true);
+    }
+    // Node ids are not seeded, so the unplaced nodes are compared in order.
+    const closeOf = (nodes: NcNode[]) =>
+      nodes
+        .filter((node) => !isPlaced(node))
+        .map((node) => node[entityAttributesProperty]['var-close']);
+    const created = closeOf(withoutHighlight.nodes);
+    // At this seed an unplaced node was created not close, so a highlight
+    // written on it would show.
+    expect(created).toContain(false);
+    expect(closeOf(network.nodes)).toEqual(created);
+    for (const node of network.nodes.filter(isPlaced)) {
+      expect(node[entityAttributesProperty]['var-close']).toBe(true);
+    }
+  });
+
+  it('an in-progress Sociogram that only connects and highlights keeps every earlier position', () => {
+    const network = generate(
+      [
+        generator('people', 4),
+        sociogram('place', [layoutPrompt('place-prompt')]),
+        sociogram('links', [connectPrompt('link'), highlightPrompt('close')]),
+      ],
+      2,
+    );
+
+    expect(network.nodes.filter(isPlaced)).toHaveLength(4);
+    expect(network.edges).toHaveLength(6);
+  });
+
+  it('an in-progress Sociogram that places nodes leaves no edge or highlight of its own on a node it left unplaced', () => {
+    const network = generate(
+      [
+        generator('people', 4),
+        sociogram('links', [
+          layoutPrompt('place-prompt'),
+          connectPrompt('link'),
+          highlightPrompt('close'),
+        ]),
+      ],
+      1,
+    );
+
+    const placed = uidsOf(network.nodes.filter(isPlaced));
+    expect(placed.size).toBe(2);
+    for (const edge of network.edges) {
+      expect(placed.has(edge.from)).toBe(true);
+      expect(placed.has(edge.to)).toBe(true);
+    }
+    for (const node of network.nodes) {
+      if (!isPlaced(node)) {
+        expect(node[entityAttributesProperty]['var-close']).not.toBe(true);
+      }
+    }
+  });
+
+  it('an in-progress Sociogram that places nodes after an earlier stage placed them unplaces nobody', () => {
+    const network = generate(
+      [
+        generator('people', 4),
+        sociogram('first', [layoutPrompt('first-prompt')]),
+        sociogram('again', [layoutPrompt('again-prompt')]),
+      ],
+      2,
+    );
+
+    expect(network.nodes.filter(isPlaced)).toHaveLength(4);
+  });
+});

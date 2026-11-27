@@ -1,3 +1,4 @@
+import { getStageLayoutUses } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
@@ -90,9 +91,9 @@ export function handleSociogram(
   // Nodes are placed only on a stage that lays them out: a layout task or the
   // automatic layout. Otherwise the stage shows the positions an earlier
   // stage gave them.
-  const laysOutNodes =
-    stage.behaviours?.automaticLayout === true ||
-    stage.prompts.some((prompt) => prompt.task === 'layout');
+  const laysOutNodes = getStageLayoutUses(stage).some(
+    ({ access }) => access === 'sets',
+  );
   if (laysOutNodes) {
     for (const type of getStageNodeTypes(stage) ?? []) {
       writeLayoutPositions(

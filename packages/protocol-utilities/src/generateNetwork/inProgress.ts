@@ -1,5 +1,8 @@
-import type { Stage } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import { getStageLayoutUses, type Stage } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
 import type { GenerationContext, NetworkDraft } from './context.ts';
 import { getStageFilteredNodes } from './filtering.ts';
@@ -20,7 +23,10 @@ function onlyStrings(values: (string | undefined)[]): string[] {
  * is re-derived at runtime and non-strings are filtered out, so no `undefined`
  * key ever reaches the attribute object.
  */
-function getInProgressClearableVariables(stage: Stage): string[] {
+function getInProgressClearableVariables(
+  stage: Stage,
+  earlierStages: readonly Stage[],
+): string[] {
   if (stage.type === 'OrdinalBin') {
     return onlyStrings(
       (stage.prompts ?? []).map((p): string | undefined => p.variable),
@@ -38,7 +44,18 @@ function getInProgressClearableVariables(stage: Stage): string[] {
   }
   if (stage.type === 'Sociogram') {
     const layout: string | undefined = stage.layout;
-    return onlyStrings([layout]);
+    // Only a stage where the participant places nodes by hand leaves some in
+    // the drawer, and only when no earlier stage has placed them already.
+    const prompts = stage.prompts ?? [];
+    const placesByHand =
+      stage.behaviours?.automaticLayout !== true &&
+      prompts.some((prompt) => prompt.task === 'layout');
+    const placedEarlier = earlierStages.some((earlier) =>
+      getStageLayoutUses(earlier).some(
+        (use) => use.layoutId === layout && use.access === 'sets',
+      ),
+    );
+    return placesByHand && !placedEarlier ? onlyStrings([layout]) : [];
   }
   return [];
 }
@@ -52,8 +69,9 @@ export function markStageInProgress(
   ctx: GenerationContext,
   draft: NetworkDraft,
   stage: Stage,
+  earlierStages: readonly Stage[],
 ): void {
-  const variables = getInProgressClearableVariables(stage);
+  const variables = getInProgressClearableVariables(stage, earlierStages);
   if (variables.length === 0) return;
 
   const nodeType = getSingleStageNodeType(stage);
@@ -72,10 +90,50 @@ export function markStageInProgress(
     1,
     Math.floor(subjectNodes.length * ctx.config.inProgressClearRatio),
   );
-  for (const idx of indices.slice(0, clearCount)) {
-    const attrs = subjectNodes[idx]![entityAttributesProperty];
+  const cleared = indices.slice(0, clearCount).map((idx) => subjectNodes[idx]!);
+  for (const node of cleared) {
+    const attrs = node[entityAttributesProperty];
     for (const varId of variables) {
       delete attrs[varId];
+    }
+  }
+  if (stage.type === 'Sociogram') {
+    undoSociogramTasksOnUnplaced(draft, stage, cleared);
+  }
+}
+
+/**
+ * A node returned to the drawer cannot have been connected or highlighted by
+ * the stage's later tasks, which act only on placed nodes, so their writes on
+ * it are undone.
+ */
+function undoSociogramTasksOnUnplaced(
+  draft: NetworkDraft,
+  stage: Extract<Stage, { type: 'Sociogram' }>,
+  unplaced: readonly NetworkDraft['nodes'][number][],
+): void {
+  const unplacedIds = new Set(
+    unplaced.map((node) => node[entityPrimaryKeyProperty]),
+  );
+  const prompts = stage.prompts ?? [];
+  const createdTypes = new Set(
+    prompts.flatMap((prompt) =>
+      prompt.task === 'connect' ? [prompt.edges.create] : [],
+    ),
+  );
+  draft.edges = draft.edges.filter(
+    (edge) =>
+      !createdTypes.has(edge.type) ||
+      (!unplacedIds.has(edge.from) && !unplacedIds.has(edge.to)),
+  );
+  for (const prompt of prompts) {
+    if (prompt.task !== 'highlight') continue;
+    for (const entry of prompt.highlight) {
+      for (const node of unplaced) {
+        if (node.type === entry.type) {
+          delete node[entityAttributesProperty][entry.variable];
+        }
+      }
     }
   }
 }

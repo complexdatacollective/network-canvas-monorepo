@@ -361,7 +361,12 @@ export function generateNetwork(
       ? stages[inProgressStageIndex]
       : undefined;
   if (inProgressStage) {
-    markStageInProgress(ctx, draft, inProgressStage);
+    markStageInProgress(
+      ctx,
+      draft,
+      inProgressStage,
+      stages.slice(0, inProgressStageIndex),
+    );
   }
 
   // A completed interview rests on the finish stage it ended at (set above),

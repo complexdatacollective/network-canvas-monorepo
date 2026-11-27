@@ -133,7 +133,11 @@ describe('stage-linear node writes', () => {
       type: 'Sociogram',
       label: 'Highlight people',
       subject: { entity: 'node', types: ['person'] },
+      layout: 'map',
+      // A highlight task writes only on placed nodes, so a layout task comes
+      // first.
       prompts: [
+        { id: 'place', task: 'layout', text: 'Place people' },
         {
           id: 'highlight',
           task: 'highlight',
@@ -153,6 +157,10 @@ describe('stage-linear node writes', () => {
       (node) => node[entityAttributesProperty].highlighted,
     );
 
+    // Every node is placed, so the Sociogram's highlight write reached it.
+    for (const node of network.nodes) {
+      expect(node[entityAttributesProperty].map).toBeDefined();
+    }
     expect(new Set(highlights).size).toBe(2);
     for (const node of network.nodes) {
       expect(node[entityAttributesProperty].highlightEcho).toBe(
