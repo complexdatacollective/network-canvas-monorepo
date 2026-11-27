@@ -20,6 +20,7 @@ import {
 } from '@codaco/protocol-validation';
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
+  layoutReferences,
   stageReferences,
   type SectionReference,
 } from '@codaco/studio-sync/section-references';
@@ -483,13 +484,27 @@ export async function deleteStageSection(
 }
 
 /**
- * Removes a layout from the codebook. Nothing in the protocol can name a
- * layout yet, so there is no reference to refuse it for.
+ * Removes a layout from the codebook, refusing while anything names it.
+ *
+ * A Sociogram, a Network Composer or a Narrative preset that stores or shows
+ * positions in the layout refuses it, and so does a filter rule naming it.
+ * Studio and the in-memory host remove such a rule with the layout, but
+ * Architect's `deleteLayout` action writes the codebook alone, so the rule is
+ * named in the refusal for the researcher to remove.
  */
 export function deleteLayoutSection(
   store: ArchitectStore,
   layoutId: string,
 ): SectionDeletion {
+  const protocol = getProtocol(store.getState());
+  if (protocol !== null) {
+    const { stages, rules } = layoutReferences(
+      { protocol, stageIds: protocol.stages.map((stage) => stage.id) },
+      layoutId,
+    );
+    const remaining = [...stages, ...rules];
+    if (remaining.length > 0) return { status: 'referenced', remaining };
+  }
   store.dispatch(deleteLayout({ layoutId }));
   return { status: 'deleted' };
 }

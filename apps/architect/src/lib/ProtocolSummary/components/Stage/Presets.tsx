@@ -1,10 +1,11 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { narrativePresetMessages } from '@codaco/protocol-builder/editors/narrative/narrativePresetMessages';
-import type { LocalizedString } from '@codaco/protocol-validation';
+import type { LocalizedString, Stage } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from '../EntityBadge';
+import LayoutName from '../LayoutName';
 import MiniTable from '../MiniTable';
 import type { FilterType } from '../Rules';
 import {
@@ -24,11 +25,13 @@ const messages = defineMessages({
   },
 });
 
+type NarrativePreset = Extract<Stage, { type: 'Narrative' }>['presets'][number];
+
 type PresetsProps = {
   presets?: Array<{
     id: string;
     label: LocalizedString;
-    layoutVariable?: string;
+    layout?: NarrativePreset['layout'];
     groupVariable?: string;
     edges?: { display?: { type: string; label: LocalizedString }[] };
     highlight?: { variable: string; label: LocalizedString }[];
@@ -60,13 +63,14 @@ const Presets = ({ presets = null }: PresetsProps) => {
                         ],
                       ]
                     : []),
-                  [
-                    intl.formatMessage(summaryMessages.layoutAttribute),
-                    <Variable
-                      key={`layout-${preset.layoutVariable}`}
-                      id={preset.layoutVariable ?? ''}
-                    />,
-                  ],
+                  ...(preset.layout === undefined
+                    ? []
+                    : [
+                        [
+                          intl.formatMessage(summaryMessages.layout),
+                          <LayoutName key="layout" id={preset.layout} />,
+                        ],
+                      ]),
                   // A narrative stage has no filter of its own: each preset
                   // narrows the network for itself, so the rules are listed
                   // with the preset they belong to.

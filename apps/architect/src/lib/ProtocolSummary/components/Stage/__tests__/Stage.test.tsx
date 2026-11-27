@@ -240,7 +240,7 @@ describe('Protocol Summary edge labels participants see', () => {
         {
           id: 'preset',
           label: { en: 'Everyone' },
-          layoutVariable: LAYOUT,
+          layout: LAYOUT,
           edges: { display: [{ type: KNOWS, label: { en: 'Friends' } }] },
         },
       ],
@@ -257,7 +257,7 @@ describe('Protocol Summary edge labels participants see', () => {
         {
           id: 'filtered',
           label: { en: 'Friends only' },
-          layoutVariable: LAYOUT,
+          layout: LAYOUT,
           filter: {
             rules: [
               {
@@ -268,7 +268,7 @@ describe('Protocol Summary edge labels participants see', () => {
             ],
           },
         },
-        { id: 'everyone', label: { en: 'Everyone' }, layoutVariable: LAYOUT },
+        { id: 'everyone', label: { en: 'Everyone' }, layout: LAYOUT },
       ],
     });
 
@@ -430,5 +430,69 @@ describe('Protocol Summary text that reads by a number answer', () => {
     expect(pills[0]).toHaveTextContent('Hours');
     expect(screen.queryByText(/When it is/)).not.toBeInTheDocument();
     expect(screen.queryByText(/hodin/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Protocol Summary layouts', () => {
+  const withLayouts = {
+    ...protocol,
+    codebook: {
+      ...protocol.codebook,
+      layouts: { [LAYOUT]: { name: 'Seats' } },
+    },
+  } satisfies CurrentProtocol;
+
+  const renderWithLayouts = (
+    type: string,
+    configuration: Record<string, unknown>,
+  ) =>
+    render(
+      <SummaryContext.Provider
+        value={{
+          protocol: withLayouts,
+          protocolName: withLayouts.name,
+          index: [],
+        }}
+      >
+        <Stage
+          id="stage"
+          label={{ en: 'A stage' }}
+          stageNumber={1}
+          type={type}
+          configuration={configuration}
+        />
+      </SummaryContext.Provider>,
+    );
+
+  it.each(['Sociogram', 'NetworkComposer'])(
+    'prints the stage layout by name on a %s stage',
+    (type) => {
+      renderWithLayouts(type, { layout: LAYOUT });
+
+      const row = screen.getByRole('row', { name: /^Layout/ });
+      expect(within(row).getByText('Seats')).toBeInTheDocument();
+    },
+  );
+
+  it('prints each preset’s layout', () => {
+    renderWithLayouts('Narrative', {
+      presets: [
+        { id: 'seats', label: { en: 'Seats' }, layout: LAYOUT },
+        { id: 'unplaced', label: { en: 'Unplaced' } },
+      ],
+    });
+
+    const seats = screen.getByRole('heading', { name: 'Seats' }).closest('div');
+    const unplaced = screen
+      .getByRole('heading', { name: 'Unplaced' })
+      .closest('div');
+    if (!seats || !unplaced) throw new Error('A preset was not printed');
+    expect(
+      within(within(seats).getByRole('row', { name: /^Layout/ })).getByText(
+        'Seats',
+        { selector: 'bdi' },
+      ),
+    ).toBeInTheDocument();
+    expect(within(unplaced).queryByRole('row', { name: /^Layout/ })).toBeNull();
   });
 });

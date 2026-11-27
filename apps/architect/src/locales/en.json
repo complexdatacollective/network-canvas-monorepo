@@ -3687,9 +3687,9 @@
     "defaultMessage": "Label",
     "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
   },
-  "architect.summary.label.layoutAttribute": {
-    "defaultMessage": "Layout attribute",
-    "description": "Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately."
+  "architect.summary.label.layout": {
+    "defaultMessage": "Layout",
+    "description": "Label in the printable protocol summary. Its value is the name of the layout, a named set of node positions on a canvas, that the stage or preset stores or shows."
   },
   "architect.summary.label.mapStyle": {
     "defaultMessage": "Map Style",
@@ -3814,10 +3814,6 @@
   "architect.summary.prompt.highlightattribute": {
     "defaultMessage": "Highlight attribute",
     "description": "Row label in a prompt's table in the printable protocol summary; its value is the variable set when a participant highlights a node."
-  },
-  "architect.summary.prompt.layoutattribute": {
-    "defaultMessage": "Layout attribute",
-    "description": "Row label in a prompt's table in the printable protocol summary; its value is the variable that stores the position of each node on the sociogram."
   },
   "architect.summary.prompt.negativeOptionLabel": {
     "defaultMessage": "Negative Option Label",

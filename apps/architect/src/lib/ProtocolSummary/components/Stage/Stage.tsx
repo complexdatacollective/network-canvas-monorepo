@@ -12,6 +12,7 @@ import {
   type FramingSetting,
   type LocalizedString,
   type Panel,
+  type Stage as ProtocolStage,
   type StageSubject,
   stageDynamicValueContext,
   suppliedStageSettingApplies,
@@ -20,6 +21,7 @@ import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
+import LayoutName from '../LayoutName';
 import MiniTable from '../MiniTable';
 import type { FilterType } from '../Rules';
 import SummaryContext from '../SummaryContext';
@@ -140,10 +142,17 @@ export type StageConfiguration = {
   prompts?: PromptType[];
   form?: { title?: LocalizedString; fields?: FormFieldType[] };
   behaviours?: Record<string, unknown>;
+  layout?: Extract<
+    ProtocolStage,
+    { type: 'Sociogram' | 'NetworkComposer' }
+  >['layout'];
   presets?: {
     id: string;
     label: LocalizedString;
-    layoutVariable?: string;
+    layout?: Extract<
+      ProtocolStage,
+      { type: 'Narrative' }
+    >['presets'][number]['layout'];
     groupVariable?: string;
     edges?: { display?: { type: string; label: LocalizedString }[] };
     highlight?: { variable: string; label: LocalizedString }[];
@@ -244,6 +253,7 @@ const StageContent = ({
     form,
     behaviours,
     presets,
+    layout,
     title,
     interviewScript,
     // FinishSession
@@ -307,6 +317,7 @@ const StageContent = ({
           </div>
           {(multilingual ||
             subject ||
+            layout !== undefined ||
             edgeType ||
             !isEmpty(stageVariables)) && (
             <MiniTable
@@ -344,6 +355,14 @@ const StageContent = ({
                       ],
                     ]
                   : []),
+                ...(layout === undefined
+                  ? []
+                  : [
+                      [
+                        intl.formatMessage(summaryMessages.layout),
+                        <LayoutName key="layout" id={layout} />,
+                      ],
+                    ]),
                 ...(edgeType
                   ? [
                       [

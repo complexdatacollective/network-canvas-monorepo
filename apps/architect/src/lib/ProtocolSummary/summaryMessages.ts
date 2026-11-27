@@ -126,11 +126,11 @@ export const summaryMessages = defineMessages({
     description:
       'Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately.',
   },
-  layoutAttribute: {
-    id: 'architect.summary.label.layoutAttribute',
-    defaultMessage: 'Layout attribute',
+  layout: {
+    id: 'architect.summary.label.layout',
+    defaultMessage: 'Layout',
     description:
-      'Label in the printable protocol summary. Researcher-authored content and identifiers are displayed separately.',
+      'Label in the printable protocol summary. Its value is the name of the layout, a named set of node positions on a canvas, that the stage or preset stores or shows.',
   },
   showEdges: {
     id: 'architect.summary.label.showEdges',

@@ -21,6 +21,7 @@ const GROUPS = testVariableId('groups');
 const SINCE = testVariableId('since');
 const EGO_NAME = testVariableId('egoName');
 const EGO_AGE = testVariableId('egoAge');
+const HOME = testVariableId('home');
 
 const codebook = {
   node: {
@@ -55,6 +56,7 @@ const codebook = {
       [EGO_AGE]: { name: 'EgoAge', type: 'number' },
     },
   },
+  layouts: { [HOME]: { name: 'Home' } },
   // The fixture is written as a codebook and read as one; nothing here is
   // narrowed from a wider type, so the cast is the shape's own declaration.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
@@ -199,6 +201,17 @@ it.each([
   ],
 ])('prints a %s rule as the builder reads it', (_shape, rule, expected) => {
   expect(sentence(rule)).toBe(expected);
+});
+
+// A layout belongs to the codebook rather than to the node type, so the rule
+// is read by the layout's name, as the builder's rule list reads it.
+it('prints a rule naming a layout by the layout’s name', () => {
+  expect(
+    sentence({
+      type: 'node',
+      options: { type: PERSON, attribute: HOME, operator: 'EXISTS' },
+    }),
+  ).toBe('Person where Home');
 });
 
 it('names an entity type the codebook no longer has rather than printing nothing', () => {

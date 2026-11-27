@@ -47,6 +47,7 @@ import {
   STAGE_ORDER_SECTION,
 } from '@codaco/protocol-builder/host/protocolSections';
 import {
+  fixtureLayoutId,
   fixtureStageId,
   fixtureTypeId,
   fixtureVariableId,
@@ -124,6 +125,8 @@ const nextRequestId = (): string => `write-${++writes}`;
 const INFORMATION = sectionId({ kind: 'stage', stageId: INFORMATION_STAGE_ID });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: EGO_FORM_STAGE_ID });
 const PERSON_TYPE = fixtureTypeId('node', 'person');
+/** The layouts the fixture's own stages store positions in. */
+const FIXTURE_LAYOUTS = { [fixtureLayoutId('layout')]: { name: 'layout' } };
 const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
 const NAME_VARIABLE = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
@@ -1767,7 +1770,10 @@ describe("Architect's in-process protocol-builder host", () => {
     const ref = parseSectionId(created.sectionId);
     if (ref.kind !== 'codebookLayout') throw new Error('Not a layout section');
     expect(isVariableId(ref.layoutId)).toBe(true);
-    expect(layouts()).toEqual({ [ref.layoutId]: { name: 'seating' } });
+    expect(layouts()).toEqual({
+      ...FIXTURE_LAYOUTS,
+      [ref.layoutId]: { name: 'seating' },
+    });
 
     const other = await client.call('Create', {
       protocolId: PROTOCOL_ID,
@@ -1781,6 +1787,7 @@ describe("Architect's in-process protocol-builder host", () => {
     }
     expect(otherRef.layoutId).not.toBe(ref.layoutId);
     expect(layouts()).toEqual({
+      ...FIXTURE_LAYOUTS,
       [ref.layoutId]: { name: 'seating' },
       [otherRef.layoutId]: { name: 'stage' },
     });
@@ -1798,6 +1805,7 @@ describe("Architect's in-process protocol-builder host", () => {
       revision: held.revision,
     });
     expect(layouts()).toEqual({
+      ...FIXTURE_LAYOUTS,
       [ref.layoutId]: { name: 'tables' },
       [otherRef.layoutId]: { name: 'stage' },
     });
@@ -1819,8 +1827,8 @@ describe("Architect's in-process protocol-builder host", () => {
     });
 
     expect(deleted.changedSections).toEqual([created.sectionId]);
-    expect(getProtocol(store.getState())?.codebook).not.toHaveProperty(
-      'layouts',
+    expect(getProtocol(store.getState())?.codebook.layouts).toEqual(
+      FIXTURE_LAYOUTS,
     );
     const { error } = await safe(
       client.call('GetSection', {
@@ -1833,7 +1841,101 @@ describe("Architect's in-process protocol-builder host", () => {
     store.dispatch(timelineActions.undo());
     expect(
       Object.values(getProtocol(store.getState())?.codebook.layouts ?? {}),
-    ).toEqual([{ name: 'seating' }]);
+    ).toEqual([{ name: 'layout' }, { name: 'seating' }]);
+  });
+
+  it('refuses deleting a layout a stage names', async () => {
+    const { store, client } = openProtocol();
+    const layoutId = fixtureLayoutId('layout');
+    const layout = sectionId({ kind: 'codebookLayout', layoutId });
+
+    const { error } = await safe(
+      client.call('Delete', { protocolId: PROTOCOL_ID, sectionId: layout }),
+    );
+
+    expect(error).toBeInstanceOf(ReferencesRemain);
+    if (!(error instanceof ReferencesRemain)) return;
+    expect(error.remaining).toEqual(
+      expect.arrayContaining([
+        {
+          sectionId: sectionId({
+            kind: 'stage',
+            stageId: fixtureStageId('sociogram-1'),
+          }),
+          path: ['layout'],
+        },
+      ]),
+    );
+    expect(getProtocol(store.getState())?.codebook.layouts).toHaveProperty(
+      layoutId,
+    );
+  });
+
+  it('refuses deleting a layout a filter rule names', async () => {
+    const { store, client } = openProtocol();
+    const created = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'seating' }),
+    });
+    const ref = parseSectionId(created.sectionId);
+    if (ref.kind !== 'codebookLayout') throw new Error('Not a layout section');
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        skipLogic: {
+          action: 'SKIP',
+          filter: {
+            join: 'OR',
+            rules: [
+              {
+                id: testVariableId('placed rule'),
+                type: 'node',
+                options: {
+                  type: PERSON_TYPE,
+                  attribute: ref.layoutId,
+                  operator: 'EXISTS',
+                },
+              },
+            ],
+          },
+        },
+      }),
+      revision: held.revision,
+    });
+    await client.call('ReleaseLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    const { error } = await safe(
+      client.call('Delete', {
+        protocolId: PROTOCOL_ID,
+        sectionId: created.sectionId,
+      }),
+    );
+
+    // Architect's delete writes the codebook alone, so the rule is named for
+    // the researcher to remove rather than swept away as other hosts do.
+    expect(error).toBeInstanceOf(ReferencesRemain);
+    if (!(error instanceof ReferencesRemain)) return;
+    expect(error.remaining).toEqual([
+      {
+        sectionId: INFORMATION,
+        path: ['skipLogic', 'filter', 'rules', 0, 'options', 'attribute'],
+      },
+    ]);
+    expect(getProtocol(store.getState())?.codebook.layouts).toHaveProperty(
+      ref.layoutId,
+    );
   });
 
   it('deletes one layout of two, keeping the other', async () => {
@@ -1855,6 +1957,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const deleting = await create('seating');
     const kept = await create('stage');
     const both = {
+      ...FIXTURE_LAYOUTS,
       [layoutIdOf(deleting.sectionId)]: { name: 'seating' },
       [layoutIdOf(kept.sectionId)]: { name: 'stage' },
     };
@@ -1867,6 +1970,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
     expect(deleted.changedSections).toEqual([deleting.sectionId]);
     expect(layouts()).toEqual({
+      ...FIXTURE_LAYOUTS,
       [layoutIdOf(kept.sectionId)]: { name: 'stage' },
     });
     const survivor = await client.call('GetSection', {
@@ -1898,8 +2002,8 @@ describe("Architect's in-process protocol-builder host", () => {
     });
 
     expect(deleted.changedSections).toEqual([created.sectionId]);
-    expect(getProtocol(store.getState())?.codebook).not.toHaveProperty(
-      'layouts',
+    expect(getProtocol(store.getState())?.codebook.layouts).toEqual(
+      FIXTURE_LAYOUTS,
     );
   });
 
@@ -1930,7 +2034,7 @@ describe("Architect's in-process protocol-builder host", () => {
     });
     expect(
       Object.values(getProtocol(store.getState())?.codebook.layouts ?? {}),
-    ).toEqual([{ name: 'seating' }]);
+    ).toEqual([{ name: 'layout' }, { name: 'seating' }]);
   });
 
   it('refuses to delete a layout the protocol does not have', async () => {
@@ -1963,7 +2067,9 @@ describe("Architect's in-process protocol-builder host", () => {
 
     expect(isSuccess).toBe(false);
     expect(error).toBeInstanceOf(InvalidShape);
-    expect(getProtocol(store.getState())?.codebook.layouts).toBeUndefined();
+    expect(getProtocol(store.getState())?.codebook.layouts).toEqual(
+      FIXTURE_LAYOUTS,
+    );
   });
 
   it('refuses to create an ego codebook the protocol already has', async () => {
@@ -2809,11 +2915,14 @@ describe('codebook sections saved with a stage', () => {
     });
 
     expect(getProtocol(store.getState())?.codebook.layouts).toEqual({
+      ...FIXTURE_LAYOUTS,
       [layoutId]: { name: 'seating' },
     });
     expect(undoDepth(store)).toBe(1);
     store.dispatch(timelineActions.undo());
-    expect(getProtocol(store.getState())?.codebook.layouts).toBeUndefined();
+    expect(getProtocol(store.getState())?.codebook.layouts).toEqual(
+      FIXTURE_LAYOUTS,
+    );
   });
 
   it('writes a layout the stage’s editor created beside the layouts the protocol has', async () => {
@@ -2850,11 +2959,15 @@ describe('codebook sections saved with a stage', () => {
     });
 
     expect(layouts()).toEqual({
+      ...FIXTURE_LAYOUTS,
       [existingRef.layoutId]: { name: 'stage' },
       [layoutId]: { name: 'seating' },
     });
     store.dispatch(timelineActions.undo());
-    expect(layouts()).toEqual({ [existingRef.layoutId]: { name: 'stage' } });
+    expect(layouts()).toEqual({
+      ...FIXTURE_LAYOUTS,
+      [existingRef.layoutId]: { name: 'stage' },
+    });
   });
 
   it.each([

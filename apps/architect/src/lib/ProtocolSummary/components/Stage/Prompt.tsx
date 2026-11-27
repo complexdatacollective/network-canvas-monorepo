@@ -36,12 +36,6 @@ const extraMessages = defineMessages({
     description:
       'Value in the sort order list of a prompt in the printable protocol summary, shown in brackets after a property: items are sorted from highest to lowest.',
   },
-  layoutattribute: {
-    id: 'architect.summary.prompt.layoutattribute',
-    defaultMessage: 'Layout attribute',
-    description:
-      "Row label in a prompt's table in the printable protocol summary; its value is the variable that stores the position of each node on the sociogram.",
-  },
   attribute: {
     id: 'architect.summary.prompt.attribute',
     defaultMessage: 'Attribute',
@@ -181,11 +175,6 @@ const attributes: Array<
   [string, MessageDescriptor, (val: unknown) => ReactNode]
 > = [
   [
-    'layout.layoutVariable',
-    extraMessages.layoutattribute,
-    (id: unknown) => <Variable id={String(id)} />,
-  ],
-  [
     'variable',
     extraMessages.attribute,
     (id: unknown) => <Variable id={String(id)} />,
@@ -262,9 +251,6 @@ type PromptProps = {
     create?: string;
   } | null;
   variable?: string | null;
-  layout?: {
-    layoutVariable?: string;
-  } | null;
   createEdge?: string | null;
   edgeVariable?: string | null;
   [key: string]: unknown;

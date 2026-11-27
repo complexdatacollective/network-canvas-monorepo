@@ -17,7 +17,7 @@ const stage = {
   type: 'NetworkComposer',
   subject: { entity: 'node', types: [testTypeId('person')] },
   quickAdd: testVariableId('name'),
-  layoutVariable: testVariableId('layoutPosition'),
+  layout: testVariableId('layoutPosition'),
   background: { concentricCircles: 4 },
   nodeForm: {
     fields: [
