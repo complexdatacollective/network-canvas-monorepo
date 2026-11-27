@@ -24,8 +24,8 @@ type PassphrasePrompterProps = {
   orientation: NavigationOrientation;
   /** Placement and flex behaviour of the trigger within the navigation bar. */
   className?: string;
-  /** Whether the bar has finished arriving (see `barItemMotion`). */
-  arrived: boolean;
+  /** Whether the bar is appearing for the first time (see `barItemMotion`). */
+  entering: boolean;
   /** Which optional controls the bar shows (see `barItemMotion`). */
   layoutDependency: string;
 };
@@ -33,7 +33,7 @@ type PassphrasePrompterProps = {
 export default function PassphrasePrompter({
   orientation,
   className,
-  arrived,
+  entering,
   layoutDependency,
 }: PassphrasePrompterProps) {
   const isRtl = useDirection() === 'rtl';
@@ -71,7 +71,7 @@ export default function PassphrasePrompter({
                     key="lock"
                     {...barItemMotion({
                       reduceMotion,
-                      arrived,
+                      entering,
                       index: 3,
                       layoutDependency,
                     })}

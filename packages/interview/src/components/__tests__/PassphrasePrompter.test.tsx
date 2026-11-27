@@ -89,7 +89,7 @@ async function openPrompter({
       <InterviewI18nProvider>
         <PassphrasePrompter
           orientation="vertical"
-          arrived
+          entering={false}
           layoutDependency=""
         />
       </InterviewI18nProvider>

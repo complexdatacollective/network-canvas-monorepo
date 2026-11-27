@@ -5,6 +5,12 @@ import {
   segmentPresenceVariants,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 
+/**
+ * How long the bar takes to slide in, in seconds. The controls on it when it
+ * first appears start growing in once it has.
+ */
+export const BAR_ENTRANCE = 0.6;
+
 // The delay between one control's entrance and the next.
 const STAGGER = 0.04;
 
@@ -14,17 +20,17 @@ const target = (variant: Variant | undefined) =>
 const grown = target(segmentPresenceVariants.animate);
 
 /**
- * The segmented toolbar's grow-in and shrink-away. A control's `custom` is its
- * place on the bar, which delays its entrance after the control before it.
+ * The segmented toolbar's grow-in and shrink-away. A control's `custom` is the
+ * delay before it grows in, in seconds.
  *
  * Once grown in, a control is left with no `filter`: a filter keeps it in a
  * layer of its own, which makes its hover feedback lag behind the pointer.
  */
 const barVariants: Variants = {
   initial: target(segmentPresenceVariants.initial),
-  animate: (index: number) => ({
+  animate: (delay: number) => ({
     ...grown,
-    transition: { ...grown.transition, delay: index * STAGGER },
+    transition: { ...grown.transition, delay },
     transitionEnd: { filter: 'none' },
   }),
   exit: target(segmentPresenceVariants.exit),
@@ -33,9 +39,9 @@ const barVariants: Variants = {
 /** With reduced motion a control only fades. */
 const fadeVariants: Variants = {
   initial: { opacity: 0 },
-  animate: (index: number) => ({
+  animate: (delay: number) => ({
     opacity: 1,
-    transition: { delay: index * STAGGER },
+    transition: { delay },
   }),
   exit: { opacity: 0 },
 };
@@ -46,9 +52,11 @@ const fadeVariants: Variants = {
  * and shrinks back into one when it goes, and the controls that stay glide
  * to their new places.
  *
- * Each control animates by itself. It waits, hidden, until the bar has
- * finished arriving (`arrived`), and then grows in after the control before
- * it (`index`, its place on the bar).
+ * Each control animates by itself. A control that is on the bar when the bar
+ * first appears (`entering`) waits until the bar has slid in, then grows in
+ * after the control before it (`index`, its place on the bar). A control
+ * added later grows in at once. When animations are turned off, the delays
+ * are skipped with them, so the controls are simply there.
  *
  * A control glides only if it renders again when another comes or goes, so
  * that Motion can measure where it was. The React Compiler skips a control
@@ -60,19 +68,19 @@ const fadeVariants: Variants = {
  */
 export const barItemMotion = ({
   reduceMotion,
-  arrived,
+  entering,
   index,
   layoutDependency,
 }: {
   reduceMotion: boolean;
-  arrived: boolean;
+  entering: boolean;
   index: number;
   layoutDependency: string;
 }): MotionProps => ({
   variants: reduceMotion ? fadeVariants : barVariants,
-  custom: index,
+  custom: entering ? BAR_ENTRANCE + index * STAGGER : 0,
   initial: 'initial',
-  animate: arrived ? 'animate' : 'initial',
+  animate: 'animate',
   exit: 'exit',
   layout: 'position',
   layoutDependency,

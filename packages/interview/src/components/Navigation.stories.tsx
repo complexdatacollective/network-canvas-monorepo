@@ -1121,14 +1121,37 @@ const getLanguageChooserPayload = () => {
 
 const LANGUAGE_BUTTON = 'Interview language';
 
-/**
- * The bar has no language button on a Language Chooser stage, because the
- * stage offers the same choice. Moving on to the next screen brings the
- * button in, and going back takes it away again, with the same animation as
- * the bar's other optional buttons.
- */
-export const LanguageButtonComesAndGoes: Story = {
-  name: 'Language button comes and goes (vertical rail)',
+// Follows the bar from a change until the language button has been on it for
+// a dozen frames. Returns the furthest the exit button was moved from its
+// place, which should be nowhere: the language button comes after it. A bar
+// measured in the wrong place while the stages change would send every
+// control flying back. Also returns whether the progress bar glided to make
+// room.
+const followLanguageArrival = async (nav: HTMLElement) => {
+  let exitMoved = 0;
+  const progressOffsets: number[] = [];
+  let framesWithButton = 0;
+  for (let frame = 0; frame < 240 && framesWithButton < 12; frame++) {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const exit = transformOf(barSlot(nav, 'Exit interview'));
+    exitMoved = Math.max(exitMoved, Math.hypot(exit.e, exit.f));
+    const progress = transformOf(barSlot(nav, 'Progress indicator'));
+    progressOffsets.push(Math.hypot(progress.e, progress.f));
+    if (barSlot(nav, LANGUAGE_BUTTON)) framesWithButton++;
+  }
+  const distance = Math.max(...progressOffsets);
+  return {
+    sawButton: framesWithButton > 0,
+    exitMoved,
+    progressGlided: progressOffsets.some(
+      (offset) => offset > 0.5 && offset < distance - 0.5,
+    ),
+  };
+};
+
+const languageButtonStory = (
+  orientation: 'vertical' | 'horizontal',
+): Story => ({
   parameters: { controls: { exclude: ['stageCount'] } },
   beforeEach: forgetInterviewLanguage,
   render: () => (
@@ -1136,7 +1159,7 @@ export const LanguageButtonComesAndGoes: Story = {
       <div className="flex h-dvh w-full">
         <StoryInterviewShell
           rawPayload={getLanguageChooserPayload()}
-          navigationOrientation="vertical"
+          navigationOrientation={orientation}
           allowUserScaling
           onExit={() => {}}
         />
@@ -1148,20 +1171,17 @@ export const LanguageButtonComesAndGoes: Story = {
     const canvas = within(canvasElement);
     const nav = await canvas.findByRole('navigation');
     await within(nav).findByRole('button', { name: 'Exit interview' });
+    await settled(nav, true);
     await expect(barSlot(nav, LANGUAGE_BUTTON)).toBeUndefined();
 
-    // On the next screen the language button grows in, and the progress
-    // bar gives it room.
+    // On the next screen the language button grows in after Text size, the
+    // progress bar glides to give it room, and the buttons before it stay
+    // where they are.
     await userEvent.click(canvas.getByRole('button', { name: 'Next Step' }));
-    await waitFor(() => expect(barSlot(nav, LANGUAGE_BUTTON)).toBeDefined(), {
-      timeout: 10_000,
-    });
-    const arrival = await sampleFrames(nav, {
-      mover: 'Progress indicator',
-      comer: LANGUAGE_BUTTON,
-    });
-    await expect(arrival.smallestScale).toBeLessThan(0.99);
-    await expect(arrival.glided).toBe(true);
+    const arrival = await followLanguageArrival(nav);
+    await expect(arrival.sawButton).toBe(true);
+    await expect(arrival.exitMoved).toBeLessThan(0.5);
+    await expect(arrival.progressGlided).toBe(true);
 
     // Back on the Language Chooser stage it shrinks away again.
     await userEvent.click(
@@ -1171,6 +1191,22 @@ export const LanguageButtonComesAndGoes: Story = {
       timeout: 10_000,
     });
   },
+});
+
+/**
+ * The bar has no language button on a Language Chooser stage, because the
+ * stage offers the same choice. Moving on to the next screen brings the
+ * button in, and going back takes it away again, with the same animation as
+ * the bar's other optional buttons.
+ */
+export const LanguageButtonComesAndGoes: Story = {
+  ...languageButtonStory('vertical'),
+  name: 'Language button comes and goes (vertical rail)',
+};
+
+export const HorizontalLanguageButtonComesAndGoes: Story = {
+  ...languageButtonStory('horizontal'),
+  name: 'Language button comes and goes (horizontal bar)',
 };
 
 // A form with one required question, so the screen is ready to continue only
