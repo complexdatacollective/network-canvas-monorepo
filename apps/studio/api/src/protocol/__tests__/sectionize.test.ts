@@ -76,6 +76,32 @@ describe('sectionize/assemble round trip', () => {
     expect(assembled).toEqual(protocol);
   });
 
+  it('sectionizes and reassembles codebook.layouts', async () => {
+    const sociogram = '5b0c8f1e-3f4a-4d2b-9c6e-1a2b3c4d5e6f';
+    const map = '0d3e2c1b-7a6f-4e5d-8c9b-6f5e4d3c2b1a';
+    const base = baseProtocol();
+    const protocol = {
+      ...base,
+      codebook: {
+        ...base.codebook,
+        layouts: { [sociogram]: { name: 'sociogram' }, [map]: { name: 'map' } },
+      },
+    };
+    const sections = sectionizeProtocol(protocol);
+
+    expect(sections[`codebook:layout:${sociogram}`]).toEqual({
+      name: 'sociogram',
+    });
+    expect(sections[`codebook:layout:${map}`]).toEqual({ name: 'map' });
+    const assembled = assembleProtocolSections(sections);
+    expect(assembled).toEqual(protocol);
+    const revalidated = await validateProtocol(assembled);
+    expect(
+      revalidated.success,
+      JSON.stringify(revalidated.error?.issues ?? [], null, 2),
+    ).toBe(true);
+  });
+
   it('rejects an empty stage id instead of emitting an unaddressable section', () => {
     const protocol = baseProtocol();
     // A branded id cannot be empty, so the empty one is set past the type.

@@ -56,6 +56,11 @@ export function sectionizeProtocol(
   if (protocol.codebook.ego !== undefined) {
     sections[sectionId({ kind: 'codebookEgo' })] = protocol.codebook.ego;
   }
+  for (const [layoutId, definition] of Object.entries(
+    protocol.codebook.layouts ?? {},
+  )) {
+    sections[sectionId({ kind: 'codebookLayout', layoutId })] = definition;
+  }
 
   // Present even when empty: the sync engine refuses commits to section ids
   // absent from the head manifest, so a protocol created without assets could
