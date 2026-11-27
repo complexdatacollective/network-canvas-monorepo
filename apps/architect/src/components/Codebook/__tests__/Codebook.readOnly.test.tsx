@@ -69,18 +69,29 @@ describe('Codebook while another tab owns the protocol', () => {
     const addAttributeButtons = screen.getAllByRole('button', {
       name: 'Add attribute',
     });
+    // Every layout that nothing uses carries one.
+    const deleteLayoutButtons = screen.getAllByRole('button', {
+      name: 'Delete layout',
+    });
     expect(editButtons.length).toBeGreaterThan(1);
     expect(deleteButtons.length).toBeGreaterThan(1);
     expect(addAttributeButtons.length).toBeGreaterThan(2);
+    expect(deleteLayoutButtons.length).toBeGreaterThan(0);
     for (const button of [
       ...editButtons,
       ...deleteButtons,
       ...addAttributeButtons,
+      ...deleteLayoutButtons,
     ]) {
       expect(button).toBeDisabled();
     }
 
-    for (const button of [createNode, createEdge, ...editButtons]) {
+    for (const button of [
+      createNode,
+      createEdge,
+      ...editButtons,
+      ...deleteLayoutButtons,
+    ]) {
       fireEvent.click(button);
     }
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

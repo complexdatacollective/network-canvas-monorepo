@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider } from 'react-redux';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
@@ -16,6 +17,7 @@ import { actionCreators as protocolActions } from '~/ducks/modules/activeProtoco
 import { rootReducer } from '~/ducks/modules/root';
 import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
 
+import EntityType from './EntityType';
 import Layouts from './Layouts';
 
 const PERSON = testTypeId('person');
@@ -94,15 +96,19 @@ const protocol: CurrentProtocol = {
   ],
 };
 
-const createStoryStore = () => {
+const createStoryStore = (source: CurrentProtocol = protocol) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefault) =>
       getDefault({ serializableCheck: false, immutableCheck: false }),
   });
-  store.dispatch(protocolActions.setActiveProtocol(structuredClone(protocol)));
+  store.dispatch(protocolActions.setActiveProtocol(structuredClone(source)));
   return store;
 };
+
+// A layout name is one word, so it cannot wrap at a space.
+const LONG_LAYOUT_NAME =
+  'Closeness_between_the_participant_and_every_person_they_named_in_the_study';
 
 const meta = {
   title: 'Components/Codebook/Layouts',
@@ -213,5 +219,54 @@ export const UnusedLayoutWhileLocked: Story = {
         name: 'Delete layout',
       }),
     ).toBeDisabled();
+  },
+};
+
+/**
+ * A node type whose layout has a long name: the name wraps inside its badge
+ * and the type's Edit and Delete buttons keep their full width.
+ */
+export const NodeTypeWithALongLayoutName: Story = {
+  render: () => {
+    const longNamed = structuredClone(protocol);
+    longNamed.codebook.layouts = {
+      ...longNamed.codebook.layouts,
+      [CLOSENESS]: { name: LONG_LAYOUT_NAME },
+    };
+    return (
+      <Provider store={createStoryStore(longNamed)}>
+        <QueryClientProvider client={new QueryClient()}>
+          <div className="w-160">
+            <EntityType
+              entity="node"
+              type={PERSON}
+              usage={[
+                { id: testId('sociogram'), label: 'Place your contacts' },
+              ]}
+            />
+          </div>
+        </QueryClientProvider>
+      </Provider>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const section = canvas
+      .getByRole('heading', { name: 'Person node type' })
+      .closest('section');
+    if (!section) throw new Error('The Person node type has no section.');
+    const sectionRight = section.getBoundingClientRect().right;
+    for (const name of ['Edit entity', 'Delete entity']) {
+      const button = canvas.getByRole('button', { name });
+      await expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth);
+      await expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(
+        sectionRight,
+      );
+    }
+    await expect(
+      canvas
+        .getByRole('link', { name: LONG_LAYOUT_NAME })
+        .getBoundingClientRect().right,
+    ).toBeLessThanOrEqual(sectionRight);
   },
 };

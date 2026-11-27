@@ -19,6 +19,7 @@ import { templateTypeId } from '~/templates/__tests__/templateCodebookIds';
 import { developmentProtocol } from '~/templates/development-protocol';
 
 import EntityType from '../EntityType';
+import Layouts from '../Layouts';
 import Variables from '../Variables';
 
 /**
@@ -54,6 +55,7 @@ const PERSON = templateTypeId(developmentProtocol, 'node', 'person');
 // control is disabled while it is used.
 const SPARE_VARIABLE = uuid();
 const SPARE_TYPE = uuid();
+const SPARE_LAYOUT = uuid();
 
 const makeStore = () => {
   const protocol = structuredClone(developmentProtocol);
@@ -75,6 +77,11 @@ const makeStore = () => {
     ...structuredClone(personType),
     name: 'Spare',
     variables: {},
+  };
+
+  protocol.codebook.layouts = {
+    ...protocol.codebook.layouts,
+    [SPARE_LAYOUT]: { name: 'spareLayout' },
   };
 
   const store = configureStore({
@@ -175,6 +182,40 @@ describe('Codebook delete confirmations', () => {
 
     expect(getProtocol(store.getState())?.codebook.node).toHaveProperty(
       SPARE_TYPE,
+    );
+  });
+
+  it('promises Undo for a layout, and Undo brings the layout back', async () => {
+    const store = makeStore();
+
+    render(
+      <Provider store={store}>
+        <QueryClientProvider client={new QueryClient()}>
+          <DialogProvider>
+            <Layouts search="spareLayout" />
+          </DialogProvider>
+        </QueryClientProvider>
+      </Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete layout' }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent(UNDO_PROMISE);
+    expect(dialog).not.toHaveTextContent(/cannot be undone/i);
+
+    fireEvent.click(screen.getByTestId('dialog-primary'));
+
+    await waitFor(() => {
+      expect(
+        getProtocol(store.getState())?.codebook.layouts,
+      ).not.toHaveProperty(SPARE_LAYOUT);
+    });
+
+    undo(store);
+
+    expect(getProtocol(store.getState())?.codebook.layouts).toHaveProperty(
+      SPARE_LAYOUT,
     );
   });
 });

@@ -23,10 +23,11 @@ import { deleteTypeAsync } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { getProtocol } from '~/selectors/protocol';
+import scrollTo from '~/utils/scrollTo';
 
 import { layoutAnchorId } from './codebookLinks';
 import EntityIcon from './EntityIcon';
-import { filterEntityType } from './filterEntityType';
+import { filterEntityType, layoutMatchesFilter } from './filterEntityType';
 import { getEntityProperties } from './helpers';
 import Variables from './Variables';
 const messages = defineMessages({
@@ -103,7 +104,7 @@ const messages = defineMessages({
     id: 'architect.codebook.entityType.layouts',
     defaultMessage: 'Layouts that have positions for this type:',
     description:
-      'Label before the list of layouts on a node type section of the Codebook page of Architect. A layout is a named set of node positions; a stage gives nodes of this type positions in each listed layout. Each layout links to its entry further down the page.',
+      'Label before the list of layouts on a node type section of the Codebook page of Architect. A layout is a named set of node positions; a stage gives nodes of this type positions in each listed layout. Each layout links to its entry further down the page. Read by the researcher who designs the protocol.',
   },
   addAttribute: {
     id: 'architect.codebook.entityType.addAttribute',
@@ -142,6 +143,20 @@ type EntityTypeProps = {
   onAddVariable?: (entity: Entity, type?: string) => void;
   variables?: Record<string, Variable>;
 };
+/**
+ * Brings a layout's entry into view below the sticky navigation bar, which a
+ * plain in-page link would leave it under, and moves focus to it so its
+ * title is announced.
+ */
+const followLayoutLink = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  const id = event.currentTarget.hash.slice(1);
+  const target = document.getElementById(id);
+  if (!target) return;
+  event.preventDefault();
+  scrollTo(target);
+  target.focus({ preventScroll: true });
+};
+
 const EntityType = ({
   name,
   color,
@@ -243,12 +258,22 @@ const EntityType = ({
   const layouts = useMemo(
     () =>
       protocol && entity === 'node'
-        ? getLayoutsOfNodeType(protocol, type).map((id) => ({
-            id,
-            layoutName: protocol.codebook.layouts?.[id]?.name ?? id,
-          }))
+        ? getLayoutsOfNodeType(protocol, type).map((id) => {
+            const layoutName = protocol.codebook.layouts?.[id]?.name ?? id;
+            return {
+              id,
+              layoutName,
+              // A stage places this type in the layout, so it is in use. Its
+              // entry further down the page is filtered by the same rule, so
+              // the link is dropped while the entry is not on the page.
+              listed: layoutMatchesFilter(
+                { name: layoutName, inUse: true },
+                { search, unusedOnly },
+              ),
+            };
+          })
         : [],
-    [entity, protocol, type],
+    [entity, protocol, search, type, unusedOnly],
   );
   if (!visible) {
     return null;
@@ -289,7 +314,7 @@ const EntityType = ({
             size="small"
           />
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           {!inUse && (
             <Badge tone="warning" className="wrap-break-word">
               {intl.formatMessage(messages.notInUse)}
@@ -302,28 +327,44 @@ const EntityType = ({
             </div>
           )}
           {layouts.length > 0 && (
-            <dl className="mt-2 flex flex-wrap items-center gap-1">
+            <dl className="mt-2 flex min-w-0 flex-wrap items-center gap-1">
               <dt>{intl.formatMessage(messages.layouts)}</dt>
-              <dd>
+              <dd className="max-w-full min-w-0">
                 <ul className="flex flex-wrap items-center gap-1">
-                  {layouts.map(({ id, layoutName }) => (
-                    <li key={id}>
-                      <a
-                        href={`#${layoutAnchorId(id)}`}
-                        aria-label={layoutName}
-                      >
-                        <Badge className="wrap-break-word [--badge-color:var(--surface-3)]">
-                          <bdi>{layoutName}</bdi>
-                        </Badge>
-                      </a>
-                    </li>
-                  ))}
+                  {layouts.map(({ id, layoutName, listed }) => {
+                    const badge = (
+                      <Badge className="max-w-full min-w-0 wrap-anywhere [--badge-color:var(--surface-3)]">
+                        <bdi>{layoutName}</bdi>
+                      </Badge>
+                    );
+                    return (
+                      <li key={id} className="max-w-full min-w-0">
+                        {listed ? (
+                          <a
+                            href={`#${layoutAnchorId(id)}`}
+                            aria-label={layoutName}
+                            className="max-w-full min-w-0"
+                            onClick={followLayoutLink}
+                          >
+                            {badge}
+                          </a>
+                        ) : (
+                          badge
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </dd>
             </dl>
           )}
         </div>
-        <Button onClick={handleEdit} color="primary" disabled={readOnly}>
+        <Button
+          onClick={handleEdit}
+          color="primary"
+          disabled={readOnly}
+          className="shrink-0"
+        >
           {intl.formatMessage(messages.editEntity)}
         </Button>
         <span
@@ -334,7 +375,7 @@ const EntityType = ({
                 })
               : intl.formatMessage(messages.deleteEntity)
           }
-          className="inline-block"
+          className="inline-block shrink-0"
         >
           <Button
             color="destructive"

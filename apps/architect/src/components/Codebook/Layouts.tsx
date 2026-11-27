@@ -20,6 +20,7 @@ import { deleteLayoutAsync } from '~/ducks/modules/protocol/codebook';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 
 import { codebookHref, layoutAnchorId } from './codebookLinks';
+import { layoutMatchesFilter } from './filterEntityType';
 import { type LayoutWithUsage, makeGetLayoutsWithUsage } from './helpers';
 
 const messages = defineMessages({
@@ -27,63 +28,63 @@ const messages = defineMessages({
     id: 'architect.codebook.layouts.layouts',
     defaultMessage: 'Layouts ({count, number})',
     description:
-      'Heading of the section of the Codebook page in Architect that lists the layouts of the protocol. A layout is a named set of node positions that participants create on a Sociogram or a Network Composer. count is the number of layouts.',
+      'Heading of the section of the Codebook page in Architect that lists the layouts of the protocol. A layout is a named set of node positions that participants create on a Sociogram or a Network Composer. count is the number of layouts. Read by the researcher who designs the protocol.',
   },
   noLayoutsYet: {
     id: 'architect.codebook.layouts.noLayoutsYet',
     defaultMessage:
       'No layouts yet. A layout is created when you choose a new layout on a Sociogram or a Network Composer.',
     description:
-      'Message under the Layouts heading on the Codebook page of Architect when the protocol has no layouts. A layout is a named set of node positions. Sociogram and Network Composer are stage types.',
+      'Message under the Layouts heading on the Codebook page of Architect when the protocol has no layouts. A layout is a named set of node positions. Sociogram and Network Composer are stage types. Read by the researcher who designs the protocol.',
   },
   layout: {
     id: 'architect.codebook.layouts.layout',
     defaultMessage: '{name} layout',
     description:
-      'Heading of the entry for one layout on the Codebook page of Architect. name is the name of the layout that the researcher chose, for example Closeness. A layout is a named set of node positions.',
+      'Heading of the entry for one layout on the Codebook page of Architect. name is the name of the layout that the researcher chose, for example Closeness. A layout is a named set of node positions. Read by the researcher who designs the protocol.',
   },
   notInUse: {
     id: 'architect.codebook.layouts.notInUse',
     defaultMessage: 'not in use',
     description:
-      'Warning badge on the entry for a layout on the Codebook page of Architect, shown when no stage and no rule uses the layout.',
+      'Warning badge on the entry for a layout on the Codebook page of Architect, shown when no stage and no rule uses the layout. Read by the researcher who designs the protocol.',
   },
   setBy: {
     id: 'architect.codebook.layouts.setBy',
     defaultMessage: 'Stages that place nodes in it:',
     description:
-      'Label before the list of stages on the entry for a layout on the Codebook page of Architect. On these stages (a Sociogram or a Network Composer), participants or the automatic layout give nodes positions in the layout.',
+      'Label before the list of stages on the entry for a layout on the Codebook page of Architect. On these stages (a Sociogram or a Network Composer), participants or the automatic layout give nodes positions in the layout. Read by the researcher who designs the protocol.',
   },
   readBy: {
     id: 'architect.codebook.layouts.readBy',
     defaultMessage: 'Stages that show its positions:',
     description:
-      'Label before the list of stages on the entry for a layout on the Codebook page of Architect. These stages (a Narrative, for example) show the node positions stored in the layout but do not change them.',
+      'Label before the list of stages on the entry for a layout on the Codebook page of Architect. These stages (a Narrative, for example) show the node positions stored in the layout but do not change them. Read by the researcher who designs the protocol.',
   },
   nodeTypes: {
     id: 'architect.codebook.layouts.nodeTypes',
     defaultMessage: 'Node types that have positions in it:',
     description:
-      'Label before the list of node types on the entry for a layout on the Codebook page of Architect. Nodes of these types are given positions in the layout by a stage.',
+      'Label before the list of node types on the entry for a layout on the Codebook page of Architect. Nodes of these types are given positions in the layout by a stage. Read by the researcher who designs the protocol.',
   },
   namedByRules: {
     id: 'architect.codebook.layouts.namedByRules',
     defaultMessage: 'Stages with rules that name it:',
     description:
-      'Label before the list of stages on the entry for a layout on the Codebook page of Architect. A rule on these stages (a filter, skip logic or a condition) checks whether a node has a position in the layout.',
+      'Label before the list of stages on the entry for a layout on the Codebook page of Architect. A rule on these stages (a filter, skip logic or a condition) checks whether a node has a position in the layout. Read by the researcher who designs the protocol.',
   },
   inUse: {
     id: 'architect.codebook.layouts.inUse',
     defaultMessage:
       'To delete this layout, first remove it from the stages listed here.',
     description:
-      'Note on the entry for a layout on the Codebook page of Architect, shown instead of a delete button when stages or rules use the layout.',
+      'Note on the entry for a layout on the Codebook page of Architect, shown instead of a delete button when stages or rules use the layout. Read by the researcher who designs the protocol.',
   },
   deleteLayout: {
     id: 'architect.codebook.layouts.deleteLayout',
     defaultMessage: 'Delete layout',
     description:
-      'Button on the entry for an unused layout on the Codebook page of Architect, and the title and confirm button of the dialog that it opens. Delete is a verb. A layout is a named set of node positions.',
+      'Button on the entry for an unused layout on the Codebook page of Architect, and the title and confirm button of the dialog that it opens. Delete is a verb. A layout is a named set of node positions. Read by the researcher who designs the protocol.',
   },
   confirmDelete: {
     id: 'architect.codebook.layouts.confirmDelete',
@@ -234,11 +235,8 @@ const Layouts = ({ search = '', unusedOnly = false }: LayoutsProps) => {
   const intl = useAppIntl();
   const getLayouts = useMemo(() => makeGetLayoutsWithUsage(intl), [intl]);
   const layouts = useSelector(getLayouts);
-  const term = search.trim().toLowerCase();
-  const visible = layouts.filter(
-    (layout) =>
-      (!unusedOnly || !layout.inUse) &&
-      (term === '' || layout.name.toLowerCase().includes(term)),
+  const visible = layouts.filter((layout) =>
+    layoutMatchesFilter(layout, { search, unusedOnly }),
   );
 
   return (

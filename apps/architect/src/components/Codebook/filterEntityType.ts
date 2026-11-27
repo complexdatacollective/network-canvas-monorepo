@@ -62,3 +62,18 @@ export const filterEntityType = <T extends FilterableVariable>(
     variables: filteredVariables,
   };
 };
+
+/**
+ * Whether the Codebook page lists a layout under its search and "Show unused
+ * only" filters: by its own name and use, as a layout has no variables.
+ */
+export const layoutMatchesFilter = (
+  layout: { name: string; inUse: boolean },
+  { search, unusedOnly }: EntityTypeFilter,
+): boolean => {
+  const term = search.trim().toLowerCase();
+  return (
+    (!unusedOnly || !layout.inUse) &&
+    (term === '' || layout.name.toLowerCase().includes(term))
+  );
+};

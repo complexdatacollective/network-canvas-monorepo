@@ -30,19 +30,19 @@ const messages = defineMessages({
     id: 'architect.codebook.codebook.searchTheCodebookByName',
     defaultMessage: 'Search the codebook by name',
     description:
-      'Label of the search field at the top of the Codebook page, which filters the node types, edge types and variables listed below it by name.',
+      'Label of the search field at the top of the Codebook page of Architect, read by the researcher. The field filters the node types, edge types, variables and layouts listed below it by name.',
   },
   searchTypesAndAttributesByName: {
     id: 'architect.codebook.codebook.searchTypesAndAttributesByName',
-    defaultMessage: 'Search types and attributes by name...',
+    defaultMessage: 'Search types, attributes and layouts by name...',
     description:
-      'Placeholder inside the search field at the top of the Codebook page. Types means node types and edge types; attributes means the codebook variables recorded about them.',
+      'Placeholder inside the search field at the top of the Codebook page of Architect, read by the researcher. Types means node types and edge types; attributes means the codebook variables recorded about them; layouts means the named sets of node positions in the codebook.',
   },
   showUnusedOnly: {
     id: 'architect.codebook.codebook.showUnusedOnly',
     defaultMessage: 'Show unused only',
     description:
-      'Label of the checkbox at the top of the Codebook page that, when ticked, lists only variables that no stage uses.',
+      'Label of the checkbox at the top of the Codebook page of Architect, read by the researcher. When it is ticked, the page lists only the node types, edge types, variables and layouts that are not in use.',
   },
   thereAreCurrentlyNoTypesOr: {
     id: 'architect.codebook.codebook.thereAreCurrentlyNoTypesOr',

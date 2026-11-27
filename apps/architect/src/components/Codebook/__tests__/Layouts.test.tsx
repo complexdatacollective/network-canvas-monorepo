@@ -24,17 +24,23 @@ import { getProtocol } from '~/selectors/protocol';
 // The delete confirmation is part of what these tests check.
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
 
+import {
+  protocolShowingUnplacedLayout,
+  SHOWN_ONLY_LAYOUT,
+} from '~/templates/__tests__/layoutReadFixtures';
 import { templateTypeId } from '~/templates/__tests__/templateCodebookIds';
 import { developmentProtocol } from '~/templates/development-protocol';
 
 import Codebook from '../Codebook';
 
-// The development protocol has five layouts: its first Sociogram and its
-// Network Composer place people in closenessLayout, which its Narrative shows
-// with anotherLayout; its second Sociogram places venues in Layout; nothing
-// uses manualLayout or Layout_Manual.
+// The fixture's first Sociogram and its Network Composer place people in
+// closenessLayout, which its Narrative shows with shownOnlyLayout, a layout
+// no stage places nodes in; its second Sociogram places venues in Layout;
+// nothing uses manualLayout, anotherLayout or Layout_Manual.
+const FIXTURE = protocolShowingUnplacedLayout().protocol;
+
 const layoutId = (name: string) => {
-  const entry = Object.entries(developmentProtocol.codebook.layouts ?? {}).find(
+  const entry = Object.entries(FIXTURE.codebook.layouts ?? {}).find(
     ([, layout]) => layout.name === name,
   );
   if (!entry) throw new Error(`The protocol has no layout "${name}".`);
@@ -51,7 +57,7 @@ const stageId = (label: string) => {
 
 const PERSON = templateTypeId(developmentProtocol, 'node', 'person');
 
-const renderCodebook = (protocol: CurrentProtocol = developmentProtocol) => {
+const renderCodebook = (protocol: CurrentProtocol = FIXTURE) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefault) =>
@@ -84,6 +90,39 @@ const listed = (entry: HTMLElement, term: string) => {
     .map((item) => item.textContent);
 };
 
+const personEntry = () => {
+  const entry = screen
+    .getByRole('heading', { name: 'person node type' })
+    .closest('section');
+  if (!(entry instanceof HTMLElement)) {
+    throw new Error('The person node type has no section.');
+  }
+  return entry;
+};
+
+/** The element an in-page link points at, if it is on the page. */
+const linkTarget = (link: HTMLElement) =>
+  document.getElementById(link.getAttribute('href')?.slice(1) ?? '');
+
+const expectEveryLayoutLinkToResolve = () => {
+  const links = [...document.querySelectorAll('a[href^="#layout-"]')];
+  for (const link of links) {
+    if (!(link instanceof HTMLElement)) continue;
+    expect(linkTarget(link), link.getAttribute('href') ?? '').not.toBeNull();
+  }
+};
+
+const search = (term: string) => {
+  fireEvent.change(
+    screen.getByRole('searchbox', { name: 'Search the codebook by name' }),
+    { target: { value: term } },
+  );
+};
+
+const showUnusedOnly = () => {
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Show unused only' }));
+};
+
 describe('the layouts on the Codebook page', () => {
   it('lists each layout with setting stages, reading stages and node types', () => {
     renderCodebook();
@@ -110,19 +149,19 @@ describe('the layouts on the Codebook page', () => {
     );
 
     // A layout that is only read has no node types with positions in it.
-    const another = layoutEntry('anotherLayout');
-    expect(listed(another, 'Stages that show its positions:')).toEqual([
+    const shownOnly = layoutEntry(SHOWN_ONLY_LAYOUT.name);
+    expect(listed(shownOnly, 'Stages that show its positions:')).toEqual([
       'Narrative',
     ]);
     expect(
-      within(another).queryByText('Node types that have positions in it:'),
+      within(shownOnly).queryByText('Node types that have positions in it:'),
     ).not.toBeInTheDocument();
   });
 
   it('offers delete only for an unused layout', async () => {
     const store = renderCodebook();
 
-    for (const name of ['closenessLayout', 'anotherLayout', 'Layout']) {
+    for (const name of ['closenessLayout', SHOWN_ONLY_LAYOUT.name, 'Layout']) {
       expect(
         within(layoutEntry(name)).queryByRole('button', {
           name: 'Delete layout',
@@ -149,7 +188,7 @@ describe('the layouts on the Codebook page', () => {
   });
 
   it('does not offer delete for a layout that only a filter rule names', () => {
-    const protocol = structuredClone(developmentProtocol);
+    const protocol = structuredClone(FIXTURE);
     const sociogram = protocol.stages.find(
       (stage) => stage.id === stageId('Sociogram'),
     );
@@ -187,27 +226,100 @@ describe('the layouts on the Codebook page', () => {
 
     await expect(
       store
-        .dispatch(deleteLayoutAsync({ layoutId: layoutId('anotherLayout') }))
+        .dispatch(deleteLayoutAsync({ layoutId: SHOWN_ONLY_LAYOUT.id }))
         .unwrap(),
     ).rejects.toThrow(/in use and cannot be deleted/);
     expect(getProtocol(store.getState())?.codebook.layouts).toHaveProperty(
-      layoutId('anotherLayout'),
+      SHOWN_ONLY_LAYOUT.id,
     );
   });
 
   it('a node type entry lists its layouts', () => {
     renderCodebook();
 
-    const person = screen.getByRole('heading', { name: 'person node type' });
-    const entry = person.closest('section');
-    if (!(entry instanceof HTMLElement)) {
-      throw new Error('The person node type has no section.');
-    }
+    const entry = personEntry();
     expect(listed(entry, 'Layouts that have positions for this type:')).toEqual(
       ['closenessLayout'],
     );
+    const link = within(entry).getByRole('link', { name: 'closenessLayout' });
+    expect(link).toHaveAttribute(
+      'href',
+      `#layout-${layoutId('closenessLayout')}`,
+    );
+    expect(linkTarget(link)).toBe(layoutEntry('closenessLayout'));
+  });
+
+  it('brings a layout entry into view below the navigation bar', () => {
+    renderCodebook();
+
+    const target = layoutEntry('closenessLayout');
+    const scrollIntoView = vi.fn<(options?: ScrollIntoViewOptions) => void>();
+    target.scrollIntoView = scrollIntoView;
+
+    fireEvent.click(
+      within(personEntry()).getByRole('link', { name: 'closenessLayout' }),
+    );
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'start',
+    });
+    expect(target.style.scrollMarginTop).toContain('--architect-nav-height');
+    expect(target).toHaveFocus();
+  });
+
+  it('lists only the layouts whose names match the search', () => {
+    renderCodebook();
+
+    search('closeness');
+
+    expect(layoutEntry('closenessLayout')).toBeInTheDocument();
     expect(
-      within(entry).getByRole('link', { name: 'closenessLayout' }),
-    ).toHaveAttribute('href', `#layout-${layoutId('closenessLayout')}`);
+      screen.queryByRole('region', { name: 'manualLayout layout' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('lists only unused layouts under "Show unused only"', () => {
+    renderCodebook();
+
+    showUnusedOnly();
+
+    expect(layoutEntry('manualLayout')).toBeInTheDocument();
+    for (const name of ['closenessLayout', SHOWN_ONLY_LAYOUT.name, 'Layout']) {
+      expect(
+        screen.queryByRole('region', { name: `${name} layout` }),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it('does not link a node type to a layout the search hides', () => {
+    renderCodebook();
+
+    search('person');
+
+    const entry = personEntry();
+    expect(listed(entry, 'Layouts that have positions for this type:')).toEqual(
+      ['closenessLayout'],
+    );
+    expectEveryLayoutLinkToResolve();
+    expect(
+      within(entry).queryByRole('link', { name: 'closenessLayout' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not link a node type to a layout "Show unused only" hides', () => {
+    renderCodebook();
+
+    showUnusedOnly();
+
+    // The person type stays listed for its unused attributes.
+    const entry = personEntry();
+    expect(listed(entry, 'Layouts that have positions for this type:')).toEqual(
+      ['closenessLayout'],
+    );
+    expectEveryLayoutLinkToResolve();
+    expect(
+      within(entry).queryByRole('link', { name: 'closenessLayout' }),
+    ).not.toBeInTheDocument();
   });
 });
