@@ -833,7 +833,7 @@ Skills: `developing-network-canvas-ui`, `verifying-translations`.
 Done when:
 `pnpm --filter @codaco/protocol-validation exec vitest run src/utils/__tests__/layout-usage.test.ts`,
 `pnpm --filter @codaco/architect exec vitest run --project=unit src/components/Codebook src/lib/ProtocolSummary src/selectors`,
-`pnpm --filter @codaco/architect exec vitest run --project=unit src/locales`,
+`pnpm --filter @codaco/architect exec vitest run --project=unit src/i18n/__tests__/catalogs.test.ts`,
 `pnpm --filter @codaco/architect exec vitest run --project=storybook src/components/Codebook`,
 `pnpm --filter @codaco/studio-api exec vitest run src/protocol/__tests__/diff.test.ts`,
 then `pnpm agent:test` and `pnpm agent:check`.
