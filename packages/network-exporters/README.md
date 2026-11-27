@@ -114,8 +114,11 @@ is absent from every row. Ego CSV headers similarly include every declared ego
 variable. When a session has zero nodes or zero edges, the header-only file
 uses all node or edge definitions in the codebook.
 
-Categorical variables expand to one column per declared option, and layout
-variables expand to coordinate columns. An absent value produces empty cells.
+Categorical variables expand to one column per declared option. Each layout in
+the codebook expands to two coordinate columns, named after the layout (`map_x`
+and `map_y` for a layout named `map`), for the node types that a stage places
+in it, and for any node type that has a node with a position in it. An absent
+value produces empty cells.
 A defined empty categorical array produces explicit `false` option cells, so it
 remains distinguishable from an unanswered categorical variable. Present
 external attributes add data-driven columns using their attribute IDs.
@@ -222,6 +225,7 @@ import { Effect, Layer } from 'effect';
 import { DatabaseError } from '@codaco/network-exporters/errors';
 import type { ProtocolExportInput } from '@codaco/network-exporters/input';
 import { ProtocolRepository } from '@codaco/network-exporters/services/ProtocolRepository';
+import { getLayoutUsage } from '@codaco/protocol-validation';
 
 export const PrismaProtocolRepository = Layer.succeed(ProtocolRepository, {
   getProtocols: (hashes) =>
@@ -238,12 +242,22 @@ export const PrismaProtocolRepository = Layer.succeed(ProtocolRepository, {
           hash: row.hash,
           name: row.name,
           codebook: row.codebook,
+          layoutNodeTypes: Object.fromEntries(
+            Object.entries(
+              getLayoutUsage({ codebook: row.codebook, stages: row.stages }),
+            ).map(([layoutId, usage]) => [layoutId, usage.nodeTypes]),
+          ),
         };
       }
       return map;
     }),
 });
 ```
+
+`layoutNodeTypes` lists, for each layout in the codebook, the node types that
+the protocol's stages place in it. The exporter needs the stages for this
+because a layout belongs to the codebook and not to a node type. Build it with
+`getLayoutUsage` from `@codaco/protocol-validation`, as in the example above.
 
 The pipeline calls `getProtocols` once per run with the deduplicated hash set extracted from the session list. Hashes the host doesn't return are treated as missing — sessions referencing them are routed to `failedExports` with `kind: "protocol-missing"` rather than aborting the run.
 

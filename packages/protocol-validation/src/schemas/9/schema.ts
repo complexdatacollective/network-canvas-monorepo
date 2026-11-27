@@ -182,7 +182,7 @@ const validateFilterRules = (
       if (!allowLayoutRules) {
         addIssue({
           message:
-            'A node label condition cannot check a layout. Only a stage can check where a node is placed.',
+            'A condition in the label of a node type cannot check a layout. Only the rules of a stage can check where a node is placed.',
           path: [...rulePath, 'options', 'attribute'],
         });
         return;
