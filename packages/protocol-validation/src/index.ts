@@ -506,7 +506,10 @@ export {
   getNodeTypesWithLayout,
   isFirstStageUsingLayout,
 } from './utils/layoutUsage.ts';
-export { isDirectedEdgeType } from './utils/edgeTypeRules.ts';
+export {
+  edgeTypeAllowsEndpoints,
+  isDirectedEdgeType,
+} from './utils/edgeTypeRules.ts';
 export {
   getSingleStageNodeType,
   getStageNodeTypes,

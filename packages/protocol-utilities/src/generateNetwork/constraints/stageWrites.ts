@@ -174,10 +174,10 @@ function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
   switch (stage.type) {
     case 'Sociogram':
       return setOf(
-        stage.prompts.map((prompt) =>
-          prompt.highlight?.allowHighlighting === true && !prompt.edges?.create
-            ? prompt.highlight.variable
-            : undefined,
+        stage.prompts.flatMap((prompt) =>
+          prompt.task === 'highlight'
+            ? prompt.highlight.map((entry) => entry.variable)
+            : [],
         ),
       );
     case 'OrdinalBin':

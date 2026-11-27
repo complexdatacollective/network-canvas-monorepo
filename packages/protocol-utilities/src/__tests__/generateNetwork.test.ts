@@ -358,11 +358,16 @@ describe('generateNetwork', () => {
       type: 'Sociogram',
       label: 'Support network',
       subject: { entity: 'node', types: ['node-type-1'] },
+      layout: 'var-layout',
       prompts: [
+        { id: 'prompt-place', task: 'layout', text: 'Place people' },
         {
           id: 'prompt-highlight',
+          task: 'highlight',
           text: 'Who supports you?',
-          highlight: { allowHighlighting: true, variable: 'highlighted' },
+          highlight: [
+            { id: 'entry', type: 'node-type-1', variable: 'highlighted' },
+          ],
         },
       ],
     } as unknown as Stage;
@@ -378,6 +383,79 @@ describe('generateNetwork', () => {
     for (const node of network.nodes) {
       expect(node[entityAttributesProperty]['var-name']).toBeDefined();
       expect(node[entityAttributesProperty].highlighted).toBe(true);
+    }
+  });
+
+  it("highlight tasks write only their entry's variable", () => {
+    const codebook = makeCodebook({
+      node: {
+        'node-type-1': {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          variables: {
+            'var-name': { name: 'Name', type: 'text' },
+            'trusted': { name: 'Trusted', type: 'boolean' },
+          },
+        },
+        'node-type-2': {
+          name: 'Place',
+          color: 'node-color-seq-2',
+          variables: {
+            'var-name': { name: 'Name', type: 'text' },
+            'visited': { name: 'Visited', type: 'boolean' },
+          },
+        },
+      },
+    });
+    const generatorOf = (type: string) =>
+      makeNameGeneratorStage({
+        id: `stage-ng-${type}`,
+        subject: { entity: 'node', types: [type] },
+        prompts: [{ id: `prompt-${type}`, text: en('Name them') }],
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      });
+    const sociogram = {
+      id: 'stage-sociogram',
+      type: 'Sociogram',
+      label: 'People and places',
+      subject: { entity: 'node', types: ['node-type-1', 'node-type-2'] },
+      layout: 'var-layout',
+      prompts: [
+        { id: 'prompt-place', task: 'layout', text: 'Place everyone' },
+        {
+          id: 'prompt-highlight',
+          task: 'highlight',
+          text: 'Tap who you trust and where you have been',
+          highlight: [
+            { id: 'entry-1', type: 'node-type-1', variable: 'trusted' },
+            { id: 'entry-2', type: 'node-type-2', variable: 'visited' },
+          ],
+        },
+      ],
+    } as unknown as Stage;
+
+    const { network } = generateNetwork({
+      codebook,
+      stages: [
+        generatorOf('node-type-1'),
+        generatorOf('node-type-2'),
+        sociogram,
+      ],
+      seed: 42,
+      config: { sociogramHighlightProbability: 1 },
+    });
+
+    const ofType = (type: string) =>
+      network.nodes.filter((node) => node.type === type);
+    expect(ofType('node-type-1')).toHaveLength(2);
+    expect(ofType('node-type-2')).toHaveLength(2);
+    for (const node of ofType('node-type-1')) {
+      expect(node[entityAttributesProperty].trusted).toBe(true);
+      expect(node[entityAttributesProperty]).not.toHaveProperty('visited');
+    }
+    for (const node of ofType('node-type-2')) {
+      expect(node[entityAttributesProperty].visited).toBe(true);
+      expect(node[entityAttributesProperty]).not.toHaveProperty('trusted');
     }
   });
 
@@ -839,7 +917,9 @@ describe('generateNetwork', () => {
           type: 'Sociogram',
           subject: { entity: 'node', types: ['node-type-1'] },
           layout: 'var-layout',
-          prompts: [{ id: 'prompt-soc', text: en('Place people') }],
+          prompts: [
+            { id: 'prompt-soc', task: 'layout', text: en('Place people') },
+          ],
         } as Stage,
       ];
 
@@ -1348,6 +1428,7 @@ describe('generateNetwork', () => {
           prompts: [
             {
               id: 'prompt-soc',
+              task: 'connect',
               text: 'Connect people',
               edges: { create: 'edge-type-1' },
             },
@@ -1734,7 +1815,9 @@ describe('generateNetwork layouts', () => {
         type: 'Sociogram',
         subject: { entity: 'node', types: ['node-type-1', 'node-type-2'] },
         layout: 'layout-map',
-        prompts: [{ id: 'prompt-soc', text: en('Place everyone') }],
+        prompts: [
+          { id: 'prompt-soc', task: 'layout', text: en('Place everyone') },
+        ],
       } as Stage,
     ];
 

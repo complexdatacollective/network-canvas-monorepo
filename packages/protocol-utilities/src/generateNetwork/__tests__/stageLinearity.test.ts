@@ -136,8 +136,9 @@ describe('stage-linear node writes', () => {
       prompts: [
         {
           id: 'highlight',
+          task: 'highlight',
           text: 'Highlight people',
-          highlight: { allowHighlighting: true, variable: 'highlighted' },
+          highlight: [{ id: 'entry', type: 'person', variable: 'highlighted' }],
         },
       ],
     } as unknown as Stage;

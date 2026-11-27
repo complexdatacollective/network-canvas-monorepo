@@ -179,15 +179,13 @@ export type NameGeneratorPromptEntry = {
 export type SociogramPromptEntry = {
   id: string;
   text: TextInput;
+  task: 'layout' | 'highlight' | 'connect';
   sortOrder?: { property: string; direction: 'asc' | 'desc' }[];
   edges?: {
     create?: string;
     display?: string[];
   };
-  highlight?: {
-    allowHighlighting?: boolean;
-    variable?: string;
-  };
+  highlight?: { id: string; type: string; variable: string }[];
 };
 
 type SortRule = {
@@ -710,13 +708,16 @@ export type AddPromptInput = {
   text?: TextInput;
   additionalAttributes?: { variable: string; value: boolean }[];
   sortOrder?: SortRule[];
+  // A Sociogram prompt's task. Without one, a prompt that creates edges
+  // connects, one with highlight entries highlights, and any other places.
+  task?: 'layout' | 'highlight' | 'connect';
   edges?: {
     create?: boolean | string;
     display?: string[];
   };
-  highlight?: {
-    variable?: string | boolean;
-  };
+  // One entry per node type; `type` is the stage's node type when omitted,
+  // and a missing or `true` variable is a new boolean attribute.
+  highlight?: { type?: string; variable?: string | boolean }[];
 };
 
 export type AddDyadCensusPromptInput = {

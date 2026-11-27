@@ -227,7 +227,7 @@ describe('SyntheticInterview', () => {
     it('auto-creates boolean variable for highlight=true', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('Sociogram');
-      stage.addPrompt({ highlight: { variable: true } });
+      stage.addPrompt({ highlight: [{ variable: true }] });
 
       const protocol = si.getProtocol();
       const nodeTypeId = Object.keys(protocol.codebook.node)[0]!;
@@ -535,36 +535,44 @@ describe('SyntheticInterview', () => {
   });
 
   describe('Sociogram', () => {
-    it('creates prompts with layout, edges, and highlight', () => {
+    it('creates a layout, a connect and a highlight prompt', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('Sociogram');
-      stage.addPrompt({
-        text: 'Place people',
-        edges: { create: true },
-        highlight: { variable: true },
-      });
+      stage.addPrompt({ text: 'Place people' });
+      stage.addPrompt({ text: 'Link people', edges: { create: true } });
+      stage.addPrompt({ text: 'Tap people', highlight: [{ variable: true }] });
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const prompts = stageConfig.prompts as {
+        task: string;
         text: LocalizedString;
-        edges: { create: string; display: string[] };
-        highlight: { allowHighlighting: boolean; variable: string };
+        edges?: { create: string; display: string[] };
+        highlight?: { id: string; type: string; variable: string }[];
       }[];
-      expect(prompts).toHaveLength(1);
+      expect(prompts.map(({ task }) => task)).toEqual([
+        'layout',
+        'connect',
+        'highlight',
+      ]);
 
-      const prompt = prompts[0]!;
-      expect(prompt.text).toEqual({ 'en-US': 'Place people' });
+      const [layout, connect, highlight] = prompts;
+      expect(layout?.text).toEqual({ 'en-US': 'Place people' });
+      expect(layout).not.toHaveProperty('edges');
+      expect(layout).not.toHaveProperty('highlight');
       const nodeVariableType = (variable: unknown) =>
         subjectVariableType(protocol.codebook.node, stageConfig, variable);
       expect(protocol.codebook.layouts?.[String(stageConfig.layout)]).toEqual({
         name: 'sociogramLayout',
       });
       expect(Object.keys(protocol.codebook.edge)).toContain(
-        prompt.edges.create,
+        connect?.edges?.create,
       );
-      expect(prompt.highlight.allowHighlighting).toBe(true);
-      expect(nodeVariableType(prompt.highlight.variable)).toBe('boolean');
+      const [entry] = highlight?.highlight ?? [];
+      expect(entry?.type).toBe(
+        (stageConfig.subject as { types: string[] }).types[0],
+      );
+      expect(nodeVariableType(entry?.variable)).toBe('boolean');
     });
 
     it('creates Sociogram with background options', () => {

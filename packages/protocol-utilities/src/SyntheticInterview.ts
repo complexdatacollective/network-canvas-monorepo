@@ -1770,42 +1770,42 @@ export class SyntheticInterview {
         createEdgeType = opts.edges.create;
       }
       edges = {
-        create: createEdgeType,
+        ...(createEdgeType === undefined ? {} : { create: createEdgeType }),
         display: opts.edges.display ?? (createEdgeType ? [createEdgeType] : []),
       };
     }
 
-    // Resolve highlight
-    let highlight: SociogramPromptEntry['highlight'];
-    if (opts?.highlight) {
-      let variable: string;
-      if (opts.highlight.variable === true) {
-        const ref = this.addVariableToNodeType(nodeTypeId, {
-          type: 'boolean',
-          name: 'Highlighted',
-        });
-        variable = ref.id;
-      } else if (typeof opts.highlight.variable === 'string') {
-        variable = opts.highlight.variable;
-      } else {
-        const ref = this.addVariableToNodeType(nodeTypeId, {
-          type: 'boolean',
-          name: 'Highlighted',
-        });
-        variable = ref.id;
-      }
-      highlight = {
-        allowHighlighting: true,
+    const highlight = opts?.highlight?.map((highlightEntry) => {
+      const type = highlightEntry.type ?? nodeTypeId;
+      const variable =
+        typeof highlightEntry.variable === 'string'
+          ? highlightEntry.variable
+          : this.addVariableToNodeType(type, {
+              type: 'boolean',
+              name: 'Highlighted',
+            }).id;
+      return {
+        id: this.nextObjectId('highlight'),
+        type,
         variable,
       };
-    }
+    });
+
+    const task =
+      opts?.task ??
+      (edges?.create !== undefined
+        ? 'connect'
+        : highlight !== undefined
+          ? 'highlight'
+          : 'layout');
 
     return {
       id: promptId,
       text: opts?.text ?? this.valueGen.generatePromptText('Sociogram'),
+      task,
       ...(opts?.sortOrder ? { sortOrder: opts.sortOrder } : {}),
-      edges,
-      highlight,
+      ...(edges ? { edges } : {}),
+      ...(task === 'highlight' && highlight ? { highlight } : {}),
     };
   }
 

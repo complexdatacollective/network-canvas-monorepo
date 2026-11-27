@@ -769,8 +769,9 @@ export function worstCaseEntityCounts(
       if (nodeType === undefined) continue;
       if (!createsEdges(config.sociogramEdgeProbability)) continue;
       for (const prompt of stage.prompts) {
-        const edgeType = prompt.edges?.create;
-        if (edgeType) pairsWith(edgeType, nodeType, stageIndex);
+        if (prompt.task === 'connect') {
+          pairsWith(prompt.edges.create, nodeType, stageIndex);
+        }
       }
       continue;
     }

@@ -85,7 +85,16 @@ function sociogram(id: string): Stage {
     type: 'Sociogram',
     label: 'Link them',
     subject: { entity: 'node', types: ['person'] },
-    prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'knows' } }],
+    layout: 'layout-1',
+    prompts: [
+      { id: 'p0', task: 'layout', text: 'Place them' },
+      {
+        id: 'p1',
+        task: 'connect',
+        text: 'Who knows who?',
+        edges: { create: 'knows' },
+      },
+    ],
   } as unknown as Stage;
 }
 

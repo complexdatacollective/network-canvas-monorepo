@@ -324,7 +324,12 @@ describe('worstCaseEntityCounts', () => {
       label: 'Link them',
       subject: { entity: 'node', types: ['person'] },
       prompts: [
-        { id: 'p1', text: 'Who knows who?', edges: { create: 'knows' } },
+        {
+          id: 'p1',
+          task: 'connect',
+          text: 'Who knows who?',
+          edges: { create: 'knows' },
+        },
       ],
     } as unknown as Stage;
 

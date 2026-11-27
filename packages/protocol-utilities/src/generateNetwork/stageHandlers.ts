@@ -87,28 +87,39 @@ export function handleSociogram(
   draft: NetworkDraft,
   stage: StageOfType<'Sociogram'>,
 ): void {
-  for (const type of getStageNodeTypes(stage) ?? []) {
-    writeLayoutPositions(
-      ctx,
-      getStageFilteredNodes(ctx, draft, stage, type),
-      stage.layout,
-    );
+  // Nodes are placed only on a stage that lays them out: a layout task or the
+  // automatic layout. Otherwise the stage shows the positions an earlier
+  // stage gave them.
+  const laysOutNodes =
+    stage.behaviours?.automaticLayout === true ||
+    stage.prompts.some((prompt) => prompt.task === 'layout');
+  if (laysOutNodes) {
+    for (const type of getStageNodeTypes(stage) ?? []) {
+      writeLayoutPositions(
+        ctx,
+        getStageFilteredNodes(ctx, draft, stage, type),
+        stage.layout,
+      );
+    }
   }
 
-  const subjectType = getSingleStageNodeType(stage);
-  if (subjectType === undefined) return;
+  // Outside a layout task only placed nodes can be tapped, so a connect or
+  // highlight task acts on the nodes that have a position in the layout.
+  const isPlaced = (node: NcNode) =>
+    node[entityAttributesProperty][stage.layout] != null;
 
-  const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
-  const nodeTypeDef = ctx.codebook.node?.[subjectType];
-  const scope: EntityScopeRef = { entity: 'node', type: subjectType };
+  const subjectType = getSingleStageNodeType(stage);
+  const subjectNodes =
+    subjectType === undefined
+      ? []
+      : getStageFilteredNodes(ctx, draft, stage, subjectType).filter(isPlaced);
 
   for (const prompt of stage.prompts) {
-    const createEdge = prompt.edges?.create;
-    if (createEdge) {
+    if (prompt.task === 'connect') {
       const { created } = createEdgesForPairs(
         ctx,
         subjectNodes,
-        createEdge,
+        prompt.edges.create,
         ctx.valueGen.randomFloat(
           ctx.config.sociogramEdgeProbability.min,
           ctx.config.sociogramEdgeProbability.max,
@@ -119,49 +130,61 @@ export function handleSociogram(
       // and the Sociogram collects no variable of its own on an edge.
       draft.edges.push(...created.map(({ edge }) => edge));
     }
+    if (prompt.task !== 'highlight') continue;
 
-    // Tapping a node toggles the prompt's highlight variable, so the synthetic
-    // walk must settle it here now that node creation no longer fills unrelated
-    // variables. Gate it exactly as the interface does: highlighting is the
-    // alternative to edge creation and only runs when explicitly enabled.
-    const highlightVariable =
-      prompt.highlight?.allowHighlighting === true && !createEdge
-        ? prompt.highlight.variable
-        : undefined;
-    if (highlightVariable) {
-      const connected = withRuleTiedVariables(
-        nodeTypeDef?.variables,
-        new Set([highlightVariable]),
+    // Tapping a node toggles the attribute its type's highlight entry names,
+    // so the synthetic walk settles each entry's attribute on the nodes of
+    // that entry's type.
+    for (const entry of prompt.highlight) {
+      highlightNodes(
+        ctx,
+        getStageFilteredNodes(ctx, draft, stage, entry.type).filter(isPlaced),
+        entry.type,
+        entry.variable,
       );
-      const highlightRules = ctx.entityConstraints.node
-        .get(subjectType)
-        ?.get(highlightVariable)?.constraints;
-      const requiresConstraintDraw =
-        connected.size > 1 || highlightRules?.unique === true;
-
-      for (let nodeIndex = 0; nodeIndex < subjectNodes.length; nodeIndex++) {
-        const node = subjectNodes[nodeIndex]!;
-        if (!requiresConstraintDraw) {
-          node[entityAttributesProperty][highlightVariable] =
-            ctx.valueGen.randomFloat(0, 1) <
-            ctx.config.sociogramHighlightProbability;
-          continue;
-        }
-
-        // A highlight is a write onto an existing node. When its variable is
-        // tied to another value, or is unique across nodes, redraw the whole
-        // connected component so both the finished attributes and the unique
-        // registry continue to describe the same valid assignment.
-        Object.assign(
-          node[entityAttributesProperty],
-          generateAttributesForEntity(ctx, scope, nodeIndex, {
-            existing: existingForRegeneration(node, connected),
-            only: connected,
-          }),
-        );
-        clearOutOfBandWrites(node, connected);
-      }
     }
+  }
+}
+
+function highlightNodes(
+  ctx: GenerationContext,
+  nodes: readonly NetworkDraft['nodes'][number][],
+  nodeType: string,
+  highlightVariable: string,
+): void {
+  const nodeTypeDef = ctx.codebook.node?.[nodeType];
+  const scope: EntityScopeRef = { entity: 'node', type: nodeType };
+  const connected = withRuleTiedVariables(
+    nodeTypeDef?.variables,
+    new Set([highlightVariable]),
+  );
+  const highlightRules = ctx.entityConstraints.node
+    .get(nodeType)
+    ?.get(highlightVariable)?.constraints;
+  const requiresConstraintDraw =
+    connected.size > 1 || highlightRules?.unique === true;
+
+  for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
+    const node = nodes[nodeIndex]!;
+    if (!requiresConstraintDraw) {
+      node[entityAttributesProperty][highlightVariable] =
+        ctx.valueGen.randomFloat(0, 1) <
+        ctx.config.sociogramHighlightProbability;
+      continue;
+    }
+
+    // A highlight is a write onto an existing node. When its variable is
+    // tied to another value, or is unique across nodes, redraw the whole
+    // connected component so both the finished attributes and the unique
+    // registry continue to describe the same valid assignment.
+    Object.assign(
+      node[entityAttributesProperty],
+      generateAttributesForEntity(ctx, scope, nodeIndex, {
+        existing: existingForRegeneration(node, connected),
+        only: connected,
+      }),
+    );
+    clearOutOfBandWrites(node, connected);
   }
 }
 

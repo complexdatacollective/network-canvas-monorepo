@@ -2505,7 +2505,7 @@ describe('a codebook scope no stage names', () => {
       type: 'Sociogram',
       label: 'Place them',
       subject: { entity: 'node', types: ['artefact'] },
-      prompts: [{ id: 'p1', text: 'Place them' }],
+      prompts: [{ id: 'p1', task: 'layout', text: 'Place them' }],
     } as unknown as Stage;
 
     const conflicts = analyseFeasibility(
@@ -2744,7 +2744,14 @@ describe('a codebook scope only a content stage names', () => {
       type: 'Sociogram',
       label: 'Sociogram',
       subject: { entity: 'node', types: ['person'] },
-      prompts: [{ id: 'p1', text: 'Draw ties', edges: { create: 'kin' } }],
+      prompts: [
+        {
+          id: 'p1',
+          task: 'connect',
+          text: 'Draw ties',
+          edges: { create: 'kin' },
+        },
+      ],
     } as unknown as Stage;
 
     const dyadCensus = {
