@@ -187,9 +187,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const NarrativeReflection: Story = {
-  render: () => <PerceivedFamilyStory step={6} />,
+  render: () => <PerceivedFamilyStory step={7} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // Only the Narrative has presets, so this fails on any other stage.
+    await canvas.findByText('Everyone on your map');
     await canvas.findByText('Maya');
     // The stage mounts at its `initial` opacity of 0 and only reaches the
     // `animate` variant on a later tick, so visibility has to be polled.
