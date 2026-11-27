@@ -3859,10 +3859,6 @@
     "defaultMessage": "{name} Protocol Summary (Created {date})",
     "description": "File name suggested when the protocol summary is saved as a PDF. name is the protocol name; date is the current date and time with punctuation replaced by hyphens. The extension is added separately."
   },
-  "architect.summary.prompt.allowhighlighting": {
-    "defaultMessage": "Allow highlighting",
-    "description": "Row label in a prompt's table in the printable protocol summary; its value says whether participants may highlight nodes."
-  },
   "architect.summary.prompt.ascending": {
     "defaultMessage": "ascending",
     "description": "Value in the sort order list of a prompt in the printable protocol summary, shown in brackets after a property: items are sorted from lowest to highest."
@@ -3893,7 +3889,7 @@
   },
   "architect.summary.prompt.highlightattribute": {
     "defaultMessage": "Highlight attribute",
-    "description": "Row label in a prompt's table in the printable protocol summary; its value is the variable set when a participant highlights a node."
+    "description": "Row label in a Sociogram prompt's table in the printable protocol summary; its value is a node type and the Boolean variable set when a participant highlights a node of that type. The table has one such row for each node type the prompt highlights."
   },
   "architect.summary.prompt.negativeOptionLabel": {
     "defaultMessage": "Negative Option Label",
@@ -3914,6 +3910,22 @@
   "architect.summary.prompt.sortbyproperty": {
     "defaultMessage": "Sort by property",
     "description": "Row label in a prompt's table in the printable protocol summary; its value lists the properties used to sort the nodes shown to participants."
+  },
+  "architect.summary.prompt.task": {
+    "defaultMessage": "Task",
+    "description": "Row label in a Sociogram prompt's table in the printable protocol summary; its value is the task the prompt sets participants: positioning, highlighting or connecting nodes."
+  },
+  "architect.summary.prompt.taskConnect": {
+    "defaultMessage": "Connect nodes",
+    "description": "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants tap two nodes to create an edge between them."
+  },
+  "architect.summary.prompt.taskHighlight": {
+    "defaultMessage": "Highlight nodes",
+    "description": "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants tap nodes to set a Boolean attribute."
+  },
+  "architect.summary.prompt.taskLayout": {
+    "defaultMessage": "Position nodes",
+    "description": "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants drag nodes to place them on the canvas."
   },
   "architect.summary.scaffolding.enabled": {
     "defaultMessage": "{enabled, select, true {Yes} other {No}}",

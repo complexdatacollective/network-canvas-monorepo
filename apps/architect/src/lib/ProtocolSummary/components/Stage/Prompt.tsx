@@ -54,17 +54,35 @@ const extraMessages = defineMessages({
     description:
       "Row label in a prompt's table in the printable protocol summary; its value is the edge variable that records the strength of a connection.",
   },
-  allowhighlighting: {
-    id: 'architect.summary.prompt.allowhighlighting',
-    defaultMessage: 'Allow highlighting',
+  task: {
+    id: 'architect.summary.prompt.task',
+    defaultMessage: 'Task',
     description:
-      "Row label in a prompt's table in the printable protocol summary; its value says whether participants may highlight nodes.",
+      "Row label in a Sociogram prompt's table in the printable protocol summary; its value is the task the prompt sets participants: positioning, highlighting or connecting nodes.",
+  },
+  taskLayout: {
+    id: 'architect.summary.prompt.taskLayout',
+    defaultMessage: 'Position nodes',
+    description:
+      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants drag nodes to place them on the canvas.",
+  },
+  taskHighlight: {
+    id: 'architect.summary.prompt.taskHighlight',
+    defaultMessage: 'Highlight nodes',
+    description:
+      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants tap nodes to set a Boolean attribute.",
+  },
+  taskConnect: {
+    id: 'architect.summary.prompt.taskConnect',
+    defaultMessage: 'Connect nodes',
+    description:
+      "Value of the Task row in a Sociogram prompt's table in the printable protocol summary: participants tap two nodes to create an edge between them.",
   },
   highlightattribute: {
     id: 'architect.summary.prompt.highlightattribute',
     defaultMessage: 'Highlight attribute',
     description:
-      "Row label in a prompt's table in the printable protocol summary; its value is the variable set when a participant highlights a node.",
+      "Row label in a Sociogram prompt's table in the printable protocol summary; its value is a node type and the Boolean variable set when a participant highlights a node of that type. The table has one such row for each node type the prompt highlights.",
   },
   negativeOptionLabel: {
     id: 'architect.summary.prompt.negativeOptionLabel',
@@ -198,16 +216,6 @@ const attributes: Array<
     extraMessages.edgeStrengthAttribute,
     (id: unknown) => <Variable id={String(id)} />,
   ],
-  [
-    'highlight.allowHighlighting',
-    extraMessages.allowhighlighting,
-    (allow: unknown) => <SummaryValue value={allow} />,
-  ],
-  [
-    'highlight.variable',
-    extraMessages.highlightattribute,
-    (id: unknown) => <Variable id={String(id)} />,
-  ],
   ['negativeLabel', extraMessages.negativeOptionLabel, renderLocalizedText],
   ['sortOrder', extraMessages.sortbyproperty, renderSortOrder],
   ['binSortOrder', extraMessages.binsortorder, renderSortOrder],
@@ -224,6 +232,45 @@ const attributes: Array<
   ],
   ['otherOptionLabel', extraMessages.otheroptionlabel, renderLocalizedText],
 ];
+const taskMessages: Record<string, MessageDescriptor> = {
+  layout: extraMessages.taskLayout,
+  highlight: extraMessages.taskHighlight,
+  connect: extraMessages.taskConnect,
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** One row for each node type a highlight task marks, with its attribute. */
+const highlightRows = (highlight: unknown, intl: IntlShape): ReactNode[][] =>
+  Array.isArray(highlight)
+    ? highlight.flatMap((entry: unknown) =>
+        isRecord(entry) &&
+        typeof entry.type === 'string' &&
+        typeof entry.variable === 'string'
+          ? [
+              [
+                intl.formatMessage(extraMessages.highlightattribute),
+                <span
+                  key={`${entry.type}-${entry.variable}`}
+                  className="inline-flex items-center gap-2"
+                >
+                  <EntityBadge entity="node" type={entry.type} tiny link />
+                  <Variable id={entry.variable} />
+                </span>,
+              ],
+            ]
+          : [],
+      )
+    : [];
+
+const taskRows = (task: unknown, intl: IntlShape): ReactNode[][] => {
+  const message = typeof task === 'string' ? taskMessages[task] : undefined;
+  return message === undefined
+    ? []
+    : [[intl.formatMessage(extraMessages.task), intl.formatMessage(message)]];
+};
+
 const reduceAttribute =
   (prompt: Record<string, unknown>, intl: IntlShape) =>
   (
@@ -262,10 +309,11 @@ const Prompt = ({
   ...prompt
 }: PromptProps) => {
   const intl = useAppIntl();
-  const attributeRows = attributes.reduce(
-    reduceAttribute(prompt, intl),
-    [] as ReactNode[][],
-  );
+  const attributeRows = [
+    ...taskRows(prompt.task, intl),
+    ...attributes.reduce(reduceAttribute(prompt, intl), [] as ReactNode[][]),
+    ...highlightRows(prompt.highlight, intl),
+  ];
 
   const additionalAttributeRows: ReactNode[][] = additionalAttributes.map(
     ({ variable: variableId, value }) => [

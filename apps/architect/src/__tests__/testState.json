@@ -218,6 +218,7 @@
             {
               "id": "bravo",
               "text": "not a prompt",
+              "task": "connect",
               "edges": {
                 "create": "1234-5",
                 "display": ["1234-5", "delta", "echo"]
@@ -232,7 +233,8 @@
           "prompts": [
             {
               "id": "oscar",
-              "text": "not a prompt"
+              "text": "not a prompt",
+              "task": "layout"
             }
           ]
         },

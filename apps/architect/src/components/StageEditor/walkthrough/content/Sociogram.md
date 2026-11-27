@@ -61,7 +61,13 @@ Pick an existing layout, or type a new name in the picker to create one.
 
 <!-- section: prompts -->
 
-Each prompt configures a task, such as placing nodes, connecting nodes, or assigning an attribute. The participant works through the prompts one at a time, in the order you set, on the same canvas. The Next and Back buttons control moving between prompts.
+Each prompt sets one task:
+
+- **Position nodes**: the participant drags nodes onto the canvas and moves them. Nodes can only be moved during this task.
+- **Highlight nodes**: the participant taps nodes to set a Boolean attribute to true or false.
+- **Connect nodes**: the participant taps two nodes to create an edge of the type you choose.
+
+The participant works through the prompts one at a time, in the order you set, on the same canvas. The Next and Back buttons control moving between prompts. During a highlight or connect task, only nodes that are already on the canvas can be used, so put a position task first unless an earlier stage or automatic layout has already placed the nodes.
 
 Every prompt uses the stage's layout, so positions carry over from one prompt to the next. To show nodes in a different arrangement, add another Sociogram stage that uses a different layout.
 
