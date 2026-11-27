@@ -31,7 +31,7 @@ import createSorter, {
   processProtocolSortRule,
 } from '../utils/createSorter';
 
-export type VariablesForType = (type: string) => Record<string, Variable>;
+type VariablesForType = (type: string) => Record<string, Variable>;
 
 // Where a node sat in the list it was sorted from. A symbol, so no sort rule's
 // property can read it.

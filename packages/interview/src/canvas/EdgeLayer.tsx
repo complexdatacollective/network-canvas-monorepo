@@ -1,24 +1,38 @@
 'use client';
 
 import { get } from 'es-toolkit/compat';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { isDirectedEdgeType } from '@codaco/protocol-validation';
-import { entityPrimaryKeyProperty, type NcEdge } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
+import { resolveNodeShape } from '../selectors/session';
 import { getCodebook } from '../store/modules/protocol';
-import type { RootState } from '../store/store';
+import { nodeBoundaryDistance } from './nodeBoundary';
 import type { CanvasStoreApi } from './useCanvasStore';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-// An arrowhead's length and half its width, in pixels.
+// An arrowhead's length and half its width, in pixels. Between two close
+// nodes a head shrinks to fit the gap, down to the shortest that still reads
+// as an arrowhead; below that the line shows no arrowheads at all.
 const ARROW_LENGTH = 16;
 const ARROW_HALF_WIDTH = 8;
+const MIN_ARROW_LENGTH = 8;
 
 type EdgeLayerProps = {
   edges: NcEdge[];
+  /**
+   * The nodes on the canvas, from which each arrowhead learns the shape of
+   * the node it points to. A node not listed is treated as a circle.
+   */
+  nodes?: readonly NcNode[];
   store: CanvasStoreApi;
   /**
    * When provided, each edge line becomes clickable and calls this with the
@@ -99,13 +113,35 @@ const setLine = (element: SVGLineElement, start: Point, end: Point) => {
 
 export default function EdgeLayer({
   edges,
+  nodes,
   store,
   onEdgeSelect,
 }: EdgeLayerProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const rafRef = useRef<number | null>(null);
-  const edgeDefinitions = useSelector(
-    (state: RootState) => getCodebook(state).edge,
+  const codebook = useSelector(getCodebook);
+  const edgeDefinitions = codebook.edge;
+  const nodeDefinitions = codebook.node;
+
+  // One line per node that is not a circle, `<shape> <node id>`: a string, so
+  // that a node changing anything but its shape does not rebuild the lines.
+  const shapesKey = useMemo(
+    () =>
+      (nodes ?? [])
+        .flatMap((node) => {
+          const definition = nodeDefinitions?.[node.type];
+          if (definition === undefined) return [];
+          const shape = resolveNodeShape(
+            definition,
+            node[entityAttributesProperty],
+            {},
+          );
+          return typeof shape === 'string' && shape !== 'circle'
+            ? [`${shape} ${node[entityPrimaryKeyProperty]}`]
+            : [];
+        })
+        .join('\n'),
+    [nodes, nodeDefinitions],
   );
 
   useEffect(() => {
@@ -113,6 +149,15 @@ export default function EdgeLayer({
     if (!svg) return undefined;
 
     const clickListeners: Array<() => void> = [];
+    const shapes = new Map<string, string>(
+      shapesKey
+        .split('\n')
+        .filter((entry) => entry !== '')
+        .map((entry) => {
+          const space = entry.indexOf(' ');
+          return [entry.slice(space + 1), entry.slice(0, space)];
+        }),
+    );
     const lines = linesFor(edges, (type) =>
       isDirectedEdgeType({ edge: edgeDefinitions }, type),
     );
@@ -201,11 +246,30 @@ export default function EdgeLayer({
         const dx = (to.x - from.x) * width;
         const dy = (to.y - from.y) * height;
         const length = Math.hypot(dx, dy);
-        if (
-          !(arrowAtTo ?? arrowAtFrom) ||
-          !measured ||
-          length <= 2 * (nodeRadius + ARROW_LENGTH)
-        ) {
+        const ux = length > 0 ? dx / length : 0;
+        const uy = length > 0 ? dy / length : 0;
+        // How far each end's node reaches along the line, by its own shape.
+        const reachAtTo = nodeBoundaryDistance(
+          shapes.get(line.to),
+          nodeRadius,
+          -ux,
+          -uy,
+        );
+        const reachAtFrom = nodeBoundaryDistance(
+          shapes.get(line.from),
+          nodeRadius,
+          ux,
+          uy,
+        );
+        const heads = arrows.filter((arrow) => arrow !== undefined).length;
+        const headLength =
+          heads === 0
+            ? 0
+            : Math.min(
+                ARROW_LENGTH,
+                (length - reachAtTo - reachAtFrom) / heads,
+              );
+        if (heads === 0 || !measured || headLength < MIN_ARROW_LENGTH) {
           setLine(visual, from, to);
           if (hit) setLine(hit, from, to);
           for (const element of arrows) {
@@ -213,9 +277,8 @@ export default function EdgeLayer({
           }
           continue;
         }
+        const headHalfWidth = (ARROW_HALF_WIDTH * headLength) / ARROW_LENGTH;
 
-        const ux = dx / length;
-        const uy = dy / length;
         // A point `along` pixels from `point` towards the other end and
         // `across` pixels to its side, in the canvas's own units.
         const offset = (
@@ -233,29 +296,22 @@ export default function EdgeLayer({
           polygon: SVGPolygonElement,
           at: Point,
           towards: 1 | -1,
+          reach: number,
         ): Point => {
-          const tip = offset(at, towards, nodeRadius);
-          const left = offset(
-            at,
-            towards,
-            nodeRadius + ARROW_LENGTH,
-            ARROW_HALF_WIDTH,
-          );
-          const right = offset(
-            at,
-            towards,
-            nodeRadius + ARROW_LENGTH,
-            -ARROW_HALF_WIDTH,
-          );
+          const tip = offset(at, towards, reach);
+          const left = offset(at, towards, reach + headLength, headHalfWidth);
+          const right = offset(at, towards, reach + headLength, -headHalfWidth);
           polygon.setAttribute(
             'points',
             [tip, left, right].map(({ x, y }) => `${x},${y}`).join(' '),
           );
           polygon.setAttribute('visibility', 'visible');
-          return offset(at, towards, nodeRadius + ARROW_LENGTH / 2);
+          return offset(at, towards, reach + headLength / 2);
         };
-        const end = arrowAtTo ? drawArrow(arrowAtTo, to, -1) : to;
-        const start = arrowAtFrom ? drawArrow(arrowAtFrom, from, 1) : from;
+        const end = arrowAtTo ? drawArrow(arrowAtTo, to, -1, reachAtTo) : to;
+        const start = arrowAtFrom
+          ? drawArrow(arrowAtFrom, from, 1, reachAtFrom)
+          : from;
         setLine(visual, start, end);
         if (hit) setLine(hit, from, to);
       }
@@ -289,7 +345,7 @@ export default function EdgeLayer({
         }
       }
     };
-  }, [edges, edgeDefinitions, store, onEdgeSelect]);
+  }, [edges, edgeDefinitions, shapesKey, store, onEdgeSelect]);
 
   if (edges.length === 0) return null;
 

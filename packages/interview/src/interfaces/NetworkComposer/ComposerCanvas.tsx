@@ -277,6 +277,7 @@ export default function ComposerCanvas({
       {hulls}
       <EdgeLayer
         edges={edges}
+        nodes={nodes}
         store={canvasStore}
         onEdgeSelect={handleEdgeSelect}
       />

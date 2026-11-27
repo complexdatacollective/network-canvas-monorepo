@@ -157,26 +157,41 @@ export const WithEdges: Story = {
 };
 
 // Regression case: diamond nodes are rendered via a rotated background layer,
-// which must not affect node centering (edge endpoints, drag position).
+// which must not affect node centering (edge endpoints, drag position). The
+// edges are directed, so the story also shows where an arrowhead meets a
+// diamond: along an axis, on a diagonal, and at both ends of a reciprocal pair.
 const buildDiamondNodes = () => {
-  const { si, nt, layoutVar, et } = createSociogramInterview(14);
+  const { si, nt, layoutVar } = createSociogramInterview(14);
   nt.setShape({ default: 'diamond' });
+  const follows = si.addEdgeType({ name: 'Follows', directed: true });
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('Sociogram', {
     layout: layoutVar.id,
     initialNodes: { count: 5 },
   });
   stage.addPrompt({
-    text: 'Tap two people who know each other to link them.',
-    edges: { create: et.id, display: [et.id] },
+    text: 'Tap a person, then someone they follow.',
+    edges: { create: follows.id, display: [follows.id] },
   });
-  si.addEdges([
-    [0, 1],
-    [0, 2],
-    [1, 3],
-    [2, 4],
-    [3, 4],
-  ]);
+  [
+    { x: 0.3, y: 0.3 },
+    { x: 0.7, y: 0.3 },
+    { x: 0.3, y: 0.7 },
+    { x: 0.7, y: 0.7 },
+    { x: 0.5, y: 0.9 },
+  ].forEach((position, index) => {
+    si.setNodeAttribute(index, layoutVar.id, position);
+  });
+  si.addEdges(
+    [
+      [0, 1],
+      [1, 0],
+      [0, 2],
+      [0, 3],
+      [4, 3],
+    ],
+    follows.id,
+  );
   si.addInformationStage({
     title: 'Complete',
     text: 'After the main stage.',
@@ -186,10 +201,11 @@ const buildDiamondNodes = () => {
 
 export const DiamondNodes: Story = {
   render: () => <SociogramStoryWrapper buildFn={buildDiamondNodes} />,
-  // Asserts the regression invariant: every edge endpoint (drawn at the
-  // node's stored position) coincides with the center of that node's
-  // bounding box, i.e. the diamond's rotated background layer does not
-  // shift the visual center.
+  // Asserts the regression invariant: every line runs through the centres of
+  // the bounding boxes of the two nodes it joins, i.e. the diamond's rotated
+  // background layer does not shift the visual center. Each arrowhead's tip
+  // sits on the diamond's edge: no nearer the centre than the middle of a
+  // side, and no further out than a rounded corner.
   play: async ({ canvasElement }) => {
     const sociogram = await waitFor(() => {
       const el = canvasElement.querySelector<HTMLElement>(
@@ -201,48 +217,76 @@ export const DiamondNodes: Story = {
 
     // EdgeLayer creates the lines on mount but only positions them on the
     // next animation frame, so wait until every endpoint is populated.
-    const lines = await waitFor(() => {
-      const found = [
-        ...sociogram.querySelectorAll<SVGLineElement>(
-          'svg[viewBox="0 0 1 1"] line',
-        ),
-      ];
-      expect(found).toHaveLength(5);
+    const svg = sociogram.querySelector('svg[viewBox="0 0 1 1"]')!;
+    const { lines, tips } = await waitFor(() => {
+      const found = [...svg.querySelectorAll<SVGLineElement>('line')];
+      expect(found).toHaveLength(4);
       for (const line of found) {
         expect(line.getAttribute('x1')).not.toBeNull();
       }
-      return found;
+      const heads = [
+        ...svg.querySelectorAll<SVGPolygonElement>(
+          'polygon[data-edge-arrowhead]',
+        ),
+      ];
+      expect(heads).toHaveLength(5);
+      for (const head of heads) {
+        expect(head.getAttribute('visibility')).toBe('visible');
+      }
+      return {
+        lines: found,
+        tips: heads.map((head) => head.getAttribute('points')!.split(' ')[0]!),
+      };
     });
 
     // Canvas nodes are the buttons positioned via inline left/top.
-    const nodeCenters = [
+    const nodeBoxes = [
       ...sociogram.querySelectorAll<HTMLButtonElement>('button[aria-label]'),
     ]
       .filter((button) => button.style.left !== '')
       .map((button) => {
         const rect = button.getBoundingClientRect();
-        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        return {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          radius: rect.width / 2,
+        };
       });
-    expect(nodeCenters).toHaveLength(5);
+    expect(nodeBoxes).toHaveLength(5);
 
-    const svgRect = sociogram
-      .querySelector('svg[viewBox="0 0 1 1"]')!
-      .getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    const toScreen = (x: string | null, y: string | null) => ({
+      x: svgRect.left + Number(x) * svgRect.width,
+      y: svgRect.top + Number(y) * svgRect.height,
+    });
+    const nearest = (point: { x: number; y: number }) =>
+      nodeBoxes.toSorted(
+        (a, b) =>
+          Math.hypot(a.x - point.x, a.y - point.y) -
+          Math.hypot(b.x - point.x, b.y - point.y),
+      )[0]!;
 
     for (const line of lines) {
-      for (const [xAttr, yAttr] of [
-        ['x1', 'y1'],
-        ['x2', 'y2'],
-      ] as const) {
-        const x =
-          svgRect.left + Number(line.getAttribute(xAttr)) * svgRect.width;
-        const y =
-          svgRect.top + Number(line.getAttribute(yAttr)) * svgRect.height;
-        const distanceToNearestCenter = Math.min(
-          ...nodeCenters.map((c) => Math.hypot(c.x - x, c.y - y)),
-        );
-        expect(distanceToNearestCenter).toBeLessThan(2);
+      const start = toScreen(line.getAttribute('x1'), line.getAttribute('y1'));
+      const end = toScreen(line.getAttribute('x2'), line.getAttribute('y2'));
+      const length = Math.hypot(end.x - start.x, end.y - start.y);
+      for (const centre of [nearest(start), nearest(end)]) {
+        const offLine =
+          Math.abs(
+            (end.x - start.x) * (start.y - centre.y) -
+              (start.x - centre.x) * (end.y - start.y),
+          ) / length;
+        expect(offLine).toBeLessThan(2);
       }
+    }
+
+    for (const tip of tips) {
+      const [x, y] = tip.split(',');
+      const point = toScreen(x ?? null, y ?? null);
+      const target = nearest(point);
+      const reach = Math.hypot(point.x - target.x, point.y - target.y);
+      expect(reach).toBeGreaterThan(target.radius * 0.85 - 2);
+      expect(reach).toBeLessThan(target.radius * 1.05 + 2);
     }
   },
 };

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -11,14 +11,22 @@ import { testTypeId } from '../../__tests__/testIds';
 
 const FOLLOWS = testTypeId('follows');
 const KNOWS = testTypeId('knows');
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
 
 // One object for every render, or the layer would rebuild its lines each time.
-const edgeCodebook = {
-  [FOLLOWS]: { color: 'edge-color-seq-2', directed: true },
-  [KNOWS]: { color: 'edge-color-seq-1' },
+const codebook = {
+  edge: {
+    [FOLLOWS]: { color: 'edge-color-seq-2', directed: true },
+    [KNOWS]: { color: 'edge-color-seq-1' },
+  },
+  node: {
+    [PERSON]: { name: 'Person', shape: { default: 'circle' } },
+    [PLACE]: { name: 'Place', shape: { default: 'square' } },
+  },
 };
 vi.mock('react-redux', () => ({
-  useSelector: () => edgeCodebook,
+  useSelector: () => codebook,
 }));
 
 import EdgeLayer from '../EdgeLayer';
@@ -43,6 +51,38 @@ function measuredStore() {
   ]);
   return store;
 }
+
+const node = (id: string, type: string): NcNode => ({
+  [entityPrimaryKeyProperty]: id,
+  [entityAttributesProperty]: {},
+  type,
+});
+
+// Two nodes 20 px in half width, `distance` px apart along a line at `angle`
+// degrees, on a measured 400 px canvas.
+function storeWithNodesApart(distance: number, angle = 0) {
+  const store = createCanvasStore();
+  store.getState().setCanvasDimensions({ width: 400, height: 400 });
+  store.getState().setNodeRadius(20);
+  const radians = (angle * Math.PI) / 180;
+  const half = distance / 2 / 400;
+  store.getState().setBatchPositions([
+    [
+      'a',
+      { x: 0.5 - half * Math.cos(radians), y: 0.5 - half * Math.sin(radians) },
+    ],
+    [
+      'b',
+      { x: 0.5 + half * Math.cos(radians), y: 0.5 + half * Math.sin(radians) },
+    ],
+  ]);
+  return store;
+}
+
+const pointsOf = (arrow: Element | undefined) =>
+  (arrow?.getAttribute('points') ?? '')
+    .split(' ')
+    .map((point) => point.split(',').map(Number));
 
 const lines = (container: HTMLElement) => [
   ...container.querySelectorAll('line'),
@@ -117,5 +157,97 @@ describe('EdgeLayer', () => {
       [0.125, 0.5, 0.875, 0.5],
       [0.875, 0.5, 0.125, 0.5],
     ]);
+  });
+
+  it('hands every id on a reciprocal line to onEdgeSelect', () => {
+    const onEdgeSelect = vi.fn();
+    const { container } = render(
+      <EdgeLayer
+        edges={[edge(FOLLOWS, 'a', 'b'), edge(FOLLOWS, 'b', 'a')]}
+        store={measuredStore()}
+        onEdgeSelect={onEdgeSelect}
+      />,
+    );
+
+    const [visual] = lines(container);
+    fireEvent.click(visual!);
+    expect(onEdgeSelect).toHaveBeenCalledWith(['a-b', 'b-a']);
+  });
+
+  it('draws two nodes too close for an arrowhead centre to centre with none', () => {
+    // 50 px apart: 10 px between the two circles, too little for a head.
+    const { container } = render(
+      <EdgeLayer
+        edges={[edge(FOLLOWS, 'a', 'b'), edge(FOLLOWS, 'b', 'a')]}
+        store={storeWithNodesApart(50)}
+      />,
+    );
+
+    expect(
+      arrowheads(container).map((arrow) => arrow.getAttribute('visibility')),
+    ).toEqual(['hidden', 'hidden']);
+    const [line] = lines(container);
+    expect(coordinate(line!, 'x1')).toBeCloseTo(0.4375);
+    expect(coordinate(line!, 'x2')).toBeCloseTo(0.5625);
+  });
+
+  it('keeps one arrowhead where there is room for one but not two', () => {
+    // 64 px apart: 24 px between the circles holds one 16 px head.
+    const { container } = render(
+      <EdgeLayer
+        edges={[edge(FOLLOWS, 'a', 'b')]}
+        store={storeWithNodesApart(64)}
+      />,
+    );
+
+    const [arrow] = arrowheads(container);
+    expect(arrow?.getAttribute('visibility')).toBe('visible');
+    const [tip, left] = pointsOf(arrow);
+    // The tip touches b's circle, and the head keeps its full length.
+    expect(tip?.[0]).toBeCloseTo(0.5 + 12 / 400);
+    expect(((tip?.[0] ?? 0) - (left?.[0] ?? 0)) * 400).toBeCloseTo(16);
+  });
+
+  it('shrinks the arrowheads of a short reciprocal line to fit the gap', () => {
+    // 64 px apart: 24 px between the circles, 12 px for each head.
+    const { container } = render(
+      <EdgeLayer
+        edges={[edge(FOLLOWS, 'a', 'b'), edge(FOLLOWS, 'b', 'a')]}
+        store={storeWithNodesApart(64)}
+      />,
+    );
+
+    const heads = arrowheads(container);
+    expect(heads.map((arrow) => arrow.getAttribute('visibility'))).toEqual([
+      'visible',
+      'visible',
+    ]);
+    for (const arrow of heads) {
+      const [tip, left] = pointsOf(arrow);
+      expect(Math.abs((tip?.[0] ?? 0) - (left?.[0] ?? 0)) * 400).toBeCloseTo(
+        12,
+      );
+    }
+  });
+
+  it("ends an arrowhead at a square node's edge on a diagonal approach", () => {
+    // The square's corner reaches further than its half width on a diagonal.
+    const { container } = render(
+      <EdgeLayer
+        edges={[edge(FOLLOWS, 'a', 'b')]}
+        nodes={[node('a', PERSON), node('b', PLACE)]}
+        store={storeWithNodesApart(300, 45)}
+      />,
+    );
+
+    const [tip] = pointsOf(arrowheads(container)[0]);
+    const b = 0.5 + 150 / 400 / Math.SQRT2;
+    const reach = Math.hypot(b - (tip?.[0] ?? 0), b - (tip?.[1] ?? 0)) * 400;
+    // A 20 px square with 10 px corners reaches 24.14 px along the diagonal.
+    expect(reach).toBeCloseTo(10 * Math.SQRT2 + 10, 1);
+    // Outside the square's box on at least one axis, not under the node.
+    expect(
+      Math.max(b - (tip?.[0] ?? 0), b - (tip?.[1] ?? 0)) * 400,
+    ).toBeGreaterThan(17);
   });
 });

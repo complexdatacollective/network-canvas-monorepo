@@ -120,9 +120,36 @@ const sorted = (
 
 describe('useNodeTypeSortedList', () => {
   it('groups by nodeTypeOrder then sorts each group by its own rules', () => {
+    // Both groups arrive out of order, so each rule has to act.
     expect(
-      sorted([rule(PERSON, NAME), rule(PLACE, TITLE, 'desc')], [PLACE, PERSON]),
-    ).toEqual(['park', 'cafe', 'amir', 'zoe']);
+      sorted([rule(PERSON, NAME), rule(PLACE, TITLE)], [PLACE, PERSON]),
+    ).toEqual(['cafe', 'park', 'amir', 'zoe']);
+  });
+
+  it("applies a type's later rules to break the ties its first rule leaves", () => {
+    const people = [
+      node('young-sam', PERSON, { [NAME]: 'Sam', [AGE]: 20 }),
+      node('amir', PERSON, { [NAME]: 'Amir', [AGE]: 30 }),
+      node('old-sam', PERSON, { [NAME]: 'Sam', [AGE]: 40 }),
+    ];
+    expect(
+      sorted(
+        [rule(PERSON, NAME), rule(PERSON, AGE, 'desc')],
+        undefined,
+        people,
+      ),
+    ).toEqual(['amir', 'old-sam', 'young-sam']);
+  });
+
+  it('leaves the other type alone under a rule about one type', () => {
+    // Nomination order is shared by every type; a rule about people reverses
+    // only the people.
+    expect(sorted([rule(PERSON, '*', 'desc')], undefined)).toEqual([
+      'amir',
+      'zoe',
+      'park',
+      'cafe',
+    ]);
   });
 
   it('falls back to subject order', () => {

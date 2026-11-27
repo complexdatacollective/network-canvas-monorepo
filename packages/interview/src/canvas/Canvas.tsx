@@ -208,7 +208,7 @@ export default function Canvas({
       {underlays}
 
       {/* Edge layer */}
-      <EdgeLayer edges={edges} store={store} />
+      <EdgeLayer edges={edges} nodes={nodes} store={store} />
 
       {/* Nodes */}
       {nodes.map((node) => {

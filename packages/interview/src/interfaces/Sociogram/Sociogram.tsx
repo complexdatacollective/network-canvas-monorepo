@@ -203,8 +203,17 @@ const Sociogram = (stageProps: SociogramProps) => {
           ? undefined
           : allNodes.find((n) => n[entityPrimaryKeyProperty] === sourceId);
       if (source === undefined) {
-        return !allNodes.some((target) =>
-          edgeTypeAllowsEndpoints(codebook, createEdge, node.type, target.type),
+        // A source needs a target it can tap: another node on the canvas.
+        return !canvasNodes.some(
+          (target) =>
+            target[entityPrimaryKeyProperty] !==
+              node[entityPrimaryKeyProperty] &&
+            edgeTypeAllowsEndpoints(
+              codebook,
+              createEdge,
+              node.type,
+              target.type,
+            ),
         );
       }
       if (source[entityPrimaryKeyProperty] === node[entityPrimaryKeyProperty]) {
@@ -225,6 +234,7 @@ const Sociogram = (stageProps: SociogramProps) => {
       createEdge,
       selectedNodeId,
       allNodes,
+      canvasNodes,
       codebook,
     ],
   );

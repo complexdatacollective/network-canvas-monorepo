@@ -95,9 +95,12 @@ const rootReducer = combineReducers({ session, protocol, ui });
 function renderSociogram({
   promptIndex = 0,
   endpointRules,
+  unplaced = [],
 }: {
   promptIndex?: number;
   endpointRules?: { sourceType: string; targetType: string }[];
+  /** Nodes, by id, left in the drawer without a position. */
+  unplaced?: string[];
 } = {}) {
   const protocolState: ProtocolPayload = {
     id: 'protocol',
@@ -148,7 +151,7 @@ function renderSociogram({
     type,
     [entityAttributesProperty]: {
       [type === PERSON ? PERSON_NAME : PLACE_NAME]: name,
-      [LAYOUT]: { x, y: 0.5 },
+      ...(unplaced.includes(id) ? {} : { [LAYOUT]: { x, y: 0.5 } }),
     },
   });
   const store = configureStore({
@@ -267,10 +270,40 @@ describe('Sociogram with a directed edge type', () => {
     fireEvent.click(alex);
     await waitFor(() => expect(alex).toHaveAttribute('data-node-linking'));
 
+    // The chosen source stays enabled, so tapping it again cancels.
+    expect(alex).toBeEnabled();
     expect(await nodeNamed('Casey')).toBeDisabled();
     expect(await nodeNamed('Park')).toBeEnabled();
     fireEvent.click(await nodeNamed('Park'));
     await waitFor(() => expect(edges()).toEqual(['alex>park']));
+  });
+
+  it('tapping the chosen source again cancels without an edge', async () => {
+    const { edges } = renderSociogram({
+      endpointRules: [{ sourceType: PERSON, targetType: PLACE }],
+    });
+    const alex = await nodeNamed('Alex');
+    fireEvent.click(alex);
+    await waitFor(() => expect(alex).toHaveAttribute('data-node-linking'));
+    fireEvent.click(alex);
+    await waitFor(() => expect(alex).not.toHaveAttribute('data-node-linking'));
+    expect(edges()).toEqual([]);
+  });
+
+  it('a node whose only permitted target is itself is disabled before the first tap', async () => {
+    renderSociogram({
+      endpointRules: [{ sourceType: PLACE, targetType: PLACE }],
+    });
+    expect(await nodeNamed('Park')).toBeDisabled();
+  });
+
+  it('a node whose only permitted targets are in the drawer is disabled before the first tap', async () => {
+    renderSociogram({
+      endpointRules: [{ sourceType: PERSON, targetType: PLACE }],
+      unplaced: ['park'],
+    });
+    expect(await nodeNamed('Alex')).toBeDisabled();
+    expect(await nodeNamed('Casey')).toBeDisabled();
   });
 
   it('a node of a type with no highlight entry is disabled in a highlight task', async () => {
