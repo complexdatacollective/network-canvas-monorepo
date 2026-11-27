@@ -29,7 +29,10 @@ import {
   SectionsLocked,
 } from '@codaco/protocol-builder-core/contract/errors';
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
-import { createEntityTypeId } from '@codaco/protocol-validation';
+import {
+  createEntityTypeId,
+  createVariableId,
+} from '@codaco/protocol-validation';
 import {
   sectionId as makeSectionId,
   parseSectionId,
@@ -55,6 +58,7 @@ import {
   readSection,
   releaseLock,
   submit,
+  type CreatableSectionKind,
   type ProtocolBuilderSession,
   type RefactorOutcome,
 } from './host.ts';
@@ -78,6 +82,17 @@ import {
 } from './session.ts';
 import type { WriteOperation, WriteReceipt } from './writeReceipts.ts';
 import { readWriteReceipt } from './writeReceipts.ts';
+
+/**
+ * A layout's id is a variable id, since layouts and attributes share one
+ * namespace; an entity type's is a type id.
+ */
+const mintIdFor = (kind: CreatableSectionKind): (() => string) =>
+  kind === 'stage'
+    ? randomUUID
+    : kind === 'codebookLayout'
+      ? createVariableId
+      : createEntityTypeId;
 
 /**
  * How long an open watch goes on delivering to a caller removed from the team
@@ -564,7 +579,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                       promoted: planned.data.promoted,
                       staged: promote,
                     }),
-                mintId: kind === 'stage' ? randomUUID : createEntityTypeId,
+                mintId: mintIdFor(kind),
               }),
             );
             yield* events.publish(session, result.events);

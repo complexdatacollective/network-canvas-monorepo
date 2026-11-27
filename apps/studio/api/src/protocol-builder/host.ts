@@ -169,7 +169,8 @@ export type CreatableSectionKind =
   | 'stage'
   | 'codebookNode'
   | 'codebookEdge'
-  | 'codebookEgo';
+  | 'codebookEgo'
+  | 'codebookLayout';
 
 export type CreateOutcome =
   | {
@@ -412,9 +413,11 @@ function createdSectionId(
 ): ProtocolSectionId {
   if (kind === 'codebookEgo') return makeSectionId({ kind: 'codebookEgo' });
   if (id === undefined) throw new Error(`a ${kind} section needs an id`);
-  return kind === 'stage'
-    ? makeSectionId({ kind: 'stage', stageId: id })
-    : makeSectionId({ kind, typeId: id });
+  if (kind === 'stage') return makeSectionId({ kind: 'stage', stageId: id });
+  if (kind === 'codebookLayout') {
+    return makeSectionId({ kind: 'codebookLayout', layoutId: id });
+  }
+  return makeSectionId({ kind, typeId: id });
 }
 
 function codebookSectionId(subject: CodebookSubject): ProtocolSectionId {

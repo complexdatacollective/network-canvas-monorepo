@@ -16,6 +16,7 @@ import {
   CurrentProtocolSchema,
   createVariableId,
   isEntityTypeId,
+  isVariableId,
 } from '@codaco/protocol-validation';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -1117,6 +1118,63 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(
       parsed.kind === 'codebookNode' && isEntityTypeId(parsed.typeId),
     ).toBe(true);
+  });
+
+  it('creates a layout under a variable id, and renames it under its lock', async () => {
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'codebookLayout',
+        document: Redacted.make({ name: 'seating' }),
+      }),
+    );
+    const parsed = parseSectionId(created.sectionId);
+    if (parsed.kind !== 'codebookLayout') {
+      throw new Error(`${created.sectionId} is not a layout section`);
+    }
+    expect(isVariableId(parsed.layoutId)).toBe(true);
+
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: created.sectionId }),
+    );
+    expect(Redacted.value(held.document)).toEqual({ name: 'seating' });
+    await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: created.sectionId,
+        document: Redacted.make({ name: 'tables' }),
+        revision: held.revision,
+      }),
+    );
+    const renamed = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: created.sectionId }),
+    );
+    expect(Redacted.value(renamed.document)).toEqual({ name: 'tables' });
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: created.sectionId }),
+    );
+  });
+
+  it('refuses to create a layout whose document is not shaped like one', async () => {
+    await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Create', {
+          protocolId,
+          requestId: randomUUID(),
+          kind: 'codebookLayout',
+          document: Redacted.make({ name: 'seating', type: 'layout' }),
+        }),
+      ),
+      'InvalidShape',
+    );
   });
 
   it('creates the ego codebook a protocol does not have yet, once', async () => {
