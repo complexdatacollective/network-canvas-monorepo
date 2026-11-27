@@ -4,8 +4,12 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
-import { fixtureStageId } from '../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { testId } from '../../testing/testId.ts';
 import { sociogramStageEditor } from './SociogramStageEditor.ts';
 
 const meta = {
@@ -94,6 +98,56 @@ export const ChoosingATask: Story = {
       await expect(dialog.getByText('Created edge type')).toBeVisible();
     });
     await expect(dialog.queryByText('Boolean attribute')).toBeNull();
+  },
+};
+
+/**
+ * A stage that is the first to use its layout, in Manual mode, whose first
+ * prompt connects nodes. No node is on the canvas when that prompt opens, so
+ * the prompts section warns. Automatic mode places the nodes itself, and the
+ * warning goes.
+ */
+export const FirstPromptIsNotAPositioningTask: Story = {
+  args: {
+    stageId: testId('first-use-sociogram'),
+    stage: {
+      type: 'Sociogram',
+      fields: {
+        label: { 'en-US': 'Who knows whom' },
+        subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
+        background: { concentricCircles: 4, skewedTowardCenter: true },
+        behaviours: {},
+        layout: testId('fresh-layout'),
+        prompts: [
+          {
+            id: testId('first-use-prompt'),
+            task: 'connect',
+            text: { 'en-US': 'Link the people who know each other.' },
+            edges: {
+              create: fixtureTypeId('edge', 'knows'),
+              display: [fixtureTypeId('edge', 'knows')],
+            },
+          },
+        ],
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByText('Nodes are not placed before this task'),
+    ).toBeVisible();
+
+    await userEvent.click(
+      canvas.getByRole('option', { name: /^Automatic mode/u }),
+    );
+    await waitFor(async () => {
+      await expect(
+        canvas.queryByText('Nodes are not placed before this task'),
+      ).toBeNull();
+    });
   },
 };
 
