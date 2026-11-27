@@ -12,7 +12,7 @@
 // protocol it is given. Keep it as short as accuracy allows: it is sent with
 // every review. Bump the version when the text changes.
 
-export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v4
+export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v5
 
 This is what you need to write fixes that leave the protocol valid. For anything not described here, copy the shape the protocol already uses.
 
@@ -35,11 +35,12 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 
 ## Codebook
 
-{ "node"?: { <typeId>: NodeType }, "edge"?: { <typeId>: EdgeType }, "ego"?: { "variables"?: { … } } }
+{ "node"?: { <typeId>: NodeType }, "edge"?: { <typeId>: EdgeType }, "ego"?: { "variables"?: { … } }, "layouts"?: { <layoutId>: { "name" } } }
 
 - NodeType: { "name", "color": "node-color-seq-1" … "node-color-seq-8", "shape": { "default": "circle" | "square" | "diamond" }, "icon"?, "variables"?: { <variableId>: Variable } }
 - EdgeType: { "name", "color"?: "edge-color-seq-1" … "edge-color-seq-8", "variables"? }
 - Every type id and every variable id is a UUID, used as the object key; a readable key such as "person" or "age" makes the protocol invalid. A new type or variable gets a fresh UUID v4. A type id must be unique among the node types or among the edge types, and a variable id must be unique across the whole codebook. A variable's name is its column name in exported data: unique within its entity, no leading or trailing spaces.
+- A layout is a named set of node positions that a Sociogram, a NetworkComposer or a Narrative preset uses. Its id is a UUID that no variable uses, and its name is unique among the layouts and is not the name of a node variable.
 - Variable: { "name", "type", "component"?, "options"?, "parameters"?, "validation"? }. A variable shown in a form field must have a component.
 
 | type | component | answer recorded | settings |
@@ -51,7 +52,7 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 | scalar | VisualAnalogScale | a number from 0 to 1 | parameters: { "minLabel"?: {…}, "maxLabel"?: {…} }; validation: required |
 | datetime | DatePicker | a date | parameters: { "type"?: "full" | "month" | "year", "min"?, "max"? } as yyyy-MM-dd, yyyy-MM or yyyy |
 | datetime | RelativeDatePicker | a date | parameters: { "anchor"?: yyyy-MM-dd, "before"?: days, "after"?: days } |
-| layout, location | none | set by Sociogram and Geospatial | never in a form |
+| location | none | set by Geospatial | never in a form |
 
 Options of an ordinal or categorical variable: [{ "id": <UUID>, "label": { "en": "…" }, "value": 1 }, …]. A value is a whole number or text, unique within the variable. Filters and skip logic compare values, never labels. When you relabel an option, keep its id and its value: data already collected uses the value, and text that chooses its wording by the answer uses the id. A new option gets a fresh UUID v4. A boolean variable's options have no id.
 
@@ -70,7 +71,7 @@ Every stage: { "id", "type", "label": { "en": "…" }, "skipLogic"?, "interviewS
 - NameGenerator: "form": { "title": {…}, "fields": [ … ] } (a form for each person added), "prompts", "panels"?, "behaviours"?
 - NameGeneratorQuickAdd: "quickAdd": <variableId the typed name is stored in>, "prompts", "addNamePlaceholder": {…}, "panels"?, "behaviours"?
 - NameGeneratorRoster: "dataSource": <assetId>, "prompts", "behaviours"?, and settings for its card list
-- Sociogram (filter?): "background", "behaviours"?, "prompts": [{ "id", "text", "layout": { "layoutVariable": <layout variableId> }, "edges"?: { "create"?: <edgeTypeId>, "display"?: [<edgeTypeId>, …] }, "highlight"?: { "allowHighlighting": true, "variable": <boolean variableId> } }]. A prompt cannot both create edges and highlight.
+- Sociogram (filter?): "layout": <layoutId>, "background", "behaviours"?, "prompts": [{ "id", "text", "edges"?: { "create"?: <edgeTypeId>, "display"?: [<edgeTypeId>, …] }, "highlight"?: { "allowHighlighting": true, "variable": <boolean variableId> } }]. A prompt cannot both create edges and highlight.
 - DyadCensus (filter?): "prompts": [{ "id", "text", "createEdge": <edgeTypeId> }]: one yes/no screen per pair.
 - OneToManyDyadCensus (filter?): "behaviours": { "removeAfterConsideration": true | false }, "prompts": [{ "id", "text", "createEdge" }]
 - TieStrengthCensus (filter?): "prompts": [{ "id", "text", "createEdge", "edgeVariable": <ordinal variableId of that edge type>, "negativeLabel": {…} }]

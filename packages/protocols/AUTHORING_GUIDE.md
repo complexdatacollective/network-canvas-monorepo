@@ -138,9 +138,9 @@ plain string.
 Researcher-facing fields stay plain strings: the protocol `name` and `description`, codebook
 `name`s, `interviewScript`, ids, and asset references.
 
-## 3. Codebook (strict: `{ node?, edge?, ego? }`)
+## 3. Codebook (strict: `{ node?, edge?, ego?, layouts? }`)
 
-All three are optional, but you must define any type a stage references.
+All four are optional, but you must define any type or layout a stage references.
 
 ```jsonc
 "codebook": {
@@ -161,9 +161,18 @@ All three are optional, but you must define any type a stage references.
       "variables": { /* see §4 */ }
     }
   },
-  "ego": { "variables": { /* see §4 — but ego vars may NOT use 'unique' validation */ } }
+  "ego": { "variables": { /* see §4 — but ego vars may NOT use 'unique' validation */ } },
+  "layouts": {
+    "b4a09d73-6e2f-4c18-8d5b-f9c1e7a3204d": { // key = layout id (UUID, used in a stage's layout)
+      "name": "layout_person"          // REQUIRED, unique among layouts, and not the name of any node variable
+    }
+  }
 }
 ```
+
+A layout is a named set of node positions. A Sociogram, a NetworkComposer or a Narrative preset
+names the layout it uses, and each node stores its position under the layout's id. A layout id
+must not also be the key of a variable.
 
 ### 3.1 Custom node shapes
 
@@ -229,7 +238,6 @@ MUST match the type:
 | `scalar`      | `VisualAnalogScale`                    | `parameters:{minLabel?,maxLabel?}`                         |                                                                      |
 | `datetime`    | `DatePicker`                           | `parameters:{type?:full\|month\|year, min?, max?}`         |                                                                      |
 | `datetime`    | `RelativeDatePicker`                   | `parameters:{anchor?, before?:int, after?:int}`            |                                                                      |
-| `layout`      | —                                      | —                                                          | needed for Sociogram/Narrative `layoutVariable`                      |
 | `location`    | —                                      | —                                                          | needed for Geospatial prompt `variable`                              |
 
 `options` (ordinal/categorical) = `[{ "id": "<uuid>", "label": { "en-US": "…" }, "value": <int|string> }]`.
@@ -254,7 +262,6 @@ non-ascending integer values are allowed.) Option `label`s, and a scalar's `minL
   "options": [ {"label":{"en-US":"Yes"},"value":true}, {"label":{"en-US":"No"},"value":false} ] },
 "2f8e5b6c-a71d-4390-9c4e-d3b0a8f71e25": { "name": "start_date", "type": "datetime", "component": "DatePicker",
   "parameters": { "type": "month" } },
-"b4a09d73-6e2f-4c18-8d5b-f9c1e7a3204d": { "name": "layout", "type": "layout" },
 "73c1e8f4-2b5a-4d09-b6e3-a8f0d4c95712": { "name": "alter_loc", "type": "location" }
 ```
 
@@ -274,8 +281,8 @@ on a node stage, which lists exactly one node type on every stage type at presen
 `{ "entity":"edge", "type":"<edge key>" }` on an AlterEdgeForm stage. Cross-references that MUST
 resolve in the codebook: each entry of `subject.types`, or `subject.type` on an edge stage; form
 field `variable`; bin/geospatial prompt `variable`; `otherVariable`; `createEdge` (→ an edge
-key); TieStrength `edgeVariable` (must be an **ordinal edge** variable); sociogram/narrative
-`layoutVariable`, `groupVariable`, `highlight`, `edges.create/display`.
+key); TieStrength `edgeVariable` (must be an **ordinal edge** variable); sociogram/composer/narrative
+`layout` (→ a key of `codebook.layouts`), `groupVariable`, `highlight`, `edges.create/display`.
 
 Required keys per stage type used by these templates:
 
@@ -287,8 +294,8 @@ Required keys per stage type used by these templates:
 - **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `form:{fields:[{id,variable(edge key),prompt}]}`.
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
-- **Sociogram**: `subject`(node) + `prompts:[{id,text, layout:{layoutVariable:"<layout node key>"}, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.
-- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:[{id, type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{id, variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
+- **Sociogram**: `subject`(node) + `layout:"<layout key>"` + `prompts:[{id,text, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.
+- **Narrative**: `subject`(node) + `presets:[{id, label, layout:"<layout key>", groupVariable?:"<node key>", edges?:{display?:[{id, type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{id, variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
 - **DyadCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>"}]` (≥1).
 - **TieStrengthCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>", edgeVariable:"<ordinal edge key>", negativeLabel:"…"}]` (≥1).
 - **Geospatial**: `subject`(node) + `prompts:[{id,text, variable:"<location node key>"}]` (≥1) + `mapOptions` (all REQUIRED):
