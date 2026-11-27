@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -25,7 +26,7 @@ import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryCl
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { ContractProvider } from '../../../contract/context';
 import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
+import session, { updatePrompt } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { RegisterBeforeNext, StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
@@ -148,6 +149,7 @@ function renderSociogram(task: Task) {
               [LAYOUT]: { x: 0.3, y: 0.3 },
             }),
             node('blair', { [NAME]: 'Blair' }),
+            node('casey', { [NAME]: 'Casey', [LAYOUT]: { x: 0.7, y: 0.7 } }),
           ],
           edges: [],
           ego: { [entityAttributesProperty]: {} },
@@ -208,6 +210,11 @@ function renderSociogram(task: Task) {
   );
 
   return {
+    goToTask: (next: Task) =>
+      act(() => {
+        store.dispatch(updatePrompt(promptIndexOf[next]));
+      }),
+    edgeCount: () => store.getState().session.network.edges.length,
     canvasAcceptsDrops: () =>
       [...(dndStore?.getState().dropTargets.values() ?? [])].some((target) =>
         target.accepts.includes('UNPOSITIONED_NODE'),
@@ -270,6 +277,24 @@ describe('Sociogram tasks', () => {
     renderSociogram('highlight');
     expect(await unplacedNode()).toBeDisabled();
     expect(await placedNode()).toBeEnabled();
+  });
+
+  it('a source chosen in a connect task is dropped when the prompt changes', async () => {
+    const { goToTask, edgeCount } = renderSociogram('connect');
+    const alex = await placedNode();
+    fireEvent.click(alex);
+    await waitFor(() => expect(alex).toHaveAttribute('data-node-linking'));
+
+    goToTask('highlight');
+    expect(await placedNode()).not.toHaveAttribute('data-node-linking');
+
+    goToTask('connect');
+    const casey = await screen.findByRole('button', { name: 'Casey' });
+    expect(await placedNode()).not.toHaveAttribute('data-node-linking');
+    fireEvent.click(casey);
+
+    await waitFor(() => expect(casey).toHaveAttribute('data-node-linking'));
+    expect(edgeCount()).toBe(0);
   });
 
   it('a highlight is drawn only during a highlight task', async () => {

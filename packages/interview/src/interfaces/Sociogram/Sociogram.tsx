@@ -169,6 +169,15 @@ const Sociogram = (stageProps: SociogramProps) => {
   const selectedNodeId = useCanvasStore(store, (state) => state.selectedNodeId);
   const codebook = useSelector(getCodebook);
 
+  // A source chosen for a connection belongs to the prompt it was chosen in.
+  const promptId = prompt.id;
+  const selectionPromptRef = useRef(promptId);
+  useEffect(() => {
+    if (selectionPromptRef.current === promptId) return;
+    selectionPromptRef.current = promptId;
+    store.getState().selectNode(null);
+  }, [promptId, store]);
+
   // Outside a layout task, a node that has no position cannot be operated:
   // it stays in the drawer, dimmed, so the gap is evident. In a highlight task
   // so is a node whose type the prompt does not highlight, and in a connect
@@ -417,7 +426,7 @@ const Sociogram = (stageProps: SociogramProps) => {
         nodes={canvasNodes}
         edges={edges}
         store={store}
-        selectedNodeId={selectedNodeId}
+        selectedNodeId={createEdge === null ? null : selectedNodeId}
         highlightAttributes={highlightAttributes}
         isNodeDisabled={isNodeDisabled}
         onNodeSelect={handleNodeSelect}

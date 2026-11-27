@@ -135,6 +135,7 @@ const buildWithEdges = () => {
     initialNodes: { count: 5 },
   });
   stage.addPrompt({
+    text: 'Tap two people who know each other to link them.',
     edges: { create: et.id, display: [et.id] },
   });
   si.addEdges([
@@ -166,6 +167,7 @@ const buildDiamondNodes = () => {
     initialNodes: { count: 5 },
   });
   stage.addPrompt({
+    text: 'Tap two people who know each other to link them.',
     edges: { create: et.id, display: [et.id] },
   });
   si.addEdges([
@@ -253,6 +255,7 @@ const buildWithHighlighting = () => {
     initialNodes: { count: 6 },
   });
   stage.addPrompt({
+    text: 'Tap the people you are close to.',
     highlight: [{ variable: highlightVar.id }],
   });
   const hlValues = [true, false, true, null, true, false];
@@ -283,6 +286,7 @@ const buildAutomaticLayout = () => {
     behaviours: { automaticLayout: true },
   });
   stage.addPrompt({
+    text: 'Tap two people who know each other to link them.',
     edges: { create: et.id, display: [et.id] },
   });
   si.addEdges([
@@ -394,6 +398,7 @@ const buildAutomaticLayoutLarge = () => {
     behaviours: { automaticLayout: true },
   });
   stage.addPrompt({
+    text: 'Tap two people who know each other to link them.',
     edges: { create: et.id, display: [et.id] },
   });
   si.addEdges([

@@ -58,8 +58,11 @@ function buildInterview() {
 
   const sociogram = interview.addStage('Sociogram', {
     layout: layout.id,
-    label: 'Connect people',
+    label: 'Place and connect people',
     subject: { entity: 'node', types: [person.id] },
+  });
+  sociogram.addPrompt({
+    text: 'Drag people onto the canvas. A sound plays when you pick one up and when you drop it.',
   });
   sociogram.addPrompt({
     text: 'Tap a person, then another, to connect or disconnect them. A sound loops while the first waits.',
