@@ -124,7 +124,6 @@ export function nodeVariablesWrittenOnCreation(
     case 'NetworkComposer':
       return setOf([
         stage.quickAdd,
-        stage.layoutVariable,
         stage.convexHullVariable,
         ...(stage.nodeForm?.fields ?? []).map((field) => field.variable),
       ]);
@@ -175,12 +174,11 @@ function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
   switch (stage.type) {
     case 'Sociogram':
       return setOf(
-        stage.prompts.flatMap((prompt) => [
-          prompt.layout?.layoutVariable,
+        stage.prompts.map((prompt) =>
           prompt.highlight?.allowHighlighting === true && !prompt.edges?.create
             ? prompt.highlight.variable
             : undefined,
-        ]),
+        ),
       );
     case 'OrdinalBin':
     case 'CategoricalBin':

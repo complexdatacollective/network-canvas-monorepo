@@ -70,7 +70,7 @@ const narrativeDisplayingRank = {
     {
       id: 'preset-1',
       label: 'Review',
-      layoutVariable: 'layout',
+      layout: 'layout',
       highlight: [{ variable: 'rank', label: { en: 'Rank' } }],
     },
   ],

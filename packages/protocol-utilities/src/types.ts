@@ -179,9 +179,6 @@ export type NameGeneratorPromptEntry = {
 export type SociogramPromptEntry = {
   id: string;
   text: TextInput;
-  layout: {
-    layoutVariable: string;
-  };
   sortOrder?: { property: string; direction: 'asc' | 'desc' }[];
   edges?: {
     create?: string;
@@ -271,7 +268,7 @@ export type PromptEntry =
 export type PresetEntry = {
   id: string;
   label: TextInput;
-  layoutVariable: string;
+  layout: string;
   edges?: {
     display: { type: string; label: TextInput }[];
   };
@@ -412,8 +409,9 @@ export type StageEntry = {
   wording?: Record<string, TextInput>;
   // Geospatial
   mapOptions?: MapOptionsEntry;
+  // Sociogram and NetworkComposer: the layout the stage sets.
+  layout?: string;
   // NetworkComposer
-  layoutVariable?: string;
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
   networkComposerEdges?: NetworkComposerEdgeEntry[];
   convexHullVariable?: string;
@@ -693,8 +691,9 @@ export type AddStageInput = {
   sourceStageId?: string;
   diseases?: NarrativeDiseaseEntry[];
   showAtRiskStatuses?: boolean;
+  // Sociogram and NetworkComposer: an existing layout id, or omit to add one.
+  layout?: string;
   // NetworkComposer (quickAdd above is shared with NameGeneratorQuickAdd)
-  layoutVariable?: string;
   nodeForm?: { fields: NetworkComposerFormFieldInput[] };
   convexHullVariable?: string;
 };
@@ -711,9 +710,6 @@ export type AddPromptInput = {
   text?: TextInput;
   additionalAttributes?: { variable: string; value: boolean }[];
   sortOrder?: SortRule[];
-  layout?: {
-    layoutVariable?: string;
-  };
   edges?: {
     create?: boolean | string;
     display?: string[];
@@ -765,9 +761,18 @@ export type AddGeospatialPromptInput = {
   variable?: string;
 };
 
+export type AddLayoutInput = {
+  /** The layout's name; a layout of this name already added is reused. */
+  name?: string;
+  /** A layout id, or omit to derive one from the name. */
+  id?: string;
+};
+
+export type LayoutHandle = { id: string; name: string };
+
 export type AddPresetInput = {
   label?: TextInput;
-  layoutVariable?: string;
+  layout?: string;
   edges?: {
     display?: string[];
   };

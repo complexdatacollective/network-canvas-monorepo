@@ -859,10 +859,7 @@ describe('valueSpaceSize', () => {
     expect(valueSpaceSize(variable, 10)).toBe('unbounded');
   });
 
-  it('treats layout and location as unbounded', () => {
-    expect(
-      valueSpaceSize(make({ id: 'v', name: 'V', type: 'layout' }), 100),
-    ).toBe('unbounded');
+  it('treats location as unbounded', () => {
     expect(
       valueSpaceSize(make({ id: 'v', name: 'V', type: 'location' }), 100),
     ).toBe('unbounded');

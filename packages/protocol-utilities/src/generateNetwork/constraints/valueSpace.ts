@@ -585,7 +585,6 @@ export function valueSpaceSize(
     case 'text':
       return cap(TEXT_ALPHABET_SIZE ** textDrawLength(constraints));
 
-    case 'layout':
     case 'location':
     default:
       return 'unbounded';

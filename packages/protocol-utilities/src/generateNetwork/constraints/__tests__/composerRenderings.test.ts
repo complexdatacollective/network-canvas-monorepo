@@ -49,10 +49,6 @@ function codebookWith(options: {
             type: 'text',
             component: 'Text',
           },
-          layout: {
-            name: 'Layout',
-            type: 'layout',
-          },
           born: {
             name: 'Born',
             type: 'datetime',
@@ -115,7 +111,7 @@ function composerStage(options: {
     label: { 'en-US': 'Compose' },
     subject: { entity: 'node', types: ['person'] },
     quickAdd: asEntityAttributeReference('name'),
-    layoutVariable: asEntityAttributeReference('layout'),
+    layout: 'layout',
     background: { concentricCircles: 1 },
     ...(options.nodeFields !== undefined
       ? {

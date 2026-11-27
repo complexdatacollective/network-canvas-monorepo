@@ -2626,7 +2626,7 @@ describe('a codebook scope only a content stage names', () => {
         {
           id: 'preset-1',
           label: 'Ties',
-          layoutVariable: 'layout',
+          layout: 'layout',
           ...(displayed ? { edges: { display: displayed } } : {}),
         },
       ],

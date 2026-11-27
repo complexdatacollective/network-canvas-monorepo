@@ -153,22 +153,43 @@ describe('SyntheticInterview', () => {
       expect(nodeTypeIds).toHaveLength(1);
     });
 
-    it('auto-creates layout variable for Sociogram prompt', () => {
+    it('auto-creates a layout for a Sociogram', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('Sociogram');
       stage.addPrompt();
 
       const protocol = si.getProtocol();
-      const nodeTypeId = Object.keys(protocol.codebook.node)[0]!;
-      const nodeType = protocol.codebook.node[nodeTypeId] as Record<
-        string,
-        unknown
-      >;
-      const variables = nodeType.variables as Record<string, { type: string }>;
-      const layoutVars = Object.values(variables).filter(
-        (v) => v.type === 'layout',
-      );
-      expect(layoutVars).toHaveLength(1);
+      const stageConfig = protocol.stages[0] as Record<string, unknown>;
+      expect(Object.keys(protocol.codebook.layouts ?? {})).toEqual([
+        stageConfig.layout,
+      ]);
+    });
+
+    it('getNetwork writes positions for layouts', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const place = si.addNodeType({ name: 'Place' });
+      const layout = si.addLayout({ name: 'map' });
+      si.addStage('Sociogram', {
+        subject: { entity: 'node', types: [person.id] },
+        layout: layout.id,
+        initialNodes: { count: 2 },
+      });
+      si.addStage('NameGenerator', {
+        subject: { entity: 'node', types: [place.id] },
+        initialNodes: { count: 1 },
+      });
+
+      const nodes = si.getNetwork().nodes;
+      const positionOf = (type: string) =>
+        nodes
+          .filter((node) => node.type === type)
+          .map((node) => node[entityAttributesProperty][layout.id]);
+      expect(positionOf(person.id)).toEqual([
+        expect.objectContaining({ x: expect.any(Number) }),
+        expect.objectContaining({ y: expect.any(Number) }),
+      ]);
+      expect(positionOf(place.id)).toEqual([undefined]);
     });
 
     it('auto-creates edge type for Sociogram prompt with edges.create=true', () => {
@@ -505,7 +526,6 @@ describe('SyntheticInterview', () => {
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const prompts = stageConfig.prompts as {
         text: LocalizedString;
-        layout: { layoutVariable: string };
         edges: { create: string; display: string[] };
         highlight: { allowHighlighting: boolean; variable: string };
       }[];
@@ -515,7 +535,9 @@ describe('SyntheticInterview', () => {
       expect(prompt.text).toEqual({ 'en-US': 'Place people' });
       const nodeVariableType = (variable: unknown) =>
         subjectVariableType(protocol.codebook.node, stageConfig, variable);
-      expect(nodeVariableType(prompt.layout.layoutVariable)).toBe('layout');
+      expect(protocol.codebook.layouts?.[String(stageConfig.layout)]).toEqual({
+        name: 'sociogramLayout',
+      });
       expect(Object.keys(protocol.codebook.edge)).toContain(
         prompt.edges.create,
       );
@@ -563,7 +585,7 @@ describe('SyntheticInterview', () => {
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const presets = stageConfig.presets as {
         label: LocalizedString;
-        layoutVariable: string;
+        layout: string;
         groupVariable: string;
         highlight: { variable: string; label: LocalizedString }[];
       }[];
@@ -573,7 +595,9 @@ describe('SyntheticInterview', () => {
       expect(preset.label).toEqual({ 'en-US': 'Full View' });
       const nodeVariableType = (variable: unknown) =>
         subjectVariableType(protocol.codebook.node, stageConfig, variable);
-      expect(nodeVariableType(preset.layoutVariable)).toBe('layout');
+      expect(Object.keys(protocol.codebook.layouts ?? {})).toEqual([
+        preset.layout,
+      ]);
       expect(nodeVariableType(preset.groupVariable)).toBe('categorical');
       expect(preset.highlight).toEqual([
         {
@@ -1535,7 +1559,9 @@ describe('SyntheticInterview', () => {
       const nodeVariableType = (variable: unknown) =>
         subjectVariableType(protocol.codebook.node, stageConfig, variable);
       expect(nodeVariableType(stageConfig.quickAdd)).toBe('text');
-      expect(nodeVariableType(stageConfig.layoutVariable)).toBe('layout');
+      expect(protocol.codebook.layouts?.[String(stageConfig.layout)]).toEqual({
+        name: 'composerLayout',
+      });
 
       const edges = stageConfig.edges as {
         id: string;
@@ -1553,16 +1579,13 @@ describe('SyntheticInterview', () => {
       const si = new SyntheticInterview(1);
       const nt = si.addNodeType({ name: 'Person' });
       const quickAddVar = nt.addVariable({ type: 'text', name: 'name' });
-      const layoutVar = nt.addVariable({
-        type: 'layout',
-        name: 'Composer Layout',
-      });
+      const layout = si.addLayout({ name: 'Composer_Layout' });
       const friendship = si.addEdgeType({ name: 'Friendship' });
 
       const stage = si.addStage('NetworkComposer', {
         subject: { entity: 'node', types: [nt.id] },
         quickAdd: quickAddVar.id,
-        layoutVariable: layoutVar.id,
+        layout: layout.id,
         initialNodes: { count: 6 },
       });
       stage.addNodeFormField({ component: 'Number', label: 'Age' });
@@ -2949,13 +2972,14 @@ describe('validation rules on generated nodes', () => {
       name: 'closeness',
       component: 'VisualAnalogScale',
     });
-    nt.addVariable({ type: 'layout', name: 'position' });
+    const position = si.addLayout({ name: 'position' });
     si.addStage('Sociogram', {
       subject: { entity: 'node', types: [nt.id] },
+      layout: position.id,
       initialNodes: { count: 4 },
     });
 
-    const ids = si.getVariableIds(nt.id);
+    const ids = [...si.getVariableIds(nt.id), position.id];
     const byName = attributesOf(si.getNetwork()).map((attrs) =>
       Object.fromEntries(
         [

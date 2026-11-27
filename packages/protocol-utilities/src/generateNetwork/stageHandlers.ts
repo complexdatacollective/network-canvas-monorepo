@@ -22,7 +22,11 @@ import type {
 import { createEdgesForPairs } from './edges.ts';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering.ts';
 import { createNodesForStage, type RosterDraw } from './nodes.ts';
-import { getEdgeSubjectType, getSingleStageNodeType } from './subject.ts';
+import {
+  getEdgeSubjectType,
+  getSingleStageNodeType,
+  getStageNodeTypes,
+} from './subject.ts';
 
 export function handleNameGenerators(
   ctx: GenerationContext,
@@ -54,11 +58,43 @@ export function handleNameGenerators(
   }
 }
 
+/**
+ * Places each node at a random position in `layoutId`. A stage being edited
+ * in an Architect preview may not name its layout yet, so none is written.
+ */
+function writeLayoutPositions(
+  ctx: GenerationContext,
+  nodes: readonly NcNode[],
+  layoutId: string | undefined,
+): void {
+  if (typeof layoutId !== 'string' || layoutId === '') return;
+  for (const node of nodes) {
+    node[entityAttributesProperty][layoutId] = {
+      x: ctx.valueGen.randomFloat(
+        ctx.config.sociogramLayoutRange.min,
+        ctx.config.sociogramLayoutRange.max,
+      ),
+      y: ctx.valueGen.randomFloat(
+        ctx.config.sociogramLayoutRange.min,
+        ctx.config.sociogramLayoutRange.max,
+      ),
+    };
+  }
+}
+
 export function handleSociogram(
   ctx: GenerationContext,
   draft: NetworkDraft,
   stage: StageOfType<'Sociogram'>,
 ): void {
+  for (const type of getStageNodeTypes(stage) ?? []) {
+    writeLayoutPositions(
+      ctx,
+      getStageFilteredNodes(ctx, draft, stage, type),
+      stage.layout,
+    );
+  }
+
   const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
@@ -82,22 +118,6 @@ export function handleSociogram(
       // Reused pairs need nothing written: `toggleEdge` only adds or deletes,
       // and the Sociogram collects no variable of its own on an edge.
       draft.edges.push(...created.map(({ edge }) => edge));
-    }
-
-    const layoutVariable = prompt.layout?.layoutVariable;
-    if (layoutVariable) {
-      for (const node of subjectNodes) {
-        node[entityAttributesProperty][layoutVariable] = {
-          x: ctx.valueGen.randomFloat(
-            ctx.config.sociogramLayoutRange.min,
-            ctx.config.sociogramLayoutRange.max,
-          ),
-          y: ctx.valueGen.randomFloat(
-            ctx.config.sociogramLayoutRange.min,
-            ctx.config.sociogramLayoutRange.max,
-          ),
-        };
-      }
     }
 
     // Tapping a node toggles the prompt's highlight variable, so the synthetic
@@ -610,6 +630,7 @@ export function handleNetworkComposer(
     0,
     { used: ctx.usedRosterUids, allowFabrication: true },
   );
+  writeLayoutPositions(ctx, newNodes, stage.layout);
   draft.nodes.push(...newNodes);
 
   for (const edgeDef of stage.edges ?? []) {

@@ -37,12 +37,8 @@ function getInProgressClearableVariables(stage: Stage): string[] {
     );
   }
   if (stage.type === 'Sociogram') {
-    return onlyStrings(
-      (stage.prompts ?? []).map((p): string | undefined => {
-        const layout: { layoutVariable?: string } | undefined = p.layout;
-        return layout?.layoutVariable;
-      }),
-    );
+    const layout: string | undefined = stage.layout;
+    return onlyStrings([layout]);
   }
   return [];
 }

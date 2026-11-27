@@ -134,11 +134,18 @@ export class ValueGenerator {
       case 'scalar':
       case 'ordinal':
       case 'datetime':
-      case 'layout':
       case 'location':
       default:
         return undefined;
     }
+  }
+
+  /** A spread-out position on a canvas for the node at `index`. */
+  layoutPosition(index: number): { x: number; y: number } {
+    return {
+      x: 0.1 + ((index * 0.17) % 0.8),
+      y: 0.1 + ((index * 0.23) % 0.8),
+    };
   }
 
   generateName(): string {
@@ -443,12 +450,6 @@ export class ValueGenerator {
           seq !== undefined ? seq % (span + 1) : this.randomInt(0, span);
         return addSteps(min, offset, window.resolution);
       }
-
-      case 'layout':
-        return {
-          x: 0.1 + ((index * 0.17) % 0.8),
-          y: 0.1 + ((index * 0.23) % 0.8),
-        };
 
       case 'location':
         return {

@@ -170,7 +170,7 @@ describe('edge reuse across stages', () => {
       label: 'Compose',
       subject: { entity: 'node', types: ['person'] },
       quickAdd: 'name',
-      layoutVariable: 'layout',
+      layout: 'layout',
       background: { circles: true },
       edges: [
         {

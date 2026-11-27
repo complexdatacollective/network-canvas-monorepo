@@ -240,7 +240,6 @@ function domainSize(
       return { count, elements };
     }
 
-    case 'layout':
     case 'location':
     case 'text':
     default:
@@ -326,10 +325,9 @@ function enumerateDomain(
       return enumerateSubsets(options, min, max, cap);
     }
 
-    // text is effectively unbounded, and layout/location accept no
-    // cross-variable rules; none of them is ever solved.
+    // text is effectively unbounded, and location accepts no cross-variable
+    // rules; neither is ever solved.
     case 'text':
-    case 'layout':
     case 'location':
       return undefined;
 

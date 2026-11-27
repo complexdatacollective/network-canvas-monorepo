@@ -99,6 +99,7 @@ import type {
   AddNodeTypeInput,
   AddOneToManyDyadCensusPromptInput,
   AddOrdinalBinPromptInput,
+  AddLayoutInput,
   AddPresetInput,
   AddPromptInput,
   AddStageInput,
@@ -114,6 +115,7 @@ import type {
   GeospatialPromptEntry,
   GetSessionInput,
   InitialNodesSpec,
+  LayoutHandle,
   LocalizationInput,
   NameGeneratorPromptEntry,
   NetworkComposerEdgeEntry,
@@ -569,6 +571,7 @@ export class SyntheticInterview {
   private edges: EdgeEntry[] = [];
   private assets: Record<string, unknown>[] = [];
   private egoVariables = new Map<string, VariableEntry>();
+  private layouts = new Map<string, { name: string }>();
   private nodeTypeCounter = 0;
   private edgeTypeCounter = 0;
   private ordinalPromptCounter = 0;
@@ -788,6 +791,37 @@ export class SyntheticInterview {
     return { id: varId };
   }
 
+  /**
+   * Adds a layout to `codebook.layouts`, or returns the layout already added
+   * under the same name, so stages that each ask for a default layout share
+   * one.
+   */
+  addLayout(opts?: AddLayoutInput): LayoutHandle {
+    const name = opts?.name ?? `layout_${String(this.layouts.size + 1)}`;
+    for (const [id, layout] of this.layouts) {
+      if (layout.name === name) return { id, name };
+    }
+    const id = opts?.id ?? this.variableIdFor('layout', name);
+    this.layouts.set(id, { name });
+    return { id, name };
+  }
+
+  /** The layouts a Sociogram or Network Composer sets for `nodeType`. */
+  private layoutsOfNodeType(nodeType: string): string[] {
+    return [
+      ...new Set(
+        this.stages.flatMap((stage) =>
+          (stage.type === 'Sociogram' || stage.type === 'NetworkComposer') &&
+          stage.layout !== undefined &&
+          stage.subject?.entity === 'node' &&
+          stage.subject.types.includes(nodeType)
+            ? [stage.layout]
+            : [],
+        ),
+      ),
+    ];
+  }
+
   // --- Stage API ---
 
   addStage<T extends StageType>(
@@ -858,6 +892,11 @@ export class SyntheticInterview {
         },
       }),
     };
+
+    if (type === 'Sociogram') {
+      entry.layout =
+        opts?.layout ?? this.addLayout({ name: 'sociogramLayout' }).id;
+    }
 
     // Handle form fields for NameGenerator (node-based)
     if (
@@ -1112,16 +1151,8 @@ export class SyntheticInterview {
         entry.quickAdd = ref.id;
       }
 
-      // layoutVariable stores each node's { x, y } position.
-      if (opts?.layoutVariable) {
-        entry.layoutVariable = opts.layoutVariable;
-      } else {
-        const ref = this.addVariableToNodeType(nodeTypeId, {
-          type: 'layout',
-          name: 'composerLayout',
-        });
-        entry.layoutVariable = ref.id;
-      }
+      entry.layout =
+        opts?.layout ?? this.addLayout({ name: 'composerLayout' }).id;
 
       if (opts?.nodeForm) {
         entry.nodeForm = {
@@ -1554,7 +1585,6 @@ export class SyntheticInterview {
       ordinal: 'likertValue',
       categorical: 'Category',
       datetime: 'Date',
-      layout: 'Layout',
       location: 'Location',
     };
     return names[type] ?? 'Value';
@@ -1716,18 +1746,6 @@ export class SyntheticInterview {
     const promptId = this.nextObjectId('prompt');
     const nodeTypeId = subjectTypeOf(entry.subject);
 
-    // Resolve layout variable
-    let layoutVariable: string | undefined;
-    if (opts?.layout?.layoutVariable) {
-      layoutVariable = opts.layout.layoutVariable;
-    } else {
-      const ref = this.addVariableToNodeType(nodeTypeId, {
-        type: 'layout',
-        name: 'sociogramLayout',
-      });
-      layoutVariable = ref.id;
-    }
-
     // Resolve edges
     let edges: SociogramPromptEntry['edges'];
     if (opts?.edges) {
@@ -1772,7 +1790,6 @@ export class SyntheticInterview {
     return {
       id: promptId,
       text: opts?.text ?? this.valueGen.generatePromptText('Sociogram'),
-      layout: { layoutVariable },
       ...(opts?.sortOrder ? { sortOrder: opts.sortOrder } : {}),
       edges,
       highlight,
@@ -1786,17 +1803,12 @@ export class SyntheticInterview {
     const presetId = this.nextObjectId('preset');
     const nodeTypeId = subjectTypeOf(entry.subject);
 
-    // Resolve layout variable
-    let layoutVariable: string;
-    if (opts?.layoutVariable) {
-      layoutVariable = opts.layoutVariable;
-    } else {
-      const ref = this.addVariableToNodeType(nodeTypeId, {
-        type: 'layout',
-        name: 'narrativeLayout',
-      });
-      layoutVariable = ref.id;
-    }
+    // A preset shows positions a Sociogram set, so it reads the first layout
+    // the interview has before adding one of its own.
+    const layout =
+      opts?.layout ??
+      this.layouts.keys().next().value ??
+      this.addLayout({ name: 'narrativeLayout' }).id;
 
     // Resolve group variable
     let groupVariable: string | undefined;
@@ -1841,7 +1853,7 @@ export class SyntheticInterview {
     return {
       id: presetId,
       label: opts?.label ?? this.valueGen.generatePresetLabel(),
-      layoutVariable,
+      layout,
       edges,
       groupVariable,
       highlight,
@@ -2200,6 +2212,31 @@ export class SyntheticInterview {
               ? ctx.valueGen.neutralForVariable(variable)
               : value;
           if (stored !== undefined) attributes[varId] = stored;
+        }
+      }
+
+      // A stage that sets a layout places every node of its types there, so
+      // a generated node has a position in each; a manual one only where the
+      // caller wrote it.
+      const layoutIds = this.layoutsOfNodeType(nodeEntry.type);
+      const writtenLayouts = definedAttributesOf(
+        Object.fromEntries(
+          layoutIds.flatMap((layoutId) =>
+            Object.hasOwn(nodeEntry.explicitAttributes, layoutId)
+              ? [[layoutId, nodeEntry.explicitAttributes[layoutId]]]
+              : [],
+          ),
+        ),
+        omittedAttributeValue,
+      );
+      for (const layoutId of layoutIds) {
+        if (Object.hasOwn(nodeEntry.explicitAttributes, layoutId)) {
+          const written = writtenLayouts[layoutId];
+          if (written !== undefined) attributes[layoutId] = written;
+          continue;
+        }
+        if (!nodeEntry.manual) {
+          attributes[layoutId] = ctx.valueGen.layoutPosition(index);
         }
       }
 
@@ -2870,7 +2907,10 @@ export class SyntheticInterview {
       ego = { variables };
     }
 
-    return { node, edge, ego };
+    const layouts =
+      this.layouts.size > 0 ? Object.fromEntries(this.layouts) : undefined;
+
+    return { node, edge, ego, ...(layouts && { layouts }) };
   }
 
   private buildPrompt(prompt: PromptEntry): Record<string, unknown> {
@@ -3093,6 +3133,10 @@ export class SyntheticInterview {
 
     if (stage.subject) {
       config.subject = stage.subject;
+    }
+
+    if (stage.type === 'Sociogram' && stage.layout) {
+      config.layout = stage.layout;
     }
 
     if (stage.form) {
@@ -3330,7 +3374,7 @@ export class SyntheticInterview {
 
     // NetworkComposer (quickAdd is serialized by the shared block above)
     if (stage.type === 'NetworkComposer') {
-      if (stage.layoutVariable) config.layoutVariable = stage.layoutVariable;
+      if (stage.layout) config.layout = stage.layout;
       if (stage.nodeForm) {
         config.nodeForm = {
           fields: withRowIds(

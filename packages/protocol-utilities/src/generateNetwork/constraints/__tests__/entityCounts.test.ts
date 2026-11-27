@@ -84,7 +84,7 @@ function networkComposer(overrides: Record<string, unknown> = {}): Stage {
     label: 'Compose',
     subject: { entity: 'node', types: ['person'] },
     quickAdd: 'name',
-    layoutVariable: 'layout',
+    layout: 'layout',
     background: { circles: true },
     edges: [
       {

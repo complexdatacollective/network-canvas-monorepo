@@ -829,24 +829,8 @@ describe('generateNetwork', () => {
       }
     });
 
-    it('clears the layout variable of an in-progress Sociogram', () => {
-      const codebook = makeCodebook({
-        node: {
-          'node-type-1': {
-            color: 'node-color-seq-1',
-            variables: {
-              'var-name': {
-                name: 'Name',
-                type: 'text',
-              },
-              'var-layout': {
-                name: 'Layout',
-                type: 'layout',
-              },
-            },
-          },
-        },
-      });
+    it('clears the layout of an in-progress Sociogram', () => {
+      const codebook = makeCodebook();
       const stages = [
         makeNameGeneratorStage(),
         {
@@ -854,13 +838,8 @@ describe('generateNetwork', () => {
           label: en('Sociogram'),
           type: 'Sociogram',
           subject: { entity: 'node', types: ['node-type-1'] },
-          prompts: [
-            {
-              id: 'prompt-soc',
-              text: en('Place people'),
-              layout: { layoutVariable: 'var-layout' },
-            },
-          ],
+          layout: 'var-layout',
+          prompts: [{ id: 'prompt-soc', text: en('Place people') }],
         } as Stage,
       ];
 
@@ -1723,5 +1702,85 @@ describe('stage node type accessors', () => {
     expect(getSingleStageNodeType(one)).toBe('person');
     expect(getStageNodeTypes(two)).toEqual(['person', 'place']);
     expect(getSingleStageNodeType(two)).toBeUndefined();
+  });
+});
+
+describe('generateNetwork layouts', () => {
+  const twoTypeCodebook = () =>
+    makeCodebook({
+      node: {
+        'node-type-1': {
+          color: 'node-color-seq-1',
+          variables: { 'var-name': { name: 'Name', type: 'text' } },
+        },
+        'node-type-2': {
+          color: 'node-color-seq-2',
+          variables: { 'var-name-2': { name: 'Place', type: 'text' } },
+        },
+      },
+    });
+
+  it('writes positions for every subject type of a setting Sociogram', () => {
+    const stages = [
+      makeNameGeneratorStage(),
+      makeNameGeneratorStage({
+        id: 'stage-ng-2',
+        subject: { entity: 'node', types: ['node-type-2'] },
+        prompts: [{ id: 'prompt-ng-2', text: en('Add places') }],
+      }),
+      {
+        id: 'stage-soc',
+        label: en('Sociogram'),
+        type: 'Sociogram',
+        subject: { entity: 'node', types: ['node-type-1', 'node-type-2'] },
+        layout: 'layout-map',
+        prompts: [{ id: 'prompt-soc', text: en('Place everyone') }],
+      } as Stage,
+    ];
+
+    const { network } = generateNetwork({
+      codebook: twoTypeCodebook(),
+      stages,
+      seed: 7,
+    });
+
+    for (const type of ['node-type-1', 'node-type-2']) {
+      const ofType = network.nodes.filter((node) => node.type === type);
+      expect(ofType.length).toBeGreaterThan(0);
+      for (const node of ofType) {
+        expect(node[entityAttributesProperty]['layout-map']).toEqual({
+          x: expect.any(Number),
+          y: expect.any(Number),
+        });
+      }
+    }
+  });
+
+  it('Composer writes positions on created nodes', () => {
+    const composer: Extract<Stage, { type: 'NetworkComposer' }> = {
+      id: testId('stage-composer'),
+      label: en('Compose'),
+      type: 'NetworkComposer',
+      subject: { entity: 'node', types: ['node-type-1'] },
+      quickAdd: asEntityAttributeReference('var-name'),
+      layout: 'layout-composer',
+      background: { concentricCircles: 1 },
+      edges: [],
+    };
+    const stages: Stage[] = [composer];
+
+    const { network } = generateNetwork({
+      codebook: makeCodebook(),
+      stages,
+      seed: 7,
+    });
+
+    expect(network.nodes.length).toBeGreaterThan(0);
+    for (const node of network.nodes) {
+      expect(node[entityAttributesProperty]['layout-composer']).toEqual({
+        x: expect.any(Number),
+        y: expect.any(Number),
+      });
+    }
   });
 });
