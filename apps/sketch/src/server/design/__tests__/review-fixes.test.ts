@@ -1313,6 +1313,30 @@ describe('instrument attributes', () => {
     });
   });
 
+  it.each(['layout_person_x', 'layout_person_y'])(
+    'names the layout so its position columns clash with no attribute: %s',
+    async (attribute) => {
+      const r = await build(
+        composerDesign({
+          nodeTypes: [
+            person([
+              A('role', 'text', 'What is their role?'),
+              A('circles', 'multi_choice', '', { options: ['Work', 'Family'] }),
+              A(attribute, 'number', 'How far away do they live?'),
+            ]),
+          ],
+        }),
+      );
+      expect(
+        r.validation.success,
+        JSON.stringify(r.validation.error?.issues),
+      ).toBe(true);
+      expect(r.protocol.codebook.layouts).toEqual({
+        [sketchLayoutId('layout_person')]: { name: 'layout_person_2' },
+      });
+    },
+  );
+
   it.each([
     ['self_administered', true],
     ['face_to_face', false],
