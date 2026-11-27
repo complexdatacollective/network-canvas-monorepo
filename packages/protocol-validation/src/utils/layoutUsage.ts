@@ -83,6 +83,17 @@ export const getLayoutUsage = (
   return usage;
 };
 
+/** Each layout of the codebook, with the node types that have it. */
+export const getLayoutNodeTypes = (
+  protocol: LayoutProtocol,
+): Record<string, readonly string[]> =>
+  Object.fromEntries(
+    Object.entries(getLayoutUsage(protocol)).map(([layoutId, entry]) => [
+      layoutId,
+      entry.nodeTypes,
+    ]),
+  );
+
 /** The node types that a stage setting `layoutId` places. */
 export const getNodeTypesWithLayout = (
   protocol: LayoutProtocol,

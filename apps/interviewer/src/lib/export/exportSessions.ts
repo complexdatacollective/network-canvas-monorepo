@@ -4,10 +4,11 @@ import type {
   ProtocolExportInput,
 } from '@codaco/network-exporters/input';
 import type { ExportOptions } from '@codaco/network-exporters/options';
+import { getLayoutNodeTypes } from '@codaco/protocol-validation';
 
 import { APP_VERSION } from '../appVersion';
 import { getProtocolsByHashes, getSessionsForExport } from '../db/api';
-import type { StoredProtocol } from '../db/types';
+import type { StoredSchema8Protocol } from '../db/types';
 import {
   type ExportPipelineData,
   type ExportRun,
@@ -52,30 +53,66 @@ async function fetchExportInputs(
   const stored = await getProtocolsByHashes(hashes);
   const protocols: Record<string, ProtocolExportInput> = {};
   for (const protocol of stored) {
-    protocols[protocol.hash] = {
-      hash: protocol.hash,
-      name: protocol.name,
-      codebook: exportedCodebook(protocol),
-    };
+    protocols[protocol.hash] =
+      protocol.schemaVersion === 8
+        ? schema8ExportInput(protocol)
+        : {
+            hash: protocol.hash,
+            name: protocol.name,
+            codebook: protocol.codebook,
+            layoutNodeTypes: getLayoutNodeTypes({
+              codebook: protocol.codebook,
+              stages: protocol.protocol.stages,
+            }),
+          };
   }
   return { sessions, protocols };
 }
 
 /**
- * The codebook the exporter reads. A schema 8 protocol is exported as it was
- * collected, never converted to schema 9: its codebook is handed over as it
- * is, typed as the exporter's input. The exporter reads only what the two
- * schemas share (entity types, variable names, types and options), and its
- * own handling of each variable type covers schema 8's.
+ * The export input of a schema 8 protocol. It is exported as it was
+ * collected, never converted to schema 9: the exporter reads only what the two
+ * schemas share (entity types, variable names, types and options), and its own
+ * handling of each variable type covers schema 8's. The one difference it
+ * cannot read is a layout: schema 8 declared one as a node variable of type
+ * `layout`, which is handed over as a layout of the codebook, held by the node
+ * types that declared it, so its position columns stay in the export.
  */
-function exportedCodebook(
-  protocol: StoredProtocol,
-): ProtocolExportInput['codebook'] {
-  if (protocol.schemaVersion !== 8) return protocol.codebook;
-  // The two codebook types differ only in fields the exporter never reads.
-  const codebook: unknown = protocol.codebook;
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the schema 8 and current codebook types differ only in fields the exporter never reads
-  return codebook as ProtocolExportInput['codebook'];
+function schema8ExportInput(
+  protocol: StoredSchema8Protocol,
+): ProtocolExportInput {
+  const layouts: Record<string, { name: string }> = {};
+  const layoutNodeTypes: Record<string, string[]> = {};
+  const nodeTypes = protocol.codebook.node;
+  const node =
+    nodeTypes === undefined
+      ? undefined
+      : Object.fromEntries(
+          Object.entries(nodeTypes).map(([type, definition]) => {
+            if (definition.variables === undefined) return [type, definition];
+            const variables = Object.fromEntries(
+              Object.entries(definition.variables).filter(([id, variable]) => {
+                if (variable.type !== 'layout') return true;
+                layouts[id] ??= { name: variable.name };
+                (layoutNodeTypes[id] ??= []).push(type);
+                return false;
+              }),
+            );
+            return [type, { ...definition, variables }];
+          }),
+        );
+  const converted: unknown = {
+    ...protocol.codebook,
+    ...(node === undefined ? {} : { node }),
+    ...(Object.keys(layouts).length === 0 ? {} : { layouts }),
+  };
+  return {
+    hash: protocol.hash,
+    name: protocol.name,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the schema 8 and current codebook types differ only in fields the exporter never reads, once layout variables are moved to layouts
+    codebook: converted as ProtocolExportInput['codebook'],
+    layoutNodeTypes,
+  };
 }
 
 function runOnWorker({

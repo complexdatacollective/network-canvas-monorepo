@@ -61,7 +61,12 @@ describe('runPipelineWithData with an answer GraphML cannot store', () => {
       data: {
         sessions: [session],
         protocols: {
-          'hash-1': { hash: 'hash-1', name: 'Protocol', codebook },
+          'hash-1': {
+            hash: 'hash-1',
+            name: 'Protocol',
+            codebook,
+            layoutNodeTypes: {},
+          },
         },
       },
       options: exportOptions,

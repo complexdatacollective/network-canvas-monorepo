@@ -497,6 +497,7 @@ export {
   freshenProtocolFragmentIds,
 } from './utils/freshenProtocolFragmentIds.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';
+export { getLayoutNodeTypes } from './utils/layoutUsage.ts';
 export { isDirectedEdgeType } from './utils/edgeTypeRules.ts';
 export {
   getSingleStageNodeType,

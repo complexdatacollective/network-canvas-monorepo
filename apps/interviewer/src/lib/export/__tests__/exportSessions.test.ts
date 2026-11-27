@@ -30,7 +30,12 @@ function seedDb() {
     },
   ]);
   getProtocolsByHashes.mockResolvedValue([
-    { hash: 'hash-1', name: 'Protocol', codebook: {} },
+    {
+      hash: 'hash-1',
+      name: 'Protocol',
+      codebook: {},
+      protocol: { stages: [] },
+    },
   ]);
 }
 
@@ -182,10 +187,70 @@ describe('runExport via the export worker', () => {
       hash: 'hash-8',
       name: 'Schema 8 Protocol',
       codebook: schema8Codebook,
+      layoutNodeTypes: {},
     });
 
     worker.reply({ type: 'error', message: 'stop', stack: 'Error: stop' });
     await expect(exportPromise).rejects.toThrow('stop');
+  });
+
+  it('schema 8 export through Interviewer keeps layout columns', async () => {
+    const position = {
+      name: 'position',
+      type: 'layout',
+    };
+    const nickname = { name: 'nickname', type: 'text' };
+    getSessionsForExport.mockResolvedValue([
+      {
+        id: 's8',
+        caseId: 'case-8',
+        startedAt: 1722772800000,
+        finishedAt: 1722776400000,
+        network: { nodes: [], edges: [], ego: {} },
+        protocolHash: 'hash-8',
+      },
+    ]);
+    getProtocolsByHashes.mockResolvedValue([
+      {
+        hash: 'hash-8',
+        name: 'Schema 8 Protocol',
+        schemaVersion: 8,
+        codebook: {
+          node: {
+            person: { name: 'Person', variables: { nickname, position } },
+            place: { name: 'Place', variables: { position } },
+            pet: { name: 'Pet' },
+          },
+        },
+      },
+    ]);
+    vi.stubGlobal('Worker', FakeWorker);
+
+    void runExport({
+      options: exportOptions,
+      sessionIds: ['s8'],
+    }).catch(() => {});
+    await vi.waitFor(() => {
+      expect(FakeWorker.instances[0]?.posted).toHaveLength(1);
+    });
+
+    // The exporter has no layout variable type: each schema 8 layout variable
+    // is handed over as a layout of the node types that declared it.
+    expect(
+      FakeWorker.instances[0]?.posted[0]?.data.protocols['hash-8'],
+    ).toEqual({
+      hash: 'hash-8',
+      name: 'Schema 8 Protocol',
+      codebook: {
+        node: {
+          person: { name: 'Person', variables: { nickname } },
+          place: { name: 'Place', variables: {} },
+          pet: { name: 'Pet' },
+        },
+        layouts: { position: { name: 'position' } },
+      },
+      layoutNodeTypes: { position: ['person', 'place'] },
+    });
   });
 
   it("exports each session's finish outcome, and none it did not record", async () => {
@@ -220,7 +285,12 @@ describe('runExport via the export worker', () => {
       },
     ]);
     getProtocolsByHashes.mockResolvedValue([
-      { hash: 'hash-1', name: 'Protocol', codebook: {} },
+      {
+        hash: 'hash-1',
+        name: 'Protocol',
+        codebook: {},
+        protocol: { stages: [] },
+      },
     ]);
     vi.stubGlobal('Worker', FakeWorker);
 

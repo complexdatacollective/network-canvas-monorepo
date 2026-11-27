@@ -73,7 +73,12 @@ describe('runPipelineWithData with entity types whose names collide as file name
       data: {
         sessions: [session],
         protocols: {
-          'hash-1': { hash: 'hash-1', name: 'Protocol', codebook },
+          'hash-1': {
+            hash: 'hash-1',
+            name: 'Protocol',
+            codebook,
+            layoutNodeTypes: {},
+          },
         },
       },
       options: exportOptions,

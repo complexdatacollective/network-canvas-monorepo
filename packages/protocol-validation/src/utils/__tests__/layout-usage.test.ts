@@ -6,6 +6,7 @@ import { completeProtocol } from '../../schemas/9/__tests__/complete-localized-p
 import { ProtocolSchemaV9 } from '../../schemas/9/schema.ts';
 import { collectLayoutReferences } from '../collectEntityAttributeReferences.ts';
 import {
+  getLayoutNodeTypes,
   getLayoutUsage,
   getNodeTypesWithLayout,
   getStageLayoutUses,
@@ -96,6 +97,17 @@ describe('layout usage', () => {
         layoutKeyNamed(protocol, 'colleague_map'),
       ),
     ).toEqual([]);
+  });
+
+  it('getLayoutNodeTypes lists every layout of the codebook with its node types', () => {
+    const protocol = protocolWithNarrative();
+    expect(getLayoutNodeTypes(protocol)).toEqual({
+      [layoutKeyNamed(protocol, 'Layout_Position')]: [
+        nodeTypeKeyNamed(protocol, 'Person'),
+      ],
+      [layoutKeyNamed(protocol, 'colleague_map')]: [],
+      [layoutKeyNamed(protocol, 'unused')]: [],
+    });
   });
 
   it('a layout no stage references is unused', () => {
