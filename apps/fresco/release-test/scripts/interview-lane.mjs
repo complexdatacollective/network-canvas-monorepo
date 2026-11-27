@@ -327,6 +327,13 @@ try {
           ['Casey', { x: 0.5, y: 0.65 }],
         ])
           await placeNode(page, name, target);
+        // People are placed in the first prompt's layout task and linked in
+        // the second prompt's connect task.
+        await page.getByTestId('next-button').click();
+        await page
+          .getByText(/link people who know each other/)
+          .first()
+          .waitFor({ timeout: 15_000 });
         // Two taps on the same prompt create the edge between them — on the
         // canvas, not in the drawer: a node that is still unplaced has a
         // button of its own there, and tapping that one selects nothing.

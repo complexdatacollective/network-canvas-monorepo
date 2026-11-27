@@ -74,6 +74,22 @@ const written = {};
 // The healthy protocol the interview lane conducts, upgraded from its schema 8
 // source to schema 9: that lane conducts the current interview.
 const current = migrateProtocol(protocol);
+// The schema 8 Sociogram both places people and links them on one prompt. In
+// schema 9 each prompt is one task and nodes move only in a layout task, so
+// the upgrade leaves a connect task with no step where anyone is placed. A
+// layout task goes first, as a researcher re-saving the protocol would add.
+{
+  const sociogram = current.stages.find((entry) => entry.type === 'Sociogram');
+  const [connect] = sociogram.prompts;
+  sociogram.prompts.unshift({
+    id: deterministicProtocolObjectId('2d7c4b1e-9a3f-4e6d-8b2c-5f1a0e9d7c34')(
+      'release-test-sociogram-layout',
+    ),
+    text: { en: 'Drag to place everyone.' },
+    task: 'layout',
+    edges: { display: connect.edges.display },
+  });
+}
 written.healthy = await write(
   'fresco-release-test.netcanvas',
   archiveOf(current, { withMedia: true }),
