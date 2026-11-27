@@ -290,7 +290,7 @@ describe('deleting a layout', () => {
     expect(ruleIds(documents)).toEqual([NAMED]);
   });
 
-  it('refuses deleting a layout a Narrative preset names and keeps the preset', () => {
+  it('lists a Narrative preset naming a layout as a stage reference, not a rule', () => {
     const documents = documentsWith({ [STORY_SECTION]: narrative });
 
     const { stages, rules } = layoutReferences(
@@ -301,13 +301,13 @@ describe('deleting a layout', () => {
     expect(stages).toEqual([
       { sectionId: STORY_SECTION, path: ['presets', 0, 'layout'] },
     ]);
-    // A preset is an entry of its list, so only asking for the stage
-    // references first keeps the sweep from dropping it.
+    // A preset is an entry of its list, so a host asks for the stage
+    // references first and refuses: the host suites delete a layout only one
+    // of two presets names and check that both presets are kept.
     expect(rules).toEqual([]);
-    expect(documents[STORY_SECTION]).toEqual(narrative);
   });
 
-  it('a layout named by a stage and by a filter rule is refused and the rule is kept', () => {
+  it('lists the stage and the filter rule naming a layout apart', () => {
     const documents = documentsWith({
       [NAMES_SECTION]: nameGenerator,
       [STORY_SECTION]: narrative,
@@ -327,7 +327,6 @@ describe('deleting a layout', () => {
         path: ['skipLogic', 'filter', 'rules', 0, 'options', 'attribute'],
       },
     ]);
-    expect(ruleIds(documents)).toEqual([PLACED, NAMED]);
   });
 
   it('routes a path under codebook.layouts to the layout’s section', () => {

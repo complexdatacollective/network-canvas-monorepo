@@ -1245,6 +1245,81 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     );
   });
 
+  it('refuses deleting a layout only one preset of a Narrative names, and keeps both presets', async () => {
+    const narrative = SAMPLE.stages.find((stage) => stage.type === 'Narrative');
+    if (narrative?.type !== 'Narrative') {
+      throw new Error('the sample protocol has no Narrative');
+    }
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'codebookLayout',
+        document: Redacted.make({ name: 'seating_by_preset' }),
+      }),
+    );
+    const layoutId = created.sectionId.slice('codebook:layout:'.length);
+    const narrativeSection = stageSection(narrative.id);
+    const held = await call(
+      ADA,
+      host.rpc('AcquireLock', { protocolId, sectionId: narrativeSection }),
+    );
+    const document = Redacted.value(held.document);
+    const presets: unknown[] = Array.isArray(document.presets)
+      ? document.presets
+      : [];
+    const [first] = presets;
+    // No Sociogram or Network Composer names the new layout, so the preset is
+    // the one reference refusing it, and one the sweep could drop as an entry
+    // of a list that keeps another.
+    await call(
+      ADA,
+      host.rpc('Submit', {
+        protocolId,
+        requestId: randomUUID(),
+        sectionId: narrativeSection,
+        document: Redacted.make({
+          ...document,
+          presets: [
+            first,
+            {
+              ...(typeof first === 'object' && first !== null ? first : {}),
+              id: randomUUID(),
+              layout: layoutId,
+            },
+          ],
+        }),
+        revision: held.revision,
+      }),
+    );
+    await call(
+      ADA,
+      host.rpc('ReleaseLock', { protocolId, sectionId: narrativeSection }),
+    );
+
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+      ),
+      'ReferencesRemain',
+    );
+
+    expect(error.remaining).toEqual([
+      { sectionId: narrativeSection, path: ['presets', 1, 'layout'] },
+    ]);
+    await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: created.sectionId }),
+    );
+    const kept = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: narrativeSection }),
+    );
+    expect(Redacted.value(kept.document).presets).toHaveLength(2);
+  });
+
   it('deleting a layout a filter rule names removes the rule', async () => {
     const created = await call(
       ADA,

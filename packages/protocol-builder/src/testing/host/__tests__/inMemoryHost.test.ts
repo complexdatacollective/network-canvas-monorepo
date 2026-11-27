@@ -1359,6 +1359,44 @@ describe('the in-memory host', () => {
     expect(subject.store.read(NARRATIVE).document.presets).toHaveLength(1);
   });
 
+  it('refuses deleting a layout only one preset of a Narrative names, and keeps both presets', async () => {
+    const subject = host();
+    const created = await createLayout(subject);
+    const layoutId = created.sectionId.slice('codebook:layout:'.length);
+    const narrative = subject.store.read(NARRATIVE).document;
+    const presets: unknown[] = Array.isArray(narrative.presets)
+      ? narrative.presets
+      : [];
+    const [first] = presets;
+    // No Sociogram or Network Composer names the new layout, so the preset is
+    // the one reference refusing it, and one the sweep could drop as an entry
+    // of a list that keeps another.
+    subject.store.applyAsCollaborator(NARRATIVE, {
+      ...narrative,
+      presets: [
+        first,
+        {
+          ...(typeof first === 'object' && first !== null ? first : {}),
+          id: testId('preset-new-layout'),
+          layout: layoutId,
+        },
+      ],
+    });
+
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Delete', {
+      protocolId: subject.protocolId,
+      sectionId: created.sectionId,
+    });
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      remaining: [{ sectionId: NARRATIVE, path: ['presets', 1, 'layout'] }],
+    });
+    expect(subject.store.has(created.sectionId)).toBe(true);
+    expect(subject.store.read(NARRATIVE).document.presets).toHaveLength(2);
+  });
+
   it('deleting a layout a filter rule names removes the rule', async () => {
     const subject = host();
     const created = await createLayout(subject);
