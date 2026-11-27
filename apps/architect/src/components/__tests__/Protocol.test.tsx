@@ -57,7 +57,7 @@ describe('Protocol', () => {
         </Provider>,
       );
     };
-    const title = 'Some nodes will have no position in a layout';
+    const title = 'No stage places some nodes in a layout';
 
     const reachable = renderWith(protocolWithReachableLayouts());
     expect(screen.queryByText(title)).not.toBeInTheDocument();

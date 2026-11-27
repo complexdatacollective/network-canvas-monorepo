@@ -1909,11 +1909,11 @@
   },
   "architect.pages.codebookPage.codebook": {
     "defaultMessage": "Codebook",
-    "description": "Heading of the Codebook page, which lists the ego, node types and edge types of the protocol and their attributes."
+    "description": "Heading of the Codebook page of Architect, read by the researcher. The page lists the ego, the node types and edge types of the protocol with their attributes, and the layouts (named sets of node positions) of the protocol."
   },
   "architect.pages.codebookPage.overviewOfTheEgoNodeAnd": {
-    "defaultMessage": "Overview of the ego, node and edge types, their attributes, and network assets defined in your protocol. Create, edit, and delete types and attributes here. Unused entities can be deleted.",
-    "description": "Introductory text under the heading of the Codebook page. Describes what the page shows and that unused types and attributes (codebook variables) can be deleted."
+    "defaultMessage": "Overview of the ego, the node and edge types, their attributes, the layouts and the network assets defined in your protocol. Create, edit and delete types and attributes here. Unused types, attributes and layouts can be deleted.",
+    "description": "Introductory text under the heading of the Codebook page of Architect, read by the researcher. Describes what the page shows, including the layouts (named sets of node positions), and that unused types, attributes (codebook variables) and layouts can be deleted."
   },
   "architect.pages.experimentsPage.description": {
     "defaultMessage": "These are features that we are still evaluating and that we don’t think are ready for everyday use yet. They may change or be removed at short notice. If you use one of these experimental features, please give us feedback on the <forum>community forum</forum>.",
@@ -3988,15 +3988,15 @@
     "description": "Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has skip logic set."
   },
   "architect.unreachableLayoutsAlert.description": {
-    "defaultMessage": "These stages show positions from a layout, but no stage places nodes of some of their types in that layout, so those nodes are never shown. Add a Sociogram or a Network Composer that places them in the layout, or choose another layout on the stage.",
-    "description": "Text of the warning on the timeline of Architect, read by the researcher, about stages that show positions from a layout in which no stage places some of their nodes. A Sociogram and a Network Composer are stage types in which participants place nodes. A list of the stages follows."
+    "defaultMessage": "These stages show positions from a layout, but no stage places nodes of some of their types in that layout. Those nodes are shown only if a roster gives them positions in the layout. Add a Sociogram or a Network Composer that places them in the layout, or choose another layout on the stage.",
+    "description": "Text of the warning on the timeline of Architect, read by the researcher, about stages that show positions from a layout in which no stage places some of their nodes. A Sociogram and a Network Composer are stage types in which participants place nodes. A roster is a data file of nodes that can give them positions. A list of the stages follows."
   },
   "architect.unreachableLayoutsAlert.entry": {
     "defaultMessage": "{stage} shows the layout “{layout}”, in which no stage places {count, plural, one {{nodeTypes} nodes} other {nodes of the types {nodeTypes}}}.",
     "description": "One item in the list of the timeline warning in Architect, read by the researcher, about layouts with no positions for some nodes. stage is the name of the stage; layout is the name of the layout; nodeTypes is the list of node type names, already joined; count is how many node types there are."
   },
   "architect.unreachableLayoutsAlert.title": {
-    "defaultMessage": "Some nodes will have no position in a layout",
+    "defaultMessage": "No stage places some nodes in a layout",
     "description": "Title of the warning on the timeline of Architect, read by the researcher, shown when a stage shows positions from a layout (a named set of node positions) in which no stage places nodes of some of its node types."
   },
   "architect.utility.dialogForm.confirmDiscardNestedDraft.closeWithoutSaving": {

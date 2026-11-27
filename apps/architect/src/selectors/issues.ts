@@ -171,7 +171,8 @@ export const getHasVariableRoleConflicts = createSelector(
 /**
  * Each stage (or Narrative preset) that shows positions from a layout in
  * which no stage places nodes of some of its types, with those types. Nodes
- * of those types are never shown there. The protocol is still valid.
+ * of those types are shown there only if a roster gives them positions. The
+ * protocol is still valid.
  */
 export const getUnreachableLayoutReads = createSelector(
   [getProtocol],

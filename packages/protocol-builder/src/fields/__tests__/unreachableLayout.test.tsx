@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { NEW_STAGE_POSITION } from '../../editors/__tests__/creationSignal.ts';
@@ -6,6 +7,10 @@ import {
   narrativeSections,
   openPreset,
 } from '../../editors/narrative/__tests__/narrativeFixtures.tsx';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../testing/attributePicker.ts';
 import {
   fixtureLayoutId,
   fixtureTypeId,
@@ -19,10 +24,13 @@ const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 // The fixture's Sociogram and Network Composer place people in this layout;
 // no stage places family members in it.
 const LAYOUT = fixtureLayoutId('layout');
+// Added to the codebook by the tests that need it; no stage places anything
+// in it.
+const UNPLACED = testId('unplaced-layout');
 
-const WARNING_TITLE = 'Some nodes will have no position in this layout';
+const WARNING_TITLE = 'No stage places some nodes in this layout';
 
-const narrativeAbout = (types: string[]) => {
+const narrativeAbout = (types: string[], layout = LAYOUT) => {
   const fields = {
     label: { 'en-US': 'Narrative' },
     subject: { entity: 'node', types },
@@ -31,7 +39,7 @@ const narrativeAbout = (types: string[]) => {
       {
         id: testId('narrative-preset'),
         label: { 'en-US': 'Positions' },
-        layout: LAYOUT,
+        layout,
       },
     ],
   };
@@ -57,7 +65,7 @@ describe('the warning about a layout with no positions for a node type', () => {
     expect(await preset.findByText(WARNING_TITLE)).toBeInTheDocument();
     expect(
       preset.getByText(
-        'No stage places family member nodes in the layout “layout”, so they will never be shown here. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
+        'No stage places family member nodes in the layout “layout”, so they are shown here only if a roster gives them positions in this layout. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
       ),
     ).toBeInTheDocument();
   });
@@ -97,5 +105,46 @@ describe('the warning about a layout with no positions for a node type', () => {
     const preset = await openPreset(harness);
 
     expect(await preset.findByText(WARNING_TITLE)).toBeInTheDocument();
+  });
+
+  // The saved stage is in the protocol too. Each case below changes only the
+  // picker, so the warning can follow it only by judging the preset as it is
+  // being edited, in place of the saved copy of the stage.
+  it('warns as soon as the picker chooses a layout with no positions for the type', async () => {
+    const harness = renderStageEditor(narrativeAbout([PERSON]));
+    harness.receiveCodebookUpdate({
+      layouts: { [UNPLACED]: { name: 'unplaced' } },
+    });
+
+    const preset = await openPreset(harness);
+    expect(
+      await preset.findByRole('textbox', { name: 'Preset label' }),
+    ).toBeInTheDocument();
+    expect(preset.queryByText(WARNING_TITLE)).not.toBeInTheDocument();
+
+    await chooseAttributeById(harness.user, attributeField('Layout'), UNPLACED);
+
+    expect(await preset.findByText(WARNING_TITLE)).toBeInTheDocument();
+    expect(
+      preset.getByText(
+        'No stage places person nodes in the layout “unplaced”, so they are shown here only if a roster gives them positions in this layout. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('stops warning as soon as the picker chooses a layout that another stage sets', async () => {
+    const harness = renderStageEditor(narrativeAbout([PERSON], UNPLACED));
+    harness.receiveCodebookUpdate({
+      layouts: { [UNPLACED]: { name: 'unplaced' } },
+    });
+
+    const preset = await openPreset(harness);
+    expect(await preset.findByText(WARNING_TITLE)).toBeInTheDocument();
+
+    await chooseAttributeById(harness.user, attributeField('Layout'), LAYOUT);
+
+    await waitFor(() =>
+      expect(preset.queryByText(WARNING_TITLE)).not.toBeInTheDocument(),
+    );
   });
 });

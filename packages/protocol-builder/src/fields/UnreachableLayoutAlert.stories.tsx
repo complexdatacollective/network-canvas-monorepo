@@ -15,7 +15,7 @@ const LAYOUT = fixtureLayoutId('layout');
 const PERSON = fixtureTypeId('node', 'person');
 const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
-const TITLE = 'Some nodes will have no position in this layout';
+const TITLE = 'No stage places some nodes in this layout';
 
 const meta = {
   title: 'Protocol Builder/Fields/Unreachable layout alert',
@@ -25,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Shown under the layout chosen for a stage that only shows positions, such as a Narrative preset, when no stage places nodes of some of its node types in that layout. Those nodes are never shown there. The protocol is still valid, so this is a warning.',
+          'Shown under the layout chosen for a stage that only shows positions, such as a Narrative preset, when no stage places nodes of some of its node types in that layout. Those nodes are shown there only if a roster gives them positions. The protocol is still valid, so this is a warning.',
       },
     },
   },
@@ -50,7 +50,7 @@ export const OneNodeType: Story = {
     await expect(await canvas.findByText(TITLE)).toBeVisible();
     await expect(
       canvas.getByText(
-        'No stage places family member nodes in the layout “layout”, so they will never be shown here. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
+        'No stage places family member nodes in the layout “layout”, so they are shown here only if a roster gives them positions in this layout. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
       ),
     ).toBeVisible();
   },

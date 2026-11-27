@@ -13,16 +13,16 @@ import { useProtocolContext } from '../state/protocolContext.ts';
 const messages = defineMessages({
   title: {
     id: 'protocolBuilder.unreachableLayout.title',
-    defaultMessage: 'Some nodes will have no position in this layout',
+    defaultMessage: 'No stage places some nodes in this layout',
     description:
-      'Title of the warning in the stage editor of Architect, read by the researcher, shown under the layout chosen for a stage that only shows positions (a Narrative preset, for example). It says that nodes of some node types can never have a position in that layout.',
+      'Title of the warning in the stage editor of Architect, read by the researcher, shown under the layout chosen for a stage that only shows positions (a Narrative preset, for example). It says that no stage places nodes of some node types in that layout, so those nodes have positions there only if a roster supplies them.',
   },
   description: {
     id: 'protocolBuilder.unreachableLayout.description',
     defaultMessage:
-      'No stage places {count, plural, one {{nodeTypes} nodes} other {nodes of the types {nodeTypes}}} in the layout “{layout}”, so they will never be shown here. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
+      'No stage places {count, plural, one {{nodeTypes} nodes} other {nodes of the types {nodeTypes}}} in the layout “{layout}”, so they are shown here only if a roster gives them positions in this layout. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
     description:
-      'Text of the warning in the stage editor of Architect, read by the researcher, shown when the layout chosen for a stage that only shows positions has no positions for some of its node types. nodeTypes is the list of those node type names, already joined; count is how many there are; layout is the name of the layout. A Sociogram and a Network Composer are stage types in which participants place nodes.',
+      'Text of the warning in the stage editor of Architect, read by the researcher, shown when no stage places some of the node types of a stage that only shows positions in the layout chosen for it. nodeTypes is the list of those node type names, already joined; count is how many there are; layout is the name of the layout. A Sociogram and a Network Composer are stage types in which participants place nodes. A roster is a data file of nodes that can give them positions.',
   },
 });
 

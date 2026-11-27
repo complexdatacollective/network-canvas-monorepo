@@ -107,7 +107,8 @@ export const getLayoutsOfNodeType = (
 
 /**
  * Every use that reads a layout for node types that no stage sets it for,
- * with those types. Nodes of those types can never have a position there.
+ * with those types. Nodes of those types have a position there only if a
+ * roster supplies it.
  */
 export const findUnreachableLayoutReads = (
   protocol: LayoutProtocol,

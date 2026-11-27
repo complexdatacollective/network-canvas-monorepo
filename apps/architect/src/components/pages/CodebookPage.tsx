@@ -13,14 +13,14 @@ const messages = defineMessages({
     id: 'architect.pages.codebookPage.codebook',
     defaultMessage: 'Codebook',
     description:
-      'Heading of the Codebook page, which lists the ego, node types and edge types of the protocol and their attributes.',
+      'Heading of the Codebook page of Architect, read by the researcher. The page lists the ego, the node types and edge types of the protocol with their attributes, and the layouts (named sets of node positions) of the protocol.',
   },
   overviewOfTheEgoNodeAnd: {
     id: 'architect.pages.codebookPage.overviewOfTheEgoNodeAnd',
     defaultMessage:
-      'Overview of the ego, node and edge types, their attributes, and network assets defined in your protocol. Create, edit, and delete types and attributes here. Unused entities can be deleted.',
+      'Overview of the ego, the node and edge types, their attributes, the layouts and the network assets defined in your protocol. Create, edit and delete types and attributes here. Unused types, attributes and layouts can be deleted.',
     description:
-      'Introductory text under the heading of the Codebook page. Describes what the page shows and that unused types and attributes (codebook variables) can be deleted.',
+      'Introductory text under the heading of the Codebook page of Architect, read by the researcher. Describes what the page shows, including the layouts (named sets of node positions), and that unused types, attributes (codebook variables) and layouts can be deleted.',
   },
 });
 

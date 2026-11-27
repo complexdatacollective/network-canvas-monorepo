@@ -10,16 +10,16 @@ import { getCodebook, getStageList } from '~/selectors/protocol';
 const messages = defineMessages({
   title: {
     id: 'architect.unreachableLayoutsAlert.title',
-    defaultMessage: 'Some nodes will have no position in a layout',
+    defaultMessage: 'No stage places some nodes in a layout',
     description:
       'Title of the warning on the timeline of Architect, read by the researcher, shown when a stage shows positions from a layout (a named set of node positions) in which no stage places nodes of some of its node types.',
   },
   description: {
     id: 'architect.unreachableLayoutsAlert.description',
     defaultMessage:
-      'These stages show positions from a layout, but no stage places nodes of some of their types in that layout, so those nodes are never shown. Add a Sociogram or a Network Composer that places them in the layout, or choose another layout on the stage.',
+      'These stages show positions from a layout, but no stage places nodes of some of their types in that layout. Those nodes are shown only if a roster gives them positions in the layout. Add a Sociogram or a Network Composer that places them in the layout, or choose another layout on the stage.',
     description:
-      'Text of the warning on the timeline of Architect, read by the researcher, about stages that show positions from a layout in which no stage places some of their nodes. A Sociogram and a Network Composer are stage types in which participants place nodes. A list of the stages follows.',
+      'Text of the warning on the timeline of Architect, read by the researcher, about stages that show positions from a layout in which no stage places some of their nodes. A Sociogram and a Network Composer are stage types in which participants place nodes. A roster is a data file of nodes that can give them positions. A list of the stages follows.',
   },
   entry: {
     id: 'architect.unreachableLayoutsAlert.entry',
