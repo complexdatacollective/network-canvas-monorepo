@@ -7,6 +7,11 @@ import {
   asEntityAttributeReference,
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
+import {
+  protocolShowingUnplacedLayout,
+  protocolWithReachableLayouts,
+  SHOWN_ONLY_LAYOUT,
+} from '~/templates/__tests__/layoutReadFixtures';
 import { templateTypeId } from '~/templates/__tests__/templateCodebookIds';
 import { developmentProtocol } from '~/templates/development-protocol';
 
@@ -151,5 +156,53 @@ describe('the layouts in the printable codebook', () => {
       within(row).getByRole('link', { name: 'Sociogram' }),
     ).toHaveAttribute('href', `#stage-${sociogram.id}`);
     expect(named).not.toHaveTextContent('Not in use');
+  });
+
+  it('prints no layouts page and no contents entry for a protocol without layouts', () => {
+    const protocol = structuredClone(developmentProtocol);
+    protocol.codebook.layouts = {};
+
+    const codebook = renderSummary(<Codebook />, protocol);
+    expect(
+      screen.queryByRole('heading', { level: 1, name: 'Layouts' }),
+    ).not.toBeInTheDocument();
+    expect(codebook.container.querySelector('#layouts')).toBeNull();
+    codebook.unmount();
+
+    renderSummary(<Contents />, protocol);
+    expect(screen.queryByText('Layouts')).not.toBeInTheDocument();
+  });
+
+  it('lists a stage once when several of its presets show the layout', () => {
+    const protocol = protocolWithReachableLayouts();
+    const { container } = renderSummary(<Codebook />, protocol);
+
+    const closeness = container.querySelector(
+      `#layout-${layoutId('closenessLayout')}`,
+    );
+    if (!(closeness instanceof HTMLElement)) {
+      throw new Error('closenessLayout is not printed.');
+    }
+    const links = within(rowValue(closeness, 'Shown on')).getAllByRole('link');
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveTextContent('Narrative');
+  });
+
+  it('prints only the rows of a layout that have something in them', () => {
+    const { protocol } = protocolShowingUnplacedLayout();
+    const { container } = renderSummary(<Codebook />, protocol);
+
+    const shownOnly = container.querySelector(
+      `#layout-${SHOWN_ONLY_LAYOUT.id}`,
+    );
+    if (!(shownOnly instanceof HTMLElement)) {
+      throw new Error(`${SHOWN_ONLY_LAYOUT.name} is not printed.`);
+    }
+    expect(rowValue(shownOnly, 'Shown on')).toHaveTextContent('Narrative');
+    expect(within(shownOnly).queryByText('Placed on')).not.toBeInTheDocument();
+    expect(within(shownOnly).queryByText('Node types')).not.toBeInTheDocument();
+    expect(
+      within(shownOnly).queryByText('Named in rules on'),
+    ).not.toBeInTheDocument();
   });
 });

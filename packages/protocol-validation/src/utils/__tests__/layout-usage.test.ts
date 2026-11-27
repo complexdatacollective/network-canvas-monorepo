@@ -317,4 +317,32 @@ describe('layout usage', () => {
 
     expect(findUnreachableLayoutReads({ ...protocol, stages })).toEqual([]);
   });
+
+  it('findUnreachableLayoutReads names only the types that no stage places in the layout', () => {
+    const protocol = protocolWithNarrative();
+    const person = nodeTypeKeyNamed(protocol, 'Person');
+    const colleague = nodeTypeKeyNamed(protocol, 'Colleague');
+    const shared = layoutKeyNamed(protocol, 'Layout_Position');
+    // The helper takes any stages: a Narrative over people and colleagues
+    // that shows the layout in which the Sociogram places people only.
+    const stages = protocol.stages.map((stage): Stage => {
+      if (stage.type !== 'Narrative') return stage;
+      return {
+        ...stage,
+        subject: { entity: 'node', types: [person, colleague] },
+        presets: stage.presets.map((preset) => ({ ...preset, layout: shared })),
+      };
+    });
+    const narrative = stages.find(({ type }) => type === 'Narrative');
+    if (narrative?.type !== 'Narrative') throw new Error('No Narrative');
+
+    expect(findUnreachableLayoutReads({ ...protocol, stages })).toEqual(
+      narrative.presets.map((preset) => ({
+        stageId: narrative.id,
+        presetId: preset.id,
+        layoutId: shared,
+        nodeTypes: [colleague],
+      })),
+    );
+  });
 });

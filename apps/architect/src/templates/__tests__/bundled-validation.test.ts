@@ -128,39 +128,80 @@ describe('bundled protocols open without variable role conflicts', () => {
 
 // The same first impression, for the timeline warning from
 // `UnreachableLayoutsAlert`: a stage that shows positions from a layout in
-// which no stage places its nodes, so those nodes are never shown there.
+// which no stage places its nodes, so those nodes are shown there only if a
+// roster gives them positions.
 //
 // Three bundled protocols still open with it, each with a Narrative that
 // shows a layout no stage places its people in. Slice 12a of the schema 9
-// plan repairs them; each is listed here by name so that the list shrinks to
-// nothing and no other protocol can join it.
-const KNOWN_UNREACHABLE_LAYOUT_READS: ReadonlySet<string> = new Set([
-  // Its Narrative's second preset shows anotherLayout.
-  'Development Protocol',
-  // Its Narrative's three presets show a layout that no stage places in.
-  'Behavioural Influence Networks',
-  // Its Narrative shows a layout in which no stage places supporters.
-  'Care & Support Networks',
-]);
+// plan repairs them. Each is listed with exactly the reads it has now, so a
+// new read in a listed protocol fails as well as one in any other protocol,
+// and a repaired read forces its entry to be removed.
+type LayoutRead = ReturnType<typeof findUnreachableLayoutReads>[number];
+
+const KNOWN_UNREACHABLE_LAYOUT_READS: ReadonlyMap<string, LayoutRead[]> =
+  new Map([
+    [
+      // The Narrative's second preset shows anotherLayout for people.
+      'Development Protocol',
+      [
+        {
+          stageId: '1a38659b-f2ec-5fc1-9718-36a9de0b3ce8',
+          presetId: '78af7c87-b4a0-5ecc-9255-f52de2c1e87f',
+          layoutId: 'e13ca72d-aefe-4f48-841d-09f020e0e987',
+          nodeTypes: ['02f0c3a5-008e-58e9-91ce-0cd152fbe22a'],
+        },
+      ],
+    ],
+    [
+      // The Narrative's three presets show a layout that no stage places in.
+      'Behavioural Influence Networks',
+      [
+        'a160fa07-0edc-5564-88cd-0a9c9b11ac83',
+        'd3da7416-5989-5979-ad4e-cdcac3c46663',
+        '59da2f24-3470-5c3a-8cfc-4c21783cb0af',
+      ].map((presetId) => ({
+        stageId: '7665dd8f-3669-5f75-b4ba-a67b43e06f5c',
+        presetId,
+        layoutId: 'a08b8051-1e97-5445-89a0-be9d247dbc0a',
+        nodeTypes: ['d2196845-950a-5f79-a394-618fcb5028bf'],
+      })),
+    ],
+    [
+      // The Narrative shows a layout in which no stage places supporters.
+      'Care & Support Networks',
+      [
+        {
+          stageId: '792ae959-4ecb-5ce5-9d4b-f648e3563acc',
+          presetId: 'aa7cbf0f-c1cd-55c4-9696-56d96be740e2',
+          layoutId: '353f0d07-aa7a-5ccb-a899-7e079cfa5ba8',
+          nodeTypes: ['55ab482e-6ed4-5905-bc48-37acdcc7871c'],
+        },
+      ],
+    ],
+  ]);
 
 describe('bundled protocols open without unreachable layout reads', () => {
   for (const { name, protocol } of bundledProtocols) {
-    const known = KNOWN_UNREACHABLE_LAYOUT_READS.has(name);
-    it(`${name} ${known ? 'still shows' : 'shows no'} layout that no stage places its nodes in`, () => {
-      const reads = findUnreachableLayoutReads(protocol);
-      if (known) {
-        // Fails once the protocol is repaired, so its entry is removed.
-        expect(reads).not.toStrictEqual([]);
-      } else {
-        expect(reads).toStrictEqual([]);
-      }
+    const known = KNOWN_UNREACHABLE_LAYOUT_READS.get(name);
+    it(`${name} ${known ? 'still shows only its known' : 'shows no'} layout that no stage places its nodes in`, () => {
+      expect(findUnreachableLayoutReads(protocol)).toStrictEqual(known ?? []);
     });
   }
 
   it('names only bundled protocols in its list of known exceptions', () => {
     const names = new Set(bundledProtocols.map(({ name }) => name));
     expect(
-      [...KNOWN_UNREACHABLE_LAYOUT_READS].filter((name) => !names.has(name)),
+      [...KNOWN_UNREACHABLE_LAYOUT_READS.keys()].filter(
+        (name) => !names.has(name),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it('lists no protocol with no reads among its known exceptions', () => {
+    expect(
+      [...KNOWN_UNREACHABLE_LAYOUT_READS.entries()]
+        .filter(([, reads]) => reads.length === 0)
+        .map(([name]) => name),
     ).toStrictEqual([]);
   });
 });
