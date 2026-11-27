@@ -35,15 +35,12 @@ describe('simLinksFor', () => {
     ).toEqual([{ source: 0, target: 1 }]);
   });
 
-  it('keeps a link for each edge type and leaves out unseeded ends', () => {
+  it('adds one link for edges of several types between one pair and leaves out unseeded ends', () => {
     expect(
       simLinksFor(
         [edge(FOLLOWS, 'a', 'b'), edge(KNOWS, 'b', 'a'), edge(KNOWS, 'a', 'c')],
         indexById,
       ),
-    ).toEqual([
-      { source: 0, target: 1 },
-      { source: 1, target: 0 },
-    ]);
+    ).toEqual([{ source: 0, target: 1 }]);
   });
 });

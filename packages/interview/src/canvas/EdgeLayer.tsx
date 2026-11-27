@@ -269,7 +269,13 @@ export default function EdgeLayer({
                 ARROW_LENGTH,
                 (length - reachAtTo - reachAtFrom) / heads,
               );
-        if (heads === 0 || !measured || headLength < MIN_ARROW_LENGTH) {
+        // A line of no length has no direction, so it has no room for a head.
+        if (
+          heads === 0 ||
+          !measured ||
+          length === 0 ||
+          !(headLength >= MIN_ARROW_LENGTH)
+        ) {
           setLine(visual, from, to);
           if (hit) setLine(hit, from, to);
           for (const element of arrows) {

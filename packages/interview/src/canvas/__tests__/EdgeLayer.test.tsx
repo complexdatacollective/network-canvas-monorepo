@@ -12,18 +12,22 @@ import { testTypeId } from '../../__tests__/testIds';
 
 const FOLLOWS = testTypeId('follows');
 const KNOWS = testTypeId('knows');
+const MENTORS = testTypeId('mentors');
 const PERSON = testTypeId('person');
 const PLACE = testTypeId('place');
+const SIGN = testTypeId('sign');
 
 // One object for every render, or the layer would rebuild its lines each time.
 const codebook = {
   edge: {
     [FOLLOWS]: { color: 'edge-color-seq-2', directed: true },
     [KNOWS]: { color: 'edge-color-seq-1' },
+    [MENTORS]: { color: 'edge-color-seq-3', directed: true },
   },
   node: {
     [PERSON]: { name: 'Person', shape: { default: 'circle' } },
     [PLACE]: { name: 'Place', shape: { default: 'square' } },
+    [SIGN]: { name: 'Sign', shape: { default: 'diamond' } },
   },
 };
 vi.mock('react-redux', () => ({
@@ -52,6 +56,11 @@ function measuredStore() {
   ]);
   return store;
 }
+
+const typedEdge = (type: string, from: string, to: string): NcEdge => ({
+  ...edge(type, from, to),
+  [entityPrimaryKeyProperty]: `${type}:${from}-${to}`,
+});
 
 const node = (id: string, type: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
@@ -251,4 +260,129 @@ describe('EdgeLayer', () => {
       Math.max(b - (tip?.[0] ?? 0), b - (tip?.[1] ?? 0)) * 400,
     ).toBeGreaterThan(17);
   });
+
+  // A 20 px diamond is a 17 px square with 8.5 px corners turned 45 degrees:
+  // it reaches 17 px towards the middle of a side and 20.52 px through a
+  // rounded corner, where a circle would reach 20 px either way.
+  it.each([
+    ['the middle of a side', 45, 17],
+    ['a rounded corner', 0, 8.5 * Math.SQRT2 + 8.5],
+  ])(
+    "ends an arrowhead at a diamond node's edge through %s",
+    (_where, angle, expected) => {
+      const { container } = render(
+        <EdgeLayer
+          edges={[edge(FOLLOWS, 'a', 'b')]}
+          nodes={[node('a', PERSON), node('b', SIGN)]}
+          store={storeWithNodesApart(300, angle)}
+        />,
+      );
+
+      const [tip] = pointsOf(arrowheads(container)[0]);
+      const radians = (angle * Math.PI) / 180;
+      const bx = 0.5 + (150 / 400) * Math.cos(radians);
+      const by = 0.5 + (150 / 400) * Math.sin(radians);
+      const reach =
+        Math.hypot(bx - (tip?.[0] ?? 0), by - (tip?.[1] ?? 0)) * 400;
+      expect(reach).toBeCloseTo(expected, 1);
+    },
+  );
+
+  it('draws each directed edge type between one pair as its own line', () => {
+    const onEdgeSelect = vi.fn();
+    const { container } = render(
+      <EdgeLayer
+        edges={[
+          typedEdge(FOLLOWS, 'a', 'b'),
+          typedEdge(MENTORS, 'b', 'a'),
+          typedEdge(MENTORS, 'a', 'b'),
+        ]}
+        store={measuredStore()}
+        onEdgeSelect={onEdgeSelect}
+      />,
+    );
+
+    const visuals = lines(container).filter(
+      (line) => line.getAttribute('stroke') !== 'transparent',
+    );
+    expect(
+      visuals.map((line) => [
+        line.getAttribute('stroke'),
+        line.getAttribute('data-edge-id'),
+        line.getAttribute('data-edge-ids'),
+      ]),
+    ).toEqual([
+      ['var(--edge-2)', `${FOLLOWS}:a-b`, null],
+      ['var(--edge-3)', `${MENTORS}:b-a`, `${MENTORS}:b-a ${MENTORS}:a-b`],
+    ]);
+    expect(
+      arrowheads(container).map((arrow) => [
+        arrow.getAttribute('fill'),
+        arrow.getAttribute('data-edge-arrowhead'),
+      ]),
+    ).toEqual([
+      ['var(--edge-2)', 'b'],
+      ['var(--edge-3)', 'a'],
+      ['var(--edge-3)', 'b'],
+    ]);
+
+    fireEvent.click(visuals[0]!);
+    expect(onEdgeSelect).toHaveBeenLastCalledWith([`${FOLLOWS}:a-b`]);
+    fireEvent.click(visuals[1]!);
+    expect(onEdgeSelect).toHaveBeenLastCalledWith([
+      `${MENTORS}:b-a`,
+      `${MENTORS}:a-b`,
+    ]);
+  });
+
+  it.each([
+    ['a circle and a square', PLACE],
+    ['a circle and a diamond', SIGN],
+  ])(
+    'draws a directed edge between %s at one position with no arrowhead',
+    (_pair, type) => {
+      const { container } = render(
+        <EdgeLayer
+          edges={[edge(FOLLOWS, 'a', 'b'), edge(FOLLOWS, 'b', 'a')]}
+          nodes={[node('a', PERSON), node('b', type)]}
+          store={storeWithNodesApart(0)}
+        />,
+      );
+
+      expect(
+        arrowheads(container).map((arrow) => arrow.getAttribute('visibility')),
+      ).toEqual(['hidden', 'hidden']);
+      const [line] = lines(container);
+      expect(
+        ['x1', 'y1', 'x2', 'y2'].map((name) => coordinate(line!, name)),
+      ).toEqual([0.5, 0.5, 0.5, 0.5]);
+    },
+  );
+
+  it.each([
+    ['no canvas dimensions', undefined],
+    ['a canvas with no height', { width: 400, height: 0 }],
+  ])(
+    'draws a directed line centre to centre with no arrowhead on %s',
+    (_canvas, dimensions) => {
+      const store = createCanvasStore();
+      if (dimensions) store.getState().setCanvasDimensions(dimensions);
+      store.getState().setNodeRadius(20);
+      store.getState().setBatchPositions([
+        ['a', { x: 0.125, y: 0.5 }],
+        ['b', { x: 0.875, y: 0.5 }],
+      ]);
+      const { container } = render(
+        <EdgeLayer edges={[edge(FOLLOWS, 'a', 'b')]} store={store} />,
+      );
+
+      expect(
+        arrowheads(container).map((arrow) => arrow.getAttribute('visibility')),
+      ).toEqual(['hidden']);
+      const [line] = lines(container);
+      expect(
+        ['x1', 'y1', 'x2', 'y2'].map((name) => coordinate(line!, name)),
+      ).toEqual([0.125, 0.5, 0.875, 0.5]);
+    },
+  );
 });

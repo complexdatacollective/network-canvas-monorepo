@@ -17,6 +17,8 @@ function roundedSquareDistance(
 ): number {
   const major = Math.max(Math.abs(ux), Math.abs(uy));
   const minor = Math.min(Math.abs(ux), Math.abs(uy));
+  // A ray with no direction is treated as leaving through a side.
+  if (major === 0) return halfSide;
   const flat = halfSide / major;
   const inset = halfSide - corner;
   if (flat * minor <= inset) return flat;

@@ -117,8 +117,9 @@ type UseAutoLayoutResult = {
 
 /**
  * The simulation's links for `edges` between the seeded nodes, as indices into
- * them: one link per pair of nodes and edge type, so the two edges of a
- * reciprocal pair pull their nodes together no harder than one edge does.
+ * them: one link per pair of nodes, so the two edges of a reciprocal pair,
+ * or edges of several types between one pair, pull their nodes together no
+ * harder than one edge does.
  * Edges with an end that was not seeded are left out.
  */
 export function simLinksFor(
@@ -132,7 +133,6 @@ export function simLinksFor(
     const target = indexById.get(edge[edgeTargetProperty]);
     if (source === undefined || target === undefined) continue;
     const key = JSON.stringify([
-      edge.type,
       Math.min(source, target),
       Math.max(source, target),
     ]);

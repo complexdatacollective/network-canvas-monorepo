@@ -199,13 +199,41 @@ const buildDiamondNodes = () => {
   return si;
 };
 
+/**
+ * How far a diamond node `radius` pixels in half width reaches from its centre
+ * along the unit direction (`ux`, `uy`): the point where the ray leaves the
+ * rounded square (0.85 of the half width, corners rounded by half of that)
+ * turned 45 degrees, found by bisecting its signed distance field.
+ */
+const diamondReach = (radius: number, ux: number, uy: number) => {
+  const half = radius * 0.85;
+  const corner = half / 2;
+  const outside = (t: number) => {
+    const qx = Math.abs(((ux + uy) / Math.SQRT2) * t) - (half - corner);
+    const qy = Math.abs(((uy - ux) / Math.SQRT2) * t) - (half - corner);
+    return (
+      Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) +
+        Math.min(Math.max(qx, qy), 0) -
+        corner >
+      0
+    );
+  };
+  let inside = 0;
+  let out = radius * 2;
+  for (let step = 0; step < 40; step += 1) {
+    const middle = (inside + out) / 2;
+    if (outside(middle)) out = middle;
+    else inside = middle;
+  }
+  return inside;
+};
+
 export const DiamondNodes: Story = {
   render: () => <SociogramStoryWrapper buildFn={buildDiamondNodes} />,
   // Asserts the regression invariant: every line runs through the centres of
   // the bounding boxes of the two nodes it joins, i.e. the diamond's rotated
   // background layer does not shift the visual center. Each arrowhead's tip
-  // sits on the diamond's edge: no nearer the centre than the middle of a
-  // side, and no further out than a rounded corner.
+  // sits on the diamond's own edge for the direction it arrives from.
   play: async ({ canvasElement }) => {
     const sociogram = await waitFor(() => {
       const el = canvasElement.querySelector<HTMLElement>(
@@ -280,14 +308,23 @@ export const DiamondNodes: Story = {
       }
     }
 
+    let circleMisses = 0;
     for (const tip of tips) {
       const [x, y] = tip.split(',');
       const point = toScreen(x ?? null, y ?? null);
       const target = nearest(point);
       const reach = Math.hypot(point.x - target.x, point.y - target.y);
-      expect(reach).toBeGreaterThan(target.radius * 0.85 - 2);
-      expect(reach).toBeLessThan(target.radius * 1.05 + 2);
+      const expected = diamondReach(
+        target.radius,
+        (point.x - target.x) / reach,
+        (point.y - target.y) / reach,
+      );
+      expect(Math.abs(reach - expected)).toBeLessThan(2);
+      circleMisses += Math.abs(reach - target.radius) > 2 ? 1 : 0;
     }
+    // At least one tip is somewhere a circle's edge would not be, so the
+    // check above tells a diamond outline from a circle.
+    expect(circleMisses).toBeGreaterThan(0);
   },
 };
 
