@@ -463,6 +463,10 @@
     "defaultMessage": "{value1, plural, one {In use in # stage — remove usages first} other {In use in # stages — remove usages first}}",
     "description": "Tooltip on the disabled Delete button of a node type or edge type that stages use. value1 is the number of stages using the type; the researcher must remove those uses before deleting."
   },
+  "architect.codebook.entityType.layouts": {
+    "defaultMessage": "Layouts that have positions for this type:",
+    "description": "Label before the list of layouts on a node type section of the Codebook page of Architect. A layout is a named set of node positions; a stage gives nodes of this type positions in each listed layout. Each layout links to its entry further down the page."
+  },
   "architect.codebook.entityType.notInUse": {
     "defaultMessage": "not in use",
     "description": "Warning badge on a node type or edge type section of the Codebook page, shown when no stage uses the type."
@@ -495,6 +499,10 @@
     "defaultMessage": "An attribute name can’t contain tabs, line breaks or other control characters.",
     "description": "Actionable codebook write refusal for an attribute name that contains an invisible control character. Any script, spaces and punctuation are allowed in an attribute name."
   },
+  "architect.codebook.error.layoutInUse": {
+    "defaultMessage": "This layout is in use and cannot be deleted. Remove it from the stages and rules listed with it first.",
+    "description": "Error shown in the confirmation dialog on the Codebook page of Architect, read by the researcher, when they try to delete a layout (a set of node positions on a Sociogram) that a stage or a rule (a filter, skip logic or a condition) still uses. The stages and rules are listed with the layout on the same page."
+  },
   "architect.codebook.error.missingAttribute": {
     "defaultMessage": "Attribute \"{id}\" does not exist",
     "description": "Actionable codebook write or deletion refusal. Any name or id is preserved authored data."
@@ -526,6 +534,50 @@
   "architect.codebook.externalEntity.preview": {
     "defaultMessage": "Preview",
     "description": "Button on a network resource section of the Codebook page that opens a preview of the resource file. Preview is a verb."
+  },
+  "architect.codebook.layouts.confirmDelete": {
+    "defaultMessage": "Are you sure you want to delete the layout “{name}”? You can restore it with Undo while this protocol remains open.",
+    "description": "Text of the dialog that asks the researcher in Architect to confirm deleting a layout from the codebook. name is the name of the layout, shown in quotation marks."
+  },
+  "architect.codebook.layouts.deleteLayout": {
+    "defaultMessage": "Delete layout",
+    "description": "Button on the entry for an unused layout on the Codebook page of Architect, and the title and confirm button of the dialog that it opens. Delete is a verb. A layout is a named set of node positions."
+  },
+  "architect.codebook.layouts.inUse": {
+    "defaultMessage": "To delete this layout, first remove it from the stages listed here.",
+    "description": "Note on the entry for a layout on the Codebook page of Architect, shown instead of a delete button when stages or rules use the layout."
+  },
+  "architect.codebook.layouts.layout": {
+    "defaultMessage": "{name} layout",
+    "description": "Heading of the entry for one layout on the Codebook page of Architect. name is the name of the layout that the researcher chose, for example Closeness. A layout is a named set of node positions."
+  },
+  "architect.codebook.layouts.layouts": {
+    "defaultMessage": "Layouts ({count, number})",
+    "description": "Heading of the section of the Codebook page in Architect that lists the layouts of the protocol. A layout is a named set of node positions that participants create on a Sociogram or a Network Composer. count is the number of layouts."
+  },
+  "architect.codebook.layouts.namedByRules": {
+    "defaultMessage": "Stages with rules that name it:",
+    "description": "Label before the list of stages on the entry for a layout on the Codebook page of Architect. A rule on these stages (a filter, skip logic or a condition) checks whether a node has a position in the layout."
+  },
+  "architect.codebook.layouts.noLayoutsYet": {
+    "defaultMessage": "No layouts yet. A layout is created when you choose a new layout on a Sociogram or a Network Composer.",
+    "description": "Message under the Layouts heading on the Codebook page of Architect when the protocol has no layouts. A layout is a named set of node positions. Sociogram and Network Composer are stage types."
+  },
+  "architect.codebook.layouts.nodeTypes": {
+    "defaultMessage": "Node types that have positions in it:",
+    "description": "Label before the list of node types on the entry for a layout on the Codebook page of Architect. Nodes of these types are given positions in the layout by a stage."
+  },
+  "architect.codebook.layouts.notInUse": {
+    "defaultMessage": "not in use",
+    "description": "Warning badge on the entry for a layout on the Codebook page of Architect, shown when no stage and no rule uses the layout."
+  },
+  "architect.codebook.layouts.readBy": {
+    "defaultMessage": "Stages that show its positions:",
+    "description": "Label before the list of stages on the entry for a layout on the Codebook page of Architect. These stages (a Narrative, for example) show the node positions stored in the layout but do not change them."
+  },
+  "architect.codebook.layouts.setBy": {
+    "defaultMessage": "Stages that place nodes in it:",
+    "description": "Label before the list of stages on the entry for a layout on the Codebook page of Architect. On these stages (a Sociogram or a Network Composer), participants or the automatic layout give nodes positions in the layout."
   },
   "architect.codebook.unusedVariablesAlert.notReferencedAnywhereInYour": {
     "defaultMessage": "{count, plural, one {This attribute is not referenced anywhere in your protocol and is tagged <strong>not in use</strong> below. Use the <strong2>Show unused only</strong2> filter to find it, then reference it in a stage or delete it.} other {These attributes are not referenced anywhere in your protocol and are tagged <strong>not in use</strong> below. Use the <strong2>Show unused only</strong2> filter to find them, then reference them in a stage or delete them.}}",
@@ -2843,6 +2895,10 @@
     "defaultMessage": "Interview text",
     "description": "Entry in the printable protocol summary’s contents that links to the section listing the words the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry."
   },
+  "architect.protocolSummary.contents.layouts": {
+    "defaultMessage": "Layouts",
+    "description": "Sub-heading in the table of contents of the printable protocol summary in Architect, above the list of the layouts of the codebook. A layout is a named set of node positions. Shown only when the protocol has layouts."
+  },
   "architect.protocolSummary.contents.nodeTypes": {
     "defaultMessage": "Node types",
     "description": "Sub-heading in the table of contents of the printable protocol summary, above the list of the codebook's node types."
@@ -2874,6 +2930,30 @@
   "architect.protocolSummary.interfaceText.title": {
     "defaultMessage": "Interview text",
     "description": "Heading of the printable protocol summary section that lists the words the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry."
+  },
+  "architect.protocolSummary.layouts.layouts": {
+    "defaultMessage": "Layouts",
+    "description": "Heading of the page of the printable protocol summary in Architect that lists the layouts of the codebook. A layout is a named set of node positions that participants create on a Sociogram or a Network Composer."
+  },
+  "architect.protocolSummary.layouts.namedByRules": {
+    "defaultMessage": "Named in rules on",
+    "description": "Row label in the table for one layout in the printable protocol summary. The row lists the stages with a rule (a filter, skip logic or a condition) that checks whether a node has a position in the layout."
+  },
+  "architect.protocolSummary.layouts.nodeTypes": {
+    "defaultMessage": "Node types",
+    "description": "Row label in the table for one layout in the printable protocol summary. The row lists the node types that have positions in the layout."
+  },
+  "architect.protocolSummary.layouts.notInUse": {
+    "defaultMessage": "Not in use",
+    "description": "Text in the table for one layout in the printable protocol summary, shown when no stage and no rule uses the layout."
+  },
+  "architect.protocolSummary.layouts.readBy": {
+    "defaultMessage": "Shown on",
+    "description": "Row label in the table for one layout in the printable protocol summary. The row lists the stages that show the node positions stored in the layout, such as a Narrative."
+  },
+  "architect.protocolSummary.layouts.setBy": {
+    "defaultMessage": "Placed on",
+    "description": "Row label in the table for one layout in the printable protocol summary. The row lists the stages on which participants or the automatic layout place nodes in the layout."
   },
   "architect.protocolSummary.protocolCard.lastModified": {
     "defaultMessage": "Last Modified: {value1}",
@@ -3902,6 +3982,18 @@
   "architect.timeline.timelineStageRow.hasSkipLogic": {
     "defaultMessage": "Has skip logic",
     "description": "Alternative text and tooltip of a small icon on a timeline stage, shown when the stage has skip logic set."
+  },
+  "architect.unreachableLayoutsAlert.description": {
+    "defaultMessage": "These stages show positions from a layout, but no stage places nodes of some of their types in that layout, so those nodes are never shown. Add a Sociogram or a Network Composer that places them in the layout, or choose another layout on the stage.",
+    "description": "Text of the warning on the timeline of Architect about stages that show positions from a layout in which no stage places some of their nodes. A Sociogram and a Network Composer are stage types in which participants place nodes. A list of the stages follows."
+  },
+  "architect.unreachableLayoutsAlert.entry": {
+    "defaultMessage": "{stage} shows the layout “{layout}”, in which no stage places {count, plural, one {{nodeTypes} nodes} other {nodes of the types {nodeTypes}}}.",
+    "description": "One item in the list of the timeline warning in Architect about layouts with no positions for some nodes. stage is the name of the stage; layout is the name of the layout; nodeTypes is the list of node type names, already joined; count is how many node types there are."
+  },
+  "architect.unreachableLayoutsAlert.title": {
+    "defaultMessage": "Some nodes will have no position in a layout",
+    "description": "Title of the warning on the timeline of Architect, read by the researcher, shown when a stage shows positions from a layout (a named set of node positions) in which no stage places nodes of some of its node types."
   },
   "architect.utility.dialogForm.confirmDiscardNestedDraft.closeWithoutSaving": {
     "defaultMessage": "Close Without Saving",
