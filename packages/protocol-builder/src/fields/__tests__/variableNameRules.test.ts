@@ -289,6 +289,40 @@ describe('the rule for a node attribute name beside the codebook layouts', () =>
     expect(optionOf('node', 'seating')).toEqual([]);
     expect(optionOf('edge', 'seat_ing')).toEqual([]);
   });
+
+  // GraphML writes a space in a column as an underscore, so these meet a
+  // layout's position column only as written.
+  it('says which of the attribute\u2019s columns meets a layout\u2019s once written, for a node attribute only', () => {
+    const refusalsOf = (
+      entity: 'node' | 'edge',
+      candidate: Parameters<typeof exportColumnRefusals>[0]['candidate'],
+      layout: string,
+    ) =>
+      exportColumnRefusals({
+        entity,
+        candidate,
+        siblings: [],
+        layouts: [{ name: layout }],
+      }).map(({ message }) => readMessage(message));
+    const option = {
+      name: 'a b',
+      type: 'categorical',
+      options: [{ value: 'c_x' }],
+    } as const;
+    const layout = { name: 'a b', type: 'layout' } as const;
+
+    expect(refusalsOf('node', option, 'a_b_c')).toEqual([
+      'In the export, the column “a b_c_x” for option “c_x” of “a b” and the position column “a_b_c_X” of the layout “a_b_c” would become the same column, “a_b_c_x”. Change the option value or the attribute name.',
+    ]);
+    expect(refusalsOf('node', layout, 'a_b')).toEqual(
+      ['X', 'Y', 'screenSpaceX', 'screenSpaceY'].map(
+        (suffix) =>
+          `In the export, the position column “a b_${suffix}” of the layout attribute “a b” and the position column “a_b_${suffix}” of the layout “a_b” would become the same column, “a_b_${suffix}”. Choose a different name.`,
+      ),
+    );
+    expect(refusalsOf('edge', option, 'a_b_c')).toEqual([]);
+    expect(refusalsOf('edge', layout, 'a_b')).toEqual([]);
+  });
 });
 
 /**
