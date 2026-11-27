@@ -219,6 +219,36 @@ describe('EgoForm logic', () => {
     expect(egoAttributes()?.[EMPLOYER]).toBe('Acme');
   });
 
+  it('leaves the answer to a question that only the earlier language’s form asks when the participant changes language and moves on', async () => {
+    // Mounted in Spanish, whose form asks for a nickname, then shown in
+    // English, whose form does not: moving on submits the English form,
+    // which does not hide the nickname but does not ask it either.
+    const { egoAttributes, moveForward, showLanguage } = renderEgoForm({
+      stage,
+      egoVariables,
+      stored: { [STATUS]: ['student'], [NICKNAME]: 'Ada' },
+      localization,
+      locale: 'es',
+    });
+    expect(await screen.findByDisplayValue('Ada')).toBeVisible();
+
+    showLanguage('en');
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: /Apodo/ })).toBeNull(),
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Employed' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Your work' }),
+    ).toBeVisible();
+
+    await moveForward();
+
+    await waitFor(() =>
+      expect(egoAttributes()?.[STATUS]).toEqual(['student', 'employed']),
+    );
+    expect(egoAttributes()?.[NICKNAME]).toBe('Ada');
+  });
+
   describe('an answer to a hidden question', () => {
     const business = () =>
       screen.queryByRole('textbox', { name: /Business name\?/ });

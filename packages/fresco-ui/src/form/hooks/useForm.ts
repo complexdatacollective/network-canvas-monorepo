@@ -120,11 +120,16 @@ export function useForm(config: FormConfig) {
   }, [errorFocusRequest, submitInvalidHandler, onInvalidSubmit]);
 
   // Register form once on mount. layout effect used to ensure it runs before fields register.
+  // The handlers registered call the ones the form is rendered with now, not
+  // the ones it mounted with: a form whose handler reads what it shows (its
+  // fields in the participant's language, say) must not be submitted by a
+  // handler that reads what it showed when it mounted.
   useLayoutEffect(() => {
     if (!registeredRef.current) {
       registerForm({
-        onSubmit: configRef.current.onSubmit,
-        onSubmitInvalid: configRef.current.onSubmitInvalid,
+        onSubmit: (values) => configRef.current.onSubmit(values),
+        onSubmitInvalid: (invalidErrors) =>
+          configRef.current.onSubmitInvalid?.(invalidErrors),
       });
       registeredRef.current = true;
     }

@@ -76,9 +76,13 @@ export const renameFieldBlocks = (
     return message;
   }
   // One pass, so that a new id that is another field's old id is not
-  // renamed again.
+  // renamed again. An address that `fieldBlockUrl` writes contains no
+  // parenthesis (it encodes them), so the address ends at the first one:
+  // were it to run on past an opening parenthesis, a message with many
+  // `(field:` and no closing one would take time that grows with the square
+  // of its length.
   return message.replace(
-    /\(field:([^)\s]*)\)/gi,
+    /\(field:([^()\s]*)\)/gi,
     (address, encoded: string) => {
       const fieldId = readFieldBlockUrl(`${FIELD_BLOCK_SCHEME}${encoded}`);
       const renamed = fieldId === undefined ? undefined : renames.get(fieldId);

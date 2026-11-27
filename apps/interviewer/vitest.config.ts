@@ -118,6 +118,8 @@ export default defineConfig({
             '@codaco/art > blobs/v2/animate',
             '@codaco/fresco-ui > @faker-js/faker',
             '@codaco/fresco-ui > @radix-ui/react-slot',
+            '@codaco/fresco-ui > @tiptap/pm/history',
+            '@codaco/fresco-ui > @tiptap/pm/transform',
             '@codaco/fresco-ui > clsx',
             '@codaco/fresco-ui > comlink',
             '@codaco/fresco-ui > cva',

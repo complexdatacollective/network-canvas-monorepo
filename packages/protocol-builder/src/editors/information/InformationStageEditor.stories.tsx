@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { dynamicValueNameFor } from '@codaco/protocol-validation';
 
+import { ATTRIBUTE_MENU_LABEL } from '../../fields/dynamicText/AttributeMenuButton.tsx';
 import StageEditor from '../../StageEditor.tsx';
 import {
   fixtureStageId,
@@ -70,10 +71,9 @@ export const Spectating: Story = {
 };
 
 /**
- * A value the interview fills in, inserted into the page: typing `{`
- * offers what the page can show, and choosing the participant's name
- * writes it into the text by its attribute's id, inside versions for when it
- * is known and when it is not.
+ * A value the interview fills in, inserted into the page: typing `{` opens
+ * the Attribute menu, and choosing the participant's name writes it into the
+ * text by its attribute's id.
  */
 const EGO_NAME = dynamicValueNameFor({
   kind: 'attribute',
@@ -92,13 +92,15 @@ export const ShowingAValue: Story = {
     });
     await userEvent.click(page);
     await userEvent.keyboard(' {{');
-    await body.findByRole('combobox', { name: 'Search' });
-    await userEvent.keyboard('ego_name{Enter}');
-    // The name can be missing, so it arrives in versions for when it is
-    // known and when it is not.
-    await expect(
-      await canvas.findByRole('group', { name: /ego_name/ }),
-    ).toBeInTheDocument();
+    const menu = within(
+      await body.findByRole('dialog', { name: ATTRIBUTE_MENU_LABEL }),
+    );
+    await userEvent.click(menu.getByRole('option', { name: /^ego_name/ }));
+    await waitFor(async () => {
+      await expect(
+        page.querySelector(`[data-inline-value="${EGO_NAME}"]`),
+      ).not.toBeNull();
+    });
 
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
     await waitFor(async () => {
@@ -106,9 +108,7 @@ export const ShowingAValue: Story = {
         canvas.getByRole('region', {
           name: 'What the host was asked to commit',
         }),
-      ).toHaveTextContent(
-        `{${EGO_NAME}, select, missing {} other {{${EGO_NAME}}}}`,
-      );
+      ).toHaveTextContent(`{${EGO_NAME}}`);
     });
   },
 };

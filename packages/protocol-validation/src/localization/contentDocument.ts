@@ -105,7 +105,6 @@ const NOT_TEXT = '';
 const BLANK_LINE_BEFORE = /\n[^\S\n]*\n[^\S\n]*$/;
 const BLANK_LINE_AFTER = /^[^\S\n]*\n[^\S\n]*\n/;
 const LEADING_BLANK_LINES = /^(?:[^\S\n]*\n)+/;
-const TRAILING_SPACE = /\s+$/;
 
 const isBlank = (text: string) => text.trim() === '';
 
@@ -152,7 +151,11 @@ const trimRun = (run: readonly MessageNode[]): MessageNode[] => {
   }
   const last = nodes.at(-1);
   if (last?.kind === 'text') {
-    const text = last.text.replace(TRAILING_SPACE, '');
+    // `trimEnd` removes what `\s+$` matches, in time that grows with the
+    // length of the text: the expression is tried from each white space
+    // character, so a long run of it before other text takes time that grows
+    // with the square of the run's length.
+    const text = last.text.trimEnd();
     if (text === '') nodes.pop();
     else nodes[nodes.length - 1] = { kind: 'text', text };
   }

@@ -4,7 +4,10 @@ import { Provider } from 'react-redux';
 import { vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type { LocalizationDeclaration } from '@codaco/protocol-validation';
+import type {
+  LocaleTag,
+  LocalizationDeclaration,
+} from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
@@ -39,19 +42,22 @@ const NEXT_SCREEN = {
  * Renders `stage`, an Ego Form, as the Shell renders it: the first stage of a
  * protocol in `localization` whose ego has `egoVariables`, for an ego whose
  * attributes are `stored`, with the interview's own navigation and dynamic
- * values. Events go to `tracker`.
+ * values, in `locale` (else in the protocol's default language). Events go
+ * to `tracker`.
  */
 export const renderEgoForm = ({
   stage,
   egoVariables,
   stored = {},
   localization = ENGLISH_ONLY,
+  locale = null,
   tracker = NULL_TRACKER,
 }: Readonly<{
   stage: EgoFormStage;
   egoVariables: Readonly<Record<string, unknown>>;
   stored?: Readonly<Record<string, unknown>>;
   localization?: LocalizationDeclaration;
+  locale?: LocaleTag | null;
   tracker?: Tracker;
 }>) => {
   const store = configureStore({
@@ -98,8 +104,8 @@ export const renderEgoForm = ({
     );
   }
 
-  const { container } = render(
-    <TestProtocolLocalization localization={localization}>
+  const interviewIn = (shownLocale: LocaleTag | null) => (
+    <TestProtocolLocalization localization={localization} locale={shownLocale}>
       <Provider store={store}>
         <AnalyticsContext.Provider value={tracker}>
           <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
@@ -109,8 +115,9 @@ export const renderEgoForm = ({
           </CurrentStepProvider>
         </AnalyticsContext.Provider>
       </Provider>
-    </TestProtocolLocalization>,
+    </TestProtocolLocalization>
   );
+  const { container, rerender } = render(interviewIn(locale));
 
   /** The ego's attributes as the interview has stored them. */
   const egoAttributes = () =>
@@ -128,5 +135,8 @@ export const renderEgoForm = ({
     }
     return moveForwardOnStage();
   };
-  return { egoAttributes, submit, moveForward };
+  /** Shows the interview in `shownLocale`, as the participant's choice of language does. */
+  const showLanguage = (shownLocale: LocaleTag) =>
+    rerender(interviewIn(shownLocale));
+  return { egoAttributes, submit, moveForward, showLanguage };
 };

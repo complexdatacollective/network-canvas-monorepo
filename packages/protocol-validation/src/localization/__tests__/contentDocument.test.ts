@@ -54,6 +54,29 @@ const problemKinds = (message: string) =>
   readContentDocument(message).problems.map(({ kind }) => kind);
 
 describe('readContentDocument', () => {
+  it('reads text with a long run of white space in time that grows with its length', () => {
+    let read = 0;
+    const timeOf = (length: number, runs: number): number =>
+      Math.min(
+        ...Array.from({ length: runs }, () => {
+          // A different message each time, so that no reading is the
+          // cached reading of an earlier one.
+          read += 1;
+          const message = `a${' '.repeat(length)}b${read}`;
+          const start = performance.now();
+          readContentDocument(message);
+          return performance.now() - start;
+        }),
+      );
+    // Warm up, so that the first timed run is not also the first run.
+    timeOf(1_000, 1);
+    const short = timeOf(20_000, 5);
+    const long = timeOf(80_000, 5);
+    // Four times the length: about 4 in linear time, about 16 in quadratic
+    // time. The margin leaves room for a loaded machine.
+    expect(long / short).toBeLessThan(9);
+  });
+
   it('reads markdown and fields as blocks, in order', () => {
     const { nodes, problems } = readContentDocument(
       `# Heading\n\nSome text.\n\n${fieldBlockMarkdown(FIELD_1)}\n\nMore text.\n\n${fieldBlockMarkdown(FIELD_2)}`,

@@ -20,8 +20,7 @@ const isContentEditable = (element: Element): boolean => {
  *
  * A RANGE, not a caret. Both are measured, and they are not the same case: a
  * click over a range collapses it to the END of the text, which is why a test
- * that selected one has to be typed into without a click of the wrapper's
- * own; a click anywhere else puts a collapsed caret at the START of the text,
+ * that selected one is typed into without any click; a click anywhere else puts a collapsed caret at the START of the text,
  * whatever was there before. So a range is the only selection a test can
  * express that survives being typed into, and a caret is not a position this
  * wrapper can honour at all.
@@ -117,14 +116,15 @@ const selectionChangesDispatched = (): Promise<void> => {
  * of its text (below), so waiting for it makes that position certain too
  * rather than merely usual.
  *
- * With the separate click made unconditionally, a test that selects the answer
- * before typing over it appended instead: click, `{Control>}a{/Control}`,
- * `type` saved "OtherElse" for "Else". The extra click collapses the range to
- * the end of the text AND gives ProseMirror the selection change in which to
- * believe it, so the keystrokes insert rather than replace. `type`'s own click
- * collapses the DOM selection too, but ProseMirror never sees it before the
- * keystrokes and replaces the selection it still holds — which is what a
- * researcher typing over selected text gets.
+ * A test that selects the answer before typing over it is typed into with no
+ * click at all, because a researcher who has selected text types over it
+ * without clicking first. Any click collapses the range: with the separate
+ * click made unconditionally, click, `{Control>}a{/Control}`, `type` saved
+ * "OtherElse" for "Else". `type`'s own click collapses the DOM selection to the
+ * end of the text in the same way. The editor reads the page's selection
+ * before it handles a key (`ReadSelectionBeforeKeys` in `RichTextEditor`), as
+ * a browser's own click would have it do, so after that click the keystrokes
+ * were appended too.
  *
  * What the click does NOT do is leave a caret where a test put one. Measured:
  * a click into a field holding text puts a collapsed caret at offset 0 of the
@@ -150,12 +150,11 @@ export function withSafeTypingIntoRichText<User extends Typist>(
   return {
     ...user,
     type: async (element: Element, text: string, options?: TypeOptions) => {
-      if (
-        options?.skipClick === true ||
-        !isContentEditable(element) ||
-        hasSelectedRangeInside(element)
-      ) {
+      if (options?.skipClick === true || !isContentEditable(element)) {
         return user.type(element, text, options);
+      }
+      if (hasSelectedRangeInside(element)) {
+        return user.type(element, text, { ...options, skipClick: true });
       }
       await user.click(element);
       await selectionChangesDispatched();

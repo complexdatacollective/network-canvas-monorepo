@@ -1820,3 +1820,35 @@ export const DeleteStraightAfterSelectingEverything: Story = {
     await waitFor(() => expect(editor.textContent).toBe(''));
   },
 };
+
+/**
+ * Text that the editor itself selected is replaced by the next key. Reading
+ * the page's selection before a key (see the story above) must not put back
+ * an older selection: the select-all and the typing are one keyboard call, so
+ * each key arrives straight after the one before it.
+ */
+export const TypeOverTextTheEditorSelected: Story = {
+  render: (args) => (
+    <PageContentField
+      {...args}
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Welcome to this interview.' }],
+          },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    await expect(editor).toHaveTextContent('Welcome to this interview.');
+
+    await userEvent.click(editor);
+    await userEvent.keyboard(`${withMod('a')}Thank you`);
+    await waitFor(() => expect(editor.textContent).toBe('Thank you'));
+  },
+};

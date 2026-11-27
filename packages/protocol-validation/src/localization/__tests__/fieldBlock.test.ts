@@ -76,6 +76,26 @@ describe('renameFieldBlocks', () => {
     ).toBe(`{condition_x, select, true {![](field:${FIELD_2})} other {}}`);
   });
 
+  it('renames in time that grows with the length of the text, however many field blocks it starts and does not end', () => {
+    const renames = new Map([[FIELD_1, FIELD_2]]);
+    const timeOf = (repeats: number, runs: number): number =>
+      Math.min(
+        ...Array.from({ length: runs }, () => {
+          const message = '(field:'.repeat(repeats);
+          const start = performance.now();
+          renameFieldBlocks(message, renames);
+          return performance.now() - start;
+        }),
+      );
+    // Warm up, so that the first timed run is not also the first run.
+    timeOf(1_000, 1);
+    const short = timeOf(10_000, 5);
+    const long = timeOf(40_000, 5);
+    // Four times the length: about 4 in linear time, about 16 in quadratic
+    // time. The margin leaves room for a loaded machine.
+    expect(long / short).toBeLessThan(9);
+  });
+
   it('leaves text that names no renamed field as it is', () => {
     const message = `![](field:${FIELD_1}) and [a link](https://example.com)`;
     expect(renameFieldBlocks(message, new Map())).toBe(message);
