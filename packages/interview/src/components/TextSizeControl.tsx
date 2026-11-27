@@ -4,7 +4,7 @@ import { Popover } from '@base-ui/react/popover';
 import { ALargeSmall } from 'lucide-react';
 import { useId, useMemo } from 'react';
 
-import { IconButton } from '@codaco/fresco-ui/Button';
+import { type ButtonProps, IconButton } from '@codaco/fresco-ui/Button';
 import {
   ArrowSvg,
   BaseUISharedPopoverContainer,
@@ -24,6 +24,9 @@ type TextSizeControlProps = {
   value: number;
   onChange: (scale: number) => void;
   side: 'top' | 'left' | 'right';
+  /** The trigger's look, so it matches the bar's other buttons. */
+  triggerVariant?: ButtonProps['variant'];
+  triggerSize?: ButtonProps['size'];
   /** Classes for the trigger, so it matches the bar's other buttons. */
   triggerClassName?: string;
 };
@@ -39,6 +42,8 @@ export default function TextSizeControl({
   value,
   onChange,
   side,
+  triggerVariant = 'text',
+  triggerSize = 'xl',
   triggerClassName,
 }: TextSizeControlProps) {
   const portalContainer = usePortalContainer();
@@ -62,8 +67,8 @@ export default function TextSizeControl({
         render={
           <IconButton
             color="dynamic"
-            variant="text"
-            size="xl"
+            variant={triggerVariant}
+            size={triggerSize}
             icon={<ALargeSmall />}
             className={triggerClassName}
             aria-label="Text size"

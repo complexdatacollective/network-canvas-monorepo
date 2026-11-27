@@ -101,20 +101,25 @@ const barControlVariants = cva({
   },
 });
 
-// The bar's optional buttons (exit, text size, language) draw their icons a
-// little smaller than the back and forward arrows, and dimmed as Back is on
-// the first screen, so they stay quieter than Back and Next. Pointed at,
-// focused or open, they show at full strength.
-const barFeatureIconClassName = cx(
-  '[&>.lucide]:h-[1.5em]! [&>.lucide]:opacity-50',
-  'hover:[&>.lucide]:opacity-100 focus-visible:[&>.lucide]:opacity-100 aria-expanded:[&>.lucide]:opacity-100',
-);
-
 // Icon buttons hold a fixed size, and the bar shrinks the wrapper around them.
 // Button already caps its width at the wrapper's; this caps its height too.
-// Pointing at a button fills it at once, as its icon brightens at once; the
-// fill still fades when the pointer leaves.
-const barIconButtonClassName = 'max-h-full hover:duration-0';
+const barIconButtonClassName = 'max-h-full';
+
+// Back and Next are the bar's main buttons: the `text` variant at the `xl`
+// size, with large arrows.
+const BAR_MAIN_BUTTON = { variant: 'text', size: 'xl' } as const;
+const barMainIconClassName = cx('[&>.lucide]:h-[2em]', barIconButtonClassName);
+
+// The bar's optional buttons (exit, text size, language) are one size
+// smaller, and their icons are dimmed until the button is pointed at, so they
+// stay quieter than Back and Next. The dimming is on the text colour, which
+// the icon follows and which the button's hover changes and transitions
+// together with its fill.
+const BAR_OPTION_BUTTON = { variant: 'text', size: 'lg' } as const;
+const barOptionIconClassName = cx(
+  'text-current/50 [&>.lucide]:h-[1.5em]',
+  barIconButtonClassName,
+);
 
 // IconButton's props are a union, which a plain `Omit` would flatten.
 type WithoutRef<T> = T extends unknown ? Omit<T, 'ref'> : never;
@@ -132,6 +137,7 @@ const NavigationButton = ({
   index,
   entering,
   layoutDependency,
+  option = false,
   ...props
 }: WithoutRef<ComponentProps<typeof IconButton>> & {
   // `AnimatePresence`'s popLayout mode needs the wrapper's element.
@@ -144,22 +150,33 @@ const NavigationButton = ({
   entering: boolean;
   /** Which optional controls the bar shows (see `barItemMotion`). */
   layoutDependency: string;
+  /** One of the bar's optional buttons, rather than Back or Next. */
+  option?: boolean;
 }) => {
   const reduceMotion = usePrefersReducedMotion() ?? false;
+  const isRtl = useDirection() === 'rtl';
   return (
     <motion.div
       ref={ref}
-      {...barItemMotion({ reduceMotion, entering, index, layoutDependency })}
+      {...barItemMotion({
+        reduceMotion,
+        isRtl,
+        entering,
+        index,
+        layoutDependency,
+      })}
       className={wrapperClassName}
     >
       <IconButton
         ref={buttonRef}
         color="dynamic"
-        variant="text"
-        className={cx('[&>.lucide]:h-[2em]', barIconButtonClassName, className)}
+        {...(option ? BAR_OPTION_BUTTON : BAR_MAIN_BUTTON)}
+        className={cx(
+          option ? barOptionIconClassName : barMainIconClassName,
+          className,
+        )}
         disabled={disabled}
         {...props}
-        size="xl"
       />
     </motion.div>
   );
@@ -192,6 +209,7 @@ const LanguageSwitcherControl = ({
       ref={ref}
       {...barItemMotion({
         reduceMotion,
+        isRtl,
         entering,
         index: 2,
         layoutDependency,
@@ -208,10 +226,9 @@ const LanguageSwitcherControl = ({
         label="Interview language"
         display="icon"
         icon={<Languages aria-hidden />}
-        variant="text"
+        {...BAR_OPTION_BUTTON}
         color="dynamic"
-        size="xl"
-        className={cx(barFeatureIconClassName, barIconButtonClassName)}
+        className={barOptionIconClassName}
         // A rail's popover opens away from the screen edge the rail is on.
         side={orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'}
         align="start"
@@ -489,8 +506,8 @@ const Navigation = ({
               layoutDependency={barLayout}
               key="exit"
               index={0}
+              option
               wrapperClassName={barControlVariants({ orientation })}
-              className={barFeatureIconClassName}
               onClick={() => void handleExit()}
               icon={<LogOut />}
               // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English
@@ -506,6 +523,7 @@ const Navigation = ({
               key="text-size"
               {...barItemMotion({
                 reduceMotion: shouldReduceMotion,
+                isRtl,
                 entering: barEntering,
                 index: 1,
                 layoutDependency: barLayout,
@@ -524,10 +542,9 @@ const Navigation = ({
                       : 'right'
                     : 'top'
                 }
-                triggerClassName={cx(
-                  barFeatureIconClassName,
-                  barIconButtonClassName,
-                )}
+                triggerVariant={BAR_OPTION_BUTTON.variant}
+                triggerSize={BAR_OPTION_BUTTON.size}
+                triggerClassName={barOptionIconClassName}
               />
             </motion.div>
           )}
@@ -561,6 +578,7 @@ const Navigation = ({
             onClick={() => setMenuOpen(true)}
             {...barItemMotion({
               reduceMotion: shouldReduceMotion,
+              isRtl,
               entering: barEntering,
               index: 4,
               layoutDependency: barLayout,
@@ -581,6 +599,7 @@ const Navigation = ({
             className={progressContainerClassName}
             {...barItemMotion({
               reduceMotion: shouldReduceMotion,
+              isRtl,
               entering: barEntering,
               index: 4,
               layoutDependency: barLayout,
