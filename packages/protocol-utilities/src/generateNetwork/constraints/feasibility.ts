@@ -1207,6 +1207,7 @@ export function analyseFeasibility(
     nodeConstraints,
     (type) => codebook.node?.[type]?.variables,
     respectSkipLogicAndFiltering,
+    codebook,
   );
   const promptFixed = countPromptFixedValues(stages, config, externalData);
   const rosterCarried = countRosterCarriedValues(

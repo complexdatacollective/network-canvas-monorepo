@@ -13,6 +13,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testId.ts';
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import { buildEntityConstraints } from '../buildConstraints.ts';
@@ -343,6 +344,77 @@ describe('worstCaseEntityCounts', () => {
     );
     // C(4, 2) = 6, not 6 per prompt across the three of them.
     expect(counts.edge.get('knows') ?? 0).toBe(6);
+  });
+
+  describe('a Sociogram over several node types', () => {
+    const sociogram = (types: string[]): Stage => ({
+      id: testId('stage-sociogram'),
+      type: 'Sociogram',
+      label: en('Link them'),
+      subject: { entity: 'node', types },
+      layout: 'layout',
+      background: { concentricCircles: 3 },
+      prompts: [
+        {
+          id: testId('prompt-sociogram'),
+          task: 'connect',
+          text: en('Who knows who?'),
+          edges: { create: 'knows' },
+        },
+      ],
+    });
+    const stages = (types: string[]) => [
+      nameGenerator({ behaviours: { minNodes: 3, maxNodes: 3 } }),
+      nameGenerator({
+        id: 'stage-2',
+        subject: { entity: 'node', types: ['place'] },
+        behaviours: { minNodes: 2, maxNodes: 2 },
+      }),
+      sociogram(types),
+    ];
+    const countFor = (
+      types: string[],
+      knows: {
+        directed?: true;
+        endpointRules?: { sourceType: string; targetType: string }[];
+      },
+    ) =>
+      worstCaseEntityCounts(
+        stages(types),
+        config,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        { node: { person: {}, place: {} }, edge: { knows } },
+      ).edge.get('knows') ?? 0;
+
+    it('a reciprocal pair counts as two edges', () => {
+      // Three people: C(3, 2) = 3 unordered pairs, 3 × 2 = 6 ordered ones.
+      expect(countFor(['person'], {})).toBe(3);
+      expect(countFor(['person'], { directed: true })).toBe(6);
+    });
+
+    it('pairs nodes across the types the stage shows, as the rules allow', () => {
+      // Five nodes: C(5, 2) = 10 pairs with no rules.
+      expect(countFor(['person', 'place'], {})).toBe(10);
+      // Only person to place: 3 × 2.
+      expect(
+        countFor(['person', 'place'], {
+          directed: true,
+          endpointRules: [{ sourceType: 'person', targetType: 'place' }],
+        }),
+      ).toBe(6);
+      // Undirected, person with place either way round, and place with place.
+      expect(
+        countFor(['person', 'place'], {
+          endpointRules: [
+            { sourceType: 'place', targetType: 'person' },
+            { sourceType: 'place', targetType: 'place' },
+          ],
+        }),
+      ).toBe(7);
+    });
   });
 
   it('sums the pair sets of two node types creating one edge type', () => {

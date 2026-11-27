@@ -110,11 +110,11 @@ export function handleSociogram(
   const isPlaced = (node: NcNode) =>
     node[entityAttributesProperty][stage.layout] != null;
 
-  const subjectType = getSingleStageNodeType(stage);
-  const subjectNodes =
-    subjectType === undefined
-      ? []
-      : getStageFilteredNodes(ctx, draft, stage, subjectType).filter(isPlaced);
+  // Nodes of every type the stage shows, in subject order; the edge type's
+  // rules decide which of them may be joined.
+  const subjectNodes = (getStageNodeTypes(stage) ?? []).flatMap((type) =>
+    getStageFilteredNodes(ctx, draft, stage, type).filter(isPlaced),
+  );
 
   const writes: SociogramWrites = { edges: [], attributes: new Map() };
   draft.sociogramWrites.set(stage.id, writes);

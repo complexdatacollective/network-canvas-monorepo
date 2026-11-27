@@ -8,6 +8,7 @@ import {
   type Stage,
   stageSchema,
 } from '@codaco/protocol-validation';
+import { validateNetworkAgainstEndpointRules } from '@codaco/protocol-validation/edge-type-rules';
 import {
   NcNetworkSchema,
   entityAttributesProperty,
@@ -2166,5 +2167,81 @@ describe('Sociogram placement', () => {
     );
 
     expect(network.nodes.filter(isPlaced)).toHaveLength(4);
+  });
+});
+
+describe('a Sociogram showing several node types', () => {
+  const codebook = makeCodebook({
+    node: {
+      'node-type-1': {
+        color: 'node-color-seq-1',
+        variables: { 'var-name': { name: 'Name', type: 'text' } },
+      },
+      'node-type-2': {
+        color: 'node-color-seq-2',
+        variables: { 'var-name-2': { name: 'Place', type: 'text' } },
+      },
+    },
+    edge: {
+      'edge-type-1': {
+        color: 'edge-color-seq-1',
+        variables: {},
+        directed: true,
+        endpointRules: [
+          { sourceType: 'node-type-1', targetType: 'node-type-2' },
+        ],
+      },
+    },
+  });
+  const generator = (id: string, type: string) =>
+    makeNameGeneratorStage({
+      id,
+      subject: { entity: 'node', types: [type] },
+      prompts: [{ id: `${id}-prompt`, text: en('Add people') }],
+      behaviours: { minNodes: 3, maxNodes: 3 },
+    });
+  const sociogram: Extract<Stage, { type: 'Sociogram' }> = {
+    id: testId('stage-soc'),
+    label: en('Sociogram'),
+    type: 'Sociogram',
+    subject: { entity: 'node', types: ['node-type-1', 'node-type-2'] },
+    layout: 'layout-map',
+    background: { concentricCircles: 3 },
+    behaviours: { automaticLayout: true },
+    prompts: [
+      {
+        id: testId('prompt-soc'),
+        task: 'connect',
+        text: en('Who goes where?'),
+        edges: { create: 'edge-type-1' },
+      },
+    ],
+  };
+
+  it('generated Sociogram edges satisfy endpoint rules', () => {
+    const { network } = generateNetwork({
+      codebook,
+      stages: [
+        generator('people', 'node-type-1'),
+        generator('places', 'node-type-2'),
+        sociogram,
+      ],
+      seed: 7,
+      config: { sociogramEdgeProbability: { min: 1, max: 1 } },
+    });
+
+    // Every allowed ordered pair is joined: three people to three places,
+    // and nothing between two people, two places, or from a place.
+    expect(network.edges).toHaveLength(9);
+    expect(validateNetworkAgainstEndpointRules(network, codebook)).toEqual([]);
+    const typeOf = new Map(
+      network.nodes.map((node) => [node[entityPrimaryKeyProperty], node.type]),
+    );
+    for (const edge of network.edges) {
+      expect([typeOf.get(edge.from), typeOf.get(edge.to)]).toEqual([
+        'node-type-1',
+        'node-type-2',
+      ]);
+    }
   });
 });

@@ -180,7 +180,8 @@ export type SociogramPromptEntry = {
   id: string;
   text: TextInput;
   task: 'layout' | 'highlight' | 'connect';
-  sortOrder?: { property: string; direction: 'asc' | 'desc' }[];
+  sortOrder?: NodeTypeSortRule[];
+  nodeTypeOrder?: string[];
   edges?: {
     create?: string;
     display?: string[];
@@ -192,6 +193,8 @@ type SortRule = {
   property: string;
   direction: 'asc' | 'desc';
 };
+
+type NodeTypeSortRule = SortRule & { type: string };
 
 export type DyadCensusPromptEntry = {
   id: string;
@@ -707,7 +710,11 @@ export type AddNetworkComposerEdgeInput = {
 export type AddPromptInput = {
   text?: TextInput;
   additionalAttributes?: { variable: string; value: boolean }[];
-  sortOrder?: SortRule[];
+  // On a Sociogram a rule may name the node type it sorts; it sorts the
+  // stage's first node type when it does not.
+  sortOrder?: (SortRule & { type?: string })[];
+  // A Sociogram prompt's order of node types in its bucket.
+  nodeTypeOrder?: string[];
   // A Sociogram prompt's task. Without one, a prompt that creates edges
   // connects, one with highlight entries highlights, and any other places.
   task?: 'layout' | 'highlight' | 'connect';

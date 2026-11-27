@@ -256,9 +256,11 @@ describe('edge reuse and edge direction', () => {
     expect(reused).toEqual([{ indices: [0, 1], edge: reversed }]);
   });
 
+  // A directed type walks both directions of the pair: the existing edge
+  // answers b to a, and a to b is drawn on its own.
   it('draws its own edge beside the reverse edge of a directed type', () => {
     const { created, reused } = walk(true);
-    expect(reused).toEqual([]);
+    expect(reused).toEqual([{ indices: [1, 0], edge: reversed }]);
     expect(created.map(({ edge }) => [edge.from, edge.to])).toEqual([
       ['a', 'b'],
     ]);

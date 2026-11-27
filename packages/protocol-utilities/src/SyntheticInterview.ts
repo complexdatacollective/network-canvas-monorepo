@@ -385,6 +385,11 @@ function subjectTypeOf(subject: StageSubjectInput | undefined): string {
   return only;
 }
 
+/** The node types a node subject lists, in order; none for an edge subject. */
+function nodeTypesOf(subject: StageSubjectInput | undefined): string[] {
+  return subject?.entity === 'node' ? subject.types : [];
+}
+
 /**
  * How many initial nodes of each type a node stage starts with, in the order
  * its subject lists them. A single number counts nodes of the stage's one
@@ -1761,7 +1766,10 @@ export class SyntheticInterview {
     entry: StageEntry,
   ): SociogramPromptEntry {
     const promptId = this.nextObjectId('prompt');
-    const nodeTypeId = subjectTypeOf(entry.subject);
+    const [nodeTypeId] = nodeTypesOf(entry.subject);
+    if (nodeTypeId === undefined) {
+      throw new Error('A Sociogram needs at least one node type');
+    }
 
     // Resolve edges
     let edges: SociogramPromptEntry['edges'];
@@ -1807,7 +1815,15 @@ export class SyntheticInterview {
       id: promptId,
       text: opts?.text ?? this.valueGen.generatePromptText('Sociogram'),
       task,
-      ...(opts?.sortOrder ? { sortOrder: opts.sortOrder } : {}),
+      ...(opts?.sortOrder
+        ? {
+            sortOrder: opts.sortOrder.map((rule) => ({
+              ...rule,
+              type: rule.type ?? nodeTypeId,
+            })),
+          }
+        : {}),
+      ...(opts?.nodeTypeOrder ? { nodeTypeOrder: opts.nodeTypeOrder } : {}),
       ...(edges ? { edges } : {}),
       ...(task === 'highlight' && highlight ? { highlight } : {}),
     };

@@ -1,4 +1,8 @@
-import type { Stage } from '@codaco/protocol-validation';
+import {
+  edgeTypeAllowsEndpoints,
+  isDirectedEdgeType,
+  type Stage,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -14,7 +18,7 @@ import {
   type NodeCreationStage,
   ruleBrokenByFixedValues,
 } from '../nodes.ts';
-import { getSingleStageNodeType } from '../subject.ts';
+import { getSingleStageNodeType, getStageNodeTypes } from '../subject.ts';
 import { completionCheckFor } from './generateEntityAttributes.ts';
 import {
   declaresNodeCollection,
@@ -49,6 +53,9 @@ type OwnNodeEdges = {
   count: number;
   stageIndex: number;
 };
+
+/** The parts of a codebook the edge type rules read. */
+type EdgeRulesCodebook = Parameters<typeof isDirectedEdgeType>[0];
 
 /** How many edges of each type the run can create, at the most. */
 type EdgeCounts = Map<string, number>;
@@ -490,11 +497,15 @@ function pairCount(count: number): number {
 }
 
 /**
- * The unordered pairs a subject node type reaches with the nodes counted so
- * far — which, walking the stage list in order, is the population a stage at
- * this point in the run can pair.
+ * The pairs an edge type can join among a stage's node types with the nodes
+ * counted so far — which, walking the stage list in order, is the population a
+ * stage at this point in the run can pair. For an undirected type each
+ * unordered pair counts once; for a directed type each ordered pair counts, so
+ * a reciprocal pair is two edges. Pairs of types the edge type's rules forbid
+ * are not counted. Without a codebook every edge type is read as undirected
+ * and unrestricted.
  *
- * Read from the type's whole node count rather than from any one variable's:
+ * Read from each type's whole node count rather than from any one variable's:
  * an edge is created for a pair of people, whatever values those people hold,
  * so a roster row passed over for repeating one variable's value still pairs
  * with everyone for a stage reading another.
@@ -504,11 +515,42 @@ function pairCount(count: number): number {
  * draft. A NetworkComposer pairs only the nodes it built itself, and is counted
  * from its own ceiling instead.
  */
-function pairsSoFar(nodeType: string | undefined, node: NodeCounts): number {
-  if (nodeType === undefined) return 0;
-  const tally = node.get(nodeType);
-  return pairCount(tally === undefined ? 0 : nodeTotal(tally));
+function pairsSoFar(
+  nodeTypes: readonly string[],
+  node: NodeCounts,
+  edgeType: string,
+  codebook: EdgeRulesCodebook | undefined,
+): number {
+  const countOf = (type: string) => {
+    const tally = node.get(type);
+    return tally === undefined ? 0 : nodeTotal(tally);
+  };
+  const directed =
+    codebook !== undefined && isDirectedEdgeType(codebook, edgeType);
+  const allows = (source: string, target: string) =>
+    codebook === undefined ||
+    edgeTypeAllowsEndpoints(codebook, edgeType, source, target);
+  let pairs = 0;
+  nodeTypes.forEach((source, sourceIndex) => {
+    nodeTypes.forEach((target, targetIndex) => {
+      if (!directed && targetIndex < sourceIndex) return;
+      if (!allows(source, target)) return;
+      const sourceCount = countOf(source);
+      if (sourceIndex === targetIndex) {
+        pairs += directed
+          ? sourceCount * (sourceCount - 1)
+          : pairCount(sourceCount);
+      } else {
+        pairs += sourceCount * countOf(target);
+      }
+    });
+  });
+  return pairs;
 }
+
+/** The key a stage's set of node types is counted under. */
+const typeSetKey = (nodeTypes: readonly string[]) =>
+  [...new Set(nodeTypes)].toSorted().join('\u0000');
 
 /**
  * Whether a configured per-pair probability can ever produce an edge.
@@ -565,6 +607,9 @@ function createsEdges(probability: { min: number; max: number }): boolean {
  * stricter count — a protocol whose rosters are unknown here must still refuse
  * up front rather than run out of values partway through the draw.
  *
+ * `codebook` supplies each edge type's direction and endpoint rules, which
+ * decide how many pairs a stage can join; see {@link pairsSoFar}.
+ *
  * `nodeConstraints` is what tells a row the run could draw from one it could
  * not: a row whose own values the type's rules already reject builds no node on
  * any seed, so counting it claims people, pairs and value spends that nothing
@@ -579,6 +624,7 @@ export function worstCaseEntityCounts(
   nodeConstraints?: NodeConstraintsFor,
   nodeVariables?: NodeVariablesFor,
   respectSkipLogicAndFiltering = false,
+  codebook?: EdgeRulesCodebook,
 ): WorstCaseCounts {
   const base = new Map<string, number>();
   const node: NodeCounts = new Map();
@@ -628,26 +674,33 @@ export function worstCaseEntityCounts(
   // the protocol all draw from the same set of pairs and leave at most one edge
   // of the type on each. Summing them would count edges the draw cannot create.
   //
-  // Node types are summed against each other, not unioned: a pair is two nodes
-  // of one type, so a stage over `person` and a stage over `place` reach
-  // disjoint sets of pairs even when both create the same edge type.
+  // Keyed by the stage's set of node types. Different sets are summed against
+  // each other, not unioned: a stage over `person` and a stage over `place`
+  // reach disjoint sets of pairs even when both create the same edge type. Two
+  // sets that share a type (`person`, and `person` with `place`) share some
+  // pairs, and summing them counts those twice, which keeps the bound an upper
+  // one.
   const paired = new Map<string, Map<string, PopulationPairing>>();
   const ownNodeEdges: OwnNodeEdges[] = [];
 
   function pairsWith(
     edgeType: string,
-    nodeType: string,
+    nodeTypes: readonly string[],
     stageIndex: number,
   ): void {
     const byNodeType =
       paired.get(edgeType) ?? new Map<string, PopulationPairing>();
-    const existing = byNodeType.get(nodeType);
+    const key = typeSetKey(nodeTypes);
+    const existing = byNodeType.get(key);
     // The largest pair set and the latest stage reaching it, which for a
     // population that only ever grows are the same stage. Recorded apart all
     // the same: the maximum is what bounds the type, while the index is what
     // says which stage-local edge sets are inside that bound.
-    byNodeType.set(nodeType, {
-      maxPairs: Math.max(existing?.maxPairs ?? 0, pairsSoFar(nodeType, node)),
+    byNodeType.set(key, {
+      maxPairs: Math.max(
+        existing?.maxPairs ?? 0,
+        pairsSoFar(nodeTypes, node, edgeType, codebook),
+      ),
       lastIndex: Math.max(existing?.lastIndex ?? -1, stageIndex),
     });
     paired.set(edgeType, byNodeType);
@@ -759,18 +812,18 @@ export function worstCaseEntityCounts(
       if (!createsEdges(config.censusEdgeProbability)) continue;
       for (const prompt of stage.prompts) {
         const edgeType = prompt.createEdge;
-        if (edgeType) pairsWith(edgeType, nodeType, stageIndex);
+        if (edgeType) pairsWith(edgeType, [nodeType], stageIndex);
       }
       continue;
     }
 
     if (stage.type === 'Sociogram') {
-      const nodeType = getSingleStageNodeType(stage);
-      if (nodeType === undefined) continue;
+      const nodeTypes = getStageNodeTypes(stage);
+      if (nodeTypes === undefined) continue;
       if (!createsEdges(config.sociogramEdgeProbability)) continue;
       for (const prompt of stage.prompts) {
         if (prompt.task === 'connect') {
-          pairsWith(prompt.edges.create, nodeType, stageIndex);
+          pairsWith(prompt.edges.create, nodeTypes, stageIndex);
         }
       }
       continue;
@@ -797,7 +850,10 @@ export function worstCaseEntityCounts(
     // build disjoint sets of people — and that sum can never exceed the type's
     // whole pair count, since every ceiling is inside `nodeTotal` and pairs
     // grow faster than nodes.
-    if ((paired.get(edgeType)?.get(nodeType)?.lastIndex ?? -1) > stageIndex) {
+    if (
+      (paired.get(edgeType)?.get(typeSetKey([nodeType]))?.lastIndex ?? -1) >
+      stageIndex
+    ) {
       continue;
     }
 

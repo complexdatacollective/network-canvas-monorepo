@@ -136,6 +136,12 @@ type CorpusShape = {
   nodeCount: number;
   /** How many prompts of the census name the edge type, each reusing the last's edges. */
   censusPrompts: number;
+  /**
+   * Who joins the people: the censuses, or a Sociogram connect task whose edge
+   * type is directed, which joins each ordered pair and so builds both edges
+   * of a reciprocal pair.
+   */
+  pairing: 'census' | 'directedSociogram';
   edgeVariables: CorpusVariable[];
   /** The edge variable declared `unique`, where the shape has one. */
   uniqueEdgeId?: string;
@@ -482,14 +488,25 @@ function generateShape(index: number): CorpusShape {
   // domain the draw below offers.
   const nodeCount = rand.next() < 0.4 ? 2 : rand.next() < 0.7 ? 3 : 4;
 
+  const censusPrompts = rand.next() < 0.5 ? 2 : 1;
+  const { tieStrengthEdgeId, ...edges } = edgeVariablesFor(rand);
+  // Drawn last, so every shape drawn before directed pairing existed keeps
+  // its variables. A TieStrengthCensus answers a census's pairs, so a
+  // Sociogram shape has none.
+  const pairing = rand.next() < 0.25 ? 'directedSociogram' : 'census';
+
   return {
     index,
     ...nodes,
     nodeCount,
     // A second prompt naming the same edge type reuses every edge the first
     // one left, so it must add nothing to the count.
-    censusPrompts: rand.next() < 0.5 ? 2 : 1,
-    ...edgeVariablesFor(rand),
+    censusPrompts,
+    pairing,
+    ...edges,
+    ...(pairing === 'census' && tieStrengthEdgeId !== undefined
+      ? { tieStrengthEdgeId }
+      : {}),
   };
 }
 
@@ -650,6 +667,18 @@ function pairCount(nodeCount: number): number {
 }
 
 /**
+ * The edges a shape's run holds: one per unordered pair for the censuses, and
+ * one per ordered pair for a directed Sociogram, because each direction of a
+ * pair is its own edge and the automatic layout places everyone, so the
+ * connect task reaches every ordered pair.
+ */
+function runEdgeCount(shape: CorpusShape): number {
+  return shape.pairing === 'directedSociogram'
+    ? shape.nodeCount * (shape.nodeCount - 1)
+    : pairCount(shape.nodeCount);
+}
+
+/**
  * Whether the edge type's `unique` variable has a value for every edge the run
  * builds.
  *
@@ -676,7 +705,7 @@ function oracleUniqueRoom(shape: CorpusShape): boolean {
     (variable) => variable.id === shape.uniqueEdgeId,
   );
   if (unique === undefined) return true;
-  return oracleDomain(unique).length >= pairCount(shape.nodeCount);
+  return oracleDomain(unique).length >= runEdgeCount(shape);
 }
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
@@ -753,6 +782,7 @@ function codebookFor(shape: CorpusShape): Codebook {
         name: 'Link',
         color: 'edge-color-seq-1',
         variables: codebookVariables(shape.edgeVariables),
+        ...(shape.pairing === 'directedSociogram' ? { directed: true } : {}),
       },
     },
   } as unknown as Codebook;
@@ -762,7 +792,8 @@ function codebookFor(shape: CorpusShape): Codebook {
  * The shape's stages, in the order `generateNetwork` runs them: a name
  * generator of a fixed size, a DyadCensus pairing everyone it built, and
  * sometimes a TieStrengthCensus answering the same edge type over the very
- * edges the census left.
+ * edges the census left; or, for a directed shape, a Sociogram that connects
+ * everyone instead of the censuses.
  *
  * Both censuses take the whole population — the pair set a stage reaches is the
  * people standing when it runs, so putting them after the name generator is
@@ -778,18 +809,40 @@ function stagesFor(shape: CorpusShape): Stage[] {
       prompts: [{ id: 'p1', text: 'Name people' }],
       behaviours: { minNodes: shape.nodeCount, maxNodes: shape.nodeCount },
     } as unknown as Stage,
-    {
-      id: 'stage-2',
-      type: 'DyadCensus',
-      label: 'Census',
-      subject: { entity: 'node', types: ['person'] },
-      prompts: Array.from({ length: shape.censusPrompts }, (_prompt, at) => ({
-        id: `c${at + 1}`,
-        text: 'Do they know each other?',
-        createEdge: 'link',
-      })),
-    } as unknown as Stage,
   ];
+
+  if (shape.pairing === 'directedSociogram') {
+    stages.push({
+      id: 'stage-2',
+      type: 'Sociogram',
+      label: 'Who links to whom?',
+      subject: { entity: 'node', types: ['person'] },
+      layout: 'layout',
+      background: { concentricCircles: 3 },
+      behaviours: { automaticLayout: true },
+      prompts: [
+        {
+          id: 's1',
+          task: 'connect',
+          text: 'Who links to whom?',
+          edges: { create: 'link' },
+        },
+      ],
+    } as unknown as Stage);
+    return stages;
+  }
+
+  stages.push({
+    id: 'stage-2',
+    type: 'DyadCensus',
+    label: 'Census',
+    subject: { entity: 'node', types: ['person'] },
+    prompts: Array.from({ length: shape.censusPrompts }, (_prompt, at) => ({
+      id: `c${at + 1}`,
+      text: 'Do they know each other?',
+      createEdge: 'link',
+    })),
+  } as unknown as Stage);
 
   if (shape.tieStrengthEdgeId !== undefined) {
     stages.push({
@@ -886,7 +939,7 @@ function corpus(): CorpusEntry[] {
           (edgeTypeCounts.get(variable.type) ?? 0) + 1,
         );
       }
-      const pairs = pairCount(entry.shape.nodeCount);
+      const pairs = runEdgeCount(entry.shape);
       pairCounts.set(pairs, (pairCounts.get(pairs) ?? 0) + 1);
     }
     const withUnique = entries.filter(
@@ -929,7 +982,7 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
           feasible: entry.feasible,
           satisfiable: entry.satisfiable,
           nodeCount: entry.shape.nodeCount,
-          pairs: pairCount(entry.shape.nodeCount),
+          pairs: runEdgeCount(entry.shape),
           variables: entry.shape.variables,
           edgeVariables: entry.shape.edgeVariables,
         }));
@@ -969,7 +1022,7 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
         const { shape } = entry;
         const codebook = codebookFor(shape);
         const stages = stagesFor(shape);
-        const expectedEdges = pairCount(shape.nodeCount);
+        const expectedEdges = runEdgeCount(shape);
 
         /** Every entity of one scope, checked against that scope's rules. */
         const checkEntities = (
@@ -1011,7 +1064,11 @@ describe(`solver acceptance corpus (${SHAPES} shapes, shard ${SHARD})`, () => {
               codebook,
               stages,
               seed,
-              config: { today: TODAY, censusEdgeProbability: ALWAYS_PAIRED },
+              config: {
+                today: TODAY,
+                censusEdgeProbability: ALWAYS_PAIRED,
+                sociogramEdgeProbability: ALWAYS_PAIRED,
+              },
             });
             expect(NcNetworkSchema.parse(network)).toStrictEqual(network);
             const elapsed = performance.now() - startedAt;

@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
 import { isDirectedEdgeType } from '@codaco/protocol-validation';
+import { getEligibleOrderedPairs } from '@codaco/protocol-validation/edge-type-rules';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -28,8 +29,10 @@ export type PairEdge = {
 };
 
 /**
- * Considers every unordered pair of nodes, creating an edge of `edgeType` with
- * the given per-pair `probability`.
+ * Considers every pair of nodes the edge type's rules allow, creating an edge
+ * of `edgeType` with the given per-pair `probability`. An undirected type
+ * walks each unordered pair once; a directed type walks each ordered pair, so
+ * the two directions of one pair are drawn apart and may both be created.
  *
  * A pair `existingEdges` already joins with an edge of the type is reused
  * rather than drawn again, because that is what the interview does: every
@@ -59,53 +62,58 @@ export function createEdgesForPairs(
   const negativeIndices: [number, number][] = [];
   const directed = isDirectedEdgeType(ctx.codebook, edgeType);
 
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const from = nodes[i]![entityPrimaryKeyProperty];
-      const to = nodes[j]![entityPrimaryKeyProperty];
+  const indexOf = new Map(nodes.map((node, index) => [node, index]));
+  for (const [source, target] of getEligibleOrderedPairs(
+    ctx.codebook,
+    edgeType,
+    nodes,
+  )) {
+    const i = indexOf.get(source)!;
+    const j = indexOf.get(target)!;
+    const from = source[entityPrimaryKeyProperty];
+    const to = target[entityPrimaryKeyProperty];
 
-      // Tested above the roll, so a reused pair consumes no probability draw,
-      // generates no attributes, and reaches no `unique` claim — leaving
-      // nothing to unwind.
-      //
-      // Deliberately not the runtime's whole behaviour: a participant
-      // answering "no" for a pair that already has an edge deletes it
-      // (DyadCensus, TieStrengthCensus, and `toggleEdge` by construction).
-      // Reproducing that would let a stage twelve steps later silently erase
-      // an earlier stage's answer, leaving that stage's own metadata
-      // contradicting the graph. The pair is instead treated as the
-      // pre-selected "Yes" the runtime shows for an existing edge, and is not
-      // rolled at all.
-      const existing = findEdge(
-        existingEdges,
-        { from, to, type: edgeType },
-        directed,
+    // Tested above the roll, so a reused pair consumes no probability draw,
+    // generates no attributes, and reaches no `unique` claim — leaving
+    // nothing to unwind.
+    //
+    // Deliberately not the runtime's whole behaviour: a participant
+    // answering "no" for a pair that already has an edge deletes it
+    // (DyadCensus, TieStrengthCensus, and `toggleEdge` by construction).
+    // Reproducing that would let a stage twelve steps later silently erase
+    // an earlier stage's answer, leaving that stage's own metadata
+    // contradicting the graph. The pair is instead treated as the
+    // pre-selected "Yes" the runtime shows for an existing edge, and is not
+    // rolled at all.
+    const existing = findEdge(
+      existingEdges,
+      { from, to, type: edgeType },
+      directed,
+    );
+    if (existing) {
+      reused.push({ indices: [i, j], edge: existing });
+      continue;
+    }
+
+    if (ctx.valueGen.randomFloat(0, 1) < probability) {
+      const attrs = generateAttributesForEntity(
+        ctx,
+        { entity: 'edge', type: edgeType },
+        created.length,
       );
-      if (existing) {
-        reused.push({ indices: [i, j], edge: existing });
-        continue;
-      }
 
-      if (ctx.valueGen.randomFloat(0, 1) < probability) {
-        const attrs = generateAttributesForEntity(
-          ctx,
-          { entity: 'edge', type: edgeType },
-          created.length,
-        );
-
-        created.push({
-          indices: [i, j],
-          edge: {
-            [entityPrimaryKeyProperty]: uuid(),
-            type: edgeType,
-            from,
-            to,
-            [entityAttributesProperty]: attrs,
-          },
-        });
-      } else {
-        negativeIndices.push([i, j]);
-      }
+      created.push({
+        indices: [i, j],
+        edge: {
+          [entityPrimaryKeyProperty]: uuid(),
+          type: edgeType,
+          from,
+          to,
+          [entityAttributesProperty]: attrs,
+        },
+      });
+    } else {
+      negativeIndices.push([i, j]);
     }
   }
 

@@ -1907,7 +1907,41 @@ describe('e2e-matrix builder extensions', () => {
       prompts: { sortOrder?: unknown }[];
     };
     expect(stage.prompts[0]?.sortOrder).toEqual([
-      { id: anObjectId, property: 'name', direction: 'asc' },
+      { id: anObjectId, type: person.id, property: 'name', direction: 'asc' },
+    ]);
+  });
+
+  it('builds a Sociogram prompt that sorts and orders several node types', () => {
+    const synth = new SyntheticInterview();
+    const person = synth.addNodeType({ name: 'Person' });
+    const place = synth.addNodeType({ name: 'Place' });
+    const soc = synth.addStage('Sociogram', {
+      subject: { entity: 'node', types: [person.id, place.id] },
+      initialNodes: { count: { [person.id]: 2, [place.id]: 1 } },
+    });
+    soc.addPrompt({
+      sortOrder: [{ type: place.id, property: 'name', direction: 'desc' }],
+      nodeTypeOrder: [place.id, person.id],
+    });
+    expect(synth.getProtocol().stages[0]).toMatchObject({
+      prompts: [
+        {
+          sortOrder: [
+            {
+              id: anObjectId,
+              type: place.id,
+              property: 'name',
+              direction: 'desc',
+            },
+          ],
+          nodeTypeOrder: [place.id, person.id],
+        },
+      ],
+    });
+    expect(synth.getNetwork().nodes.map(({ type }) => type)).toEqual([
+      person.id,
+      person.id,
+      place.id,
     ]);
   });
 
