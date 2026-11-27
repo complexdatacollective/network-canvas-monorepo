@@ -6,6 +6,7 @@ import {
   findTimelineStructureProblems,
   isEntityTypeId,
   isFinishSessionStage,
+  isVariableId,
 } from '@codaco/protocol-validation';
 import {
   type SectionDoc,
@@ -570,6 +571,14 @@ const entitySectionId = (
     return Effect.succeed(sectionId({ kind: 'codebookEgo' }));
   }
   if (ref.entity === 'layout') {
+    // A layout id is a variable id: positions are stored on each node under it.
+    if (!isVariableId(ref.layoutId)) {
+      return Effect.fail(
+        new DraftStructureError({
+          reason: `codebook layout id ${ref.layoutId} is not a UUID`,
+        }),
+      );
+    }
     return Effect.succeed(
       sectionId({ kind: 'codebookLayout', layoutId: ref.layoutId }),
     );

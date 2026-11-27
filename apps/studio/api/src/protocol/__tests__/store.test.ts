@@ -687,6 +687,35 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     );
   });
 
+  it('refuses a layout id that is not a UUID, or is empty', async () => {
+    const { draftId } = await create(baseProtocol());
+    for (const layoutId of ['travel layout', '']) {
+      await expect(
+        run(
+          addCodebookEntity(TEST_TEAM_ID, {
+            draftId,
+            ref: { entity: 'layout', layoutId },
+            definition: { name: 'Travel' },
+          }),
+        ),
+      ).rejects.toThrow(DraftStructureError);
+      await expect(
+        run(
+          removeCodebookEntity(TEST_TEAM_ID, {
+            draftId,
+            ref: { entity: 'layout', layoutId },
+          }),
+        ),
+      ).rejects.toThrow(DraftStructureError);
+    }
+    expect(await run(getDraftDocument(TEST_TEAM_ID, draftId))).toHaveProperty(
+      ['codebook', 'layouts'],
+      {
+        [BASE_CODEBOOK_IDS.layoutPosition]: { name: 'Layout_Position' },
+      },
+    );
+  });
+
   it('refuses a codebook type id the assembled protocol could never validate', async () => {
     const { draftId } = await create(baseProtocol());
     await expect(
