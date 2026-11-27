@@ -49,28 +49,23 @@ type DynamicAttributeDialogProps = Readonly<{
   onClose: () => void;
   /** Called with the new dynamic attribute's id, once it is written. */
   onCreate: (id: string) => void;
+  /** The dialog has finished closing. */
+  onExitComplete: () => void;
 }>;
 
 /**
  * Creates a dynamic attribute beside the text: its logic, the rules or the
  * attribute that decide which version is shown, and a wording for each
  * version in the language being edited. The new attribute is not written
- * until the researcher creates it.
+ * until the researcher creates it. Each opening starts a new draft: the
+ * caller draws the dialog once for each opening, until it has closed.
  */
 export function DynamicAttributeDialog({
   open,
   onClose,
   onCreate,
+  onExitComplete,
 }: DynamicAttributeDialogProps) {
-  return open ? (
-    <OpenDynamicAttributeDialog onClose={onClose} onCreate={onCreate} />
-  ) : null;
-}
-
-function OpenDynamicAttributeDialog({
-  onClose,
-  onCreate,
-}: Omit<DynamicAttributeDialogProps, 'open'>) {
   const intl = useAppIntl();
   const environment = useDynamicTextEnvironment();
   const [draft, setDraft] = useState<DynamicAttributeDraft>(() =>
@@ -103,7 +98,8 @@ function OpenDynamicAttributeDialog({
 
   return (
     <Dialog
-      open
+      open={open}
+      onExitComplete={onExitComplete}
       closeDialog={onClose}
       // `onClose` and `onCreate` hand the keyboard back to the text, as the
       // dialog goes: returned to the button that opened the list instead, it

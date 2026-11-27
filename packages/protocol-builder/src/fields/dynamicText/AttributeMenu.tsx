@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { flushSync } from 'react-dom';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
 import type { RichTextInsertState } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import type { DynamicValueRole } from '@codaco/protocol-validation';
@@ -185,16 +186,22 @@ export function AttributeMenu({
 }: Readonly<{ insert: RichTextInsertState }>) {
   const { commands } = insert;
   const state = useAttributeMenuState(insert);
-  const [creating, setCreating] = useState(false);
+  // One opening of the dialog that creates a dynamic attribute, kept while
+  // it closes; each opening has a new draft.
+  const { session, openSession, closeSession, onSessionExited } =
+    useDialogSession<{ opening: number }>();
+  const openings = useRef(0);
+  const creating = session?.open === true;
   // Read by the list's request to close, which comes in the same event as
   // the request to create, before the state has changed.
   const creatingNow = useRef(false);
-  // The dialog goes here and now, rather than as the event ends: while it is
-  // open the rest of the page is inert, so the text cannot take the keyboard
-  // back until it has gone, and keys typed in between would reach nothing.
+  // Closed here and now, rather than as the event ends: while the dialog is
+  // open the rest of the page is inert, so the text can take the keyboard
+  // back only once the dialog is closing, and keys typed in between would
+  // reach nothing.
   const closeDialog = () => {
     creatingNow.current = false;
-    flushSync(() => setCreating(false));
+    flushSync(closeSession);
   };
 
   return (
@@ -204,7 +211,8 @@ export function AttributeMenu({
           label={ATTRIBUTE_MENU_LABEL}
           onCreate={() => {
             creatingNow.current = true;
-            setCreating(true);
+            openings.current += 1;
+            openSession({ opening: openings.current });
           }}
           onSelect={(name) => {
             state.setMenuOpen(false);
@@ -215,20 +223,24 @@ export function AttributeMenu({
           }}
         />
       </AttributeMenuButton>
-      <DynamicAttributeDialog
-        open={creating}
-        onClose={() => {
-          closeDialog();
-          state.close();
-          commands.focus();
-        }}
-        onCreate={(id) => {
-          closeDialog();
-          state.setMenuOpen(false);
-          commands.focus();
-          commands.insertInlineValue(dynamicAttributeName(id));
-        }}
-      />
+      {session !== null && (
+        <DynamicAttributeDialog
+          key={session.opening}
+          open={session.open}
+          onExitComplete={onSessionExited}
+          onClose={() => {
+            closeDialog();
+            state.close();
+            commands.focus();
+          }}
+          onCreate={(id) => {
+            closeDialog();
+            state.setMenuOpen(false);
+            commands.focus();
+            commands.insertInlineValue(dynamicAttributeName(id));
+          }}
+        />
+      )}
     </>
   );
 }

@@ -92,9 +92,11 @@ export const ClosedThenTyped: Story = {
     const { editor } = await openDialog(canvasElement);
     // In one call with no pause between keys, so no key waits for a frame.
     await userEvent.setup({ delay: null }).keyboard('{Escape}Hello');
-    await expect(
-      body.queryByRole('dialog', { name: 'Create a dynamic attribute' }),
-    ).toBeNull();
     await expect(editor).toHaveTextContent('Hello');
+    await waitFor(async () => {
+      await expect(
+        body.queryByRole('dialog', { name: 'Create a dynamic attribute' }),
+      ).toBeNull();
+    });
   },
 };
