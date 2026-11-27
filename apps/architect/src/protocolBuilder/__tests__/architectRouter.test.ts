@@ -1769,6 +1769,22 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(isVariableId(ref.layoutId)).toBe(true);
     expect(layouts()).toEqual({ [ref.layoutId]: { name: 'seating' } });
 
+    const other = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'stage' }),
+    });
+    const otherRef = parseSectionId(other.sectionId);
+    if (otherRef.kind !== 'codebookLayout') {
+      throw new Error('Not a layout section');
+    }
+    expect(otherRef.layoutId).not.toBe(ref.layoutId);
+    expect(layouts()).toEqual({
+      [ref.layoutId]: { name: 'seating' },
+      [otherRef.layoutId]: { name: 'stage' },
+    });
+
     const held = await client.call('AcquireLock', {
       protocolId: PROTOCOL_ID,
       sectionId: created.sectionId,
@@ -1781,7 +1797,10 @@ describe("Architect's in-process protocol-builder host", () => {
       document: Redacted.make({ name: 'tables' }),
       revision: held.revision,
     });
-    expect(layouts()).toEqual({ [ref.layoutId]: { name: 'tables' } });
+    expect(layouts()).toEqual({
+      [ref.layoutId]: { name: 'tables' },
+      [otherRef.layoutId]: { name: 'stage' },
+    });
   });
 
   it('deletes a layout as one undo step', async () => {
@@ -1815,6 +1834,73 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(
       Object.values(getProtocol(store.getState())?.codebook.layouts ?? {}),
     ).toEqual([{ name: 'seating' }]);
+  });
+
+  it('deletes one layout of two, keeping the other', async () => {
+    const { store, client } = openProtocol();
+    const layouts = () => getProtocol(store.getState())?.codebook.layouts;
+    const create = (name: string) =>
+      client.call('Create', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        kind: 'codebookLayout',
+        document: Redacted.make({ name }),
+      });
+    const layoutIdOf = (id: string) => {
+      const ref = parseSectionId(id);
+      if (ref.kind !== 'codebookLayout')
+        throw new Error('Not a layout section');
+      return ref.layoutId;
+    };
+    const deleting = await create('seating');
+    const kept = await create('stage');
+    const both = {
+      [layoutIdOf(deleting.sectionId)]: { name: 'seating' },
+      [layoutIdOf(kept.sectionId)]: { name: 'stage' },
+    };
+    expect(layouts()).toEqual(both);
+
+    const deleted = await client.call('Delete', {
+      protocolId: PROTOCOL_ID,
+      sectionId: deleting.sectionId,
+    });
+
+    expect(deleted.changedSections).toEqual([deleting.sectionId]);
+    expect(layouts()).toEqual({
+      [layoutIdOf(kept.sectionId)]: { name: 'stage' },
+    });
+    const survivor = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: kept.sectionId,
+    });
+    expect(Redacted.value(survivor.document)).toEqual({ name: 'stage' });
+
+    store.dispatch(timelineActions.undo());
+    expect(layouts()).toEqual(both);
+  });
+
+  it('deletes a layout while an editor holds the stage order, which the delete does not write', async () => {
+    const { store, client } = openProtocol();
+    const created = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'seating' }),
+    });
+    await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: STAGE_ORDER_SECTION,
+    });
+
+    const deleted = await client.call('Delete', {
+      protocolId: PROTOCOL_ID,
+      sectionId: created.sectionId,
+    });
+
+    expect(deleted.changedSections).toEqual([created.sectionId]);
+    expect(getProtocol(store.getState())?.codebook).not.toHaveProperty(
+      'layouts',
+    );
   });
 
   it('refuses to delete a layout an editor holds', async () => {
@@ -2728,6 +2814,47 @@ describe('codebook sections saved with a stage', () => {
     expect(undoDepth(store)).toBe(1);
     store.dispatch(timelineActions.undo());
     expect(getProtocol(store.getState())?.codebook.layouts).toBeUndefined();
+  });
+
+  it('writes a layout the stage’s editor created beside the layouts the protocol has', async () => {
+    const { store, client } = openProtocol();
+    const layouts = () => getProtocol(store.getState())?.codebook.layouts;
+    const existing = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'codebookLayout',
+      document: Redacted.make({ name: 'stage' }),
+    });
+    const existingRef = parseSectionId(existing.sectionId);
+    if (existingRef.kind !== 'codebookLayout') {
+      throw new Error('Not a layout section');
+    }
+    const layoutId = testVariableId('seating layout');
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      codebook: [
+        {
+          sectionId: sectionId({ kind: 'codebookLayout', layoutId }),
+          document: Redacted.make({ name: 'seating' }),
+        },
+      ],
+    });
+
+    expect(layouts()).toEqual({
+      [existingRef.layoutId]: { name: 'stage' },
+      [layoutId]: { name: 'seating' },
+    });
+    store.dispatch(timelineActions.undo());
+    expect(layouts()).toEqual({ [existingRef.layoutId]: { name: 'stage' } });
   });
 
   it.each([
