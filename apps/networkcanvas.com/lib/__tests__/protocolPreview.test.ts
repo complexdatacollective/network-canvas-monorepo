@@ -21,9 +21,62 @@ const assetDirectory = join(
 
 const sourceStagesSchema = z.object({
   stages: z.array(
-    z.object({ type: z.string(), introductionPanel: z.unknown().optional() }),
+    z.object({
+      type: z.string(),
+      introductionPanel: z.unknown().optional(),
+      prompts: z
+        .array(
+          z.object({
+            layout: z
+              .object({ layoutVariable: z.string().optional() })
+              .optional(),
+          }),
+        )
+        .optional(),
+    }),
   ),
 });
+
+type SourceStage = z.infer<typeof sourceStagesSchema>['stages'][number];
+
+/**
+ * How many stages a schema 8 stage becomes: a Sociogram becomes one for each
+ * run of prompts that share a layout variable, and a prompt naming none stays
+ * in the run before it.
+ */
+const stageCount = ({ type, prompts = [] }: SourceStage) => {
+  if (type !== 'Sociogram') return 1;
+  let runs = 0;
+  let current: string | undefined;
+  for (const prompt of prompts) {
+    const layout = prompt.layout?.layoutVariable;
+    if (
+      runs > 0 &&
+      (layout === undefined || current === undefined || layout === current)
+    ) {
+      current ??= layout;
+      continue;
+    }
+    runs += 1;
+    current = layout;
+  }
+  return Math.max(runs, 1);
+};
+
+/**
+ * The stage types a schema 8 protocol has once migrated: an Information stage
+ * before each stage other than an Ego Form that had an introduction panel,
+ * each Sociogram split by layout, and the finish stage the migration appends.
+ */
+const migratedStageTypes = (stages: readonly SourceStage[]) => {
+  const types = stages.flatMap((stage) => [
+    ...(stage.introductionPanel !== undefined && stage.type !== 'EgoForm'
+      ? ['Information']
+      : []),
+    ...Array.from({ length: stageCount(stage) }, () => stage.type),
+  ]);
+  return types.at(-1) === 'FinishSession' ? types : [...types, 'FinishSession'];
+};
 
 async function readSourceStages(bytes: Uint8Array) {
   const zip = await JSZip.loadAsync(bytes);
@@ -53,22 +106,11 @@ describe('installPreviewProtocol', () => {
         expect(install.protocol.schemaVersion).toBe(
           COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         );
-        // A gallery protocol older than schema 9 gains the finish stage the
-        // v8 → v9 migration appends, and an Information stage before each
-        // stage other than an Ego Form that had an introduction panel.
         const downloadTypes = download.stages.map(({ type }) => type);
         const sourceStages = await readSourceStages(bytes);
         expect(sourceStages.map(({ type }) => type)).toEqual(downloadTypes);
-        const expectedTypes = sourceStages.flatMap(
-          ({ type, introductionPanel }) =>
-            introductionPanel !== undefined && type !== 'EgoForm'
-              ? ['Information', type]
-              : [type],
-        );
         expect(install.protocol.stages.map(({ type }) => type)).toEqual(
-          expectedTypes.at(-1) === 'FinishSession'
-            ? expectedTypes
-            : [...expectedTypes, 'FinishSession'],
+          migratedStageTypes(sourceStages),
         );
         expect(install.protocol.hash).toMatch(/\S/);
         expect(install.protocol.assets.map(({ assetId }) => assetId)).toEqual(
@@ -84,6 +126,67 @@ describe('installPreviewProtocol', () => {
         }
       }
     }
+  });
+
+  it('installs a Sociogram whose prompts use two layout variables as two stages', async () => {
+    const layoutVariable = (name: string) => ({ name, type: 'layout' });
+    const prompt = (id: string, layout: string | undefined) => ({
+      id,
+      text: `Place people (${id})`,
+      ...(layout === undefined ? {} : { layout: { layoutVariable: layout } }),
+    });
+    const source = {
+      schemaVersion: 8,
+      name: 'Two maps',
+      description: '',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              name: { name: 'name', type: 'text' },
+              near: layoutVariable('near'),
+              far: layoutVariable('far'),
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          id: 'map',
+          type: 'Sociogram',
+          label: 'Map',
+          introductionPanel: { title: 'Maps', text: 'Place people twice.' },
+          subject: { entity: 'node', type: 'person' },
+          background: { concentricCircles: 4 },
+          prompts: [
+            prompt('first', 'near'),
+            prompt('second', undefined),
+            prompt('third', 'far'),
+          ],
+        },
+      ],
+    };
+    const zip = new JSZip();
+    zip.file('protocol.json', JSON.stringify(source));
+    const bytes = await zip.generateAsync({ type: 'uint8array' });
+
+    const result = await installPreviewProtocol(bytes, 'two-maps.netcanvas');
+    if (!result.ok) throw new Error(result.reason);
+
+    const sourceStages = await readSourceStages(bytes);
+    expect(migratedStageTypes(sourceStages)).toEqual([
+      'Information',
+      'Sociogram',
+      'Sociogram',
+      'FinishSession',
+    ]);
+    expect(result.install.protocol.stages.map(({ type }) => type)).toEqual(
+      migratedStageTypes(sourceStages),
+    );
   });
 
   it('starts a fresh session for each preview run', async () => {
