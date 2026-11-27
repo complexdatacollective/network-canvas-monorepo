@@ -1139,10 +1139,15 @@ describe('legacyMarkdownAsStandard', () => {
   );
 
   // Each of these took time that grows with the square of its length, so
-  // four times the length took about twelve times as long here. Read in time
-  // that grows with the length, it takes about four times as long. The test
-  // compares the two times with each other, not with a clock, so a slow
-  // machine does not fail it.
+  // sixteen times the length took more than 120 times as long here. Read in
+  // time that grows with the length, it takes 10 to 25 times as long. The
+  // test compares the two times with each other, not with a clock, so a slow
+  // machine does not fail it. Each time is the processor time this thread
+  // used, not the time that passed: on a busy machine other processes
+  // interrupt a long run far more often than a short one, which made the
+  // linear code take up to 165 times as long by the clock. Each is the
+  // least of five runs, taken in turn with the runs of the other length, and
+  // the limit of 50 is far from both results.
   it.each<[string, (length: number) => string]>([
     ['a run of backslashes', (length) => '\\'.repeat(length)],
     ['a run of backslashes and `<br`', (length) => `${'\\'.repeat(length)}<br`],
@@ -1150,27 +1155,35 @@ describe('legacyMarkdownAsStandard', () => {
       'a run of spaces before a line break',
       (length) => `a${' '.repeat(length)}x<br>y`,
     ],
-  ])('migrates %s in time that grows with its length', (_name, written) => {
-    const timeOf = (
-      length: number,
-      lines: 'multiple' | 'single',
-      runs: number,
-    ): number =>
-      Math.min(
-        ...Array.from({ length: runs }, () => {
-          const start = performance.now();
-          legacyMarkdownWritten(written(length), { lines });
-          return performance.now() - start;
-        }),
-      );
-    for (const lines of ['multiple', 'single'] as const) {
-      // Warm up, so that the first timed run is not also the first run.
-      timeOf(1_000, lines, 1);
-      const short = timeOf(10_000, lines, 1);
-      const long = timeOf(40_000, lines, 2);
-      expect(long / short).toBeLessThan(6);
-    }
-  });
+  ])(
+    'migrates %s in time that grows with its length',
+    (_name, written) => {
+      const short = written(2_500);
+      const long = written(40_000);
+      for (const lines of ['multiple', 'single'] as const) {
+        const timeOf = (input: string): number => {
+          const start = process.threadCpuUsage();
+          legacyMarkdownWritten(input, { lines });
+          const { user, system } = process.threadCpuUsage(start);
+          return user + system;
+        };
+        // Warm up, so that no timed run is also the first run of its length.
+        timeOf(short);
+        timeOf(long);
+        let shortTime = Number.POSITIVE_INFINITY;
+        let longTime = Number.POSITIVE_INFINITY;
+        for (let run = 0; run < 5; run += 1) {
+          shortTime = Math.min(shortTime, timeOf(short));
+          longTime = Math.min(longTime, timeOf(long));
+        }
+        expect(
+          longTime / shortTime,
+          `${lines}: ${longTime} µs for the long run, ${shortTime} µs for the short run`,
+        ).toBeLessThan(50);
+      }
+    },
+    30_000,
+  );
 
   it('decodes each of two character references side by side', () => {
     expect(
