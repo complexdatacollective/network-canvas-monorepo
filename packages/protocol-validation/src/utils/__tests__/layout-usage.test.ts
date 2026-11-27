@@ -5,6 +5,7 @@ import { withTestCodebookIds, withTestIds } from '../../__tests__/testIds.ts';
 import { completeProtocol } from '../../schemas/9/__tests__/complete-localized-protocol.ts';
 import { ProtocolSchemaV9 } from '../../schemas/9/schema.ts';
 import { getStageNodeTypes } from '../../schemas/9/stage-capabilities.ts';
+import type { Stage } from '../../schemas/9/stages/index.ts';
 import { collectLayoutReferences } from '../collectEntityAttributeReferences.ts';
 import {
   getLayoutUsage,
@@ -129,7 +130,7 @@ describe('layout usage', () => {
     const person = nodeTypeKeyNamed(protocol, 'Person');
     const colleague = nodeTypeKeyNamed(protocol, 'Colleague');
     const shared = layoutKeyNamed(protocol, 'Layout_Position');
-    const stages = protocol.stages.flatMap((stage) => {
+    const stages = protocol.stages.flatMap((stage): Stage[] => {
       if (stage.type === 'NetworkComposer') {
         return [{ ...stage, layout: shared }];
       }
@@ -138,8 +139,7 @@ describe('layout usage', () => {
           stage,
           {
             ...stage,
-            id: 'colleague-sociogram',
-            subject: { entity: 'node' as const, types: [colleague] },
+            subject: { entity: 'node', types: [colleague] },
             layout: shared,
           },
         ];
@@ -149,10 +149,15 @@ describe('layout usage', () => {
 
     const usage = getLayoutUsage({ ...protocol, stages })[shared];
     expect(usage?.nodeTypes).toEqual([person, colleague]);
-    expect(usage?.setBy.map(({ stageId }) => stageId)).toEqual([
-      protocol.stages.find(({ type }) => type === 'Sociogram')?.id,
-      'colleague-sociogram',
-      protocol.stages.find(({ type }) => type === 'NetworkComposer')?.id,
+    expect(
+      usage?.setBy.map(
+        ({ stageId, nodeTypes }) =>
+          `${stages.find(({ id }) => id === stageId)?.type ?? '?'} ${nodeTypes.join(',')}`,
+      ),
+    ).toEqual([
+      `Sociogram ${person}`,
+      `Sociogram ${colleague}`,
+      `NetworkComposer ${colleague}`,
     ]);
   });
 

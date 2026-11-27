@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
+import type { VariableType } from '@codaco/protocol-validation';
+
 import type { RuleAttributeType } from '../rules/operators.ts';
 import AttributePill, { AttributeTypeMark } from './AttributePill.tsx';
 
-// The eight kinds of answer, and a layout, which a rule can name as it names
-// an attribute.
-const EVERY_TYPE: readonly RuleAttributeType[] = [
+const EVERY_KIND_OF_ANSWER: readonly VariableType[] = [
   'boolean',
   'categorical',
   'datetime',
@@ -15,6 +15,12 @@ const EVERY_TYPE: readonly RuleAttributeType[] = [
   'ordinal',
   'scalar',
   'text',
+];
+
+// The eight kinds of answer, and a layout, which a rule can name as it names
+// an attribute.
+const EVERY_TYPE: readonly RuleAttributeType[] = [
+  ...EVERY_KIND_OF_ANSWER,
   'layout',
 ];
 
@@ -147,7 +153,7 @@ export const ANameLongerThanTheSpace: Story = {
 export const TypeMarks: Story = {
   render: () => (
     <div className="flex flex-col items-start gap-2 p-4">
-      {EVERY_TYPE.map((type) => (
+      {EVERY_KIND_OF_ANSWER.map((type) => (
         <span key={type} className="flex items-center gap-2 text-sm">
           <AttributeTypeMark type={type} />
           {type}
