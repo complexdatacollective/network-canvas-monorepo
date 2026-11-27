@@ -911,6 +911,11 @@ C5 signature and a `layout-usage.test.ts` case, since slice 3a had no
 consumer for it) and the first prompt is not a layout task and
 automatic layout is off. Architect `ProtocolSummary/components/Stage/Prompt.tsx`
 shows the task.
+The unreachable layout advisory in `SociogramLayoutSection.tsx` (slice 3b)
+can fire once a Sociogram reads its layout: `useDraftSociogram` is rebuilt
+from the live form values (identity id, type, layout, subject and prompts)
+instead of the saved stage, so a stage that is not saved yet, or one whose
+prompts were just edited, is judged as it is being edited.
 
 synthetic: `stageHandlers.ts` and `constraints/stageWrites.ts` dispatch on
 `task`; highlight writes per entry; connect pairs only placed nodes;
@@ -920,7 +925,7 @@ Tests:
 
 - protocol-validation: `sociogram-tasks.test.ts`: `rejects a highlight task without entries`; `rejects a connect task without edges.create`; `rejects edges.create on a layout task`; `rejects a highlight entry for a type not on the stage`; `rejects a non-boolean highlight variable`; `rejects allowRepositioning on a Sociogram`. `migration.test.ts`: `maps create to connect, allowHighlighting to highlight and the rest to layout`; `drops a display-only highlight`; `adds no layout task`; `a rule naming a layout variable stays valid when the migrated Sociogram has no layout task`. `layout-usage.test.ts`: `a Sociogram with only connect tasks reads its layout`; `automatic layout makes it set`; `isFirstStageUsingLayout is false once an earlier stage names the layout`. `exclusive-variant-containers.test.ts` lists updated.
 - interview: `Sociogram.tasks.test.tsx`: `nodes cannot be dragged in a highlight task`; `the canvas refuses a drop in a connect task`; `an unplaced node is disabled in a connect task and enabled in a layout task`; `an unplaced node is disabled in a highlight task`; `a highlight is drawn only during a highlight task`. Narrative units (Canvas props change under it): `repositioning a node on a Narrative writes nothing to the layout`; `free-draw is offered when the stage allows it`. fresco-ui `Node.presentational.test.tsx`: `a disabled custom shape ignores pointer and keyboard activation`.
-- protocol-builder: `sociogramPrompts.test.tsx`: `switching task drops the other task's fields`; `first-use alert appears when the first prompt is not a layout task`; `no first-use alert when automatic layout is on`.
+- protocol-builder: `sociogramPrompts.test.tsx`: `switching task drops the other task's fields`; `first-use alert appears when the first prompt is not a layout task`; `no first-use alert when automatic layout is on`. `src/editors/sociogram/__tests__/sociogramLayoutAdvisory.test.tsx` (mirroring `fields/__tests__/unreachableLayout.test.tsx`): `warns when a Sociogram with only connect tasks reads a layout no stage sets for its type`; `does not warn once another stage sets it`; `judges a stage that is not saved yet`; `warns as soon as the last layout task is changed to a connect task`.
 - Architect: `Prompt` summary test `prints the task and each highlight entry`.
 - protocol-utilities: `generateNetwork.test.ts`: `highlight tasks write only their entry's variable`.
 
@@ -1620,7 +1625,17 @@ venue sharing one layout with layout, highlight (one entry per type) and
 connect tasks; a census over person with a directed type; One-to-Many with
 `focalRole: 'target'`; a Composer with two node entries; a Narrative over two
 types reading the shared layout; the person
-`anotherLayout` preset is reworked so the advisory does not fire. Sample
+`anotherLayout` preset is reworked so the advisory does not fire. The bundled
+templates Behavioural Influence Networks
+(`packages/protocols/templates/behavioural-influence-networks`, three Narrative
+presets) and Care & Support Networks
+(`packages/protocols/templates/care-support-networks`, one Narrative preset)
+show a layout in which no stage places the Narrative's node type: each gains a
+Sociogram or Network Composer that places that type in the layout, or its
+presets are pointed at a layout that a stage sets. Then
+`KNOWN_UNREACHABLE_LAYOUT_READS` in
+`apps/architect/src/templates/__tests__/bundled-validation.test.ts` is emptied
+and removed, so every bundled protocol must open without the warning. Sample
 protocol gains a directed type on one census. Translations for every new string
 in every language each protocol carries. `AUTHORING_GUIDE.md` updated. Sync
 compat copies; regenerate both zips.
@@ -1640,7 +1655,7 @@ Done when: `pnpm --filter @codaco/protocol-utilities exec vitest run src/__tests
 `pnpm --filter @codaco/interview exec vitest run --project units src/forms/__tests__/syntheticDataConformance.test.ts src/forms/__tests__/bundledProtocolFeasibility.test.ts`,
 `pnpm --filter @codaco/protocol-validation build && node packages/protocol-validation/scripts/cli.js packages/protocols/development/protocol.json`,
 `pnpm check:compat-protocols`,
-`pnpm --filter @codaco/architect exec vitest run --project=unit src/__tests__/netcanvasFixtureSync.test.ts`,
+`pnpm --filter @codaco/architect exec vitest run --project=unit src/__tests__/netcanvasFixtureSync.test.ts src/templates/__tests__/bundled-validation.test.ts`,
 the chromium matrix suites for the changed interfaces, then `pnpm agent:test`
 and `pnpm agent:check`.
 
