@@ -47,7 +47,8 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
    stages, prompts, panels, Information `items`, form `fields`, filter `rules`, roster sort
    rules (`sortOptions.sortOrder`), `additionalAttributes` rows, roster card and sort properties
    (`cardOptions.additionalProperties`, `sortOptions.sortableProperties`), Narrative `presets`
-   and the rows of their `edges.display` and `highlight` lists, the rows of a Sociogram
+   and the rows of their `edges.display` and `highlight` lists and of each highlight entry's
+   `attributes` list, the rows of a Sociogram
    highlight prompt's `highlight` list, FamilyPedigree diseases,
    NetworkComposer edge settings, and the `options` of categorical and ordinal variables. Each
    id must be a UUID (for example
@@ -296,7 +297,7 @@ Required keys per stage type used by these templates:
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
 - **Sociogram**: `subject`(node) + `layout:"<layout key>"` + `prompts:[{id,text, task:"layout"|"highlight"|"connect", edges?:{display?:["<edge key>"]}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}` + `behaviours?:{automaticLayout?:bool}`. Each prompt sets one task: a `layout` prompt lets the participant place and move nodes (nodes cannot be moved in any other task); a `highlight` prompt also needs `highlight:[{id, type:"<node key>", variable:"<boolean node key of that type>"}]` (≥1); a `connect` prompt needs `edges.create:"<edge key>"`. Unless `automaticLayout` is on or an earlier stage sets the layout, put a `layout` prompt first.
-- **Narrative**: `subject`(node) + `presets:[{id, label, layout:"<layout key>", groupVariable?:"<node key>", edges?:{display?:[{id, type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{id, variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
+- **Narrative**: `subject`(node) + `presets:[{id, label, layout:"<layout key>", groupVariable?:"<node key>", edges?:{display?:[{id, type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{id, label:{"en-US":"…"}, attributes:[{id, type:"<node key>", variable:"<boolean node key of that type>"}]}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`. A highlight entry has at least one attribute and at most one per node type of the stage. `groupVariable` is allowed only on a stage with one node type.
 - **DyadCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>"}]` (≥1).
 - **TieStrengthCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>", edgeVariable:"<ordinal edge key>", negativeLabel:"…"}]` (≥1).
 - **Geospatial**: `subject`(node) + `prompts:[{id,text, variable:"<location node key>"}]` (≥1) + `mapOptions` (all REQUIRED):

@@ -58,7 +58,7 @@ Options of an ordinal or categorical variable: [{ "id": <UUID>, "label": { "en":
 
 ## Object ids
 
-Each of these objects has an "id": a stage, a prompt, a panel, a form field, a filter rule, a sort rule (sortOptions.sortOrder), an additionalAttributes row, a roster card or sort property (cardOptions.additionalProperties, sortOptions.sortableProperties), a Narrative preset and the rows of its edges.display and highlight lists, a FamilyPedigree disease, a NetworkComposer edge setting and an option of an ordinal or categorical variable. Every such id is a UUID, and no two objects anywhere in the protocol share one. Keep an object's id when you change the object. A finish stage is any stage whose type is FinishSession; its id is a UUID like any other.
+Each of these objects has an "id": a stage, a prompt, a panel, a form field, a filter rule, a sort rule (sortOptions.sortOrder), an additionalAttributes row, a roster card or sort property (cardOptions.additionalProperties, sortOptions.sortableProperties), a Narrative preset, the rows of its edges.display and highlight lists, and each row of a highlight entry's attributes list (one per node type), a FamilyPedigree disease, a NetworkComposer edge setting and an option of an ordinal or categorical variable. Every such id is a UUID, and no two objects anywhere in the protocol share one. Keep an object's id when you change the object. A finish stage is any stage whose type is FinishSession; its id is a UUID like any other.
 
 ## Stages
 
