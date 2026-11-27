@@ -14,7 +14,11 @@ import {
 import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { SessionWithResequencedIDs } from '../../../input';
 import { edgeListRows } from '../edgeList';
-import { mockCodebook, mockExportOptions } from './mockObjects';
+import {
+  mockCodebook,
+  mockExportOptions,
+  mockSessionWithEdges,
+} from './mockObjects';
 
 describe('edgeListRows', () => {
   it('yields header followed by one row per edge', () => {
@@ -66,23 +70,18 @@ describe('edgeListRows', () => {
         [edgeType]: { ...definition, directed: true },
       },
     };
-    const edge = (id: number, from: number, to: number) => ({
-      [edgeExportIDProperty]: id,
-      [egoProperty]: 'ego-1',
-      [entityPrimaryKeyProperty]: `edge-${id}`,
-      [ncSourceUUID]: `n${from}`,
-      [ncTargetUUID]: `n${to}`,
+    const edge = (id: string, from: string, to: string) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
       from,
       to,
       type: edgeType,
-      [entityAttributesProperty]: {},
     });
     // A reciprocal pair: each direction is its own edge.
-    const network = {
-      sessionVariables: { [protocolName]: 'Protocol' },
-      nodes: [],
-      edges: [edge(1, 1, 2), edge(2, 2, 1)],
-    } as unknown as SessionWithResequencedIDs;
+    const network = mockSessionWithEdges([
+      edge('edge-1', '1', '2'),
+      edge('edge-2', '2', '1'),
+    ]);
     const rowsFor = (codebook: Codebook) =>
       Array.from(
         edgeListRows(network, codebook, mockExportOptions, () => undefined),
@@ -93,8 +92,8 @@ describe('edgeListRows', () => {
     expect(directedRows).toEqual(rowsFor(mockCodebook));
     expect(directedRows).toEqual([
       'edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,RelationshipType_parent,RelationshipType_partner,RelationshipType_friend\r\n',
-      '1,1,2,ego-1,edge-1,n1,n2,,,\r\n',
-      '2,2,1,ego-1,edge-2,n2,n1,,,\r\n',
+      '1,1,2,ego-id-1,edge-1,1,2,,,\r\n',
+      '2,2,1,ego-id-1,edge-2,2,1,,,\r\n',
     ]);
   });
 

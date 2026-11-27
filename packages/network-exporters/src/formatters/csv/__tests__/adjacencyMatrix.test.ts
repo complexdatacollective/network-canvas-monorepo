@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
-import { ncSourceUUID, ncTargetUUID } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  ncSourceUUID,
+  ncTargetUUID,
+} from '@codaco/shared-consts';
 
 import { testTypeId } from '../../../__tests__/testIds';
 import type { SessionWithResequencedIDs } from '../../../input';
 import { adjacencyMatrixRows } from '../adjacencyMatrix';
-import { mockCodebook, mockExportOptions } from './mockObjects';
+import {
+  mockCodebook,
+  mockExportOptions,
+  mockSessionWithEdges,
+} from './mockObjects';
 
 const mockNetwork = (edges: Record<string, unknown>[]) => ({
   edges,
@@ -78,6 +87,13 @@ describe('adjacencyMatrixRows', () => {
   });
 
   it('a directed type yields an asymmetric matrix', () => {
+    const edge = (id: string, from: string, to: string, type: string) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      from,
+      to,
+      type,
+    });
     const directedType = testTypeId('mock-edge-type-2');
     const undirectedType = testTypeId('mock-edge-type');
     const directedDefinition = mockCodebook.edge?.[directedType];
@@ -91,10 +107,10 @@ describe('adjacencyMatrixRows', () => {
     };
     const rows = Array.from(
       adjacencyMatrixRows(
-        mockNetwork([
-          { [ncSourceUUID]: '1', [ncTargetUUID]: '2', type: directedType },
-          { [ncSourceUUID]: '3', [ncTargetUUID]: '4', type: undirectedType },
-        ]) as unknown as SessionWithResequencedIDs,
+        mockSessionWithEdges([
+          edge('edge-1', '1', '2', directedType),
+          edge('edge-2', '3', '4', undirectedType),
+        ]),
         codebook,
         mockExportOptions,
       ),

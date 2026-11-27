@@ -1,3 +1,4 @@
+import { DOMParser, type Element, MIME_TYPE } from '@xmldom/xmldom';
 import { type Cause, Effect, Layer, Queue, Result } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -265,7 +266,7 @@ describe('exportPipeline', () => {
     expect(result.successfulExports.length).toBeGreaterThan(0);
   });
 
-  it('no export file contains endpoint rules', async () => {
+  it('exports carry the direction of a directed type and no endpoint rules', async () => {
     const person = testTypeId('person');
     const place = testTypeId('place');
     const visits = testTypeId('visits');
@@ -349,31 +350,86 @@ describe('exportPipeline', () => {
       );
 
       expect(result.status).toBe('success');
-      const names = [...files.keys()];
-      for (const ending of [
-        '.graphml',
-        '_attributeList_Person.csv',
-        '_attributeList_Place.csv',
-        '_edgeList_Visits.csv',
-        '_edgeList_Knows.csv',
-        '_ego.csv',
-      ]) {
-        expect({
-          ending,
-          written: names.some((name) => name.endsWith(ending)),
-        }).toEqual({
+      expect([...files.keys()]).toHaveLength(6);
+      const fileEndingIn = (ending: string) => {
+        const entry = [...files].find(([name]) => name.endsWith(ending));
+        expect({ ending, written: entry !== undefined }).toEqual({
           ending,
           written: true,
         });
-      }
+        return entry?.[1] ?? '';
+      };
+      const csv = (...rows: string[]) =>
+        rows.map((row) => `${row}\r\n`).join('');
+
+      expect(fileEndingIn('_attributeList_Person.csv')).toBe(
+        csv(
+          'nodeID,networkCanvasEgoUUID,networkCanvasUUID,name',
+          '1,ego,n1,Dee',
+          '2,ego,n2,Carl',
+        ),
+      );
+      expect(fileEndingIn('_attributeList_Place.csv')).toBe(
+        csv(
+          'nodeID,networkCanvasEgoUUID,networkCanvasUUID,name',
+          '3,ego,n3,Park',
+        ),
+      );
+      const edgeListHeader =
+        'edgeID,from,to,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID';
+      expect(fileEndingIn('_edgeList_Visits.csv')).toBe(
+        csv(edgeListHeader, '1,1,3,ego,e1,n1,n3'),
+      );
+      expect(fileEndingIn('_edgeList_Knows.csv')).toBe(
+        csv(edgeListHeader, '2,2,1,ego,e2,n2,n1'),
+      );
+      fileEndingIn('_ego.csv');
+
+      const graphML = new DOMParser().parseFromString(
+        fileEndingIn('.graphml'),
+        MIME_TYPE.XML_APPLICATION,
+      );
+      const uuidOf = (element: Element) =>
+        Array.from(element.getElementsByTagName('data')).find(
+          (data) => data.getAttribute('key') === 'networkCanvasUUID',
+        )?.textContent;
+      const nodeIds = new Map(
+        Array.from(graphML.getElementsByTagName('node')).map((element) => [
+          uuidOf(element),
+          element.getAttribute('id'),
+        ]),
+      );
+      expect(
+        graphML.getElementsByTagName('graph')[0]?.getAttribute('edgedefault'),
+      ).toBe('undirected');
+      expect(
+        Array.from(graphML.getElementsByTagName('edge')).map((element) => ({
+          uuid: uuidOf(element),
+          source: element.getAttribute('source'),
+          target: element.getAttribute('target'),
+          directed: element.getAttribute('directed'),
+        })),
+      ).toEqual([
+        {
+          uuid: 'e1',
+          source: nodeIds.get('n1'),
+          target: nodeIds.get('n3'),
+          directed: 'true',
+        },
+        {
+          uuid: 'e2',
+          source: nodeIds.get('n2'),
+          target: nodeIds.get('n1'),
+          directed: null,
+        },
+      ]);
+      expect(nodeIds.get('n1')).toEqual(expect.any(String));
+
       for (const [name, text] of files) {
-        for (const word of ['endpointRules', 'sourceType', 'targetType']) {
-          expect({ name, word, found: text.includes(word) }).toEqual({
-            name,
-            word,
-            found: false,
-          });
-        }
+        expect({
+          name,
+          rules: text.match(/endpoint.?rules|source.?type|target.?type/gi),
+        }).toEqual({ name, rules: null });
       }
     } finally {
       mockFormatters.failAttributeList = true;

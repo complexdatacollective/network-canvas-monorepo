@@ -7,6 +7,7 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   finishOutcomeProperty,
+  type NcEdge,
   protocolName,
   protocolProperty,
   sessionExportTimeProperty,
@@ -16,7 +17,10 @@ import {
 } from '@codaco/shared-consts';
 
 import { testTypeId, testVariableId } from '../../../__tests__/testIds';
-import type { FormattedSession } from '../../../input';
+import type {
+  FormattedSession,
+  SessionWithResequencedIDs,
+} from '../../../input';
 import type { ExportOptions } from '../../../options';
 import { insertEgoIntoSessionNetwork } from '../../../session/insertEgoIntoSessionNetworks';
 import { resequenceSessionIds } from '../../../session/resequenceIds';
@@ -236,3 +240,9 @@ export const processMockNetworks = (networkCollection: FormattedSession[]) => {
     .map(resequenceSessionIds);
   return groupBy(sessions, (s) => s.sessionVariables[protocolProperty]);
 };
+
+/** `mockNetwork`'s nodes, ego and session variables with these edges, as a formatter receives them. */
+export const mockSessionWithEdges = (
+  edges: NcEdge[],
+): SessionWithResequencedIDs =>
+  resequenceSessionIds(insertEgoIntoSessionNetwork({ ...mockNetwork, edges }));
