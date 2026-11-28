@@ -27,6 +27,12 @@ const messages = defineMessages({
 
 type NarrativePreset = Extract<Stage, { type: 'Narrative' }>['presets'][number];
 
+type HighlightEntry = {
+  id: string;
+  label: LocalizedString;
+  attributes: { id: string; type: string; variable: string }[];
+};
+
 type PresetsProps = {
   presets?: Array<{
     id: string;
@@ -34,7 +40,7 @@ type PresetsProps = {
     layout?: NarrativePreset['layout'];
     groupVariable?: string;
     edges?: { display?: { type: string; label: LocalizedString }[] };
-    highlight?: NarrativePreset['highlight'];
+    highlight?: HighlightEntry[];
     filter?: FilterType;
   }> | null;
 };
@@ -43,7 +49,7 @@ type PresetsProps = {
 // more than one, since a single type is already the stage's own.
 const HighlightEntries = ({
   entries,
-}: Readonly<{ entries: NonNullable<NarrativePreset['highlight']> }>) => {
+}: Readonly<{ entries: HighlightEntry[] }>) => {
   const severalTypes =
     new Set(entries.flatMap(({ attributes }) => attributes.map((a) => a.type)))
       .size > 1;

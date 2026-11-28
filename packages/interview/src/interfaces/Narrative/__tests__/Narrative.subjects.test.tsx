@@ -25,6 +25,7 @@ vi.mock('../../../canvas/CanvasNode', async (importOriginal) => {
 });
 
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
+import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -224,7 +225,7 @@ describe('Narrative', () => {
     const attribute = (name: string, type: string, variable: string) => ({
       id: testId(name),
       type,
-      variable,
+      variable: asEntityAttributeReference(variable),
     });
     renderNarrative(
       {

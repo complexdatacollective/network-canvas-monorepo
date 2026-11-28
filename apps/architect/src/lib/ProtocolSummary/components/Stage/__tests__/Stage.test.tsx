@@ -260,8 +260,16 @@ describe('Protocol Summary edge labels participants see', () => {
       ...protocol,
       codebook: {
         node: {
-          [PERSON]: { name: 'person', color: 'node-color-seq-1' },
-          [FAMILY]: { name: 'family member', color: 'node-color-seq-2' },
+          [PERSON]: {
+            name: 'person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+          },
+          [FAMILY]: {
+            name: 'family member',
+            color: 'node-color-seq-2',
+            shape: { default: 'circle' },
+          },
         },
         edge: {},
         ego: {},

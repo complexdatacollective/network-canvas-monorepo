@@ -40,7 +40,7 @@ const stageWith = (settings: Record<string, unknown>) => ({
 // Narrative stage after its own stages.
 const protocolWith = (
   settings: Record<string, unknown>,
-  stagesBefore: unknown[] = [],
+  stagesBefore: Record<string, unknown>[] = [],
 ) => {
   const base = createBaseProtocol();
   const { person, colleague } = base.codebook.node;

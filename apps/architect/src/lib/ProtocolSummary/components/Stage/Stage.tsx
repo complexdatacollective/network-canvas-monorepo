@@ -156,10 +156,11 @@ export type StageConfiguration = {
     >['presets'][number]['layout'];
     groupVariable?: string;
     edges?: { display?: { type: string; label: LocalizedString }[] };
-    highlight?: Extract<
-      ProtocolStage,
-      { type: 'Narrative' }
-    >['presets'][number]['highlight'];
+    highlight?: {
+      id: string;
+      label: LocalizedString;
+      attributes: { id: string; type: string; variable: string }[];
+    }[];
   }[];
   title?: LocalizedString;
   interviewScript?: string;

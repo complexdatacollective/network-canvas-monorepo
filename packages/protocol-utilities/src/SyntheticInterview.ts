@@ -1859,7 +1859,10 @@ export class SyntheticInterview {
     const highlight = Array.isArray(highlightInput)
       ? highlightInput.map((highlightEntry) => {
           const attributes = (
-            highlightEntry.attributes ?? nodeTypes.map((type) => ({ type }))
+            highlightEntry.attributes ??
+            nodeTypes.map((type): { type?: string; variable?: string } => ({
+              type,
+            }))
           ).map((attribute, index) => {
             const type = attribute.type ?? nodeTypes[index];
             if (type === undefined) {
