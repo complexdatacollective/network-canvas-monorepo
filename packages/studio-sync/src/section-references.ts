@@ -205,29 +205,48 @@ export function layoutReferences(
 }
 
 /**
+ * Where in `path` a list entry can be cut out: the innermost list index, and
+ * for a row of a Narrative highlight (`presets.N.highlight.M.attributes.K`)
+ * the highlight's index after it.
+ */
+function removalCuts(path: readonly (string | number)[]): number[] {
+  const [innermost, enclosing] = [...path.entries()]
+    .filter(([, segment]) => typeof segment === 'number')
+    .map(([at]) => at)
+    .toReversed();
+  if (innermost === undefined) return [];
+  const highlightRow =
+    enclosing !== undefined &&
+    innermost === enclosing + 2 &&
+    path[innermost - 1] === 'attributes' &&
+    path[enclosing - 1] === 'highlight' &&
+    typeof path[enclosing - 2] === 'number' &&
+    path[enclosing - 3] === 'presets';
+  return highlightRow ? [innermost, enclosing] : [innermost];
+}
+
+/**
  * The ways of removing the reference at `path`, from the smallest change to
- * the largest: the section document without each list entry that holds it,
- * the innermost entry first. Empty when removing it would mean inventing
- * semantics.
+ * the largest. Empty when removing it would mean inventing semantics.
  *
  * A reference inside a list — a prompt, a form field, a filter rule, a sort
- * option — is removed by dropping the entry that holds it. When dropping that
- * entry leaves the list one the schema refuses, such as a Narrative highlight
- * with no attribute left, the caller takes the next enclosing entry instead,
- * here the whole highlight. A reference that is a property of the section
- * itself, an edge stage's `subject.type` or a quick-add attribute, has no such
- * entry: there is nothing to remove that leaves a stage the researcher would
- * recognise, so the host says so rather than guessing.
+ * option — is removed by dropping the entry that holds it. A row of a
+ * Narrative highlight's `attributes` can also be removed with its whole
+ * highlight, which the caller takes when the highlight would be left with no
+ * attribute. No other entry goes with the last entry of its own list: the
+ * only rule of a preset's or panel's filter and the only attribute of a
+ * Sociogram highlight task stay, and the host reports them, because dropping
+ * the preset, panel or prompt would lose what the researcher wrote there. A
+ * reference that is a property of the section itself, an edge stage's
+ * `subject.type` or a quick-add attribute, has no such entry: there is
+ * nothing to remove that leaves a stage the researcher would recognise, so
+ * the host says so rather than guessing.
  */
 function referenceRemovals(
   document: SectionDoc,
   path: readonly (string | number)[],
 ): SectionDoc[] {
-  const cuts = [...path.entries()]
-    .filter(([, segment]) => typeof segment === 'number')
-    .map(([at]) => at)
-    .toReversed();
-  return cuts.flatMap((cut) => {
+  return removalCuts(path).flatMap((cut) => {
     const index = path[cut];
     if (typeof index !== 'number') return [];
     const next = structuredClone(document);

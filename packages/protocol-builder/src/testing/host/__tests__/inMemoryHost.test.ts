@@ -1404,12 +1404,166 @@ describe('the in-memory host', () => {
     expect(subject.store.read(NARRATIVE).document.presets).toHaveLength(2);
   });
 
-  it('deleting the only attribute of a Narrative highlight removes the highlight', async () => {
+  /**
+   * A boolean on the person type that nothing in the fixture names yet. The
+   * fixture's own `highlighted` is the only attribute of the Sociogram's
+   * highlight task, which a deletion leaves and reports.
+   */
+  const withCloseVariable = (subject: InMemoryHost): string => {
+    const close = testVariableId('close');
+    const person = subject.store.read(PERSON).document;
+    subject.store.applyAsCollaborator(PERSON, {
+      ...person,
+      variables: {
+        ...(typeof person.variables === 'object' && person.variables !== null
+          ? person.variables
+          : {}),
+        [close]: { name: 'close', type: 'boolean' },
+      },
+    });
+    return close;
+  };
+
+  const deleteClose = (subject: InMemoryHost, close: string) =>
+    attempt(subject.adapter, 'RefactorDeleteVariable', {
+      protocolId: subject.protocolId,
+      subject: { entity: 'node', type: PERSON_TYPE },
+      variableId: close,
+    });
+
+  const onlyRuleOn = (attribute: string) => ({
+    rules: [
+      {
+        id: testId('rule-only'),
+        type: 'node',
+        options: { type: PERSON_TYPE, attribute, operator: 'EXISTS' },
+      },
+    ],
+  });
+
+  /** The fixture's Narrative with a second preset filtered by one rule. */
+  const withFilteredPreset = (subject: InMemoryHost, attribute: string) => {
+    const narrative = subject.store.read(NARRATIVE).document;
+    const presets: unknown[] = Array.isArray(narrative.presets)
+      ? narrative.presets
+      : [];
+    const [first] = presets;
+    subject.store.applyAsCollaborator(NARRATIVE, {
+      ...narrative,
+      presets: [
+        first,
+        {
+          ...(typeof first === 'object' && first !== null ? first : {}),
+          id: testId('preset-filtered'),
+          filter: onlyRuleOn(attribute),
+        },
+      ],
+    });
+    return subject.store.read(NARRATIVE).document;
+  };
+
+  it('refuses deleting a variable the only rule of a Narrative preset’s filter names, and keeps both presets', async () => {
+    const subject = host();
+    const close = withCloseVariable(subject);
+    const before = withFilteredPreset(subject, close);
+
+    const { refusal, isSuccess } = await deleteClose(subject, close);
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      remaining: [
+        {
+          sectionId: NARRATIVE,
+          path: ['presets', 1, 'filter', 'rules', 0, 'options', 'attribute'],
+        },
+      ],
+    });
+    expect(subject.store.read(NARRATIVE).document).toEqual(before);
+  });
+
+  it('refuses deleting a layout the only rule of a Narrative preset’s filter names, and keeps both presets', async () => {
+    const subject = host();
+    const created = await createLayout(subject);
+    const layoutId = created.sectionId.slice('codebook:layout:'.length);
+    const before = withFilteredPreset(subject, layoutId);
+
+    const { refusal, isSuccess } = await attempt(subject.adapter, 'Delete', {
+      protocolId: subject.protocolId,
+      sectionId: created.sectionId,
+    });
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      remaining: [
+        {
+          sectionId: NARRATIVE,
+          path: ['presets', 1, 'filter', 'rules', 0, 'options', 'attribute'],
+        },
+      ],
+    });
+    expect(subject.store.has(created.sectionId)).toBe(true);
+    expect(subject.store.read(NARRATIVE).document).toEqual(before);
+  });
+
+  it('refuses deleting a variable the only rule of a side panel’s filter names, and keeps the panel', async () => {
+    const subject = host();
+    const close = withCloseVariable(subject);
+    subject.store.applyAsCollaborator(NAME_GENERATOR, {
+      ...subject.store.read(NAME_GENERATOR).document,
+      panels: [
+        {
+          id: testId('panel-close'),
+          title: { 'en-US': 'Close people' },
+          dataSource: 'existing',
+          filter: onlyRuleOn(close),
+        },
+      ],
+    });
+    const before = subject.store.read(NAME_GENERATOR).document;
+
+    const { refusal, isSuccess } = await deleteClose(subject, close);
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      remaining: [
+        {
+          sectionId: NAME_GENERATOR,
+          path: ['panels', 0, 'filter', 'rules', 0, 'options', 'attribute'],
+        },
+      ],
+    });
+    expect(subject.store.read(NAME_GENERATOR).document).toEqual(before);
+  });
+
+  it('refuses deleting the only attribute of a Sociogram highlight task, and keeps the task', async () => {
     const subject = host();
     const highlighted = fixtureVariableId(
       { entity: 'node', typeName: 'person' },
       'highlighted',
     );
+    const before = subject.store.read(SOCIOGRAM).document;
+
+    const { refusal, isSuccess } = await deleteClose(subject, highlighted);
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      remaining: [
+        {
+          sectionId: SOCIOGRAM,
+          path: ['prompts', 1, 'highlight', 0, 'variable'],
+        },
+      ],
+    });
+    expect(subject.store.read(SOCIOGRAM).document).toEqual(before);
+  });
+
+  it('deleting the only attribute of a Narrative highlight removes the highlight', async () => {
+    const subject = host();
+    const highlighted = withCloseVariable(subject);
     const narrative = subject.store.read(NARRATIVE).document;
     const presets: unknown[] = Array.isArray(narrative.presets)
       ? narrative.presets
@@ -1449,7 +1603,10 @@ describe('the in-memory host', () => {
       variableId: highlighted,
     });
 
-    expect(applied.changedSections).toContain(NARRATIVE);
+    expect(applied.changedSections).toEqual(
+      expect.arrayContaining([PERSON, NARRATIVE]),
+    );
+    expect(applied.changedSections).not.toContain(SOCIOGRAM);
     const after = subject.store.read(NARRATIVE).document.presets;
     expect(Array.isArray(after) ? after[0] : undefined).toMatchObject({
       highlight: kept,

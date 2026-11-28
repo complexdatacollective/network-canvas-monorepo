@@ -345,13 +345,19 @@ describe('deleting what a Narrative highlight names', () => {
   const STORY_SECTION = sectionId({ kind: 'stage', stageId: STORY });
   const LAYOUT = crypto.randomUUID();
   const CLOSE = crypto.randomUUID();
+  const TRUSTED = crypto.randomUUID();
   const FAVOURITE = crypto.randomUUID();
   const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
   const PLACE_SECTION = sectionId({ kind: 'codebookNode', typeId: PLACE });
 
-  const withBoolean = (name: string, variable: string): SectionDoc => ({
+  const withBooleans = (name: string, variables: string[]): SectionDoc => ({
     ...nodeType(name),
-    variables: { [variable]: { name: variable, type: 'boolean' } },
+    variables: Object.fromEntries(
+      variables.map((variable) => [
+        variable,
+        { name: variable, type: 'boolean' },
+      ]),
+    ),
   });
   const attribute = (type: string, variable: string) => ({
     id: crypto.randomUUID(),
@@ -372,8 +378,8 @@ describe('deleting what a Narrative highlight names', () => {
     [sectionId({ kind: 'codebookLayout', layoutId: LAYOUT })]: {
       name: 'Map',
     },
-    [PERSON_SECTION]: withBoolean('Person', CLOSE),
-    [PLACE_SECTION]: withBoolean('Place', FAVOURITE),
+    [PERSON_SECTION]: withBooleans('Person', [CLOSE, TRUSTED]),
+    [PLACE_SECTION]: withBooleans('Place', [FAVOURITE]),
     [STORY_SECTION]: {
       id: STORY,
       type: 'Narrative',
@@ -397,13 +403,12 @@ describe('deleting what a Narrative highlight names', () => {
     );
 
   it('removes the highlight whose only attribute is the deleted variable', () => {
-    const kept = highlight('Kept', [attribute(PERSON, CLOSE)]);
+    const kept = highlight('Kept', [attribute(PERSON, TRUSTED)]);
     const documents = documentsWith(
       [PERSON],
       [highlight('Close', [attribute(PERSON, CLOSE)]), kept],
     );
-    const person = documents[PERSON_SECTION];
-    documents[PERSON_SECTION] = { ...person, variables: {} };
+    documents[PERSON_SECTION] = withBooleans('Person', [TRUSTED]);
 
     const { remaining } = sweepReferences(documents, (current) =>
       variableReferences(
@@ -414,7 +419,7 @@ describe('deleting what a Narrative highlight names', () => {
     );
 
     expect(remaining).toEqual([]);
-    expect(highlightsIn(documents)).toEqual([]);
+    expect(highlightsIn(documents)).toEqual([kept]);
   });
 
   it('removes only the deleted type’s attribute from a highlight that names another type too', () => {
@@ -447,5 +452,211 @@ describe('deleting what a Narrative highlight names', () => {
 
     expect(remaining).toEqual([]);
     expect(highlightsIn(documents)).toEqual([personOnly]);
+  });
+});
+
+// Only a Narrative highlight goes with its last attribute. Any other entry
+// whose own list a deletion would leave empty stays, and the host reports the
+// reference, as it does for a stage filter with one rule.
+describe('deleting what the only entry of a required list names', () => {
+  const STORY = crypto.randomUUID();
+  const NAMES = crypto.randomUUID();
+  const MAP = crypto.randomUUID();
+  const STORY_SECTION = sectionId({ kind: 'stage', stageId: STORY });
+  const NAMES_SECTION = sectionId({ kind: 'stage', stageId: NAMES });
+  const MAP_SECTION = sectionId({ kind: 'stage', stageId: MAP });
+  const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
+  const LAYOUT = crypto.randomUUID();
+  const LAYOUT_SECTION = sectionId({
+    kind: 'codebookLayout',
+    layoutId: LAYOUT,
+  });
+  const OTHER_LAYOUT = crypto.randomUUID();
+  const OTHER_LAYOUT_SECTION = sectionId({
+    kind: 'codebookLayout',
+    layoutId: OTHER_LAYOUT,
+  });
+  const AGE = crypto.randomUUID();
+  const CLOSE = crypto.randomUUID();
+
+  const filterOn = (attribute: string) => ({
+    rules: [
+      {
+        id: crypto.randomUUID(),
+        type: 'node',
+        options: { type: PERSON, attribute, operator: 'EXISTS' },
+      },
+    ],
+  });
+
+  const documentsWith = (
+    stages: Record<string, SectionDoc>,
+  ): Record<string, SectionDoc> => ({
+    [sectionId({ kind: 'settings' })]: {},
+    [sectionId({ kind: 'stageOrder' })]: {
+      stages: Object.values(stages).map(({ id }) => id),
+    },
+    [LAYOUT_SECTION]: { name: 'Map' },
+    [OTHER_LAYOUT_SECTION]: { name: 'Other map' },
+    [PERSON_SECTION]: {
+      ...nodeType('Person'),
+      variables: {
+        [AGE]: { name: 'age', type: 'number' },
+        [CLOSE]: { name: 'close', type: 'boolean' },
+      },
+    },
+    ...stages,
+  });
+
+  const narrative = (filterAttribute: string): SectionDoc => ({
+    id: STORY,
+    type: 'Narrative',
+    label: { en: 'Story' },
+    subject: { entity: 'node', types: [PERSON] },
+    background: { concentricCircles: 4 },
+    presets: [
+      {
+        id: crypto.randomUUID(),
+        label: { en: 'Adults' },
+        layout: LAYOUT,
+        filter: filterOn(filterAttribute),
+      },
+      { id: crypto.randomUUID(), label: { en: 'Everyone' }, layout: LAYOUT },
+    ],
+  });
+
+  const nameGenerator: SectionDoc = {
+    id: NAMES,
+    type: 'NameGenerator',
+    label: { en: 'Names' },
+    subject: { entity: 'node', types: [PERSON] },
+    form: {
+      title: { en: 'About them' },
+      fields: [
+        {
+          id: crypto.randomUUID(),
+          variable: crypto.randomUUID(),
+          prompt: { en: 'Name' },
+        },
+      ],
+    },
+    prompts: [{ id: crypto.randomUUID(), text: { en: 'Who?' } }],
+    panels: [
+      {
+        id: crypto.randomUUID(),
+        title: { en: 'Adults' },
+        dataSource: 'existing',
+        filter: filterOn(AGE),
+      },
+    ],
+  };
+
+  const sociogram: SectionDoc = {
+    id: MAP,
+    type: 'Sociogram',
+    label: { en: 'Map' },
+    subject: { entity: 'node', types: [PERSON] },
+    layout: LAYOUT,
+    background: { concentricCircles: 4 },
+    prompts: [
+      { id: crypto.randomUUID(), task: 'layout', text: { en: 'Place them' } },
+      {
+        id: crypto.randomUUID(),
+        task: 'highlight',
+        text: { en: 'Who is close?' },
+        highlight: [{ id: crypto.randomUUID(), type: PERSON, variable: CLOSE }],
+      },
+    ],
+  };
+
+  const deleteVariable = (
+    documents: Record<string, SectionDoc>,
+    variable: string,
+  ) => {
+    const person = documents[PERSON_SECTION] ?? {};
+    const variables: unknown = Reflect.get(person, 'variables');
+    documents[PERSON_SECTION] = {
+      ...person,
+      variables: Object.fromEntries(
+        Object.entries(Object(variables)).filter(([id]) => id !== variable),
+      ),
+    };
+    return sweepReferences(documents, (current) =>
+      variableReferences(
+        assembledProtocol(current),
+        { entity: 'node', type: PERSON },
+        variable,
+      ),
+    );
+  };
+
+  it('keeps a Narrative preset whose filter’s only rule names a deleted variable, and reports the rule', () => {
+    const story = narrative(AGE);
+    const documents = documentsWith({ [STORY_SECTION]: story });
+
+    const { rewritten, remaining } = deleteVariable(documents, AGE);
+
+    expect(rewritten.size).toBe(0);
+    expect(remaining).toEqual([
+      {
+        sectionId: STORY_SECTION,
+        path: ['presets', 0, 'filter', 'rules', 0, 'options', 'attribute'],
+      },
+    ]);
+    expect(documents[STORY_SECTION]).toEqual(story);
+  });
+
+  it('keeps a Narrative preset whose filter’s only rule names a deleted layout, and reports the rule', () => {
+    const story = narrative(OTHER_LAYOUT);
+    const documents = documentsWith({ [STORY_SECTION]: story });
+    delete documents[OTHER_LAYOUT_SECTION];
+
+    expect(
+      layoutReferences(assembledProtocol(documents), OTHER_LAYOUT).stages,
+    ).toEqual([]);
+    const { rewritten, remaining } = sweepReferences(
+      documents,
+      (current) =>
+        layoutReferences(assembledProtocol(current), OTHER_LAYOUT).rules,
+    );
+
+    expect(rewritten.size).toBe(0);
+    expect(remaining).toEqual([
+      {
+        sectionId: STORY_SECTION,
+        path: ['presets', 0, 'filter', 'rules', 0, 'options', 'attribute'],
+      },
+    ]);
+    expect(documents[STORY_SECTION]).toEqual(story);
+  });
+
+  it('keeps a side panel whose filter’s only rule names a deleted variable, and reports the rule', () => {
+    const documents = documentsWith({ [NAMES_SECTION]: nameGenerator });
+
+    const { rewritten, remaining } = deleteVariable(documents, AGE);
+
+    expect(rewritten.size).toBe(0);
+    expect(remaining).toEqual([
+      {
+        sectionId: NAMES_SECTION,
+        path: ['panels', 0, 'filter', 'rules', 0, 'options', 'attribute'],
+      },
+    ]);
+    expect(documents[NAMES_SECTION]).toEqual(nameGenerator);
+  });
+
+  it('keeps a Sociogram highlight task whose only attribute is a deleted variable, and reports it', () => {
+    const documents = documentsWith({ [MAP_SECTION]: sociogram });
+
+    const { rewritten, remaining } = deleteVariable(documents, CLOSE);
+
+    expect(rewritten.size).toBe(0);
+    expect(remaining).toEqual([
+      {
+        sectionId: MAP_SECTION,
+        path: ['prompts', 1, 'highlight', 0, 'variable'],
+      },
+    ]);
+    expect(documents[MAP_SECTION]).toEqual(sociogram);
   });
 });
