@@ -318,7 +318,7 @@ describe('Protocol Summary edge labels participants see', () => {
       return Array.from(entries.children, (entry) => entry.textContent);
     };
 
-    it('prints each entry with its attributes and their node types', () => {
+    it('prints each highlight entry with its attributes', () => {
       expect(
         printedEntries(
           [PERSON, FAMILY],

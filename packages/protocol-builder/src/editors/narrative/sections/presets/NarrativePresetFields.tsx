@@ -722,7 +722,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
    * id ticked here a moment before the deletion is covered by the same read.
    * See `useLostReferences`.
    */
-  const live = useFormValue([DISPLAY_EDGES_FIELD, HIGHLIGHT_FIELD] as const);
+  const live = useFormValue([DISPLAY_EDGES_FIELD] as const);
   const displayedEdges = useMemo(
     () => asIdList(live[DISPLAY_EDGES_FIELD]) ?? [],
     [live],
