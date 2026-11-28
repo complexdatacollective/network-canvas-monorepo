@@ -733,6 +733,40 @@ describe('nameLocalizedText', () => {
     ]);
   });
 
+  it('names a Narrative highlight label by the attribute of each node type it highlights', () => {
+    const several = structuredClone(protocol);
+    const narrative = stageAt('Narrative');
+    setAt(several, [...narrative, 'subject'], {
+      entity: 'node',
+      types: [PERSON, FAMILY_MEMBER],
+    });
+    setAt(
+      several,
+      [...narrative, 'presets', 0, 'highlight', 0, 'attributes'],
+      [
+        { id: testId('highlight-person'), type: PERSON, variable: FLAGGED },
+        {
+          id: testId('highlight-family-member'),
+          type: FAMILY_MEMBER,
+          variable: RELATIVES_NOT_RECORDED,
+        },
+      ],
+    );
+    expect(
+      nameLocalizedText(enIntl, several, [
+        ...narrative,
+        'presets',
+        0,
+        'highlight',
+        0,
+        'label',
+      ])?.at(-1),
+    ).toEqual({
+      key: '["presets",0,"highlight",0,"label"]',
+      label: `Label for “Flag for follow-up and ${several.codebook.node?.[FAMILY_MEMBER]?.variables?.[RELATIVES_NOT_RECORDED]?.name}”`,
+    });
+  });
+
   it('names a Narrative edge legend label by the edge type it draws', () => {
     expect(
       name([

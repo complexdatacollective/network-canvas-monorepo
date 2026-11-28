@@ -103,12 +103,8 @@ export type VariableChoiceQuery = Readonly<{
    * through, so a stage that arrives already breaking one of those rules stays
    * editable. An attribute held that is of the wrong TYPE is still marked,
    * because nothing can be recorded in it here.
-   *
-   * A LIST where the control holds one — a tick list of highlight attributes
-   * keeps every attribute it has ticked, for the same reason a select keeps
-   * the one it has chosen.
    */
-  currentValue?: string | readonly string[];
+  currentValue?: string;
 }>;
 
 /**

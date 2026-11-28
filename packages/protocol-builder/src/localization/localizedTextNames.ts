@@ -89,6 +89,12 @@ const messages = defineMessages({
     description:
       'Names one visualization preset of a narrative stage where a text is listed without its translation. position is the preset’s place in the stage’s list of presets, counting from one.',
   },
+  highlightLabel: {
+    id: 'protocolBuilder.localizedTextNames.highlightLabel',
+    defaultMessage: 'Label for “{attributes}”',
+    description:
+      'Names the label of one highlight of a narrative preset where it is listed without its translation, such as in the translation table and the printable summary that the researcher reads. attributes lists the names, from the protocol’s codebook, of the true-or-false attributes the highlight reads, one for each node type it covers; the names are not translated.',
+  },
   diseasePosition: {
     id: 'protocolBuilder.localizedTextNames.diseasePosition',
     defaultMessage: 'Disease {position, number}',
@@ -348,19 +354,28 @@ const edgeLegendLabel: Label = (context) => {
 
 const highlightLabel: Label = (context) => {
   const highlight = context.at.slice(0, 4);
-  const variable = textAt(context.place, [...highlight, 'variable']);
-  if (variable === undefined) {
+  const attributes = valueAt(context.place, [...highlight, 'attributes']);
+  const names = (Array.isArray(attributes) ? attributes : []).flatMap(
+    (_attribute, index) => {
+      const row = [...highlight, 'attributes', index];
+      const type = textAt(context.place, [...row, 'type']);
+      const variable = textAt(context.place, [...row, 'variable']);
+      if (type === undefined || variable === undefined) return [];
+      return [
+        attributeName(context.codebook, { entity: 'node', type }, variable) ??
+          variable,
+      ];
+    },
+  );
+  const distinct = [...new Set(names)];
+  if (distinct.length === 0) {
     return context.intl.formatMessage(messages.itemPosition, {
       position: positionOf(highlight.at(-1)),
     });
   }
-  const subject = stageSubject(context);
-  const attribute =
-    (subject && attributeName(context.codebook, subject, variable)) ?? variable;
-  return context.intl.formatMessage(
-    narrativePresetMessages.presetHighlightLegendLabel,
-    { attribute },
-  );
+  return context.intl.formatMessage(messages.highlightLabel, {
+    attributes: context.intl.formatList(distinct, { type: 'conjunction' }),
+  });
 };
 
 // The pedigree's own prompt, and the extra questions it asks about each

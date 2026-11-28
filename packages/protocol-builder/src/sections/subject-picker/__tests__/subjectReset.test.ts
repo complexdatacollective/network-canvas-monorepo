@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { testVariableId } from '../../../testing/testId.ts';
 import {
+  fitPresetsToNodeTypes,
   fitPromptsToNodeTypes,
+  presetsDescribeNodeType,
   promptsNeedingNodeType,
   SUBJECT_INDEPENDENT_FIELDS,
   SUBJECT_INDEPENDENT_PARTS,
@@ -213,5 +215,53 @@ describe('the prompts that need a node type', () => {
         (edgeType, types) => edgeType === 'knows' && types.includes(B),
       ),
     ).toEqual({ highlight: [], connect: [2] });
+  });
+});
+
+describe('fitting Narrative presets to the node types a stage shows', () => {
+  const PERSON = 'person';
+  const PLACE = 'place';
+  const attribute = (type: string) => ({
+    id: `attribute-${type}`,
+    type,
+    variable: `flag-${type}`,
+  });
+  const preset = (highlight: Record<string, unknown>[]) => ({
+    id: 'preset',
+    label: { en: 'Everyone' },
+    layout: 'layout',
+    highlight,
+  });
+  const entry = (id: string, types: string[]) => ({
+    id,
+    label: { en: id },
+    attributes: types.map(attribute),
+  });
+
+  it('removes the highlight list when its only entry names only the removed type', () => {
+    expect(
+      fitPresetsToNodeTypes(
+        [preset([entry('place-only', [PLACE])])],
+        [PLACE],
+        [PERSON],
+      ),
+    ).toEqual([{ id: 'preset', label: { en: 'Everyone' }, layout: 'layout' }]);
+  });
+
+  it('changes nothing when no entry names the removed type', () => {
+    expect(
+      fitPresetsToNodeTypes(
+        [preset([entry('person-only', [PERSON])])],
+        [PLACE],
+        [PERSON],
+      ),
+    ).toBeUndefined();
+  });
+
+  it('says whether an entry names a type', () => {
+    const presets = [preset([entry('person-only', [PERSON])])];
+
+    expect(presetsDescribeNodeType(presets, PERSON)).toBe(true);
+    expect(presetsDescribeNodeType(presets, PLACE)).toBe(false);
   });
 });

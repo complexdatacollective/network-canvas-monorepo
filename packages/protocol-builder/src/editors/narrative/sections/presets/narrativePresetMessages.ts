@@ -282,44 +282,44 @@ export const narrativePresetMessages = defineMessages({
     id: 'protocolBuilder.networkCanvas.presetHighlightEntriesLabel',
     defaultMessage: 'Highlights',
     description:
-      'Label of the list of highlights in the dialog for one narrative preset. A highlight is one way the interviewer can make some nodes stand out during the interview.',
+      'Label of the list of highlights in the dialog for one narrative preset. A highlight is one way the interviewer can make some nodes stand out during the interview. Read by the researcher designing the stage.',
   },
   presetHighlightEmptyState: {
     id: 'protocolBuilder.networkCanvas.presetHighlightEmptyState',
     defaultMessage: 'This preset has no highlights.',
     description:
-      'Shown in place of the list of highlights in the dialog for one narrative preset while the preset has none. Not a problem to fix: a preset may highlight nothing.',
+      'Shown in place of the list of highlights in the dialog for one narrative preset while the preset has none. Not a problem to fix: a preset may highlight nothing. Read by the researcher designing the stage.',
   },
   presetHighlightAdd: {
     id: 'protocolBuilder.networkCanvas.presetHighlightAdd',
     defaultMessage: 'Add a highlight',
     description:
-      'Button in the dialog for one narrative preset that adds one more highlight to the preset. A highlight is one way the interviewer can make some nodes stand out during the interview.',
+      'Button in the dialog for one narrative preset that adds one more highlight to the preset. A highlight is one way the interviewer can make some nodes stand out during the interview. Read by the researcher designing the stage.',
   },
   presetHighlightEntryLegend: {
     id: 'protocolBuilder.networkCanvas.presetHighlightEntryLegend',
     defaultMessage: 'Highlight {number}',
     description:
-      'Heading of the group of controls for one highlight in the dialog for one narrative preset. number is the position of the highlight in the list, starting at 1.',
+      'Heading of the group of controls for one highlight in the dialog for one narrative preset. number is the position of the highlight in the list, starting at 1. Read by the researcher designing the stage.',
   },
   presetHighlightEntryRemove: {
     id: 'protocolBuilder.networkCanvas.presetHighlightEntryRemove',
     defaultMessage: 'Remove highlight {number}',
     description:
-      'Button in the dialog for one narrative preset that removes one highlight from the preset. number is the position of the highlight in the list, starting at 1.',
+      'Button in the dialog for one narrative preset that removes one highlight from the preset. number is the position of the highlight in the list, starting at 1. Read by the researcher designing the stage.',
   },
   presetHighlightLegendLabel: {
     id: 'protocolBuilder.networkCanvas.presetHighlightLegendLabel',
     defaultMessage: 'Highlight label',
     description:
-      'Label of the text box for the name of one highlight in the dialog for one narrative preset. The name is shown during the interview.',
+      'Label of the text box for the name of one highlight in the dialog for one narrative preset. The name is shown during the interview. Read by the researcher designing the stage.',
   },
   presetHighlightLegendHint: {
     id: 'protocolBuilder.networkCanvas.presetHighlightLegendHint',
     defaultMessage:
       'Shown during the interview, in the list of highlights this preset offers.',
     description:
-      'Guidance under the text box for the name of one highlight, saying where the name appears.',
+      'Guidance under the text box for the name of one highlight in the dialog for one narrative preset in the stage editor, saying where the name appears. Read by the researcher designing the stage.',
   },
   presetHighlightLegendRequired: {
     id: 'protocolBuilder.networkCanvas.presetHighlightLegendRequired',
@@ -331,20 +331,20 @@ export const narrativePresetMessages = defineMessages({
     id: 'protocolBuilder.networkCanvas.presetHighlightAttribute',
     defaultMessage: 'Attribute',
     description:
-      'Label of the picker for the true-or-false codebook attribute that one highlight of a narrative preset reads, on a stage that shows one node type.',
+      'Label of the picker for the true-or-false codebook attribute that one highlight reads, in the dialog for one narrative preset in the stage editor, on a stage that shows one node type. Read by the researcher designing the stage.',
   },
   presetHighlightAttributeForType: {
     id: 'protocolBuilder.networkCanvas.presetHighlightAttributeForType',
     defaultMessage: 'Attribute for {nodeType}',
     description:
-      'Label of the picker for the true-or-false codebook attribute that one highlight of a narrative preset reads on nodes of one type, on a stage that shows several node types. nodeType is the name of the node type in the codebook, which is not translated.',
+      'Label of the picker for the true-or-false codebook attribute that one highlight of a narrative preset reads on nodes of one type, on a stage that shows several node types. nodeType is the name of the node type in the codebook, which is not translated. Read by the researcher designing the stage.',
   },
   presetHighlightAttributeHintSeveral: {
     id: 'protocolBuilder.networkCanvas.presetHighlightAttributeHintSeveral',
     defaultMessage:
       'Optional. Leave this empty if nodes of this type should not stand out for this highlight.',
     description:
-      'Guidance under the picker for the attribute that one highlight of a narrative preset reads on nodes of one type, on a stage that shows several node types.',
+      'Guidance under the picker for the attribute that one highlight of a narrative preset reads on nodes of one type, on a stage that shows several node types. Read by the researcher designing the stage.',
   },
   presetHighlightAttributeRequired: {
     id: 'protocolBuilder.networkCanvas.presetHighlightAttributeRequired',
@@ -364,19 +364,19 @@ export const narrativePresetMessages = defineMessages({
     defaultMessage:
       'This type has no boolean attributes, so there is nothing to highlight by.',
     description:
-      'Shown in place of the attribute picker of one highlight in a narrative preset when the node type has no true-or-false attribute in the codebook. "This type" is that node type.',
+      'Shown in place of the attribute picker of one highlight in a narrative preset when the node type has no true-or-false attribute in the codebook. "This type" is that node type. Read by the researcher designing the stage.',
   },
   presetHighlightAttributeClear: {
     id: 'protocolBuilder.networkCanvas.presetHighlightAttributeClear',
     defaultMessage: 'Do not highlight {nodeType}',
     description:
-      'Button under the attribute picker of one highlight in a narrative preset, on a stage that shows several node types. It empties the picker, so nodes of that type do not stand out for this highlight. nodeType is the name of the node type in the codebook, which is not translated.',
+      'Button under the attribute picker of one highlight in a narrative preset, on a stage that shows several node types. It empties the picker, so nodes of that type do not stand out for this highlight. nodeType is the name of the node type in the codebook, which is not translated. Read by the researcher designing the stage.',
   },
   presetGroupNeedsOneType: {
     id: 'protocolBuilder.networkCanvas.presetGroupNeedsOneType',
     defaultMessage:
       'Groups need one node type. This stage shows several node types, so its presets cannot group nodes.',
     description:
-      'Shown in place of the grouping-attribute picker in the dialog for one narrative preset, when the stage shows more than one node type. Groups are outlines drawn around nodes that share a value of one attribute of one node type.',
+      'Shown in place of the grouping-attribute picker in the dialog for one narrative preset, when the stage shows more than one node type. Groups are outlines drawn around nodes that share a value of one attribute of one node type. Read by the researcher designing the stage.',
   },
 });

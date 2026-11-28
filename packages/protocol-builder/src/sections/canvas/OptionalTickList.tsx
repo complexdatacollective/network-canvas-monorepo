@@ -38,8 +38,8 @@ export default function OptionalTickList({
       // researcher reads a label, a hint and then nothing, with no way to tell
       // whether the stage offers nothing or the editor failed to draw it.
       // Architect disabled the whole section instead; this says why, which the
-      // three lists that can be empty — a sociogram prompt's edge types, a
-      // narrative preset's edge types and its highlight attributes — all need.
+      // two lists that can be empty — a sociogram prompt's edge types and a
+      // narrative preset's edge types — both need.
       // Said INSIDE the group, so the sentence keeps the name and the hint the
       // field gave it rather than replacing the labelled element with a
       // paragraph nothing can label.

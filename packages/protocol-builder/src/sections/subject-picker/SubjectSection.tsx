@@ -116,6 +116,13 @@ const messages = defineMessages({
     description:
       'Guidance under the control in the stage editor where the researcher chooses which kinds of network member a stage shows, on a stage that can show more than one. Read by the researcher designing the stage. Prompts are the questions or tasks the stage sets the participant.',
   },
+  narrativeNodesFieldHint: {
+    id: 'protocolBuilder.subjectSection.narrativeNodesFieldHint',
+    defaultMessage:
+      'Select each type of node that this stage shows. Each preset on this stage can highlight each type separately.',
+    description:
+      'Guidance under the control in the stage editor where the researcher chooses which kinds of network member a Narrative stage shows. Read by the researcher designing the stage. A preset is one saved view of the network that the interviewer can switch to; to highlight is to make some people or places stand out in that view.',
+  },
   nodeRemoveTitle: {
     id: 'protocolBuilder.subjectSection.nodeRemoveTitle',
     defaultMessage: 'Remove this node type?',
@@ -474,7 +481,11 @@ export default function SubjectSection({
     },
     [committedFields, intl, protocolContext, storeApi],
   );
-  const fieldHint = multiple ? messages.nodesFieldHint : words.fieldHint;
+  const fieldHint = !multiple
+    ? words.fieldHint
+    : identity.type === 'Narrative'
+      ? messages.narrativeNodesFieldHint
+      : messages.nodesFieldHint;
 
   return (
     <>

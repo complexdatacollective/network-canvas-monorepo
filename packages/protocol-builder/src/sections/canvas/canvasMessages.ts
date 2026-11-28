@@ -23,6 +23,6 @@ export const canvasMessages = defineMessages({
     defaultMessage:
       'Nothing to choose from yet. Create what this list offers in the codebook first.',
     description:
-      'Shown in place of a canvas tick list whose choices all come from the protocol’s codebook and whose codebook holds none of them yet — no edge types for the stage’s subject, or no yes/no attributes to highlight by. One sentence for all three lists, so it names neither, and the codebook is the part of the protocol where types and attributes are defined.',
+      'Shown in place of a canvas tick list whose choices all come from the protocol’s codebook and whose codebook holds none of them yet — no edge types for the stage’s subject. Shown in the stage editor of a sociogram prompt and of a narrative preset, and read by the researcher designing the stage. One sentence for both lists, so it names neither, and the codebook is the part of the protocol where types are defined.',
   },
 });

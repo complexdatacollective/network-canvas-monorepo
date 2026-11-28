@@ -1670,6 +1670,50 @@ describe('the node types a Narrative shows', () => {
     expect(saved.presets).toEqual([kept]);
   });
 
+  it('says that each preset can highlight each type', async () => {
+    renderStageEditor(narrative([PERSON], []));
+
+    expect(
+      await screen.findByText(
+        'Select each type of node that this stage shows. Each preset on this stage can highlight each type separately.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('removes a type no preset highlights without asking', async () => {
+    const harness = renderStageEditor(
+      narrative(
+        [PERSON, FAMILY_MEMBER],
+        [
+          {
+            id: testId('preset-one'),
+            label: en('Everyone'),
+            layout: fixtureLayoutId('layout'),
+            highlight: [
+              {
+                id: testId('highlight-person'),
+                label: en('Flagged'),
+                attributes: [personAttribute],
+              },
+            ],
+          },
+        ],
+      ),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'family member' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'family member' }),
+      ).not.toBeChecked(),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Remove the node type' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('removing a type prunes only its highlight attributes', async () => {
     const harness = renderStageEditor(
       narrative(
@@ -1688,7 +1732,9 @@ describe('the node types a Narrative shows', () => {
               {
                 id: testId('highlight-family'),
                 label: en('Family only'),
-                attributes: [familyAttribute],
+                attributes: [
+                  { ...familyAttribute, id: testId('attribute-family-only') },
+                ],
               },
             ],
           },
