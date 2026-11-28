@@ -22,12 +22,15 @@ import { chooseAttribute, chooseOrCreateAttribute } from './variables.js';
 //   attribute the protocol already collects, so a fresh one would draw a
 //   single hull holding everybody. Its window has no create row, and its
 //   search box says "Find an attribute…" rather than "Find or create".
-// - "Displayed edges" holds the tick list "Edge types" (`edges.display`), and
-//   "Node highlighting" the tick list "Highlight attributes" (`highlight`).
-//   Both name codebook entries, and both drop the key entirely when nothing is
-//   ticked. Each ticked highlight attribute adds a required, translatable
-//   "Label for “<attribute name>”" box that starts as the attribute's name, so
-//   ticking alone saves `{ variable, label }` with that name as the label.
+// - "Displayed edges" holds the tick list "Edge types" (`edges.display`),
+//   which names codebook entries and drops the key entirely when nothing is
+//   ticked.
+// - "Node highlighting" holds the list "Highlights", which adds an entry
+//   through "Add a highlight". Each entry is a group "Highlight <number>"
+//   holding a required, translatable "Highlight label" box and one boolean
+//   attribute picker per node type the stage shows: "Attribute" on a stage
+//   with one type, "Attribute for <node type name>" on a stage with several,
+//   where each picker is optional but an entry must name one attribute.
 
 export async function addNarrativePreset(
   editor: StageEditor,
@@ -37,7 +40,12 @@ export async function addNarrativePreset(
     layout: string;
     groupVariable?: string;
     displayEdges?: string[];
-    highlight?: string[];
+    // `nodeType` names the picker on a stage that shows several node types,
+    // and is left out on a stage that shows one.
+    highlight?: {
+      label: string;
+      attributes: { attribute: string; nodeType?: string }[];
+    }[];
   },
 ): Promise<void> {
   await addPrompt(
@@ -62,11 +70,31 @@ export async function addNarrativePreset(
           .getByRole('checkbox', { name: edgeName, exact: true })
           .check();
       }
-      for (const variableName of spec.highlight ?? []) {
-        await editor
-          .field('highlight')
-          .getByRole('checkbox', { name: variableName, exact: true })
-          .check();
+      for (const [index, highlight] of (spec.highlight ?? []).entries()) {
+        await page
+          .getByRole('button', { name: 'Add a highlight', exact: true })
+          .click();
+        const entry = page.getByRole('group', {
+          name: `Highlight ${index + 1}`,
+          exact: true,
+        });
+        await entry
+          .getByRole('textbox', { name: 'Highlight label', exact: true })
+          .fill(highlight.label);
+        for (const { attribute, nodeType } of highlight.attributes) {
+          const pickerLabel =
+            nodeType === undefined ? 'Attribute' : `Attribute for ${nodeType}`;
+          // The picker's field name holds the entry's generated id, so the
+          // field is found by its own label inside the entry.
+          await chooseAttribute(
+            entry.locator('[data-field-name]').filter({
+              has: page
+                .locator('label[id$="-label"]')
+                .getByText(pickerLabel, { exact: true }),
+            }),
+            attribute,
+          );
+        }
       }
     },
     { addButtonLabel: 'Create new preset' },

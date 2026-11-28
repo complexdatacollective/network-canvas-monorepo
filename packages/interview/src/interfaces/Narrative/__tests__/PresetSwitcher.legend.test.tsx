@@ -1,4 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { cleanup, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -31,6 +31,8 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { createInitialNetwork } from '../../../contract/network';
+import type { ProtocolPayload } from '../../../contract/types';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -187,13 +189,59 @@ describe('PresetSwitcher group legend', () => {
       presets: [groupPreset],
       background: { concentricCircles: 3 },
     } satisfies Stage;
+    const protocolState: ProtocolPayload = {
+      id: 'p',
+      hash: 'h',
+      importedAt: '2026-11-27T00:00:00.000Z',
+      assets: [],
+      name: 'Test protocol',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: {
+        node: {
+          [PERSON]: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: {
+              [CIRCLE]: {
+                name: 'circle',
+                type: 'categorical',
+                options: [
+                  {
+                    id: testId('work'),
+                    value: 'work',
+                    label: { en: 'Work friends' },
+                  },
+                ],
+              },
+            },
+          },
+          [PLACE]: {
+            name: 'Place',
+            color: 'node-color-seq-2',
+            shape: { default: 'square' },
+            variables: {},
+          },
+        },
+        edge: {},
+        layouts: { [LAYOUT]: { name: 'map' } },
+        ego: { variables: {} },
+      },
+      stages: [stage],
+    };
     const store = configureStore({
-      reducer: { session, protocol, ui },
+      reducer: combineReducers({ session, protocol, ui }),
       preloadedState: {
         session: {
           id: 's',
+          startTime: '2026-11-27T00:00:00.000Z',
+          finishTime: null,
+          exportTime: null,
+          lastUpdated: '2026-11-27T00:00:00.000Z',
           promptIndex: 0,
           network: {
+            ...createInitialNetwork(),
             nodes: [
               {
                 [entityPrimaryKeyProperty]: 'alex',
@@ -201,48 +249,9 @@ describe('PresetSwitcher group legend', () => {
                 [entityAttributesProperty]: { [CIRCLE]: ['work'] },
               },
             ],
-            edges: [],
-            ego: { [entityAttributesProperty]: {} },
           },
-        } as never,
-        protocol: {
-          id: 'p',
-          hash: 'h',
-          schemaVersion: 9,
-          localization: { defaultLocale: 'en', locales: ['en'] },
-          codebook: {
-            node: {
-              [PERSON]: {
-                name: 'Person',
-                color: 'node-color-seq-1',
-                shape: { default: 'circle' },
-                variables: {
-                  [CIRCLE]: {
-                    name: 'circle',
-                    type: 'categorical',
-                    options: [
-                      {
-                        id: testId('work'),
-                        value: 'work',
-                        label: { en: 'Work friends' },
-                      },
-                    ],
-                  },
-                },
-              },
-              [PLACE]: {
-                name: 'Place',
-                color: 'node-color-seq-2',
-                shape: { default: 'square' },
-                variables: {},
-              },
-            },
-            edge: {},
-            layouts: { [LAYOUT]: { name: 'map' } },
-            ego: { variables: {} },
-          },
-          stages: [stage],
-        } as never,
+        },
+        protocol: protocolState,
       },
       middleware: (g) => g({ serializableCheck: false }),
     });

@@ -1005,9 +1005,8 @@ const subjectCodebookLookupAndScoping: ScenarioDefinition = {
     const narrative = new NarrativeFixture(page);
 
     // The highlight's label resolves against its first attribute's node
-    // type in the codebook. A stage showing two node types offers no groups.
+    // type in the codebook.
     await expect(narrative.getHighlightRadio('CloseFriend')).toBeVisible();
-    await expect(narrative.getAccordionTrigger('Groups')).toHaveCount(0);
 
     // Nodes of both subject types render; the Organisation node does not,
     // although it has a position in the preset's layout.

@@ -1467,7 +1467,8 @@ const buildSeveralNodeTypes = () => {
     { x: 0.5, y: 0.2 },
     { x: 0.75, y: 0.35 },
     { x: 0.35, y: 0.75 },
-    { x: 0.7, y: 0.7 },
+    // Clear of the legend, which opens over the lower right of the canvas.
+    { x: 0.6, y: 0.5 },
   ]);
   [true, false, false].forEach((value, index) => {
     si.setNodeAttribute(index, close.id, value);
