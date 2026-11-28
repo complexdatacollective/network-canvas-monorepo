@@ -437,7 +437,10 @@ const StageContent = ({
       <Behaviours behaviours={behaviours ?? null} />
       {!WORDING_AFTER_CANVAS.has(type) &&
         !WORDING_PRINTED_ELSEWHERE.has(type) && <StageWording stage={stage} />}
-      <Presets presets={presets ?? null} />
+      <Presets
+        presets={presets ?? null}
+        nodeTypes={subject?.entity === 'node' ? subject.types : []}
+      />
       {type === 'NetworkComposer' && (
         <ComposerEdges edges={configuration.edges ?? null} />
       )}

@@ -7,6 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   attributeField,
+  attributeTrigger,
   chooseAttributeById,
   closeAttributePicker,
   offeredAttributes,
@@ -306,6 +307,43 @@ describe('a highlight of a preset', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
+  it('names the list of highlights', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const preset = await openPreset(harness);
+
+    expect(
+      within(preset.getByRole('group', { name: 'Highlights' })).getByRole(
+        'group',
+        { name: 'Highlight 1' },
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('moves focus to the entry that takes the place of a removed one, else to the add button', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const preset = await openPreset(harness);
+    await addHighlight(harness, preset, 2);
+    await harness.user.click(
+      preset.getByRole('button', { name: 'Remove highlight 1' }),
+    );
+    await waitFor(() =>
+      expect(
+        preset.getByRole('button', { name: 'Remove highlight 1' }),
+      ).toHaveFocus(),
+    );
+
+    await harness.user.click(
+      preset.getByRole('button', { name: 'Remove highlight 1' }),
+    );
+    await waitFor(() =>
+      expect(
+        preset.getByRole('button', { name: 'Add a highlight' }),
+      ).toHaveFocus(),
+    );
+  });
+
   it('removes a highlight from the preset', async () => {
     const harness = renderStageEditor(openEditor());
 
@@ -465,6 +503,42 @@ describe('a preset on a stage that shows several node types', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('reports a highlight with no attribute in the same round as the other missing answers', async () => {
+    const harness = renderStageEditor(narrativeOverTwoTypes());
+
+    const preset = await addPreset(harness);
+    await addHighlight(harness, preset, 1);
+    await harness.user.click(preset.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await preset.findByText('Enter a label for this highlight.'),
+    ).toBeInTheDocument();
+    expect(
+      preset.getByText(
+        'Choose an attribute for at least one node type, or remove this highlight.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('moves focus to the picker that was emptied', async () => {
+    const harness = renderStageEditor(narrativeOverTwoTypes());
+
+    const preset = await addPreset(harness);
+    const highlight = await addHighlight(harness, preset, 1);
+    const familyField = attributeField(
+      'Attribute for family member',
+      highlight,
+    );
+    await chooseAttributeById(harness.user, familyField, FAMILY_CONDITION);
+    await harness.user.click(
+      within(highlight).getByRole('button', {
+        name: 'Do not highlight family member',
+      }),
+    );
+
+    await waitFor(() => expect(attributeTrigger(familyField)).toHaveFocus());
   });
 
   it('explains that groups need one node type in place of the grouping picker', async () => {

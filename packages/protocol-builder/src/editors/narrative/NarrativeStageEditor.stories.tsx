@@ -100,6 +100,9 @@ export const HighlightLabels: Story = {
 const PERSON = fixtureTypeId('node', 'person');
 const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
+const withNodeType = (before: string, nodeType: string): RegExp =>
+  new RegExp(`^${before} \u2068?${nodeType}\u2069?$`);
+
 /**
  * A stage that shows two node types. Each highlight of a preset has an
  * attribute picker for each type, and the grouping picker is replaced by a
@@ -171,12 +174,18 @@ export const SeveralNodeTypes: Story = {
     const highlight = within(
       preset.getByRole('group', { name: 'Highlight 1' }),
     );
-    await expect(highlight.getByText('Attribute for person')).toBeVisible();
+    // A right-to-left direction wraps each interpolated node type name in
+    // bidi isolates, so the names are matched with or without them.
     await expect(
-      highlight.getByText('Attribute for family member'),
+      highlight.getByText(withNodeType('Attribute for', 'person')),
     ).toBeVisible();
     await expect(
-      highlight.getByRole('button', { name: 'Do not highlight family member' }),
+      highlight.getByText(withNodeType('Attribute for', 'family member')),
+    ).toBeVisible();
+    await expect(
+      highlight.getByRole('button', {
+        name: withNodeType('Do not highlight', 'family member'),
+      }),
     ).toBeVisible();
   },
 };

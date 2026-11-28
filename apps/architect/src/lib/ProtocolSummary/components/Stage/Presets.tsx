@@ -43,17 +43,16 @@ type PresetsProps = {
     highlight?: HighlightEntry[];
     filter?: FilterType;
   }> | null;
+  /** The node types the stage shows. */
+  nodeTypes?: readonly string[];
 };
 
-// The node type is printed beside an attribute only when the entries name
+// The node type is printed beside an attribute only when the stage shows
 // more than one, since a single type is already the stage's own.
 const HighlightEntries = ({
   entries,
-}: Readonly<{ entries: HighlightEntry[] }>) => {
-  const severalTypes =
-    new Set(entries.flatMap(({ attributes }) => attributes.map((a) => a.type)))
-      .size > 1;
-
+  severalTypes,
+}: Readonly<{ entries: HighlightEntry[]; severalTypes: boolean }>) => {
   return (
     <ul className="flex flex-col gap-2">
       {entries.map((entry) => (
@@ -75,7 +74,7 @@ const HighlightEntries = ({
   );
 };
 
-const Presets = ({ presets = null }: PresetsProps) => {
+const Presets = ({ presets = null, nodeTypes = [] }: PresetsProps) => {
   const intl = useAppIntl();
   const multilingual = useMultilingualSummary();
   if (!presets) {
@@ -156,6 +155,7 @@ const Presets = ({ presets = null }: PresetsProps) => {
                     <HighlightEntries
                       key="highlight"
                       entries={preset.highlight ?? []}
+                      severalTypes={nodeTypes.length > 1}
                     />,
                   ],
                 ]}

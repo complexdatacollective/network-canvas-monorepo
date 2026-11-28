@@ -70,6 +70,36 @@ describe('the warning about a layout with no positions for a node type', () => {
     ).toBeInTheDocument();
   });
 
+  it('names only the types of a several-type stage that no stage places', async () => {
+    const harness = renderStageEditor(narrativeAbout([PERSON, FAMILY_MEMBER]));
+
+    const preset = await openPreset(harness);
+
+    expect(await preset.findByText(WARNING_TITLE)).toBeInTheDocument();
+    expect(
+      preset.getByText(
+        'No stage places family member nodes in the layout “layout”, so they are shown here only if a roster gives them positions in this layout. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('names every type of a several-type stage when no stage places any of them', async () => {
+    const harness = renderStageEditor(
+      narrativeAbout([PERSON, FAMILY_MEMBER], UNPLACED),
+    );
+    harness.receiveCodebookUpdate({
+      layouts: { [UNPLACED]: { name: 'unplaced' } },
+    });
+
+    const preset = await openPreset(harness);
+
+    expect(
+      await preset.findByText(
+        'No stage places nodes of the types person and family member in the layout “unplaced”, so they are shown here only if a roster gives them positions in this layout. Add a Sociogram or a Network Composer that places them in this layout, or choose another layout.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('does not warn once another stage sets it', async () => {
     const harness = renderStageEditor(narrativeAbout([PERSON]));
 

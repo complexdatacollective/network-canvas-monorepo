@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -13,7 +13,6 @@ import {
   rowId,
   rowTemplate,
   type RowListConfig,
-  type RowSaveOutcome,
   type RowValues,
 } from '../../../../form/rowDialog.tsx';
 import BuilderSection from '../../../../sections/BuilderSection.tsx';
@@ -21,9 +20,6 @@ import { useStageNodeTypes } from '../../../../sections/useStageSubject.ts';
 import {
   collapseNarrativePresetFor,
   expandNarrativePreset,
-  highlightAttributeIn,
-  highlightAttributeName,
-  highlightEntryIdsIn,
   NarrativePresetFields,
   NarrativePresetPreview,
 } from './NarrativePresetFields.tsx';
@@ -57,34 +53,6 @@ export default function NarrativePresetsSection() {
   const types = useStageNodeTypes();
   const waiting = types.length === 0;
 
-  // A single type's attribute picker is required by its own field; on a stage
-  // that shows several, each is optional but a highlight must name something.
-  const beforeSave = useCallback(
-    (row: RowValues): RowSaveOutcome => {
-      if (types.length < 2) return { row };
-      const [firstType] = types;
-      if (firstType === undefined) return { row };
-      const fieldErrors = Object.fromEntries(
-        highlightEntryIdsIn(row)
-          .filter((entryId) =>
-            types.every(
-              (type) => highlightAttributeIn(row, entryId, type) === undefined,
-            ),
-          )
-          .map((entryId) => [
-            highlightAttributeName(entryId, firstType),
-            intl.formatMessage(
-              messages.presetHighlightAttributeRequiredSeveral,
-            ),
-          ]),
-      );
-      return Object.keys(fieldErrors).length === 0
-        ? { row }
-        : { refused: { fieldErrors } };
-    },
-    [intl, types],
-  );
-
   const rowList = useMemo<RowListConfig>(() => {
     const collapse = collapseNarrativePresetFor(types);
     return {
@@ -95,10 +63,9 @@ export default function NarrativePresetsSection() {
       formId: 'narrative-preset-editor',
       name: PRESETS_FIELD,
       expand: expandNarrativePreset,
-      beforeSave,
       normalize: (row) => withoutAbsentEntries(collapse(row)),
     };
-  }, [beforeSave, types]);
+  }, [types]);
 
   return (
     <BuilderSection

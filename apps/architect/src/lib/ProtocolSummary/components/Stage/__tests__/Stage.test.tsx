@@ -251,7 +251,7 @@ describe('Protocol Summary edge labels participants see', () => {
     expect(within(edges).getByText('knows')).toBeInTheDocument();
   });
 
-  it('prints each highlight entry with its attributes', () => {
+  describe('the highlight entries of a Narrative preset', () => {
     const FAMILY = testTypeId('family');
     const CLOSE = testVariableId('close');
     const RELATIVE = testVariableId('relative');
@@ -281,62 +281,98 @@ describe('Protocol Summary edge labels participants see', () => {
       type: 'boolean',
       stages: [],
     });
+    type Entry = {
+      id: string;
+      label: { en: string };
+      attributes: { id: string; type: string; variable: string }[];
+    };
 
-    render(
-      <SummaryContext.Provider
-        value={{
-          protocol: withTypes,
-          protocolName: withTypes.name,
-          index: [
-            variable(CLOSE, 'close'),
-            variable(RELATIVE, 'relative'),
-            variable(LIVES_NEARBY, 'lives_nearby'),
-          ],
-        }}
-      >
-        <Stage
-          id="stage"
-          label={{ en: 'A stage' }}
-          stageNumber={1}
-          type="Narrative"
-          configuration={{
-            presets: [
-              {
-                id: 'preset',
-                label: { en: 'Everyone' },
-                highlight: [
-                  {
-                    id: 'close-entry',
-                    label: { en: 'Close to you' },
-                    attributes: [
-                      { id: 'a1', type: PERSON, variable: CLOSE },
-                      { id: 'a2', type: FAMILY, variable: RELATIVE },
-                    ],
-                  },
-                  {
-                    id: 'nearby-entry',
-                    label: { en: 'Nearby' },
-                    attributes: [
-                      { id: 'a3', type: FAMILY, variable: LIVES_NEARBY },
-                    ],
-                  },
-                ],
-              },
+    const printedEntries = (types: string[], highlight: Entry[]) => {
+      render(
+        <SummaryContext.Provider
+          value={{
+            protocol: withTypes,
+            protocolName: withTypes.name,
+            index: [
+              variable(CLOSE, 'close'),
+              variable(RELATIVE, 'relative'),
+              variable(LIVES_NEARBY, 'lives_nearby'),
             ],
           }}
-        />
-      </SummaryContext.Provider>,
-    );
+        >
+          <Stage
+            id="stage"
+            label={{ en: 'A stage' }}
+            stageNumber={1}
+            type="Narrative"
+            configuration={{
+              subject: { entity: 'node', types },
+              presets: [{ id: 'preset', label: { en: 'Everyone' }, highlight }],
+            }}
+          />
+        </SummaryContext.Provider>,
+      );
+      const row = screen.getByRole('row', { name: /Highlight attributes/ });
+      const [entries] = within(row).getAllByRole('list');
+      if (!entries) throw new Error('No highlight entries were printed');
+      return Array.from(entries.children, (entry) => entry.textContent);
+    };
 
-    const row = screen.getByRole('row', { name: /Highlight attributes/ });
-    const [entries] = within(row).getAllByRole('list');
-    if (!entries) throw new Error('No highlight entries were printed');
-    expect(
-      Array.from(entries.children, (entry) => entry.textContent),
-    ).toStrictEqual([
-      'Close to youpersonclosefamily memberrelative',
-      'Nearbyfamily memberlives_nearby',
-    ]);
+    it('prints each entry with its attributes and their node types', () => {
+      expect(
+        printedEntries(
+          [PERSON, FAMILY],
+          [
+            {
+              id: 'close-entry',
+              label: { en: 'Close to you' },
+              attributes: [
+                { id: 'a1', type: PERSON, variable: CLOSE },
+                { id: 'a2', type: FAMILY, variable: RELATIVE },
+              ],
+            },
+            {
+              id: 'nearby-entry',
+              label: { en: 'Nearby' },
+              attributes: [{ id: 'a3', type: FAMILY, variable: LIVES_NEARBY }],
+            },
+          ],
+        ),
+      ).toStrictEqual([
+        'Close to youpersonclosefamily memberrelative',
+        'Nearbyfamily memberlives_nearby',
+      ]);
+    });
+
+    it('prints the node type on a stage with several types even when the entries name one', () => {
+      expect(
+        printedEntries(
+          [PERSON, FAMILY],
+          [
+            {
+              id: 'close-entry',
+              label: { en: 'Close to you' },
+              attributes: [{ id: 'a1', type: PERSON, variable: CLOSE }],
+            },
+          ],
+        ),
+      ).toStrictEqual(['Close to youpersonclose']);
+    });
+
+    it('prints no node type on a stage with one type', () => {
+      expect(
+        printedEntries(
+          [PERSON],
+          [
+            {
+              id: 'close-entry',
+              label: { en: 'Close to you' },
+              attributes: [{ id: 'a1', type: PERSON, variable: CLOSE }],
+            },
+          ],
+        ),
+      ).toStrictEqual(['Close to youclose']);
+    });
   });
 
   it('prints a Narrative preset’s own filter with that preset, and none for a preset without one', () => {

@@ -1,12 +1,15 @@
 import { Plus, X } from 'lucide-react';
-import { type ComponentType, type ReactNode, useMemo } from 'react';
+import { type ComponentType, type ReactNode, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { formatObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
+import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -150,7 +153,7 @@ const idIn = (ids: unknown, key: string): string => {
 };
 
 /** The dialog field holding one highlight entry's attribute for one type. */
-export const highlightAttributeName = (entryId: string, type: string): string =>
+const highlightAttributeName = (entryId: string, type: string): string =>
   formatObjectPath([HIGHLIGHT_ATTRIBUTES_FIELD, entryId, type]);
 
 /** The dialog field holding one highlight entry's label. */
@@ -158,16 +161,12 @@ const highlightLabelName = (entryId: string): string =>
   formatObjectPath([HIGHLIGHT_LABELS_FIELD, entryId]);
 
 /** The attribute one highlight entry of the expanded row names for `type`. */
-export const highlightAttributeIn = (
+const highlightAttributeIn = (
   row: RowValues,
   entryId: string,
   type: string,
 ): string | undefined =>
   asText(labelIn(labelIn(row[HIGHLIGHT_ATTRIBUTES_FIELD], entryId), type));
-
-/** The highlight entry ids of the expanded row, in order. */
-export const highlightEntryIdsIn = (row: RowValues): string[] =>
-  asIdList(row[HIGHLIGHT_FIELD]) ?? [];
 
 /**
  * Opens a preset with its highlight entries and its drawn edge types spread
@@ -358,23 +357,43 @@ function LegendLabelField({
 
 /**
  * The attribute one highlight entry reads on nodes of one of the stage's node
- * types. On a stage that shows several types each is optional, and the
- * presets section refuses an entry that names no attribute at all.
+ * types. On a stage that shows several types each is optional, and the first
+ * type's picker refuses an entry that names no attribute at all, in the same
+ * validation pass as the entry's other fields.
  */
 function HighlightAttributeField({
   item,
   entryId,
   nodeType,
-  several,
+  nodeTypes,
 }: Readonly<{
   item: RowValues;
   entryId: string;
   nodeType: NodeTypeChoice;
-  several: boolean;
+  nodeTypes: readonly NodeTypeChoice[];
 }>) {
   const intl = useAppIntl();
+  const several = nodeTypes.length > 1;
   const name = highlightAttributeName(entryId, nodeType.id);
   const setRowValue = useFormStore((store) => store.setFieldValue);
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const atLeastOne = useMemo(
+    () =>
+      several && nodeTypes[0]?.id === nodeType.id
+        ? messageRuleValidation([
+            (_value, values) =>
+              nodeTypes.every(
+                (type) =>
+                  highlightAttributeIn(values, entryId, type.id) === undefined,
+              )
+                ? createMessageError(
+                    messages.presetHighlightAttributeRequiredSeveral,
+                  )
+                : undefined,
+          ])
+        : undefined,
+    [entryId, nodeType.id, nodeTypes, several],
+  );
   const subject = useMemo<CodebookSubject>(
     () => ({ entity: 'node', type: nodeType.id }),
     [nodeType.id],
@@ -388,7 +407,7 @@ function HighlightAttributeField({
   });
 
   return (
-    <>
+    <div ref={fieldRef} className="contents">
       <Field<typeof VariablePicker>
         name={name}
         nameMode="path"
@@ -416,6 +435,7 @@ function HighlightAttributeField({
           messages.presetHighlightAttributeEmpty,
         )}
         initialValue={committed}
+        {...(atLeastOne === undefined ? {} : { custom: atLeastOne })}
       />
       {/*
         The picker cannot be emptied once an attribute is chosen, and on a
@@ -428,44 +448,87 @@ function HighlightAttributeField({
           size="sm"
           variant="text"
           icon={<X aria-hidden="true" />}
-          className="-mt-4 mb-8"
-          onClick={() => setRowValue(name, undefined)}
+          className="-mt-4 mb-8 h-auto text-start whitespace-normal"
+          onClick={() => {
+            setRowValue(name, undefined);
+            // The button goes with the attribute it clears, so focus moves to
+            // the picker it emptied rather than falling back to the dialog.
+            fieldRef.current
+              ?.querySelector<HTMLElement>('[data-field-focus-target]')
+              ?.focus();
+          }}
         >
           {intl.formatMessage(messages.presetHighlightAttributeClear, {
             nodeType: nodeType.label,
           })}
         </Button>
       )}
-    </>
+    </div>
   );
 }
 
 /**
  * The list of a preset's highlight entries: the entries the parent draws, and
- * a button that adds one. Its value is the entries' ids in order.
+ * a button that adds one. Its value is the entries' ids in order. It is named
+ * by the field's label as a group.
+ *
+ * Removing an entry takes its remove button away, so focus moves to the remove
+ * button of the entry that takes its place, or to the add button when none
+ * does.
  */
 function HighlightEntryList({
+  id,
   value,
   onChange,
   renderEntry,
   addLabel,
   emptyMessage,
+  'aria-labelledby': labelledBy,
+  'aria-describedby': describedBy,
 }: Readonly<{
-  value?: string[];
-  onChange?: (value: string[] | undefined) => void;
-  renderEntry: (entryId: string, index: number) => ReactNode;
-  addLabel: string;
-  emptyMessage: string;
+  'id'?: string;
+  'value'?: string[];
+  'onChange'?: (value: string[] | undefined) => void;
+  'renderEntry': (
+    entryId: string,
+    index: number,
+    remove: (button: HTMLElement) => void,
+  ) => ReactNode;
+  'addLabel': string;
+  'emptyMessage': string;
+  'aria-labelledby'?: string;
+  'aria-describedby'?: string;
 }>) {
   const ids = value ?? [];
+  const removeAt = (index: number, button: HTMLElement) => {
+    const list = button.closest<HTMLElement>('[data-highlight-list]');
+    // Rendered at once, so the button that takes the removed one's place is
+    // in the document when focus moves.
+    flushSync(() => onChange?.(ids.filter((_id, at) => at !== index)));
+    const next =
+      list?.querySelectorAll<HTMLElement>('[data-highlight-remove]')[index] ??
+      list?.querySelector<HTMLElement>('[data-highlight-add]');
+    next?.focus();
+  };
+
   return (
-    <div className="flex w-full flex-col items-start gap-4">
+    <div
+      data-highlight-list
+      id={id}
+      role="group"
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
+      className="flex w-full flex-col items-start gap-4"
+    >
       {ids.length === 0 ? (
         <Paragraph className="text-current/70 italic">{emptyMessage}</Paragraph>
       ) : (
-        ids.map((entryId, index) => renderEntry(entryId, index))
+        ids.map((entryId, index) =>
+          renderEntry(entryId, index, (button) => removeAt(index, button)),
+        )
       )}
       <Button
+        data-highlight-add
         type="button"
         size="sm"
         icon={<Plus aria-hidden="true" />}
@@ -492,15 +555,14 @@ function HighlightEntryFields({
   entryId: string;
   number: number;
   nodeTypes: readonly NodeTypeChoice[];
-  onRemove: () => void;
+  onRemove: (button: HTMLElement) => void;
 }>) {
   const intl = useAppIntl();
-  const several = nodeTypes.length > 1;
   const legend = intl.formatMessage(messages.presetHighlightEntryLegend, {
     number,
   });
   return (
-    <fieldset className="w-full rounded border-2 p-4">
+    <fieldset className="w-full min-w-0 rounded border-2 p-4">
       <legend className="px-2 font-semibold">{legend}</legend>
       <LegendLabelField
         name={highlightLabelName(entryId)}
@@ -518,7 +580,7 @@ function HighlightEntryFields({
           item={item}
           entryId={entryId}
           nodeType={nodeType}
-          several={several}
+          nodeTypes={nodeTypes}
         />
       ))}
       <div className="flex justify-end">
@@ -527,7 +589,8 @@ function HighlightEntryFields({
           size="sm"
           variant="text"
           icon={<X aria-hidden="true" />}
-          onClick={onRemove}
+          data-highlight-remove
+          onClick={(event) => onRemove(event.currentTarget)}
         >
           {intl.formatMessage(messages.presetHighlightEntryRemove, { number })}
         </Button>
@@ -604,7 +667,6 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   const intl = useAppIntl();
   const nodeTypeIds = useStageNodeTypes();
   const protocolContext = useProtocolContext();
-  const setRowValue = useFormStore((store) => store.setFieldValue);
   const edgeChoicesOffered = useEdgeTypeChoices();
   // The same rules a stage's own filter may hold, judged the same way: a
   // preset's filter narrows the nodes and edges it shows.
@@ -665,7 +727,6 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     () => asIdList(live[DISPLAY_EDGES_FIELD]) ?? [],
     [live],
   );
-  const entryIds = useMemo(() => asIdList(live[HIGHLIGHT_FIELD]) ?? [], [live]);
 
   const knownEdgeTypes = useMemo(
     () => new Set(edgeChoicesOffered.map((option) => option.value)),
@@ -807,19 +868,18 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
           initialValue={committedEntries}
           addLabel={intl.formatMessage(messages.presetHighlightAdd)}
           emptyMessage={intl.formatMessage(messages.presetHighlightEmptyState)}
-          renderEntry={(entryId: string, index: number) => (
+          renderEntry={(
+            entryId: string,
+            index: number,
+            remove: (button: HTMLElement) => void,
+          ) => (
             <HighlightEntryFields
               key={entryId}
               item={item}
               entryId={entryId}
               number={index + 1}
               nodeTypes={nodeTypes}
-              onRemove={() =>
-                setRowValue(
-                  HIGHLIGHT_FIELD,
-                  entryIds.filter((id) => id !== entryId),
-                )
-              }
+              onRemove={remove}
             />
           )}
         />
