@@ -7,6 +7,7 @@ import {
   layoutReferences,
   sectionReferenceAt,
   sweepReferences,
+  variableReferences,
 } from '../section-references.ts';
 import { sectionId } from '../taxonomy.ts';
 
@@ -336,5 +337,115 @@ describe('deleting a layout', () => {
       sectionId: sectionId({ kind: 'codebookLayout', layoutId: SEATING }),
       path: ['name'],
     });
+  });
+});
+
+describe('deleting what a Narrative highlight names', () => {
+  const STORY = crypto.randomUUID();
+  const STORY_SECTION = sectionId({ kind: 'stage', stageId: STORY });
+  const LAYOUT = crypto.randomUUID();
+  const CLOSE = crypto.randomUUID();
+  const FAVOURITE = crypto.randomUUID();
+  const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
+  const PLACE_SECTION = sectionId({ kind: 'codebookNode', typeId: PLACE });
+
+  const withBoolean = (name: string, variable: string): SectionDoc => ({
+    ...nodeType(name),
+    variables: { [variable]: { name: variable, type: 'boolean' } },
+  });
+  const attribute = (type: string, variable: string) => ({
+    id: crypto.randomUUID(),
+    type,
+    variable,
+  });
+  const highlight = (
+    label: string,
+    attributes: ReturnType<typeof attribute>[],
+  ) => ({ id: crypto.randomUUID(), label: { en: label }, attributes });
+
+  const documentsWith = (
+    types: string[],
+    highlights: ReturnType<typeof highlight>[],
+  ): Record<string, SectionDoc> => ({
+    [sectionId({ kind: 'settings' })]: {},
+    [sectionId({ kind: 'stageOrder' })]: { stages: [STORY] },
+    [sectionId({ kind: 'codebookLayout', layoutId: LAYOUT })]: {
+      name: 'Map',
+    },
+    [PERSON_SECTION]: withBoolean('Person', CLOSE),
+    [PLACE_SECTION]: withBoolean('Place', FAVOURITE),
+    [STORY_SECTION]: {
+      id: STORY,
+      type: 'Narrative',
+      label: { en: 'Story' },
+      subject: { entity: 'node', types },
+      background: { concentricCircles: 4 },
+      presets: [
+        {
+          id: crypto.randomUUID(),
+          label: { en: 'Everyone' },
+          layout: LAYOUT,
+          highlight: highlights,
+        },
+      ],
+    },
+  });
+  const highlightsIn = (documents: Record<string, SectionDoc>) =>
+    Reflect.get(
+      Object(Reflect.get(Object(documents[STORY_SECTION]), 'presets')[0]),
+      'highlight',
+    );
+
+  it('removes the highlight whose only attribute is the deleted variable', () => {
+    const kept = highlight('Kept', [attribute(PERSON, CLOSE)]);
+    const documents = documentsWith(
+      [PERSON],
+      [highlight('Close', [attribute(PERSON, CLOSE)]), kept],
+    );
+    const person = documents[PERSON_SECTION];
+    documents[PERSON_SECTION] = { ...person, variables: {} };
+
+    const { remaining } = sweepReferences(documents, (current) =>
+      variableReferences(
+        assembledProtocol(current),
+        { entity: 'node', type: PERSON },
+        CLOSE,
+      ),
+    );
+
+    expect(remaining).toEqual([]);
+    expect(highlightsIn(documents)).toEqual([]);
+  });
+
+  it('removes only the deleted type’s attribute from a highlight that names another type too', () => {
+    const personRow = attribute(PERSON, CLOSE);
+    const both = highlight('Both', [personRow, attribute(PLACE, FAVOURITE)]);
+    const documents = documentsWith([PERSON, PLACE], [both]);
+    delete documents[PLACE_SECTION];
+
+    const { remaining } = sweepReferences(documents, (current) =>
+      entityTypeReferences(assembledProtocol(current), 'node', PLACE),
+    );
+
+    expect(remaining).toEqual([]);
+    expect(highlightsIn(documents)).toEqual([
+      { ...both, attributes: [personRow] },
+    ]);
+  });
+
+  it('removes a highlight that names only the deleted type', () => {
+    const personOnly = highlight('People', [attribute(PERSON, CLOSE)]);
+    const documents = documentsWith(
+      [PERSON, PLACE],
+      [personOnly, highlight('Places', [attribute(PLACE, FAVOURITE)])],
+    );
+    delete documents[PLACE_SECTION];
+
+    const { remaining } = sweepReferences(documents, (current) =>
+      entityTypeReferences(assembledProtocol(current), 'node', PLACE),
+    );
+
+    expect(remaining).toEqual([]);
+    expect(highlightsIn(documents)).toEqual([personOnly]);
   });
 });

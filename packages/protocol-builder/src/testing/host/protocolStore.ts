@@ -29,7 +29,7 @@ import {
   layoutStageReferences,
   stageReferences,
   variableReferences,
-  withoutReference,
+  referenceRemovals,
 } from './references.ts';
 
 export type HostPrincipal = Readonly<{
@@ -914,9 +914,11 @@ function removeOneReference(
     if (parseSectionId(reference.sectionId).kind === 'codebookEdge') continue;
     const current = documents[reference.sectionId];
     if (current === undefined) continue;
-    const next = withoutReference(current, reference.path);
+    const next = referenceRemovals(current, reference.path).find(
+      (candidate) =>
+        sectionShapeIssues(reference.sectionId, candidate).length === 0,
+    );
     if (next === undefined) continue;
-    if (sectionShapeIssues(reference.sectionId, next).length > 0) continue;
     documents[reference.sectionId] = next;
     rewritten.set(reference.sectionId, next);
     return true;

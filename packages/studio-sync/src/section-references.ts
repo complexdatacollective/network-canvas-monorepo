@@ -205,38 +205,44 @@ export function layoutReferences(
 }
 
 /**
- * The section document without the reference at `path`, or `undefined` when
- * removing it would mean inventing semantics.
+ * The ways of removing the reference at `path`, from the smallest change to
+ * the largest: the section document without each list entry that holds it,
+ * the innermost entry first. Empty when removing it would mean inventing
+ * semantics.
  *
  * A reference inside a list — a prompt, a form field, a filter rule, a sort
- * option — is removed by dropping the entry that holds it. A reference that is
- * a property of the section itself, an edge stage's `subject.type` or a
- * quick-add attribute, has no such entry: there is nothing to remove that leaves a stage
- * the researcher would recognise, so the host says so rather than guessing.
+ * option — is removed by dropping the entry that holds it. When dropping that
+ * entry leaves the list one the schema refuses, such as a Narrative highlight
+ * with no attribute left, the caller takes the next enclosing entry instead,
+ * here the whole highlight. A reference that is a property of the section
+ * itself, an edge stage's `subject.type` or a quick-add attribute, has no such
+ * entry: there is nothing to remove that leaves a stage the researcher would
+ * recognise, so the host says so rather than guessing.
  */
-function withoutReference(
+function referenceRemovals(
   document: SectionDoc,
   path: readonly (string | number)[],
-): SectionDoc | undefined {
-  let cut = -1;
-  for (const [at, segment] of path.entries()) {
-    if (typeof segment === 'number') cut = at;
-  }
-  const index = path[cut];
-  if (typeof index !== 'number') return undefined;
-
-  const next = structuredClone(document) as SectionDoc;
-  let holder: unknown = next;
-  for (const segment of path.slice(0, cut)) {
-    if (Array.isArray(holder) && typeof segment === 'number') {
-      holder = holder[segment];
-      continue;
+): SectionDoc[] {
+  const cuts = [...path.entries()]
+    .filter(([, segment]) => typeof segment === 'number')
+    .map(([at]) => at)
+    .toReversed();
+  return cuts.flatMap((cut) => {
+    const index = path[cut];
+    if (typeof index !== 'number') return [];
+    const next = structuredClone(document);
+    let holder: unknown = next;
+    for (const segment of path.slice(0, cut)) {
+      if (Array.isArray(holder) && typeof segment === 'number') {
+        holder = holder[segment];
+        continue;
+      }
+      holder = isRecord(holder) ? holder[segment] : undefined;
     }
-    holder = isRecord(holder) ? holder[segment] : undefined;
-  }
-  if (!Array.isArray(holder)) return undefined;
-  holder.splice(index, 1);
-  return next;
+    if (!Array.isArray(holder)) return [];
+    holder.splice(index, 1);
+    return [next];
+  });
 }
 
 /**
@@ -277,9 +283,11 @@ function removeOneReference(
     if (parseSectionId(reference.sectionId).kind === 'codebookEdge') continue;
     const current = documents[reference.sectionId];
     if (current === undefined) continue;
-    const next = withoutReference(current, reference.path);
+    const next = referenceRemovals(current, reference.path).find(
+      (candidate) =>
+        sectionShapeIssues(reference.sectionId, candidate).length === 0,
+    );
     if (next === undefined) continue;
-    if (sectionShapeIssues(reference.sectionId, next).length > 0) continue;
     documents[reference.sectionId] = next;
     rewritten.set(reference.sectionId, next);
     return true;

@@ -1404,6 +1404,58 @@ describe('the in-memory host', () => {
     expect(subject.store.read(NARRATIVE).document.presets).toHaveLength(2);
   });
 
+  it('deleting the only attribute of a Narrative highlight removes the highlight', async () => {
+    const subject = host();
+    const highlighted = fixtureVariableId(
+      { entity: 'node', typeName: 'person' },
+      'highlighted',
+    );
+    const narrative = subject.store.read(NARRATIVE).document;
+    const presets: unknown[] = Array.isArray(narrative.presets)
+      ? narrative.presets
+      : [];
+    const [first] = presets;
+    const preset: Record<string, unknown> =
+      typeof first === 'object' && first !== null ? { ...first } : {};
+    const kept: unknown[] = Array.isArray(preset.highlight)
+      ? preset.highlight
+      : [];
+    subject.store.applyAsCollaborator(NARRATIVE, {
+      ...narrative,
+      presets: [
+        {
+          ...preset,
+          highlight: [
+            {
+              id: testId('highlight-highlighted'),
+              label: { 'en-US': 'Highlighted' },
+              attributes: [
+                {
+                  id: testId('highlight-highlighted-person'),
+                  type: PERSON_TYPE,
+                  variable: highlighted,
+                },
+              ],
+            },
+            ...kept,
+          ],
+        },
+      ],
+    });
+
+    const applied = await subject.adapter.rpcCall('RefactorDeleteVariable', {
+      protocolId: subject.protocolId,
+      subject: { entity: 'node', type: PERSON_TYPE },
+      variableId: highlighted,
+    });
+
+    expect(applied.changedSections).toContain(NARRATIVE);
+    const after = subject.store.read(NARRATIVE).document.presets;
+    expect(Array.isArray(after) ? after[0] : undefined).toMatchObject({
+      highlight: kept,
+    });
+  });
+
   it('deleting a layout a filter rule names removes the rule', async () => {
     const subject = host();
     const created = await createLayout(subject);
