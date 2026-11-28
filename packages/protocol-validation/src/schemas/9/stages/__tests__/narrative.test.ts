@@ -247,6 +247,14 @@ describe('the highlights of a Narrative preset', () => {
     ).toEqual([]);
   });
 
+  it('rejects a highlight entry with no attributes', () => {
+    expect(
+      issuePaths({
+        presets: [preset('first', { highlight: [highlightEntry([])] })],
+      }),
+    ).toEqual(['presets.0.highlight.0.attributes']);
+  });
+
   it('rejects an unknown variable on every per-type row of a two-type Narrative', () => {
     expect(
       issuePaths({

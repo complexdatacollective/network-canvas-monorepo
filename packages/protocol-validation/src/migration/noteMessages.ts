@@ -593,7 +593,7 @@ export const migrationNoteMessages = defineMessages({
   schema9NarrativeBooleanHighlights: {
     id: 'protocolValidation.migrationNotes.schema9.narrativeBooleanHighlights',
     defaultMessage:
-      'A highlight on a Narrative preset can now show only a Boolean attribute, as a highlighting task on a Sociogram does. A highlight of any other kind of attribute is removed, because the interview cannot show it. Each highlight that remains keeps its label.',
+      'A highlight on a Narrative preset can now show only a Boolean attribute, as a highlighting task on a Sociogram does. A highlight of any other kind of attribute, or of an attribute that is no longer in the codebook, is removed, because the interview cannot show it. Each highlight that remains keeps its label.',
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Narrative" and "Sociogram" are the names Architect gives the interfaces; use the same names Architect uses for them. A preset is one of the saved views of a Narrative stage. A highlight marks the nodes whose attribute is true, and has a label that participants read. A Boolean attribute is an attribute whose answer is true or false. A highlighting task is a Sociogram prompt whose task is Highlight nodes, the name Architect gives that task.',
   },

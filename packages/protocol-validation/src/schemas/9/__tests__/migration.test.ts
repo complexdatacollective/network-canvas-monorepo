@@ -1750,10 +1750,7 @@ const schema8NarrativeHighlighting = (...variables: string[]) => {
           index === 0
             ? {
                 ...preset,
-                highlight: variables.map((variable) => ({
-                  variable,
-                  label: `Highlight ${variable}`,
-                })),
+                highlight: variables,
               }
             : preset,
         ),
@@ -1771,7 +1768,7 @@ describe('Migrating Narrative preset highlights from schema 8 to 9', () => {
         {
           highlight: [
             {
-              label: localized('Highlight close'),
+              label: localized('Close'),
               attributes: [
                 { id: expect.any(String), type: 'person', variable: 'close' },
               ],
@@ -1788,6 +1785,29 @@ describe('Migrating Narrative preset highlights from schema 8 to 9', () => {
     ).toEqual([]);
   });
 
+  it('drops a Narrative highlight naming a variable the codebook does not have', () => {
+    const document = schema8NarrativeHighlighting('close', 'removed');
+    const [stage] = stagesMigratedFrom(document);
+
+    expect(withoutIds(stage)).toMatchObject({
+      presets: [
+        {
+          highlight: [
+            {
+              label: localized('Close'),
+              attributes: [{ type: 'person', variable: 'close' }],
+            },
+          ],
+        },
+        {},
+      ],
+    });
+    expect(
+      ProtocolSchemaV9.safeParse(migrateProtocol(document, 9)).error?.issues ??
+        [],
+    ).toEqual([]);
+  });
+
   it('drops a Narrative highlight naming a non-boolean variable', () => {
     const [stage] = stagesMigratedFrom(
       schema8NarrativeHighlighting('category', 'close', 'age'),
@@ -1798,7 +1818,7 @@ describe('Migrating Narrative preset highlights from schema 8 to 9', () => {
         {
           highlight: [
             {
-              label: localized('Highlight close'),
+              label: localized('Close'),
               attributes: [{ type: 'person', variable: 'close' }],
             },
           ],

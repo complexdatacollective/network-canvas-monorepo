@@ -316,7 +316,19 @@ const BLANK_REFUSED_SITES: readonly {
           id: testId('preset'),
           label: localized('Preset 1'),
           layout: 'layout',
-          highlight: [{ id: testId('highlight'), variable: 'close', label }],
+          highlight: [
+            {
+              id: testId('highlight'),
+              label,
+              attributes: [
+                {
+                  id: testId('highlight-attribute'),
+                  type: 'person',
+                  variable: 'close',
+                },
+              ],
+            },
+          ],
         },
       ],
     }),
